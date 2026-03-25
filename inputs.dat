@@ -1,0 +1,20 @@
+# Simulation Parameters
+N_ELEM_X = 500
+N_ELEM_Y = 500
+P_DEG = 1
+CFL = 1.0
+GAMMA = 1.4
+
+# IGR Constants
+ENABLE_IGR = 1
+ALPHA_SCALE = 2.0
+
+# Domain
+X_MIN = 0.0
+X_MAX = 1.0
+Y_MIN = 0.0
+Y_MAX = 1.0
+
+# Time Stepping
+T_FINAL = 0.5
+OUTPUT_DT = 0.01
