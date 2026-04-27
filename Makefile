@@ -1,58 +1,68 @@
 # Compiler and Flags
 CXX = g++
-# Standard production flags (optimized)
-CXXFLAGS = -std=c++17 -O3 -Wall -Wextra
+# Standard production flags: optimized + OpenMP
+CXXFLAGS = -std=c++17 -O3 -Wall -Wextra -fopenmp
 
 # Debugging flags (comprehensive error checking)
-# -g: Include debug symbols
-# -O0: Disable optimizations for accurate stack traces
-# -fsanitize=address: Detect memory errors (out-of-bounds, use-after-free, etc.)
-# -fsanitize=undefined: Detect undefined behavior (null pointers, division by zero, etc.)
-# -D_GLIBCXX_DEBUG: Enable bounds checking in STL containers (std::vector, etc.)
-# -fstack-protector-all: Add stack smash protection
+# Note: UndefinedBehaviorSanitizer (UBSan) and AddressSanitizer (ASan) 
+# sometimes conflict with OpenMP threads on certain GCC versions.
 DEBUG_FLAGS = -std=c++17 -g -O0 -Wall -Wextra -Wpedantic \
               -fsanitize=address -fsanitize=undefined \
-              -D_GLIBCXX_DEBUG -fstack-protector-all
+              -D_GLIBCXX_DEBUG -fstack-protector-all -fopenmp
 
 # Target Executables
 TARGET = fr_solver
 TEST_TARGET = unit_tests
 
-# Source and Header Files
-SRC = main.cpp
-TEST_SRC = test_main.cpp
-HEADERS = basis.hpp parameters.hpp solver.hpp state.hpp
+# Source Files
+CORE_SRC = src/core/parameters.cpp src/core/basis.cpp src/core/solver.cpp
+FLUX_SRC = src/flux/euler_flux.cpp src/flux/sweep_x.cpp src/flux/sweep_y.cpp
+IGR_SRC  = src/igr/sensor.cpp src/igr/adi_solver.cpp src/igr/parabolic.cpp src/igr/entropic_pressure.cpp
+BND_SRC  = src/boundary/boundary.cpp
+LIM_SRC  = src/limiters/positivity.cpp src/limiters/entropy.cpp
+TIME_SRC = src/time/stability.cpp src/time/rk3.cpp
+IO_SRC   = src/io/vtk_writer.cpp src/io/restart.cpp src/io/initial_conditions.cpp
+
+# Combine into objects
+OBJ_SRCS = $(CORE_SRC) $(FLUX_SRC) $(IGR_SRC) $(BND_SRC) $(LIM_SRC) $(TIME_SRC) $(IO_SRC)
+OBJS = $(OBJ_SRCS:.cpp=.o)
+
+MAIN_SRC = src/main.cpp
+MAIN_OBJ = $(MAIN_SRC:.cpp=.o)
+
+TEST_SRC = tests/test_main.cpp
+TEST_OBJ = $(TEST_SRC:.cpp=.o)
 
 # Default Target
 all: $(TARGET)
 
-# Build the main executable (optimized)
-$(TARGET): $(SRC) $(HEADERS)
-	$(CXX) $(CXXFLAGS) $(SRC) -o $(TARGET)
+# Compile object files
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Build the main executable with comprehensive debugging checks
-debug: clean $(SRC) $(HEADERS)
-	$(CXX) $(DEBUG_FLAGS) $(SRC) -o $(TARGET)
-	@echo "Build complete: $(TARGET) compiled with ASan, UBSan, and STL Debugging enabled."
+# Build the main executable
+$(TARGET): $(OBJS) $(MAIN_OBJ)
+	$(CXX) $(CXXFLAGS) $^ -o $@
 
-# Build and run the unit tests
-test: $(TEST_SRC) $(HEADERS)
-	$(CXX) $(CXXFLAGS) $(TEST_SRC) -o $(TEST_TARGET)
+# Build the tests
+test: CXXFLAGS += -g -O0  # Tests should be built unoptimized for fast compile
+test: $(OBJS) $(TEST_OBJ)
+	$(CXX) $(CXXFLAGS) $^ -o $(TEST_TARGET)
 	./$(TEST_TARGET)
 
-# Clean build artifacts and output data
+# Debug build
+debug: CXXFLAGS = $(DEBUG_FLAGS)
+debug: clean $(TARGET)
+	@echo "Build complete: $(TARGET) compiled in Debug mode."
+
+# Clean build artifacts
 clean:
-	rm -rf $(TARGET) $(TEST_TARGET) solution_2d.csv pv_outputs
-
-# Run the simulation
-run: $(TARGET)
-	./$(TARGET)
-
-# Plot the results
-plot:
-	paraview pv_outputs/solution.pvd
+	rm -rf $(TARGET) $(TEST_TARGET) pv_outputs solution_2d.csv
+	find src tests -type f -name "*.o" -delete
 
 # Convenience target: Build, Run, and Plot
-full: clean all run plot
+full: clean all
+	./$(TARGET)
+	paraview pv_outputs/solution.pvd
 
-.PHONY: all clean run plot full debug test
+.PHONY: all clean test debug full

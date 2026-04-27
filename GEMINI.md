@@ -1,4 +1,4 @@
-# GEMINI.md - Project Context: FRAI3
+# GEMINI.md - Project Context: FR-IGR
 
 ## Project Overview
 This project is a high-order numerical solver for the **2D Euler equations** (fluid dynamics) using the **Flux Reconstruction (FR)** method (also known as the Correction Procedure via Reconstruction - CPR). It is implemented in C++ and targets Cartesian grids.
@@ -16,7 +16,9 @@ The solver includes a specialized regularization technique called **Isotropic Gr
 ## Directory Structure & Key Files
 - `main.cpp`: Entry point. Sets up initial conditions (e.g., 2D Riemann Problem Configuration 3) and executes the time-stepping loop.
 - `solver.hpp`: Contains the `Solver` class. Implements RHS assembly (X/Y sweeps), Riemann solvers, and the IGR/Entropic Pressure mechanism.
-- `parameters.hpp`: Global simulation parameters including grid resolution (`N_ELEM_X`, `N_ELEM_Y`), polynomial degree (`P_DEG`), and physics constants (`GAMMA`).
+- `parameters.hpp`: Global simulation parameters and input file parser. Defines the `Parameters` struct.
+- `inputs.dat`: Current active simulation configuration.
+- `inputs_example.txt`: [NEW] Comprehensive documentation and template for all available input options.
 - `state.hpp`: Defines the `State` data structure for conservative variables ($\rho, \rho u, \rho v, E$).
 - `basis.hpp`: Handles basis functions (Lagrange polynomials), derivative matrices, and FR correction polynomial derivatives.
 - `run.sh`: Convenience script for building, running, and plotting.
@@ -80,3 +82,6 @@ Discontinuous initial conditions trigger immediate instabilities in high-order F
 
 ### 5. Runtime Symmetry Check
 The main simulation loop includes a quantitative symmetry check that mirrors the density field across the diagonal and reports any deviation exceeding $1e^{-10}$, facilitating early detection of numerical bias.
+
+## Documentation Maintenance
+- **Input Parameters**: Whenever a new parameter is added to `parameters.hpp` or the solver logic, the `inputs_example.txt` file **must** be updated with a detailed explanation and a sample value. This ensures the user-facing documentation remains synchronized with the implementation.
