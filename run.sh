@@ -16,7 +16,7 @@ make clean
 make -j4 all
 
 echo "Running Simulation..."
-time ./fr_solver
+./fr_solver
 
 # Check if plot script exists and run it
 if [ -f "plot2d_pv.py" ]; then

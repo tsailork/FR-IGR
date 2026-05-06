@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cmath>
 #include <vector>
+#include "../limiters/limiter_common.hpp"
 
 /// Maximum polynomial degree supported (P = 0..3  →  up to 4 points).
 constexpr int MAX_PTS = 4;
@@ -34,6 +35,9 @@ public:
     std::vector<double> sigma_RHS;     ///< Parabolic evolution RHS.
     std::vector<double> qx_buf;        ///< BR2 auxiliary gradient (x).
     std::vector<double> qy_buf;        ///< BR2 auxiliary gradient (y).
+
+    // -- Diagnostics --
+    Limiters::LimiterStats current_limiter_stats;
 
     // -----------------------------------------------------------------
     // Construction

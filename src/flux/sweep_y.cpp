@@ -12,6 +12,19 @@
 #include <omp.h>
 #endif
 
+/// Perform the Y-direction Flux Reconstruction sweep.
+///
+/// @details
+/// Data Structures & Indexing:
+///   - `U(v, ey, ex, iy, ix)`: The global conserved state array. Read-only in this pass.
+///   - `RHS(v, ey, ex, iy, ix)`: The global explicit right-hand side array. This function 
+///     accumulates the flux divergence and interface corrections into RHS via subtraction (`-=`).
+///   - `sigma_field[get_flat_idx(ey, ex, iy, ix)]`: The global scalar entropic pressure field.
+///   - `basis.l_L`, `basis.l_R`: 1D arrays of size N_PTS used to extrapolate solution points to the bottom/top faces.
+///   - `basis.dgl`, `basis.dgr`: 1D arrays of size N_PTS containing the derivatives of the Radau correction polynomials.
+/// Assumptions:
+///   - The global arrays are pre-allocated and `RHS` contains the partial accumulation from `sweep_x`.
+///   - The memory access pattern is designed to be OpenMP thread-safe by assigning disjoint columns (`ex`) to different threads.
 void Solver::sweep_y() {
     #pragma omp parallel for schedule(static)
     for (int ex = 0; ex < p.N_ELEM_X; ++ex) {

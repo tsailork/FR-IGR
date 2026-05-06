@@ -1,88 +1,81 @@
-# ==============================================================================
-# FR-IGR Solver: Input Configuration Example
-# ==============================================================================
-# This file documents all available options for the inputs.dat configuration.
-# The solver expects a file named 'inputs.dat' in the execution directory.
-# Syntax: KEY = VALUE (Spaces around '=' are required)
-# Comments: Lines starting with '#' or text after '#' are ignored.
+# Example inputs.dat configuration for FR-IGR
+# This file uses standard INI format. Comments start with #.
 
-# ------------------------------------------------------------------------------
-# 1. GRID & POLYNOMIAL SETTINGS
-# ------------------------------------------------------------------------------
-N_ELEM_X = 25           # [int] Number of elements in the X-direction.
-N_ELEM_Y = 25           # [int] Number of elements in the Y-direction.
-P_DEG = 1               # [int] Polynomial degree within each element.
-                        # 0: Finite Volume, 1: Linear (P1), 2: Quadratic (P2), etc.
-CFL = 1.0               # [double] Courant-Friedrichs-Lewy stability factor.
-                        # Recommended: 1.0 for P1-P2 with standard RK3.
-GAMMA = 1.4             # [double] Heat capacity ratio (Adiabatic index).
+[Physics]
+# GAMMA: Ratio of specific heats (1.4 for air)
+GAMMA = 1.4
 
-# ------------------------------------------------------------------------------
-# 2. IGR (Information Geometric Regularization) / ARTIFICIAL VISCOSITY
-# ------------------------------------------------------------------------------
-ENABLE_IGR = 1          # [bool] Toggle artificial viscosity. (1: ON, 0: OFF).
-ALPHA_SCALE = 0.25      # [double] Scaling coefficient for viscosity (O(1)).
-                        # Typical values: 0.1 to 1.0. 0.25 is standard for shocks.
-IGR_GRADIENT_TYPE = CORRECTED # [string] Gradient calculation method.
-                              # LOCAL: Standard element-local gradients.
-                              # CORRECTED: BR2-style lifting for interface consistency.
-IGR_TYPE = PARABOLIC    # [string] Evolution mode for the viscosity field (Sigma).
-                        # ELLIPTIC: Solve Helmholtz equation strictly (ADI).
-                        # PARABOLIC: Evolve Sigma as a diffusive PDE (Relaxation).
-IGR_TAU_R = 0.05        # [double] Relaxation time for Parabolic IGR.
-                        # Smaller values make Sigma track the sensor faster.
-IGR_BR2_ETA = 1.0       # [double] BR2 Penalty parameter for Parabolic mode.
-                        # Typically 1.0 or (P+1) for spectral stability.
-IGR_SUB_ITERS = 1       # [int] Parabolic sub-iterations per flow time step.
-                        # 1: Standard (no sub-iteration).
-                        # >1: Sub-iterate σ relaxation between flow steps to
-                        #     accelerate convergence toward elliptic steady state.
+# IC_TYPE: Initial Condition. Options: RIEMANN_2D_C3, BLAST, SINE_WAVE, UNIFORM
+IC_TYPE = BLAST
 
-# ------------------------------------------------------------------------------
-# 3. STABILIZATION & LIMITERS
-# ------------------------------------------------------------------------------
-ENABLE_POS_LIMITER = 1      # [bool] Zhang-Shu Positivity Limiter (Density/Pressure).
-POS_LIMITER_EPS = 1e-10     # [double] Precision floor for positivity.
-ENABLE_ENTROPY_LIMITER = 1  # [bool] Local Entropy Minimum Preservation Limiter.
-                            # Prevents expansion shocks and non-physical dips.
+[Solver]
+# P_DEG: Polynomial degree of elements. 0 = Finite Volume, 1 = Linear, 2 = Quadratic
+P_DEG = 1
 
-# ------------------------------------------------------------------------------
-# 4. DOMAIN & BOUNDARIES
-# ------------------------------------------------------------------------------
-X_MIN = 0.0             # [double] Domain left extent.
-X_MAX = 0.5             # [double] Domain right extent.
-Y_MIN = 0.0             # [double] Domain bottom extent.
-Y_MAX = 0.5             # [double] Domain top extent.
+# CFL: Courant-Friedrichs-Lewy number for time step scaling
+CFL = 1.0
 
-# Boundary Conditions (L: Left, R: Right, B: Bottom, T: Top)
-# Options: WALL (Reflecting), TRANSMISSIVE (Outflow), PERIODIC
-BC_L = WALL
-BC_R = WALL
-BC_B = WALL
-BC_T = WALL
+# T_FINAL: Simulation end time
+T_FINAL = 0.3
 
-# ------------------------------------------------------------------------------
-# 5. INITIAL CONDITIONS
-# ------------------------------------------------------------------------------
-IC_TYPE = BLAST         # [string] Test case selector.
-                        # BLAST: High-pressure bubble in corner (0,0).
-                        # RIEMANN_2D_C3: 4-quadrant Riemann problem.
-                        # SINE_WAVE: 1D Density wave (Periodic).
-                        # UNIFORM: Constant state.
-
-# ------------------------------------------------------------------------------
-# 6. TIME STEPPING & OUTPUT
-# ------------------------------------------------------------------------------
-T_FINAL = 1.0           # [double] Total simulation time.
-OUTPUT_DT = 0.05        # [double] Interval between .vts file outputs.
-DT = 0.0005             # [double] Initial time-step guess (dynamic after start).
-
-# ------------------------------------------------------------------------------
-# 7. RESTART FUNCTIONALITY
-# ------------------------------------------------------------------------------
-# RESTART_FILE = pv_outputs/sol_10.vts # [string] Path to .vts file to resume from.
-# RESTART_TIME = 0.5                  # [double] Physical time to resume from.
-
-# --- Parallelism ---
-# NUM_THREADS: Number of OpenMP threads to use. Default is 1.
+# NUM_THREADS: Number of OpenMP threads to use
 NUM_THREADS = 4
+
+[Regularization]
+# ENABLE_IGR: Toggle Isotropic Gradient Regularization (artificial viscosity)
+ENABLE_IGR = false
+
+# ALPHA_SCALE: Viscosity scaling coefficient. Higher = more diffusion.
+ALPHA_SCALE = 0.5
+
+# IGR_GRADIENT_TYPE: "LOCAL" (interior points only) or "CORRECTED" (BR2 interface lifting)
+IGR_GRADIENT_TYPE = LOCAL
+
+# IGR_TYPE: "ELLIPTIC" (implicit ADI solve) or "PARABOLIC" (explicit evolution)
+IGR_TYPE = PARABOLIC
+
+# IGR_TAU_R: Relaxation time for parabolic mode.
+IGR_TAU_R = 0.1
+
+# IGR_BR2_ETA: BR2 penalty parameter for stability. Usually 1.0 to 3.0.
+IGR_BR2_ETA = 1.0
+
+# IGR_SUB_ITERS: Number of parabolic sub-iterations per flow step.
+IGR_SUB_ITERS = 1
+
+[Stabilization]
+# ENABLE_POS_LIMITER: Zhang-Shu density and pressure positivity limiter.
+ENABLE_POS_LIMITER = true
+
+# POS_LIMITER_EPS: Minimum value floor for density and pressure.
+POS_LIMITER_EPS = 1e-10
+
+# ENABLE_ENTROPY_LIMITER: Prevents unphysical entropy undershoots.
+ENABLE_ENTROPY_LIMITER = true
+
+[IO]
+# OUTPUT_DT: Time interval between full VTK 3D snapshots.
+OUTPUT_DT = 0.01
+
+# RESIDUAL_INTERVAL: Time interval between L2 residual tracking outputs to residuals.dat
+RESIDUAL_INTERVAL = 0.005
+
+# PROBE_INTERVAL: Time interval between point probe tracking to probe.csv
+PROBE_INTERVAL = 0.005
+
+# PRINT_INTERVAL: Time interval between terminal stdout status updates.
+PRINT_INTERVAL = 0.01
+
+# RESTART_FILE: Path to a .vts file to resume from. Leave blank if not restarting.
+RESTART_FILE = 
+
+# RESTART_TIME: Simulation time corresponding to the restart file.
+RESTART_TIME = 0.0
+
+[Probes]
+# Define point probes to extract time-history data.
+# Format: PROBE_NAME = X, Y, Variable
+# Available variables: Density, XMomentum, YMomentum, Energy, Pressure, Temperature, Mach, Sigma
+PROBE_1 = 0.5, 0.5, Pressure
+PROBE_2 = 0.1, 0.5, Density
+PROBE_3 = 0.9, 0.5, Mach

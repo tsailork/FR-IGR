@@ -13,6 +13,12 @@
 
 namespace Limiters {
 
+/// Structure to track limiter activity across the mesh.
+struct LimiterStats {
+    int num_limited = 0;
+    double sum_theta = 0.0;
+};
+
 /// Thermodynamic pressure from conserved variables.
 inline double pressure(double rho, double rhou, double rhov, double E,
                        double gamma) {

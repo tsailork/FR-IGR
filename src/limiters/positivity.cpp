@@ -21,13 +21,25 @@
 #include <omp.h>
 #endif
 
-void Limiters::apply_positivity_limiter(State& U, const Basis& basis,
+/// Apply the Zhang-Shu positivity-preserving limiter.
+///
+/// @details
+/// Data Structures & Indexing:
+///   - `U(v, ey, ex, iy, ix)`: The global conserved state array. Read and mutated in-place.
+/// Assumptions:
+///   - Elements are completely independent. Limiting relies strictly on the local element's 
+///     interior solution points to compute the cell average and the minimum value. No neighbor 
+///     ghost states are accessed, guaranteeing perfect OpenMP thread safety across elements.
+Limiters::LimiterStats Limiters::apply_positivity_limiter(State& U, const Basis& basis,
                                          const Parameters& p)
 {
     const double eps = p.POS_LIMITER_EPS;
     const double gm1 = p.GAMMA - 1.0;
 
-    #pragma omp parallel for collapse(2) schedule(static)
+    int num_limited = 0;
+    double sum_theta = 0.0;
+
+    #pragma omp parallel for collapse(2) schedule(static) reduction(+:num_limited, sum_theta)
     for (int ey = 0; ey < p.N_ELEM_Y; ++ey) {
         for (int ex = 0; ex < p.N_ELEM_X; ++ex) {
 
@@ -74,8 +86,9 @@ void Limiters::apply_positivity_limiter(State& U, const Basis& basis,
             for (int f = 0; f < n_face; ++f)
                 r_min = std::min(r_min, face_pts[f][0]);
 
+            double theta_r = 1.0;
             if (r_min < eps) {
-                double theta_r = (r_avg - eps) / (r_avg - r_min);
+                theta_r = (r_avg - eps) / (r_avg - r_min);
                 theta_r = std::max(0.0, std::min(1.0, theta_r));
                 for (int iy = 0; iy < p.N_PTS; ++iy)
                     for (int ix = 0; ix < p.N_PTS; ++ix) {
@@ -123,7 +136,7 @@ void Limiters::apply_positivity_limiter(State& U, const Basis& basis,
                         p.GAMMA, eps, true));
             }
 
-            if (theta_p < 1.0)
+            if (theta_p < 1.0) {
                 for (int iy = 0; iy < p.N_PTS; ++iy)
                     for (int ix = 0; ix < p.N_PTS; ++ix) {
                         U(0, ey, ex, iy, ix) = theta_p*(U(0, ey, ex, iy, ix) - r_avg)  + r_avg;
@@ -131,6 +144,18 @@ void Limiters::apply_positivity_limiter(State& U, const Basis& basis,
                         U(2, ey, ex, iy, ix) = theta_p*(U(2, ey, ex, iy, ix) - rv_avg) + rv_avg;
                         U(3, ey, ex, iy, ix) = theta_p*(U(3, ey, ex, iy, ix) - E_avg)  + E_avg;
                     }
+                num_limited++;
+                sum_theta += theta_p;
+            } else if (r_min < eps) {
+                // If it was limited by density only, we still count it
+                num_limited++;
+                sum_theta += theta_r;
+            }
         }
     }
+    
+    LimiterStats stats;
+    stats.num_limited = num_limited;
+    stats.sum_theta = sum_theta;
+    return stats;
 }

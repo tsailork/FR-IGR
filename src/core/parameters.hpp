@@ -2,27 +2,48 @@
 /// @brief Simulation parameters and input file parser.
 ///
 /// The Parameters struct holds every user-configurable option for the FR-IGR
-/// solver.  Values can be loaded from a key=value text file (inputs.dat).
-/// Any parameter not found in the file retains its default value.
+/// solver. Values can be loaded from standard INI-format text files.
 
 #pragma once
 #include <cmath>
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <vector>
 #include <sstream>
 #include <string>
 
+struct ProbeDef {
+    double x;
+    double y;
+    std::string variable;
+};
+
 struct Parameters {
     // -------------------------------------------------------------------------
-    // Grid & Polynomial
+    // Grid & Polynomial (from domain.grid)
     // -------------------------------------------------------------------------
     int N_ELEM_X = 400;       ///< Number of elements in X.
     int N_ELEM_Y = 400;       ///< Number of elements in Y.
     int P_DEG    = 0;         ///< Polynomial degree per element.
     int N_PTS    = 1;         ///< Solution points per dim (computed: P_DEG+1).
+
+    double X_MIN = 0.0;
+    double X_MAX = 1.0;
+    double Y_MIN = 0.0;
+    double Y_MAX = 1.0;
+
+    std::string BC_L = "TRANSMISSIVE";
+    std::string BC_R = "TRANSMISSIVE";
+    std::string BC_B = "TRANSMISSIVE";
+    std::string BC_T = "TRANSMISSIVE";
+
+    // -------------------------------------------------------------------------
+    // Physics & Solver
+    // -------------------------------------------------------------------------
     double CFL   = 0.5;       ///< CFL number for explicit time-stepping.
     double GAMMA = 1.4;       ///< Ratio of specific heats.
+    std::string IC_TYPE = "RIEMANN_2D_C3";
 
     // -------------------------------------------------------------------------
     // IGR (Isotropic Gradient Regularisation)
@@ -36,19 +57,15 @@ struct Parameters {
     int    IGR_SUB_ITERS      = 1;           ///< Parabolic sub-iterations per flow step.
 
     // -------------------------------------------------------------------------
-    // Domain
-    // -------------------------------------------------------------------------
-    double X_MIN = 0.0;
-    double X_MAX = 1.0;
-    double Y_MIN = 0.0;
-    double Y_MAX = 1.0;
-
-    // -------------------------------------------------------------------------
-    // Time Stepping
+    // Time Stepping & I/O
     // -------------------------------------------------------------------------
     double T_FINAL   = 0.3;
-    double DT        = 0.0005;  ///< Initial / fallback time-step.
-    double OUTPUT_DT = 0.01;    ///< Output snapshot interval.
+    double OUTPUT_DT = 0.01;    ///< VTK Output snapshot interval.
+    
+    // New parameters for diagnostics
+    double RESIDUAL_INTERVAL = 0.001;
+    double PROBE_INTERVAL    = 0.001;
+    double PRINT_INTERVAL    = 0.01;
 
     // -------------------------------------------------------------------------
     // Stabilisation Limiters
@@ -56,15 +73,6 @@ struct Parameters {
     bool   ENABLE_POS_LIMITER     = false;
     double POS_LIMITER_EPS        = 1e-10;
     bool   ENABLE_ENTROPY_LIMITER = false;
-
-    // -------------------------------------------------------------------------
-    // Physics & Boundaries
-    // -------------------------------------------------------------------------
-    std::string IC_TYPE = "RIEMANN_2D_C3";
-    std::string BC_L    = "TRANSMISSIVE";
-    std::string BC_R    = "TRANSMISSIVE";
-    std::string BC_B    = "TRANSMISSIVE";
-    std::string BC_T    = "TRANSMISSIVE";
 
     // -------------------------------------------------------------------------
     // Restart
@@ -78,10 +86,20 @@ struct Parameters {
     int NUM_THREADS = 1;  ///< Number of OpenMP threads (1 = serial).
 
     // -------------------------------------------------------------------------
+    // Probes
+    // -------------------------------------------------------------------------
+    std::vector<ProbeDef> probes;
+
+    // -------------------------------------------------------------------------
     // Methods
     // -------------------------------------------------------------------------
 
-    /// Load parameters from a key=value text file.  Lines beginning with '#'
-    /// are treated as comments.  Unknown keys are silently ignored.
-    void load_from_file(const std::string& filename);
+    /// Helper to parse a single INI file into a map of section->(key->value)
+    static std::map<std::string, std::map<std::string, std::string>> parse_ini(const std::string& filename);
+
+    /// Load the domain config from domain.grid
+    void load_domain(const std::string& filename);
+
+    /// Load solver/physics parameters from inputs.dat
+    void load_inputs(const std::string& filename);
 };

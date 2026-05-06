@@ -21,7 +21,7 @@ IGR_SRC  = src/igr/sensor.cpp src/igr/adi_solver.cpp src/igr/parabolic.cpp src/i
 BND_SRC  = src/boundary/boundary.cpp
 LIM_SRC  = src/limiters/positivity.cpp src/limiters/entropy.cpp
 TIME_SRC = src/time/stability.cpp src/time/rk3.cpp
-IO_SRC   = src/io/vtk_writer.cpp src/io/restart.cpp src/io/initial_conditions.cpp
+IO_SRC   = src/io/vtk_writer.cpp src/io/restart.cpp src/io/initial_conditions.cpp src/io/diagnostics.cpp
 
 # Combine into objects
 OBJ_SRCS = $(CORE_SRC) $(FLUX_SRC) $(IGR_SRC) $(BND_SRC) $(LIM_SRC) $(TIME_SRC) $(IO_SRC)

@@ -14,7 +14,7 @@
 #include <omp.h>
 #endif
 
-void Limiters::apply_entropy_limiter(Solver &solver) {
+Limiters::LimiterStats Limiters::apply_entropy_limiter(Solver &solver) {
   const Parameters &p = solver.p;
   const Basis &basis = solver.basis;
   State &U = solver.U;
@@ -31,7 +31,9 @@ void Limiters::apply_entropy_limiter(Solver &solver) {
   }
 
 // --- 2. Apply limiting element-by-element ---
-#pragma omp parallel for collapse(2) schedule(static)
+  int num_limited = 0;
+  double sum_theta = 0.0;
+#pragma omp parallel for collapse(2) schedule(static) reduction(+:num_limited, sum_theta)
   for (int ey = 0; ey < p.N_ELEM_Y; ++ey) {
     for (int ex = 0; ex < p.N_ELEM_X; ++ex) {
 
@@ -105,7 +107,7 @@ void Limiters::apply_entropy_limiter(Solver &solver) {
       }
 
       // --- Apply scaling ---
-      if (theta_s < 1.0)
+      if (theta_s < 1.0) {
         for (int iy = 0; iy < p.N_PTS; ++iy)
           for (int ix = 0; ix < p.N_PTS; ++ix) {
             U(0, ey, ex, iy, ix) =
@@ -117,6 +119,14 @@ void Limiters::apply_entropy_limiter(Solver &solver) {
             U(3, ey, ex, iy, ix) =
                 theta_s * (U(3, ey, ex, iy, ix) - E_avg) + E_avg;
           }
+        num_limited++;
+        sum_theta += theta_s;
+      }
     }
   }
+  
+  LimiterStats stats;
+  stats.num_limited = num_limited;
+  stats.sum_theta = sum_theta;
+  return stats;
 }

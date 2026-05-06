@@ -13,6 +13,15 @@
 
 /// Compute the Euler flux at a single solution point.
 ///
+/// @details
+/// Data Structures & Indexing:
+///   - U(v, ey, ex, iy, ix): The global state array. `v` is the variable (rho, rho*u, rho*v, E). 
+///     `ey`, `ex` are global element indices. `iy`, `ix` are local solution point indices.
+///   - F, G: Output arrays of size 4. Flat 1D arrays for the local physical fluxes.
+/// Assumptions:
+///   - `U` contains physically valid states (handled by limiters). Density and pressure are 
+///     clamped to a small positive floor (1e-10) to prevent division by zero or NaN wavespeeds.
+///
 /// @param F  Output: X-direction flux vector (4 components), or nullptr.
 /// @param G  Output: Y-direction flux vector (4 components), or nullptr.
 /// @param sigma  Local entropic pressure value.
@@ -44,6 +53,15 @@ void Solver::get_flux_pointwise(int ey, int ex, int iy, int ix,
 // =========================================================================
 
 /// Compute the common interface flux via the Rusanov approximation.
+///
+/// @details
+/// Data Structures & Indexing:
+///   - UL, UR: Flat arrays of size 4 containing the extrapolated conservative state at the left 
+///     and right sides of an element interface.
+///   - F_comm: Flat array of size 4 to store the resulting common numerical flux.
+/// Assumptions:
+///   - UL and UR have already been computed by interpolating the interior solution points to the face.
+///   - Density and pressure are clamped to a small positive floor (1e-10) to prevent NaNs.
 ///
 /// @param UL, UR  Left and right conserved states (4 components each).
 /// @param F_comm  Output: common flux at the interface.

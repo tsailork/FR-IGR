@@ -23,6 +23,19 @@
 #include <omp.h>
 #endif
 
+/// Perform one full SSP-RK3 time step.
+///
+/// @details
+/// Data Structures & Indexing:
+///   - `U(v, ey, ex, iy, ix)`: The global conserved state array. Mutated in-place during each RK stage.
+///   - `RHS(v, ey, ex, iy, ix)`: The global explicit right-hand side array computed by `compute_rhs()`.
+///   - `sigma_field`: The global scalar entropic pressure field, advanced alongside `U` if using Parabolic IGR.
+///   - `sigma_RHS`: The explicit RHS for the `sigma_field`.
+///   - `U_old`, `sig_old`: Thread-local (to this function) copies of the initial state at $t^n$ needed for RK combinations.
+/// Assumptions:
+///   - `U` and `sigma_field` contain valid states at the start of the timestep.
+///   - OpenMP is used for the BLAS-like vector updates: `#pragma omp parallel for`. These are thread-safe 
+///     because each thread operates on independent indices of the flat 1D arrays `U.data` and `sigma_field`.
 void Solver::step_rk3(double dt) {
   State U_old = U;
   std::vector<double> sig_old = sigma_field;
@@ -31,6 +44,13 @@ void Solver::step_rk3(double dt) {
   const bool is_parabolic = (p.IGR_TYPE == "PARABOLIC");
   const int n_sub = std::max(1, p.IGR_SUB_ITERS);
   const double dt_sub = dt / n_sub;
+
+  current_limiter_stats.num_limited = 0;
+  current_limiter_stats.sum_theta = 0.0;
+  auto add_stats = [&](const Limiters::LimiterStats& s) {
+      current_limiter_stats.num_limited += s.num_limited;
+      current_limiter_stats.sum_theta += s.sum_theta;
+  };
 
   // Approach D toggle: cap σ by local pressure gradient magnitude.
   // At contacts, p is continuous → |∇p| ≈ 0 → σ forced to ~0.
@@ -154,9 +174,9 @@ void Solver::step_rk3(double dt) {
     sub_iterate_sigma(sig_old, 0.0, 1.0); // σ = sig_old + dt·RHS → α=0, β=1
 
   if (p.ENABLE_POS_LIMITER)
-    Limiters::apply_positivity_limiter(U, basis, p);
+    add_stats(Limiters::apply_positivity_limiter(U, basis, p));
   if (p.ENABLE_ENTROPY_LIMITER)
-    Limiters::apply_entropy_limiter(*this);
+    add_stats(Limiters::apply_entropy_limiter(*this));
   check_stability();
 
   // =====================================================================
@@ -172,9 +192,9 @@ void Solver::step_rk3(double dt) {
     sub_iterate_sigma(sig_old, 0.75, 0.25);
 
   if (p.ENABLE_POS_LIMITER)
-    Limiters::apply_positivity_limiter(U, basis, p);
+    add_stats(Limiters::apply_positivity_limiter(U, basis, p));
   if (p.ENABLE_ENTROPY_LIMITER)
-    Limiters::apply_entropy_limiter(*this);
+    add_stats(Limiters::apply_entropy_limiter(*this));
   check_stability();
 
   // =====================================================================
@@ -191,8 +211,9 @@ void Solver::step_rk3(double dt) {
     sub_iterate_sigma(sig_old, 1.0 / 3.0, 2.0 / 3.0);
 
   if (p.ENABLE_POS_LIMITER)
-    Limiters::apply_positivity_limiter(U, basis, p);
+    add_stats(Limiters::apply_positivity_limiter(U, basis, p));
   if (p.ENABLE_ENTROPY_LIMITER)
-    Limiters::apply_entropy_limiter(*this);
+    add_stats(Limiters::apply_entropy_limiter(*this));
   check_stability();
+
 }

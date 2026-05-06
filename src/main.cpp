@@ -6,6 +6,7 @@
 #include "io/initial_conditions.hpp"
 #include "io/restart.hpp"
 #include "io/vtk_writer.hpp"
+#include "io/diagnostics.hpp"
 #include <cmath>
 #include <iostream>
 
@@ -16,7 +17,8 @@
 int main() {
     // 1. Load Parameters
     Parameters params;
-    params.load_from_file("inputs.dat");
+    params.load_domain("domain.grid");
+    params.load_inputs("inputs.dat");
 
     std::cout << "Starting FR-IGR Solver\n";
 #ifdef _OPENMP
@@ -61,6 +63,7 @@ int main() {
     double next_output = output_count * params.OUTPUT_DT + params.OUTPUT_DT;
 
     writer.write_snapshot(solver, output_count++, t);
+    Diagnostics diag(params, solver);
 
     while (t < params.T_FINAL) {
         double dt = solver.compute_dt();
@@ -72,8 +75,9 @@ int main() {
         t += dt;
         step++;
 
+        diag.update(solver, t, step, dt);
+
         if (std::abs(t - next_output) < 1e-12) {
-            std::cout << "Step " << step << " t=" << t << " dt=" << dt << "\n";
             writer.write_snapshot(solver, output_count++, t);
             next_output += params.OUTPUT_DT;
         }

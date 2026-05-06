@@ -1,0 +1,16 @@
+[Block0]
+# Physical Domain Bounds
+X_MIN = 0.0
+X_MAX = 0.5
+Y_MIN = 0.0
+Y_MAX = 0.5
+
+# Resolution
+N_ELEM_X = 25
+N_ELEM_Y = 25
+
+# Boundary Conditions (TRANSMISSIVE, PERIODIC, WALL)
+BC_L = WALL
+BC_R = WALL
+BC_B = WALL
+BC_T = WALL

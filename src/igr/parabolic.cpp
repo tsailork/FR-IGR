@@ -14,6 +14,20 @@
 #include <omp.h>
 #endif
 
+/// Compute the Parabolic IGR right-hand side.
+///
+/// @details
+/// Data Structures & Indexing:
+///   - `sigma_field`: The global scalar entropic pressure field (read-only for gradients).
+///   - `qx_buf`, `qy_buf`: Temporary flat arrays storing the intermediate $\nabla \Sigma$ components.
+///   - `sigma_RHS`: The output explicit RHS array.
+///   - `U(0, ey, ex, iy, ix)`: The global conserved state array (read-only to extract density for BR2 scaling).
+///   - `S_buf`: The global scalar sensor source term.
+/// Assumptions:
+///   - `sigma_field` and `S_buf` are up to date.
+///   - OpenMP is thread-safe here because Phase 1 (gradients) writes entirely to `qx_buf`/`qy_buf` using 
+///     the flat index `get_flat_idx(ey, ex, iy, ix)`. Phase 2 (divergence + assembly) reads from these 
+///     buffers and writes to `sigma_RHS` using the same disjoint indexing per element.
 void Solver::compute_igr_parabolic_rhs() {
   std::fill(sigma_RHS.begin(), sigma_RHS.end(), 0.0);
   std::fill(qx_buf.begin(), qx_buf.end(), 0.0);

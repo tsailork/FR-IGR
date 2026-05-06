@@ -14,15 +14,19 @@ The solver includes a specialized regularization technique called **Isotropic Gr
 - **Visualization:** Python (using `plot2d.py`)
 
 ## Directory Structure & Key Files
-- `main.cpp`: Entry point. Sets up initial conditions (e.g., 2D Riemann Problem Configuration 3) and executes the time-stepping loop.
-- `solver.hpp`: Contains the `Solver` class. Implements RHS assembly (X/Y sweeps), Riemann solvers, and the IGR/Entropic Pressure mechanism.
-- `parameters.hpp`: Global simulation parameters and input file parser. Defines the `Parameters` struct.
+The codebase is structured into modular compilation units inside the `src/` directory:
+- `src/core/`: Fundamental building blocks (`parameters.hpp/cpp`, `state.hpp`, `basis.hpp/cpp`, `solver.hpp/cpp`).
+- `src/flux/`: Inviscid operators (`euler_flux.cpp`, `sweep_x.cpp`, `sweep_y.cpp`).
+- `src/igr/`: Artificial viscosity mechanisms (`sensor.cpp`, `adi_solver.cpp`, `parabolic.cpp`, `entropic_pressure.cpp`).
+- `src/boundary/`: Centralised boundary condition evaluation (`boundary.cpp`).
+- `src/limiters/`: Stabilisation routines (`positivity.cpp`, `entropy.cpp`, `limiter_common.hpp`).
+- `src/time/`: Explicit time marching (`rk3.cpp`, dynamic `stability.cpp`).
+- `src/io/`: Input, output, and initial states (`initial_conditions.cpp`, `restart.cpp`, `vtk_writer.cpp`).
+- `src/main.cpp`: Entry point. Parses inputs and executes the time-stepping loop.
+- `tests/`: Unit test suite (`test_main.cpp`).
 - `inputs.dat`: Current active simulation configuration.
-- `inputs_example.txt`: [NEW] Comprehensive documentation and template for all available input options.
-- `state.hpp`: Defines the `State` data structure for conservative variables ($\rho, \rho u, \rho v, E$).
-- `basis.hpp`: Handles basis functions (Lagrange polynomials), derivative matrices, and FR correction polynomial derivatives.
+- `inputs_example.txt`: Comprehensive documentation and template for all available input options.
 - `run.sh`: Convenience script for building, running, and plotting.
-- `plot2d.py`: Python script to visualize the resulting `solution_2d.csv`.
 
 ## Building and Running
 The project uses a simple shell script for the entire pipeline.
@@ -32,14 +36,15 @@ The project uses a simple shell script for the entire pipeline.
   ```bash
   ./run.sh
   ```
-  This script executes:
-  1. `g++ -std=c++17 -g main.cpp -o fr_solver`
+  This script dynamically reads `NUM_THREADS` from `inputs.dat`, exports `OMP_NUM_THREADS`, and executes:
+  1. `make -j4 all`
   2. `./fr_solver`
-  3. `python plot2d.py`
+  3. Optionally runs Python visualization if available, or directs the user to open VTK files in ParaView.
 
 - **Dependencies:**
   - C++17 compatible compiler (`g++`).
-  - Python 3 with `pandas` and `matplotlib` (for plotting).
+  - OpenMP for multi-core parallelism.
+  - ParaView for `.pvd`/`.vts` visualization.
 
 ## Development Conventions
 - **Polynomial Degree:** The degree of the polynomial inside each element is controlled by `P_DEG` in `parameters.hpp`. Common values are `0` (Finite Volume-like) or `2`/`3` (High-Order).
@@ -82,6 +87,16 @@ Discontinuous initial conditions trigger immediate instabilities in high-order F
 
 ### 5. Runtime Symmetry Check
 The main simulation loop includes a quantitative symmetry check that mirrors the density field across the diagonal and reports any deviation exceeding $1e^{-10}$, facilitating early detection of numerical bias.
+
+## Technical Refinements & Enhancements (April 2026)
+
+### 1. Modular Code Architecture
+The monolithic `solver.hpp` was aggressively refactored into a modular file structure (housed in `src/`). This separates the core solver engine from the flux schemes, limiters, boundary conditions, and time-integration loops, significantly improving maintainability, testing, and compilation times.
+
+### 2. Multi-Core Parallelization via OpenMP
+Element-level loops and large vector operations have been heavily parallelized using `#pragma omp parallel for`. 
+- **Inherent Thread Safety:** The FR tensor-product sweeps (X and Y) are embarrassingly parallel across element rows and columns respectively, meaning no race conditions exist during memory writes.
+- **Dynamic Threading:** The number of cores utilized can be natively specified via `NUM_THREADS` within `inputs.dat`, allowing dynamic scaling without recompilation.
 
 ## Documentation Maintenance
 - **Input Parameters**: Whenever a new parameter is added to `parameters.hpp` or the solver logic, the `inputs_example.txt` file **must** be updated with a detailed explanation and a sample value. This ensures the user-facing documentation remains synchronized with the implementation.
