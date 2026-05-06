@@ -1,5 +1,6 @@
 ./oldsols
 ./fr_solver
+./saved_outputs
 *.tar
 *.pvd
 *.vts
