@@ -33,6 +33,7 @@ struct Parameters {
     std::string IGR_TYPE      = "ELLIPTIC";  ///< "ELLIPTIC" or "PARABOLIC".
     double IGR_TAU_R          = 0.1;         ///< Parabolic relaxation time.
     double IGR_BR2_ETA        = 1.0;         ///< BR2 penalty parameter.
+    int    IGR_SUB_ITERS      = 1;           ///< Parabolic sub-iterations per flow step.
 
     // -------------------------------------------------------------------------
     // Domain

@@ -43,6 +43,7 @@ void Parameters::load_from_file(const std::string& filename) {
     if (kv.count("IGR_TYPE"))          IGR_TYPE          = kv["IGR_TYPE"];
     if (kv.count("IGR_TAU_R"))         IGR_TAU_R         = std::stod(kv["IGR_TAU_R"]);
     if (kv.count("IGR_BR2_ETA"))       IGR_BR2_ETA       = std::stod(kv["IGR_BR2_ETA"]);
+    if (kv.count("IGR_SUB_ITERS"))     IGR_SUB_ITERS     = std::stoi(kv["IGR_SUB_ITERS"]);
 
     // --- Domain ---
     if (kv.count("X_MIN"))     X_MIN    = std::stod(kv["X_MIN"]);

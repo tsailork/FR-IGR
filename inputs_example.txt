@@ -33,6 +33,10 @@ IGR_TAU_R = 0.05        # [double] Relaxation time for Parabolic IGR.
                         # Smaller values make Sigma track the sensor faster.
 IGR_BR2_ETA = 1.0       # [double] BR2 Penalty parameter for Parabolic mode.
                         # Typically 1.0 or (P+1) for spectral stability.
+IGR_SUB_ITERS = 1       # [int] Parabolic sub-iterations per flow time step.
+                        # 1: Standard (no sub-iteration).
+                        # >1: Sub-iterate σ relaxation between flow steps to
+                        #     accelerate convergence toward elliptic steady state.
 
 # ------------------------------------------------------------------------------
 # 3. STABILIZATION & LIMITERS

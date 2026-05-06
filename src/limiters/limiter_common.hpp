@@ -66,7 +66,11 @@ inline double bisect_for_theta(
         if (val >= target) lo = mid;
         else               hi = mid;
     }
-    return lo;
+    // Safety pullback: the bisection converges to the admissibility boundary
+    // where pressure ≈ eps.  Floating-point cancellation in E − ½(ρu²+ρv²)/ρ
+    // can push the result to exactly zero.  Pulling θ slightly toward the
+    // cell average (θ = 0) guarantees we remain strictly admissible.
+    return lo * (1.0 - 1e-8);
 }
 
 /// Maximum number of face-extrapolated checking points in 2D.

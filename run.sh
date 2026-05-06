@@ -12,13 +12,14 @@ echo "Setting OMP_NUM_THREADS=$THREADS"
 export OMP_NUM_THREADS=$THREADS
 
 echo "Building FR-IGR Solver..."
+make clean
 make -j4 all
 
 echo "Running Simulation..."
-./fr_solver
+time ./fr_solver
 
 # Check if plot script exists and run it
-if [ -f "plot2d.py" ]; then
+if [ -f "plot2d_pv.py" ]; then
     echo "Running visualization script..."
     python3 plot2d.py
 else

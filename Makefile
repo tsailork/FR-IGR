@@ -57,8 +57,12 @@ debug: clean $(TARGET)
 
 # Clean build artifacts
 clean:
-	rm -rf $(TARGET) $(TEST_TARGET) pv_outputs solution_2d.csv
+	rm -rf $(TARGET) $(TEST_TARGET) solution_2d.csv
 	find src tests -type f -name "*.o" -delete
+
+# Clean build and solution files
+cleanall: clean
+	rm -rf pv_outputs
 
 # Convenience target: Build, Run, and Plot
 full: clean all
