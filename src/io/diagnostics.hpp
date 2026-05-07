@@ -29,6 +29,7 @@ private:
     // Pre-computed spatial locators for probes
     struct ProbeLocator {
         const ProbeDef* def;
+        int block_id;
         int ey, ex;
         double L_xi[MAX_PTS];
         double L_eta[MAX_PTS];

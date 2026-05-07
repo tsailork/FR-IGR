@@ -25,13 +25,13 @@
 /// @param F  Output: X-direction flux vector (4 components), or nullptr.
 /// @param G  Output: Y-direction flux vector (4 components), or nullptr.
 /// @param sigma  Local entropic pressure value.
-void Solver::get_flux_pointwise(int ey, int ex, int iy, int ix,
+void Solver::get_flux_pointwise(const Block& b, int ey, int ex, int iy, int ix,
                                  double* F, double* G, double sigma) const
 {
-    double rho   = std::max(1e-10, U(0, ey, ex, iy, ix));
-    double u     = U(1, ey, ex, iy, ix) / rho;
-    double v     = U(2, ey, ex, iy, ix) / rho;
-    double E     = U(3, ey, ex, iy, ix);
+    double rho   = std::max(1e-10, b.U(0, ey, ex, iy, ix));
+    double u     = b.U(1, ey, ex, iy, ix) / rho;
+    double v     = b.U(2, ey, ex, iy, ix) / rho;
+    double E     = b.U(3, ey, ex, iy, ix);
     double press = std::max(1e-10, (p.GAMMA - 1.0) * (E - 0.5 * rho * (u*u + v*v)));
 
     if (F) {

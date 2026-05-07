@@ -15,31 +15,31 @@ constexpr int N_VARS = 4;
 
 struct State {
     std::vector<double> data;
+    int nx, ny, npts;
     int n_dofs_per_var;
-    const Parameters* p;
 
-    /// Construct a zero-initialised state matching the given parameters.
-    explicit State(const Parameters& params) : p(&params) {
-        n_dofs_per_var = p->N_ELEM_Y * p->N_ELEM_X * p->N_PTS * p->N_PTS;
+    /// Construct a zero-initialised state for a specific block dimension.
+    explicit State(int nx, int ny, int npts) : nx(nx), ny(ny), npts(npts) {
+        n_dofs_per_var = nx * ny * npts * npts;
         data.resize(N_VARS * n_dofs_per_var, 0.0);
     }
 
     /// Default constructor (for temporaries that will be assigned later).
-    State() : n_dofs_per_var(0), p(nullptr) {}
+    State() : nx(0), ny(0), npts(0), n_dofs_per_var(0) {}
 
     /// 5-index accessor:  U(variable, ey, ex, iy, ix).
     inline double& operator()(int v, int ey, int ex, int iy, int ix) {
         return data[v * n_dofs_per_var +
-                    ey * (p->N_ELEM_X * p->N_PTS * p->N_PTS) +
-                    ex * (p->N_PTS * p->N_PTS) +
-                    iy * p->N_PTS + ix];
+                    ey * (nx * npts * npts) +
+                    ex * (npts * npts) +
+                    iy * npts + ix];
     }
 
     /// Const overload.
     inline double operator()(int v, int ey, int ex, int iy, int ix) const {
         return data[v * n_dofs_per_var +
-                    ey * (p->N_ELEM_X * p->N_PTS * p->N_PTS) +
-                    ex * (p->N_PTS * p->N_PTS) +
-                    iy * p->N_PTS + ix];
+                    ey * (nx * npts * npts) +
+                    ex * (npts * npts) +
+                    iy * npts + ix];
     }
 };

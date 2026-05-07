@@ -3,14 +3,46 @@
 X_MIN = 0.0
 X_MAX = 0.5
 Y_MIN = 0.0
-Y_MAX = 0.5
+Y_MAX = 0.2
+# Resolution
+N_ELEM_X = 25
+N_ELEM_Y = 10
+# Boundary Conditions (TRANSMISSIVE, PERIODIC, WALL)
+BC_L = INFLOW
+BC_R = WALL
+BC_B = WALL
+BC_T = 1:B
 
+
+
+[Block1]
+# Physical Domain Bounds
+X_MIN = 0.0
+X_MAX = 0.5
+Y_MIN = 0.2
+Y_MAX = 1.0
 # Resolution
 N_ELEM_X = 25
 N_ELEM_Y = 25
-
 # Boundary Conditions (TRANSMISSIVE, PERIODIC, WALL)
-BC_L = WALL
-BC_R = WALL
+BC_L = INFLOW
+BC_R = 2:L
+BC_B = 0:T
+BC_T = WALL
+
+
+
+[Block2]
+# Physical Domain Bounds
+X_MIN = 0.5
+X_MAX = 2.0
+Y_MIN = 0.2
+Y_MAX = 1.0
+# Resolution
+N_ELEM_X = 75
+N_ELEM_Y = 25
+# Boundary Conditions (TRANSMISSIVE, PERIODIC, WALL)
+BC_L = 1:R
+BC_R = TRANSMISSIVE
 BC_B = WALL
 BC_T = WALL

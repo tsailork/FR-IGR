@@ -54,5 +54,5 @@ struct Basis {
     std::vector<double> dgr;   ///< Right Radau correction derivative.
 
     /// Build the basis for the given polynomial degree.
-    explicit Basis(const Parameters& p);
+    explicit Basis(int P_DEG);
 };

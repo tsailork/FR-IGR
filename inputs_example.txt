@@ -5,8 +5,14 @@
 # GAMMA: Ratio of specific heats (1.4 for air)
 GAMMA = 1.4
 
-# IC_TYPE: Initial Condition. Options: RIEMANN_2D_C3, BLAST, SINE_WAVE, UNIFORM
+# IC_TYPE: Initial Condition. Options: RIEMANN_2D_C3, BLAST, SINE_WAVE, UNIFORM, FREESTREAM
 IC_TYPE = BLAST
+
+# Freestream values (used if IC_TYPE = FREESTREAM or for certain BCs)
+RHO_INF = 1.0
+U_INF = 0.0
+V_INF = 0.0
+P_INF = 1.0
 
 [Solver]
 # P_DEG: Polynomial degree of elements. 0 = Finite Volume, 1 = Linear, 2 = Quadratic
@@ -79,3 +85,32 @@ RESTART_TIME = 0.0
 PROBE_1 = 0.5, 0.5, Pressure
 PROBE_2 = 0.1, 0.5, Density
 PROBE_3 = 0.9, 0.5, Mach
+
+################################################################################
+# DOMAIN GRID SYNTAX (domain.grid)
+################################################################################
+# The simulation domain is defined in domain.grid using multiple [BlockN] 
+# sections. Each block is a Cartesian grid with its own resolution and BCs.
+#
+# Example [Block0] configuration:
+# [Block0]
+# N_ELEM_X = 20           # Number of elements in X direction
+# N_ELEM_Y = 20           # Number of elements in Y direction
+# X_MIN = 0.0             # Physical X coordinate of the left face
+# X_MAX = 1.0             # Physical X coordinate of the right face
+# Y_MIN = 0.0             # Physical Y coordinate of the bottom face
+# Y_MAX = 1.0             # Physical Y coordinate of the top face
+# 
+# BC_L = TRANSMISSIVE    # Boundary Condition for Left face
+# BC_R = 1:L             # Connects to Block 1's Left face
+# BC_B = PERIODIC        # Standard periodic BC
+# BC_T = WALL            # Standard slip-wall BC
+#
+# Available BCs:
+#   - TRANSMISSIVE: Simple copy-out/ghost-state condition.
+#   - PERIODIC: Wrap-around connectivity within the same block.
+#   - WALL: Reflective slip-wall (normal velocity negated).
+#   - INFLOW: Uses the RHO_INF, U_INF, etc. from inputs.dat.
+#   - ID:FACE: Connects to the specified face of neighbor Block ID.
+#     Example: '2:T' means "Connect to the TOP face of Block 2".
+################################################################################

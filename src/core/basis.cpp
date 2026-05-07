@@ -23,18 +23,18 @@ static double lagrange_poly(int j, double x,
 }
 
 // ---------------------------------------------------------------------------
-Basis::Basis(const Parameters& p) {
+Basis::Basis(int P_DEG) {
     // 1. Gauss-Legendre nodes and weights (hardcoded for P = 0..3)
-    if (p.P_DEG == 0) {
+    if (P_DEG == 0) {
         z = {0.0};
         w = {2.0};
-    } else if (p.P_DEG == 1) {
+    } else if (P_DEG == 1) {
         z = {-0.5773502691896257, 0.5773502691896257};
         w = {1.0, 1.0};
-    } else if (p.P_DEG == 2) {
+    } else if (P_DEG == 2) {
         z = {-0.774596669241483, 0.0, 0.774596669241483};
         w = {5.0/9.0, 8.0/9.0, 5.0/9.0};
-    } else if (p.P_DEG == 3) {
+    } else if (P_DEG == 3) {
         z = {-0.861136311594053, -0.339981043584856,
               0.339981043584856,  0.861136311594053};
         w = {(18.0 - std::sqrt(30.0)) / 36.0,
@@ -42,7 +42,7 @@ Basis::Basis(const Parameters& p) {
              (18.0 + std::sqrt(30.0)) / 36.0,
              (18.0 - std::sqrt(30.0)) / 36.0};
     } else {
-        std::cerr << "Error: P_DEG " << p.P_DEG
+        std::cerr << "Error: P_DEG " << P_DEG
                   << " not hardcoded in basis.cpp" << std::endl;
         exit(1);
     }
@@ -77,9 +77,9 @@ Basis::Basis(const Parameters& p) {
             }
         }
 
-        double dL_P    = legendre_prime(p.P_DEG,     z[i]);
-        double dL_Pp1  = legendre_prime(p.P_DEG + 1, z[i]);
-        double sign    = (p.P_DEG % 2 == 0) ? 1.0 : -1.0;
+        double dL_P    = legendre_prime(P_DEG,     z[i]);
+        double dL_Pp1  = legendre_prime(P_DEG + 1, z[i]);
+        double sign    = (P_DEG % 2 == 0) ? 1.0 : -1.0;
         dgl[i] = (sign * 0.5) * (dL_P - dL_Pp1);
         dgr[i] = 0.5  * (dL_P + dL_Pp1);
     }

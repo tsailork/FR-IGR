@@ -35,15 +35,24 @@ static std::vector<double> read_values(std::ifstream& file, int count) {
     return vals;
 }
 
-bool Restart::load_restart(const std::string& filename, State& U, const Parameters& p) {
+#include "../core/solver.hpp"
+
+bool Restart::load_restart(const std::string& filename, std::vector<Block>& blocks, const Parameters& p) {
+    if (blocks.empty()) return false;
+    if (blocks.size() > 1) {
+        std::cerr << "[RESTART] Error: Multi-block restart not yet implemented.\n";
+        return false;
+    }
+
+    Block& b = blocks[0];
     std::ifstream file(filename);
     if (!file.is_open()) {
         std::cerr << "[RESTART] Error: Could not open " << filename << "\n";
         return false;
     }
 
-    int nx = p.N_ELEM_X * p.N_PTS;
-    int ny = p.N_ELEM_Y * p.N_PTS;
+    int nx = b.nx * p.N_PTS;
+    int ny = b.ny * p.N_PTS;
     int total = nx * ny;
 
     const char* var_names[4] = {"rho", "rho_u", "rho_v", "rho_E"};
@@ -70,7 +79,7 @@ bool Restart::load_restart(const std::string& filename, State& U, const Paramete
             int ey = J / p.N_PTS, iy = J % p.N_PTS;
             for (int I = 0; I < nx; ++I) {
                 int ex = I / p.N_PTS, ix = I % p.N_PTS;
-                U(v, ey, ex, iy, ix) = vals[idx++];
+                b.U(v, ey, ex, iy, ix) = vals[idx++];
             }
         }
     }

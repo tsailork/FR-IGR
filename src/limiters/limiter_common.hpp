@@ -106,33 +106,33 @@ inline int extrapolate_face_values(const State& U, const Basis& basis,
     int count = 0;
 
     // Left face (ξ = −1): for each iy, sum over ix with l_L[ix]
-    for (int iy = 0; iy < p.N_PTS; ++iy) {
+    for (int iy = 0; iy < U.npts; ++iy) {
         for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
-        for (int ix = 0; ix < p.N_PTS; ++ix)
+        for (int ix = 0; ix < U.npts; ++ix)
             for (int v = 0; v < 4; ++v)
                 face_pts[count][v] += U(v, ey, ex, iy, ix) * basis.l_L[ix];
         ++count;
     }
     // Right face (ξ = +1): for each iy, sum over ix with l_R[ix]
-    for (int iy = 0; iy < p.N_PTS; ++iy) {
+    for (int iy = 0; iy < U.npts; ++iy) {
         for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
-        for (int ix = 0; ix < p.N_PTS; ++ix)
+        for (int ix = 0; ix < U.npts; ++ix)
             for (int v = 0; v < 4; ++v)
                 face_pts[count][v] += U(v, ey, ex, iy, ix) * basis.l_R[ix];
         ++count;
     }
     // Bottom face (η = −1): for each ix, sum over iy with l_L[iy]
-    for (int ix = 0; ix < p.N_PTS; ++ix) {
+    for (int ix = 0; ix < U.npts; ++ix) {
         for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
-        for (int iy = 0; iy < p.N_PTS; ++iy)
+        for (int iy = 0; iy < U.npts; ++iy)
             for (int v = 0; v < 4; ++v)
                 face_pts[count][v] += U(v, ey, ex, iy, ix) * basis.l_L[iy];
         ++count;
     }
     // Top face (η = +1): for each ix, sum over iy with l_R[iy]
-    for (int ix = 0; ix < p.N_PTS; ++ix) {
+    for (int ix = 0; ix < U.npts; ++ix) {
         for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
-        for (int iy = 0; iy < p.N_PTS; ++iy)
+        for (int iy = 0; iy < U.npts; ++iy)
             for (int v = 0; v < 4; ++v)
                 face_pts[count][v] += U(v, ey, ex, iy, ix) * basis.l_R[iy];
         ++count;
@@ -146,8 +146,8 @@ inline void compute_cell_average(const State& U, const Basis& basis,
                                   double& r_avg, double& ru_avg,
                                   double& rv_avg, double& E_avg) {
     r_avg = ru_avg = rv_avg = E_avg = 0.0;
-    for (int iy = 0; iy < p.N_PTS; ++iy)
-        for (int ix = 0; ix < p.N_PTS; ++ix) {
+    for (int iy = 0; iy < U.npts; ++iy)
+        for (int ix = 0; ix < U.npts; ++ix) {
             double w = (basis.w[iy] * 0.5) * (basis.w[ix] * 0.5);
             r_avg  += w * U(0, ey, ex, iy, ix);
             ru_avg += w * U(1, ey, ex, iy, ix);
@@ -160,8 +160,8 @@ inline void compute_cell_average(const State& U, const Basis& basis,
 inline double min_entropy_in_cell(const State& U, const Parameters& p,
                                    int ey, int ex) {
     double s_min = 1e30;
-    for (int iy = 0; iy < p.N_PTS; ++iy)
-        for (int ix = 0; ix < p.N_PTS; ++ix) {
+    for (int iy = 0; iy < U.npts; ++iy)
+        for (int ix = 0; ix < U.npts; ++ix) {
             double r  = std::max(1e-14, U(0, ey, ex, iy, ix));
             double ru = U(1, ey, ex, iy, ix);
             double rv = U(2, ey, ex, iy, ix);

@@ -40,8 +40,8 @@ Limiters::LimiterStats Limiters::apply_positivity_limiter(State& U, const Basis&
     double sum_theta = 0.0;
 
     #pragma omp parallel for collapse(2) schedule(static) reduction(+:num_limited, sum_theta)
-    for (int ey = 0; ey < p.N_ELEM_Y; ++ey) {
-        for (int ex = 0; ex < p.N_ELEM_X; ++ex) {
+    for (int ey = 0; ey < U.ny; ++ey) {
+        for (int ex = 0; ex < U.nx; ++ex) {
 
             // =============================================================
             // 0. Compute cell average (conserved by GL quadrature)
@@ -78,8 +78,8 @@ Limiters::LimiterStats Limiters::apply_positivity_limiter(State& U, const Basis&
             double r_min = r_avg;
 
             // Interior GL points
-            for (int iy = 0; iy < p.N_PTS; ++iy)
-                for (int ix = 0; ix < p.N_PTS; ++ix)
+            for (int iy = 0; iy < U.npts; ++iy)
+                for (int ix = 0; ix < U.npts; ++ix)
                     r_min = std::min(r_min, U(0, ey, ex, iy, ix));
 
             // Face-extrapolated points
@@ -90,8 +90,8 @@ Limiters::LimiterStats Limiters::apply_positivity_limiter(State& U, const Basis&
             if (r_min < eps) {
                 theta_r = (r_avg - eps) / (r_avg - r_min);
                 theta_r = std::max(0.0, std::min(1.0, theta_r));
-                for (int iy = 0; iy < p.N_PTS; ++iy)
-                    for (int ix = 0; ix < p.N_PTS; ++ix) {
+                for (int iy = 0; iy < U.npts; ++iy)
+                    for (int ix = 0; ix < U.npts; ++ix) {
                         U(0, ey, ex, iy, ix) = theta_r*(U(0, ey, ex, iy, ix) - r_avg)  + r_avg;
                         U(1, ey, ex, iy, ix) = theta_r*(U(1, ey, ex, iy, ix) - ru_avg) + ru_avg;
                         U(2, ey, ex, iy, ix) = theta_r*(U(2, ey, ex, iy, ix) - rv_avg) + rv_avg;
@@ -110,8 +110,8 @@ Limiters::LimiterStats Limiters::apply_positivity_limiter(State& U, const Basis&
             double theta_p = 1.0;
 
             // Interior GL points
-            for (int iy = 0; iy < p.N_PTS; ++iy)
-                for (int ix = 0; ix < p.N_PTS; ++ix) {
+            for (int iy = 0; iy < U.npts; ++iy)
+                for (int ix = 0; ix < U.npts; ++ix) {
                     double press = Limiters::pressure(
                         U(0, ey, ex, iy, ix), U(1, ey, ex, iy, ix),
                         U(2, ey, ex, iy, ix), U(3, ey, ex, iy, ix), p.GAMMA);
@@ -137,8 +137,8 @@ Limiters::LimiterStats Limiters::apply_positivity_limiter(State& U, const Basis&
             }
 
             if (theta_p < 1.0) {
-                for (int iy = 0; iy < p.N_PTS; ++iy)
-                    for (int ix = 0; ix < p.N_PTS; ++ix) {
+                for (int iy = 0; iy < U.npts; ++iy)
+                    for (int ix = 0; ix < U.npts; ++ix) {
                         U(0, ey, ex, iy, ix) = theta_p*(U(0, ey, ex, iy, ix) - r_avg)  + r_avg;
                         U(1, ey, ex, iy, ix) = theta_p*(U(1, ey, ex, iy, ix) - ru_avg) + ru_avg;
                         U(2, ey, ex, iy, ix) = theta_p*(U(2, ey, ex, iy, ix) - rv_avg) + rv_avg;

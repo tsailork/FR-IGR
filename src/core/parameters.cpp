@@ -57,29 +57,38 @@ void Parameters::load_domain(const std::string& filename) {
     auto ini = parse_ini(filename);
     if (ini.empty()) return;
 
-    // We assume a single [Grid] or [Domain] section for now, 
-    // or just look globally if no section was specified.
-    // To be robust, we'll check across all sections or a specific one.
-    // For multiblock prep, let's look in [Block0] or [Domain]
-    
-    std::map<std::string, std::string> kv;
-    if (ini.count("Domain")) kv = ini["Domain"];
-    else if (ini.count("Block0")) kv = ini["Block0"];
-    else if (ini.count("Grid")) kv = ini["Grid"];
-    else kv = ini["Global"]; // fallback
+    blocks.clear();
 
-    if (kv.count("N_ELEM_X")) N_ELEM_X = std::stoi(kv["N_ELEM_X"]);
-    if (kv.count("N_ELEM_Y")) N_ELEM_Y = std::stoi(kv["N_ELEM_Y"]);
-    if (kv.count("X_MIN"))    X_MIN    = std::stod(kv["X_MIN"]);
-    if (kv.count("X_MAX"))    X_MAX    = std::stod(kv["X_MAX"]);
-    if (kv.count("Y_MIN"))    Y_MIN    = std::stod(kv["Y_MIN"]);
-    if (kv.count("Y_MAX"))    Y_MAX    = std::stod(kv["Y_MAX"]);
-    if (kv.count("BC_L"))     BC_L     = kv["BC_L"];
-    if (kv.count("BC_R"))     BC_R     = kv["BC_R"];
-    if (kv.count("BC_B"))     BC_B     = kv["BC_B"];
-    if (kv.count("BC_T"))     BC_T     = kv["BC_T"];
+    for (const auto& [section, kv] : ini) {
+        if (section.find("Block") == 0) {
+            BlockConfig b;
+            try {
+                b.id = std::stoi(section.substr(5));
+            } catch (...) {
+                continue; // Skip sections that don't match [BlockN]
+            }
 
-    std::cout << "Domain configuration loaded from " << filename << std::endl;
+            b.N_ELEM_X = kv.count("N_ELEM_X") ? std::stoi(kv.at("N_ELEM_X")) : 0;
+            b.N_ELEM_Y = kv.count("N_ELEM_Y") ? std::stoi(kv.at("N_ELEM_Y")) : 0;
+            b.X_MIN    = kv.count("X_MIN")    ? std::stod(kv.at("X_MIN"))    : 0.0;
+            b.X_MAX    = kv.count("X_MAX")    ? std::stod(kv.at("X_MAX"))    : 1.0;
+            b.Y_MIN    = kv.count("Y_MIN")    ? std::stod(kv.at("Y_MIN"))    : 0.0;
+            b.Y_MAX    = kv.count("Y_MAX")    ? std::stod(kv.at("Y_MAX"))    : 1.0;
+            b.BC_L     = kv.count("BC_L")     ? kv.at("BC_L")                : "TRANSMISSIVE";
+            b.BC_R     = kv.count("BC_R")     ? kv.at("BC_R")                : "TRANSMISSIVE";
+            b.BC_B     = kv.count("BC_B")     ? kv.at("BC_B")                : "TRANSMISSIVE";
+            b.BC_T     = kv.count("BC_T")     ? kv.at("BC_T")                : "TRANSMISSIVE";
+            
+            blocks.push_back(b);
+        }
+    }
+
+    // Sort blocks by ID
+    std::sort(blocks.begin(), blocks.end(), [](const BlockConfig& a, const BlockConfig& b){
+        return a.id < b.id;
+    });
+
+    std::cout << "Domain configuration loaded from " << filename << " (" << blocks.size() << " blocks)" << std::endl;
 }
 
 void Parameters::load_inputs(const std::string& filename) {
@@ -94,6 +103,10 @@ void Parameters::load_inputs(const std::string& filename) {
         auto& kv = ini["Physics"];
         if (kv.count("GAMMA"))   GAMMA   = std::stod(kv["GAMMA"]);
         if (kv.count("IC_TYPE")) IC_TYPE = kv["IC_TYPE"];
+        if (kv.count("RHO_INF")) RHO_INF = std::stod(kv["RHO_INF"]);
+        if (kv.count("U_INF"))   U_INF   = std::stod(kv["U_INF"]);
+        if (kv.count("V_INF"))   V_INF   = std::stod(kv["V_INF"]);
+        if (kv.count("P_INF"))   P_INF   = std::stod(kv["P_INF"]);
     }
 
     // --- [Solver] ---

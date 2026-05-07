@@ -5,3 +5,6 @@
 *.pvd
 *.vts
 inputs
+/pv_outputs
+residuals.dat
+

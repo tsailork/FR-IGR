@@ -40,7 +40,7 @@ int main() {
 
     if (!params.RESTART_FILE.empty()) {
         std::cout << "Restarting from: " << params.RESTART_FILE << "\n";
-        if (!Restart::load_restart(params.RESTART_FILE, solver.U, params)) {
+        if (!Restart::load_restart(params.RESTART_FILE, solver.blocks, params)) {
             std::cerr << "[FATAL] Restart failed. Aborting.\n";
             return 1;
         }
@@ -49,12 +49,14 @@ int main() {
         std::cout << "Resuming at t=" << t << ", output_count=" << output_count << "\n";
     } else {
         std::cout << "Initializing solver with IC: " << params.IC_TYPE << "...\n";
-        IC::apply(solver.U, params, solver.basis, solver.dx, solver.dy);
+        IC::apply(solver);
 
         // Initialize Sigma field for Parabolic mode
         if (params.ENABLE_IGR && params.IGR_TYPE == "PARABOLIC") {
             solver.compute_sensor_source();
-            solver.sigma_field = solver.S_buf;
+            for (auto& b : solver.blocks) {
+                b.sigma_field = b.S_buf;
+            }
         }
     }
 

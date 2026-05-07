@@ -17,36 +17,30 @@ void Solver::compute_entropic_pressure() {
 
   if (p.IGR_TYPE == "PARABOLIC") {
     compute_igr_parabolic_rhs();
-    // For parabolic mode, sigma_field is updated by the RK3 integrator
-    // in rk3.cpp. The σ-clamp is applied there after each stage update
-    // to avoid corrupting the SSP convex combinations.
   } else {
-    // Symmetrised ADI: average XY and YX passes
-    solve_adi_pass(S_buf, sigma_xy_buf, true);
-    solve_adi_pass(S_buf, sigma_yx_buf, false);
+    for (auto& b : blocks) {
+      // Symmetrised ADI: average XY and YX passes
+      solve_adi_pass(b, b.S_buf, b.sigma_xy_buf, true);
+      solve_adi_pass(b, b.S_buf, b.sigma_yx_buf, false);
 
-    for (size_t i = 0; i < sigma_field.size(); ++i)
-      sigma_field[i] = 0.5 * (sigma_xy_buf[i] + sigma_yx_buf[i]);
+      for (size_t i = 0; i < b.sigma_field.size(); ++i)
+        b.sigma_field[i] = 0.5 * (b.sigma_xy_buf[i] + b.sigma_yx_buf[i]);
 
-    // -----------------------------------------------------------------
-    // σ-clamp (elliptic only): bound entropic pressure by local
-    // physical pressure.  Clamping σ ≤ p ensures the total effective
-    // pressure (p + σ) ≤ 2p, bounding the energy drain rate.
-    // -----------------------------------------------------------------
-#pragma omp parallel for schedule(static)
-    for (int ey = 0; ey < p.N_ELEM_Y; ++ey)
-      for (int ex = 0; ex < p.N_ELEM_X; ++ex)
-        for (int iy = 0; iy < p.N_PTS; ++iy)
-          for (int ix = 0; ix < p.N_PTS; ++ix) {
-            int idx = get_flat_idx(ey, ex, iy, ix);
-            double rho = std::max(1e-14, U(0, ey, ex, iy, ix));
-            double rhou = U(1, ey, ex, iy, ix);
-            double rhov = U(2, ey, ex, iy, ix);
-            double E = U(3, ey, ex, iy, ix);
-            double press = (p.GAMMA - 1.0) * (E - 0.5 * (rhou * rhou + rhov * rhov) / rho);
-            if (press < 1e-14)
-              press = 1e-14;
-            sigma_field[idx] = std::min(sigma_field[idx], press);
-          }
+      #pragma omp parallel for schedule(static)
+      for (int ey = 0; ey < b.ny; ++ey)
+        for (int ex = 0; ex < b.nx; ++ex)
+          for (int iy = 0; iy < p.N_PTS; ++iy)
+            for (int ix = 0; ix < p.N_PTS; ++ix) {
+              int idx = b.get_flat_idx(ey, ex, iy, ix, p.N_PTS);
+              double rho = std::max(1e-14, b.U(0, ey, ex, iy, ix));
+              double rhou = b.U(1, ey, ex, iy, ix);
+              double rhov = b.U(2, ey, ex, iy, ix);
+              double E = b.U(3, ey, ex, iy, ix);
+              double press = (p.GAMMA - 1.0) * (E - 0.5 * (rhou * rhou + rhov * rhov) / rho);
+              if (press < 1e-14)
+                press = 1e-14;
+              b.sigma_field[idx] = std::min(b.sigma_field[idx], press);
+            }
+    }
   }
 }

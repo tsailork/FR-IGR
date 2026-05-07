@@ -48,10 +48,10 @@ void solve_tridiagonal(const std::vector<double>& a,
 // ADI pass (one direction-pair: X→Y or Y→X)
 // =========================================================================
 
-void Solver::solve_adi_pass(const std::vector<double>& S,
+void Solver::solve_adi_pass(Block& b, const std::vector<double>& S,
                             std::vector<double>& Out, bool x_first)
 {
-    int total_nodes = p.N_ELEM_Y * p.N_ELEM_X * p.N_PTS * p.N_PTS;
+    int total_nodes = b.ny * b.nx * p.N_PTS * p.N_PTS;
     std::vector<double> Sigma_Star(total_nodes, 0.0);
 
     auto solve_direction = [&](bool horizontal,
@@ -59,9 +59,9 @@ void Solver::solve_adi_pass(const std::vector<double>& S,
                                std::vector<double>& output,
                                bool is_first_pass)
     {
-        int n_outer = horizontal ? p.N_ELEM_Y * p.N_PTS : p.N_ELEM_X * p.N_PTS;
-        int n_elems = horizontal ? p.N_ELEM_X : p.N_ELEM_Y;
-        double h_elem = horizontal ? dx : dy;
+        int n_outer = horizontal ? b.ny * p.N_PTS : b.nx * p.N_PTS;
+        int n_elems = horizontal ? b.nx : b.ny;
+        double h_elem = horizontal ? b.dx : b.dy;
         double eps = p.ALPHA_SCALE * (h_elem * h_elem);
 
         #pragma omp parallel for schedule(static)
@@ -72,21 +72,21 @@ void Solver::solve_adi_pass(const std::vector<double>& S,
             auto get_idx = [&](int k) {
                 if (horizontal) {
                     int ey = i / p.N_PTS, iy = i % p.N_PTS;
-                    return get_flat_idx(ey, k / p.N_PTS, iy, k % p.N_PTS);
+                    return b.get_flat_idx(ey, k / p.N_PTS, iy, k % p.N_PTS, p.N_PTS);
                 } else {
                     int ex = i / p.N_PTS, ix = i % p.N_PTS;
-                    return get_flat_idx(k / p.N_PTS, ex, k % p.N_PTS, ix);
+                    return b.get_flat_idx(k / p.N_PTS, ex, k % p.N_PTS, ix, p.N_PTS);
                 }
             };
 
             for (int k = 0; k < n_1d; ++k) {
                 int e_idx = k / p.N_PTS, p_idx = k % p.N_PTS;
                 double z_curr = basis.z[p_idx];
-                double x_curr = (e_idx + 0.5 * (1 + z_curr)) * h_elem;
 
                 double x_prev = (p_idx == 0)
                     ? ((e_idx - 1) + 0.5 * (1 + basis.z[p.N_PTS - 1])) * h_elem
                     : (e_idx + 0.5 * (1 + basis.z[p_idx - 1])) * h_elem;
+                double x_curr = (e_idx + 0.5 * (1 + z_curr)) * h_elem;
                 double x_next = (p_idx == p.N_PTS - 1)
                     ? ((e_idx + 1) + 0.5 * (1 + basis.z[0])) * h_elem
                     : (e_idx + 0.5 * (1 + basis.z[p_idx + 1])) * h_elem;
@@ -95,9 +95,9 @@ void Solver::solve_adi_pass(const std::vector<double>& S,
                 double h_avg = 0.5 * (h_L + h_R);
 
                 int flat = get_idx(k);
-                double rho_curr = clamp_positivity(U.data[flat]);
-                double rho_prev = (k > 0) ? clamp_positivity(U.data[get_idx(k - 1)]) : rho_curr;
-                double rho_next = (k < n_1d - 1) ? clamp_positivity(U.data[get_idx(k + 1)]) : rho_curr;
+                double rho_curr = std::max(1e-12, b.U.data[flat * 4 + 0]);
+                double rho_prev = (k > 0) ? std::max(1e-12, b.U.data[get_idx(k - 1) * 4 + 0]) : rho_curr;
+                double rho_next = (k < n_1d - 1) ? std::max(1e-12, b.U.data[get_idx(k + 1) * 4 + 0]) : rho_curr;
 
                 double K_L = eps / (0.5 * (rho_prev + rho_curr));
                 double K_R = eps / (0.5 * (rho_next + rho_curr));
@@ -111,16 +111,16 @@ void Solver::solve_adi_pass(const std::vector<double>& S,
 
             // Neumann boundaries
             {
-                double rho0 = clamp_positivity(U.data[get_idx(0)]);
-                double rho1 = clamp_positivity(U.data[get_idx(1)]);
+                double rho0 = std::max(1e-12, b.U.data[get_idx(0) * 4 + 0]);
+                double rho1 = std::max(1e-12, b.U.data[get_idx(1) * 4 + 0]);
                 double h_R_s = (basis.z[1] - basis.z[0]) * 0.5 * h_elem;
                 double K_R = eps / (0.5 * (rho0 + rho1));
                 double t = K_R / (0.5 * h_R_s * h_R_s);
                 B[0] = 1.0 / rho0 + t;  C[0] = -t;  A[0] = 0.0;
 
                 int last = n_1d - 1;
-                double rhoN = clamp_positivity(U.data[get_idx(last)]);
-                double rhoNm1 = clamp_positivity(U.data[get_idx(last - 1)]);
+                double rhoN = std::max(1e-12, b.U.data[get_idx(last) * 4 + 0]);
+                double rhoNm1 = std::max(1e-12, b.U.data[get_idx(last - 1) * 4 + 0]);
                 double h_L_s = (basis.z[p.N_PTS - 1] - basis.z[p.N_PTS - 2]) * 0.5 * h_elem;
                 double K_L = eps / (0.5 * (rhoN + rhoNm1));
                 double tL = K_L / (0.5 * h_L_s * h_L_s);

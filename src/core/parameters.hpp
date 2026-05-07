@@ -19,24 +19,21 @@ struct ProbeDef {
     std::string variable;
 };
 
+struct BlockConfig {
+    int id;
+    int N_ELEM_X;
+    int N_ELEM_Y;
+    double X_MIN, X_MAX, Y_MIN, Y_MAX;
+    std::string BC_L, BC_R, BC_B, BC_T;
+};
+
 struct Parameters {
     // -------------------------------------------------------------------------
     // Grid & Polynomial (from domain.grid)
     // -------------------------------------------------------------------------
-    int N_ELEM_X = 400;       ///< Number of elements in X.
-    int N_ELEM_Y = 400;       ///< Number of elements in Y.
+    std::vector<BlockConfig> blocks;
     int P_DEG    = 0;         ///< Polynomial degree per element.
     int N_PTS    = 1;         ///< Solution points per dim (computed: P_DEG+1).
-
-    double X_MIN = 0.0;
-    double X_MAX = 1.0;
-    double Y_MIN = 0.0;
-    double Y_MAX = 1.0;
-
-    std::string BC_L = "TRANSMISSIVE";
-    std::string BC_R = "TRANSMISSIVE";
-    std::string BC_B = "TRANSMISSIVE";
-    std::string BC_T = "TRANSMISSIVE";
 
     // -------------------------------------------------------------------------
     // Physics & Solver
@@ -44,6 +41,12 @@ struct Parameters {
     double CFL   = 0.5;       ///< CFL number for explicit time-stepping.
     double GAMMA = 1.4;       ///< Ratio of specific heats.
     std::string IC_TYPE = "RIEMANN_2D_C3";
+
+    // Freestream (for IC_TYPE = FREESTREAM)
+    double RHO_INF = 1.0;
+    double U_INF   = 0.0;
+    double V_INF   = 0.0;
+    double P_INF   = 1.0;
 
     // -------------------------------------------------------------------------
     // IGR (Isotropic Gradient Regularisation)
