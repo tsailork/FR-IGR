@@ -57,8 +57,8 @@ debug: clean $(TARGET)
 
 # Clean build artifacts
 clean:
-	rm -rf $(TARGET) $(TEST_TARGET) solution_2d.csv
-	find src tests -type f -name "*.o" -delete
+	find src src/time src/limiters src/io src/igr src/flux src/core src/boundary tests -type f -name "*.o" -delete
+	rm -rf $(TARGET)
 
 # Clean build and solution files
 cleanall: clean

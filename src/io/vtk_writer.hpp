@@ -13,6 +13,7 @@ class VTKWriter {
 public:
     explicit VTKWriter(const std::string& name = "solution");
     void write_snapshot(Solver& solver, int step, double time);
+    void load_existing_pvd();
 private:
     std::string base_name;
     std::vector<std::pair<double, std::string>> snapshots;

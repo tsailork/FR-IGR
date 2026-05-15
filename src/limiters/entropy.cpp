@@ -107,11 +107,11 @@ Limiters::LimiterStats Limiters::apply_entropy_limiter(Solver &solver) {
 
         // --- Cell average ---
         double r_avg, ru_avg, rv_avg, E_avg;
-        compute_cell_average(b.U, basis, p, ey, ex, r_avg, ru_avg, rv_avg, E_avg);
+        compute_cell_average(b.U, basis, ey, ex, r_avg, ru_avg, rv_avg, E_avg);
 
         // --- Extrapolate face values for checking ---
         double face_pts[MAX_FACE_PTS][4];
-        int n_face = extrapolate_face_values(b.U, basis, p, ey, ex, face_pts);
+        int n_face = extrapolate_face_values(b.U, basis, ey, ex, face_pts);
 
         // --- Find worst θ ---
         double theta_s = 1.0;

@@ -40,6 +40,7 @@ int main() {
 
     if (!params.RESTART_FILE.empty()) {
         std::cout << "Restarting from: " << params.RESTART_FILE << "\n";
+        writer.load_existing_pvd();
         if (!Restart::load_restart(params.RESTART_FILE, solver.blocks, params)) {
             std::cerr << "[FATAL] Restart failed. Aborting.\n";
             return 1;
@@ -65,7 +66,7 @@ int main() {
     double next_output = output_count * params.OUTPUT_DT + params.OUTPUT_DT;
 
     writer.write_snapshot(solver, output_count++, t);
-    Diagnostics diag(params, solver);
+    Diagnostics diag(params, solver, t);
 
     while (t < params.T_FINAL) {
         double dt = solver.compute_dt();
@@ -77,7 +78,7 @@ int main() {
         t += dt;
         step++;
 
-        diag.update(solver, t, step, dt);
+        diag.update(solver, t, step);
 
         if (std::abs(t - next_output) < 1e-12) {
             writer.write_snapshot(solver, output_count++, t);

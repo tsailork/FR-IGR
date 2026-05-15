@@ -4,8 +4,9 @@
 *.tar
 *.pvd
 *.vts
+*.o
 inputs
-/pv_outputs
+./pv_outputs
 residuals.dat
 
 \

@@ -9,10 +9,10 @@
 
 class Diagnostics {
 public:
-    Diagnostics(const Parameters& p, const Solver& solver);
+    Diagnostics(const Parameters& p, const Solver& solver, double startTime);
     ~Diagnostics();
 
-    void update(const Solver& solver, double t, int step, double dt);
+    void update(const Solver& solver, double t, int step);
 
 private:
     const Parameters& params;

@@ -5,71 +5,83 @@
 #include <iomanip>
 #include <iostream>
 
-Diagnostics::Diagnostics(const Parameters& p, const Solver& solver) 
+Diagnostics::Diagnostics(const Parameters& p, const Solver& solver, double startTime) 
     : params(p) {
     
     start_time = std::chrono::steady_clock::now();
     last_print_wall_time = start_time;
 
-    next_residual_output = params.RESIDUAL_INTERVAL;
-    next_probe_output = params.PROBE_INTERVAL;
-    next_print_output = params.PRINT_INTERVAL;
+    // Synchronize interval counters with startTime
+    next_residual_output = (std::floor(startTime / params.RESIDUAL_INTERVAL) + 1.0) * params.RESIDUAL_INTERVAL;
+    next_probe_output    = (std::floor(startTime / params.PROBE_INTERVAL) + 1.0) * params.PROBE_INTERVAL;
+    next_print_output    = (std::floor(startTime / params.PRINT_INTERVAL) + 1.0) * params.PRINT_INTERVAL;
 
-    // Initialize Residuals File
-    res_file.open("residuals.dat");
-    if (res_file.is_open()) {
-        res_file << "# FR-IGR Residual Tracker (Multiblock)\n";
-        res_file << "Time, L2_rho, L2_rhou, L2_rhov, L2_E\n";
+    // Initialize Residuals File (Append if restarting)
+    if (startTime > 0) {
+        res_file.open("residuals.dat", std::ios::app);
+    } else {
+        res_file.open("residuals.dat");
+        if (res_file.is_open()) {
+            res_file << "# FR-IGR Residual Tracker (Multiblock)\n";
+            res_file << "Time, L2_rho, L2_rhou, L2_rhov, L2_E\n";
+        }
     }
 
-    // Initialize Probes File
+    // Initialize Probes File (Append if restarting)
     if (!p.probes.empty()) {
-        probe_file.open("probe.csv");
-        if (probe_file.is_open()) {
-            probe_file << "Time";
-            for (size_t i = 0; i < p.probes.size(); ++i) {
-                probe_file << ", Probe" << i << "_" << p.probes[i].variable;
-                
-                ProbeLocator loc;
-                loc.def = &p.probes[i];
-                loc.block_id = -1;
+        if (startTime > 0) {
+            probe_file.open("probe.csv", std::ios::app);
+        } else {
+            probe_file.open("probe.csv");
+            if (probe_file.is_open()) {
+                probe_file << "Time";
+                for (size_t i = 0; i < p.probes.size(); ++i) {
+                    probe_file << ", Probe" << i << "_" << p.probes[i].variable;
+                }
+                probe_file << "\n";
+                probe_file.flush();
+            }
+        }
+        
+        // Always rebuild locators (independent of file mode)
+        for (const auto& probe_def : p.probes) {
+            ProbeLocator loc;
+            loc.def = &probe_def;
+            loc.block_id = -1;
 
-                for (const auto& b : solver.blocks) {
-                    double x_max = b.x_min + b.nx * b.dx;
-                    double y_max = b.y_min + b.ny * b.dy;
-                    if (loc.def->x >= b.x_min && loc.def->x <= x_max &&
-                        loc.def->y >= b.y_min && loc.def->y <= y_max) {
-                        loc.block_id = b.id;
-                        
-                        double ex_frac = (loc.def->x - b.x_min) / b.dx;
-                        double ey_frac = (loc.def->y - b.y_min) / b.dy;
-                        loc.ex = std::clamp(static_cast<int>(ex_frac), 0, b.nx - 1);
-                        loc.ey = std::clamp(static_cast<int>(ey_frac), 0, b.ny - 1);
+            for (const auto& b : solver.blocks) {
+                double x_max = b.x_min + b.nx * b.dx;
+                double y_max = b.y_min + b.ny * b.dy;
+                if (loc.def->x >= b.x_min && loc.def->x <= x_max &&
+                    loc.def->y >= b.y_min && loc.def->y <= y_max) {
+                    loc.block_id = b.id;
+                    
+                    double ex_frac = (loc.def->x - b.x_min) / b.dx;
+                    double ey_frac = (loc.def->y - b.y_min) / b.dy;
+                    loc.ex = std::clamp(static_cast<int>(ex_frac), 0, b.nx - 1);
+                    loc.ey = std::clamp(static_cast<int>(ey_frac), 0, b.ny - 1);
 
-                        double xc = b.x_min + (loc.ex + 0.5) * b.dx;
-                        double yc = b.y_min + (loc.ey + 0.5) * b.dy;
-                        double xi  = (loc.def->x - xc) / (0.5 * b.dx);
-                        double eta = (loc.def->y - yc) / (0.5 * b.dy);
+                    double xc = b.x_min + (loc.ex + 0.5) * b.dx;
+                    double yc = b.y_min + (loc.ey + 0.5) * b.dy;
+                    double xi  = (loc.def->x - xc) / (0.5 * b.dx);
+                    double eta = (loc.def->y - yc) / (0.5 * b.dy);
 
-                        for (int j = 0; j < p.N_PTS; ++j) {
-                            loc.L_xi[j] = 1.0;
-                            loc.L_eta[j] = 1.0;
-                            for (int k = 0; k < p.N_PTS; ++k) {
-                                if (j != k) {
-                                    loc.L_xi[j]  *= (xi  - solver.basis.z[k]) / (solver.basis.z[j] - solver.basis.z[k]);
-                                    loc.L_eta[j] *= (eta - solver.basis.z[k]) / (solver.basis.z[j] - solver.basis.z[k]);
-                                }
+                    for (int j = 0; j < p.N_PTS; ++j) {
+                        loc.L_xi[j] = 1.0;
+                        loc.L_eta[j] = 1.0;
+                        for (int k = 0; k < p.N_PTS; ++k) {
+                            if (j != k) {
+                                loc.L_xi[j]  *= (xi  - solver.basis.z[k]) / (solver.basis.z[j] - solver.basis.z[k]);
+                                loc.L_eta[j] *= (eta - solver.basis.z[k]) / (solver.basis.z[j] - solver.basis.z[k]);
                             }
                         }
-                        break;
                     }
+                    break;
                 }
-                
-                if (loc.block_id != -1) locators.push_back(loc);
-                else std::cerr << "[DIAG] Warning: Probe at (" << loc.def->x << "," << loc.def->y << ") outside domain.\n";
             }
-            probe_file << "\n";
-            probe_file.flush();
+            
+            if (loc.block_id != -1) locators.push_back(loc);
+            else std::cerr << "[DIAG] Warning: Probe at (" << loc.def->x << "," << loc.def->y << ") outside domain.\n";
         }
     }
 }
@@ -112,7 +124,7 @@ double Diagnostics::evaluate_probe(const Solver& solver, const ProbeLocator& loc
     return 0.0;
 }
 
-void Diagnostics::update(const Solver& solver, double t, int step, double dt) {
+void Diagnostics::update(const Solver& solver, double t, int step) {
     bool need_residual = (t >= next_residual_output && res_file.is_open()) || (t >= next_print_output);
     std::vector<double> res(4, 0.0);
     

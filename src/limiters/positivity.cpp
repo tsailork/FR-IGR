@@ -47,7 +47,7 @@ Limiters::LimiterStats Limiters::apply_positivity_limiter(State& U, const Basis&
             // 0. Compute cell average (conserved by GL quadrature)
             // =============================================================
             double r_avg, ru_avg, rv_avg, E_avg;
-            compute_cell_average(U, basis, p, ey, ex,
+            compute_cell_average(U, basis, ey, ex,
                                  r_avg, ru_avg, rv_avg, E_avg);
 
             // If the cell average itself is non-admissible, the limiter
@@ -68,7 +68,7 @@ Limiters::LimiterStats Limiters::apply_positivity_limiter(State& U, const Basis&
             // 1. Extrapolate face checking points
             // =============================================================
             double face_pts[MAX_FACE_PTS][4];
-            int n_face = extrapolate_face_values(U, basis, p, ey, ex, face_pts);
+            int n_face = extrapolate_face_values(U, basis, ey, ex, face_pts);
 
             // =============================================================
             // 2. PASS 1 — Density limiting
@@ -100,7 +100,7 @@ Limiters::LimiterStats Limiters::apply_positivity_limiter(State& U, const Basis&
 
                 // Recompute face extrapolations after density limiting
                 // (the polynomial has changed)
-                n_face = extrapolate_face_values(U, basis, p, ey, ex, face_pts);
+                n_face = extrapolate_face_values(U, basis, ey, ex, face_pts);
             }
 
             // =============================================================

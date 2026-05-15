@@ -101,7 +101,7 @@ constexpr int MAX_FACE_PTS = 4 * 4;
 /// @param[out] face_pts  Array of at least 4*N_PTS × 4 conserved states.
 /// @return Number of face checking points written (always 4 * N_PTS).
 inline int extrapolate_face_values(const State& U, const Basis& basis,
-                                    const Parameters& p, int ey, int ex,
+                                    int ey, int ex,
                                     double face_pts[][4]) {
     int count = 0;
 
@@ -142,7 +142,7 @@ inline int extrapolate_face_values(const State& U, const Basis& basis,
 
 /// Compute element-average conserved state via GL quadrature weights.
 inline void compute_cell_average(const State& U, const Basis& basis,
-                                  const Parameters& p, int ey, int ex,
+                                  int ey, int ex,
                                   double& r_avg, double& ru_avg,
                                   double& rv_avg, double& E_avg) {
     r_avg = ru_avg = rv_avg = E_avg = 0.0;

@@ -4,8 +4,7 @@
 #include "solver.hpp"
 
 static void parse_bc_string(const std::string& bc, NeighborInfo& ni) {
-    if (bc == "PERIODIC") ni.is_periodic = true;
-    else if (bc == "WALL") ni.is_wall = true;
+    if (bc == "WALL") ni.is_wall = true;
     else if (bc == "INFLOW") ni.is_inflow = true;
     else if (bc == "TRANSMISSIVE") ni.is_transmissive = true;
     else if (bc.find(':') != std::string::npos) {

@@ -20,7 +20,6 @@ constexpr int MAX_PTS = 4;
 struct NeighborInfo {
     int id = -1;      ///< Neighbor block ID. -1 if none/periodic/wall.
     char face = ' ';  ///< Neighbor face ('L', 'R', 'B', 'T').
-    bool is_periodic = false;
     bool is_wall = false;
     bool is_inflow = false;
     bool is_transmissive = false;

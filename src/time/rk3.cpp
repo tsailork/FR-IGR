@@ -85,7 +85,7 @@ void Solver::step_rk3(double dt) {
               if (press < 1e-14)
                 press = 1e-14;
 
-              b.sigma_field[idx] = std::min(b.sigma_field[idx], press);
+
 
               if (USE_PRESSURE_GRAD_CAP) {
                 double dpdx = 0, dpdy = 0;

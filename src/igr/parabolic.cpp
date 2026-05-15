@@ -117,17 +117,7 @@ void Solver::compute_igr_parabolic_rhs() {
                 sig_res += nb.sigma_field[idx] * w[k];
                 rho_res += r_k * w[k];
               }
-            } else if (ni_face.is_periodic) {
-                int nex = right_face ? 0 : b.nx - 1;
-                const double* w = right_face ? basis.l_L.data() : basis.l_R.data();
-                f_res = 0; sig_res = 0; rho_res = 0;
-                for (int k=0; k<p.N_PTS; ++k) {
-                    int idx = b.get_flat_idx(ey, nex, iy, k, p.N_PTS);
-                    double r_k = std::max(1e-12, b.U(0, ey, nex, iy, k));
-                    f_res += (b.qx_buf[idx] / r_k) * w[k];
-                    sig_res += b.sigma_field[idx] * w[k];
-                    rho_res += r_k * w[k];
-                }
+
             } else {
               f_res = f_self; sig_res = sig_self; rho_res = rho_self;
             }
@@ -202,17 +192,7 @@ void Solver::compute_igr_parabolic_rhs() {
                 sig_res += nb.sigma_field[idx] * w[k];
                 rho_res += r_k * w[k];
               }
-            } else if (ni_face.is_periodic) {
-                int ney = top_face ? 0 : b.ny - 1;
-                const double* w = top_face ? basis.l_L.data() : basis.l_R.data();
-                f_res = 0; sig_res = 0; rho_res = 0;
-                for (int k=0; k<p.N_PTS; ++k) {
-                    int idx = b.get_flat_idx(ney, ex, k, ix, p.N_PTS);
-                    double r_k = std::max(1e-12, b.U(0, ney, ex, k, ix));
-                    f_res += (b.qy_buf[idx] / r_k) * w[k];
-                    sig_res += b.sigma_field[idx] * w[k];
-                    rho_res += r_k * w[k];
-                }
+
             } else {
               f_res = f_self; sig_res = sig_self; rho_res = rho_self;
             }

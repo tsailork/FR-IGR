@@ -43,6 +43,32 @@ void VTKWriter::write_pvd() {
     pvd << "</VTKFile>\n";
 }
 
+void VTKWriter::load_existing_pvd() {
+    std::string pvd_filename = "pv_outputs/" + base_name + ".pvd";
+    std::ifstream pvd(pvd_filename);
+    if (!pvd.is_open()) return;
+
+    std::string line;
+    while (std::getline(pvd, line)) {
+        if (line.find("<DataSet") != std::string::npos) {
+            size_t t_pos = line.find("timestep=\"");
+            if (t_pos == std::string::npos) continue;
+            t_pos += 10;
+            size_t t_end = line.find("\"", t_pos);
+            double time = std::stod(line.substr(t_pos, t_end - t_pos));
+
+            size_t f_pos = line.find("file=\"");
+            if (f_pos == std::string::npos) continue;
+            f_pos += 6;
+            size_t f_end = line.find("\"", f_pos);
+            std::string filename = line.substr(f_pos, f_end - f_pos);
+
+            snapshots.push_back({time, filename});
+        }
+    }
+    std::cout << "[IO] Loaded " << snapshots.size() << " existing snapshots from " << pvd_filename << "\n";
+}
+
 void VTKWriter::write_snapshot(Solver& solver, int step, double time) {
     const Parameters& p = solver.p;
     std::string vtm_filename = "sol_" + std::to_string(step) + ".vtm";
@@ -152,6 +178,16 @@ void VTKWriter::write_snapshot(Solver& solver, int step, double time) {
     vtm << "</VTKFile>\n";
 
     std::cout << "Output written: " << vtm_path << "\n";
-    snapshots.push_back({time, vtm_filename});
+    
+    bool duplicate = false;
+    for (auto& snap : snapshots) {
+        if (std::abs(snap.first - time) < 1e-12) {
+            snap.second = vtm_filename;
+            duplicate = true;
+            break;
+        }
+    }
+    if (!duplicate) snapshots.push_back({time, vtm_filename});
+    
     write_pvd();
 }

@@ -88,6 +88,64 @@ void Parameters::load_domain(const std::string& filename) {
         return a.id < b.id;
     });
 
+    // Validation pass
+    for (const auto& b : blocks) {
+        if (b.N_ELEM_X <= 0 || b.N_ELEM_Y <= 0) {
+            std::cerr << "[GRID ERROR] Block " << b.id << " has invalid element counts (" << b.N_ELEM_X << ", " << b.N_ELEM_Y << ")\n";
+            exit(1);
+        }
+        if (b.X_MAX <= b.X_MIN || b.Y_MAX <= b.Y_MIN) {
+            std::cerr << "[GRID ERROR] Block " << b.id << " has invalid dimensions (X: " << b.X_MIN << " to " << b.X_MAX << ", Y: " << b.Y_MIN << " to " << b.Y_MAX << ")\n";
+            exit(1);
+        }
+
+        auto check_face = [&](const std::string& bc, char self_face) {
+            if (bc.find(':') != std::string::npos) {
+                size_t sep = bc.find(':');
+                int nid = std::stoi(bc.substr(0, sep));
+                char nface = bc[sep + 1];
+
+                auto it = std::find_if(blocks.begin(), blocks.end(), [nid](const BlockConfig& config) { return config.id == nid; });
+                if (it == blocks.end()) {
+                    std::cerr << "[GRID ERROR] Block " << b.id << " face " << self_face << " points to missing block " << nid << "\n";
+                    exit(1);
+                }
+                const auto& nb = *it;
+
+                std::string expected_bc = std::to_string(b.id) + ":" + self_face;
+                std::string actual_bc = (nface == 'L') ? nb.BC_L : (nface == 'R') ? nb.BC_R : (nface == 'B') ? nb.BC_B : (nface == 'T') ? nb.BC_T : "";
+                
+                if (actual_bc != expected_bc) {
+                    std::cerr << "[GRID ERROR] Asymmetric boundary condition. Block " << b.id << " face " << self_face 
+                              << " points to Block " << nid << " face " << nface 
+                              << ", but that face has BC '" << actual_bc << "' (expected '" << expected_bc << "')\n";
+                    exit(1);
+                }
+
+                int my_elems = (self_face == 'L' || self_face == 'R') ? b.N_ELEM_Y : b.N_ELEM_X;
+                int n_elems = (nface == 'L' || nface == 'R') ? nb.N_ELEM_Y : nb.N_ELEM_X;
+                if (my_elems != n_elems) {
+                    std::cerr << "[GRID ERROR] Element count mismatch between Block " << b.id << " (" << my_elems << " elems) and Block " 
+                              << nid << " (" << n_elems << " elems) on shared interface.\n";
+                    exit(1);
+                }
+
+                double my_len = (self_face == 'L' || self_face == 'R') ? (b.Y_MAX - b.Y_MIN) : (b.X_MAX - b.X_MIN);
+                double n_len = (nface == 'L' || nface == 'R') ? (nb.Y_MAX - nb.Y_MIN) : (nb.X_MAX - nb.X_MIN);
+                if (std::abs(my_len - n_len) > 1e-8) {
+                    std::cerr << "[GRID ERROR] Physical length mismatch between Block " << b.id << " (" << my_len << ") and Block " 
+                              << nid << " (" << n_len << ") on shared interface.\n";
+                    exit(1);
+                }
+            }
+        };
+
+        check_face(b.BC_L, 'L');
+        check_face(b.BC_R, 'R');
+        check_face(b.BC_B, 'B');
+        check_face(b.BC_T, 'T');
+    }
+
     std::cout << "Domain configuration loaded from " << filename << " (" << blocks.size() << " blocks)" << std::endl;
 }
 

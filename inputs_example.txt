@@ -103,14 +103,16 @@ PROBE_3 = 0.9, 0.5, Mach
 # 
 # BC_L = TRANSMISSIVE    # Boundary Condition for Left face
 # BC_R = 1:L             # Connects to Block 1's Left face
-# BC_B = PERIODIC        # Standard periodic BC
-# BC_T = WALL            # Standard slip-wall BC
+# BC_B = 0:T             # Connects to Block 0's Top face (self-periodic)
+# BC_T = 0:B             # Connects to Block 0's Bottom face (self-periodic)
 #
 # Available BCs:
 #   - TRANSMISSIVE: Simple copy-out/ghost-state condition.
-#   - PERIODIC: Wrap-around connectivity within the same block.
 #   - WALL: Reflective slip-wall (normal velocity negated).
 #   - INFLOW: Uses the RHO_INF, U_INF, etc. from inputs.dat.
 #   - ID:FACE: Connects to the specified face of neighbor Block ID.
+#     Example: '2:T' means "Connect to the TOP face of Block 2".
+#     Note: For periodic boundaries, simply map opposite faces to each other 
+#     (e.g., Block 0 Left connects to Block 0 Right using '0:R').
 #     Example: '2:T' means "Connect to the TOP face of Block 2".
 ################################################################################
