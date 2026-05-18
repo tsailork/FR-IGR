@@ -1,48 +1,124 @@
+# Square Column in channel
+#
 [Block0]
-# Physical Domain Bounds
+# Bot Left
 X_MIN = 0.0
-X_MAX = 0.5
+X_MAX = 2.0
 Y_MIN = 0.0
-Y_MAX = 0.2
+Y_MAX = 2.0
 # Resolution
-N_ELEM_X = 25
-N_ELEM_Y = 10
-# Boundary Conditions (TRANSMISSIVE, PERIODIC, WALL)
-BC_L = INFLOW
-BC_R = WALL
+N_ELEM_X = 20
+N_ELEM_Y = 40
+# Boundary Conditions
+#BC_L = CHARACTERISTIC:1.0:50.0:0.0:25.0
+BC_L = INFLOW_SUPERSONIC:1.0:5.0:0.0:25.0
+BC_R = 7:L
 BC_B = WALL
 BC_T = 1:B
-
-
-
+#
 [Block1]
-# Physical Domain Bounds
+# Middle Left
 X_MIN = 0.0
-X_MAX = 0.5
-Y_MIN = 0.2
-Y_MAX = 1.0
-# Resolution
-N_ELEM_X = 25
-N_ELEM_Y = 25
-# Boundary Conditions (TRANSMISSIVE, PERIODIC, WALL)
-BC_L = INFLOW
-BC_R = 2:L
-BC_B = 0:T
-BC_T = WALL
-
-
-
-[Block2]
-# Physical Domain Bounds
-X_MIN = 0.5
 X_MAX = 2.0
-Y_MIN = 0.2
-Y_MAX = 1.0
+Y_MIN = 2.0
+Y_MAX = 3.0
 # Resolution
-N_ELEM_X = 75
-N_ELEM_Y = 25
-# Boundary Conditions (TRANSMISSIVE, PERIODIC, WALL)
-BC_L = 1:R
-BC_R = INFLOW
-BC_B = WALL
+N_ELEM_X = 20
+N_ELEM_Y = 20
+# Boundary Conditions
+#BC_L = CHARACTERISTIC:1.0:50.0:0.0:25.0
+BC_L = INFLOW_SUPERSONIC:1.0:5.0:0.0:25.0
+BC_R = WALL_NOSLIP
+BC_B = 0:T
+BC_T = 2:B
+#
+[Block2]
+# Top Left
+X_MIN = 0.0
+X_MAX = 2.0
+Y_MIN = 3.0
+Y_MAX = 5.0
+# Resolution
+N_ELEM_X = 20
+N_ELEM_Y = 40
+# Boundary Conditions
+#BC_L = CHARACTERISTIC:1.0:50.0:0.0:25.0
+BC_L = INFLOW_SUPERSONIC:1.0:5.0:0.0:25.0
+BC_R = 3:L
+BC_B = 1:T
 BC_T = WALL
+#
+[Block3]
+# Top Middle
+X_MIN = 2.0
+X_MAX = 3.0
+Y_MIN = 3.0
+Y_MAX = 5.0
+# Resolution
+N_ELEM_X = 10
+N_ELEM_Y = 40
+# Boundary Conditions
+BC_L = 2:R
+BC_R = 4:L
+BC_B = WALL_NOSLIP
+BC_T = WALL
+#
+[Block4]
+# Top Right
+X_MIN = 3.0
+X_MAX = 10.0
+Y_MIN = 3.0
+Y_MAX = 5.0
+# Resolution
+N_ELEM_X = 70
+N_ELEM_Y = 40
+# Boundary Conditions
+BC_L = 3:R
+BC_R = CHARACTERISTIC:1.0:10.0:0.0:0.1
+BC_B = 5:T
+BC_T = WALL
+#
+[Block5]
+# Middle Right
+X_MIN = 3.0
+X_MAX = 10.0
+Y_MIN = 2.0
+Y_MAX = 3.0
+# Resolution
+N_ELEM_X = 70
+N_ELEM_Y = 20
+# Boundary Conditions
+BC_L = WALL_NOSLIP
+BC_R = CHARACTERISTIC:1.0:10.0:0.0:0.1
+BC_B = 6:T
+BC_T = 4:B
+#
+[Block6]
+# Bot Right
+X_MIN = 3.0
+X_MAX = 10.0
+Y_MIN = 0.0
+Y_MAX = 2.0
+# Resolution
+N_ELEM_X = 70
+N_ELEM_Y = 40
+# Boundary Conditions
+BC_L = 7:R
+BC_R = CHARACTERISTIC:1.0:10.0:0.0:0.1
+BC_B = WALL
+BC_T = 5:B
+#
+[Block7]
+# Bot Middle
+X_MIN = 2.0
+X_MAX = 3.0
+Y_MIN = 0.0
+Y_MAX = 2.0
+# Resolution
+N_ELEM_X = 10
+N_ELEM_Y = 40
+# Boundary Conditions
+BC_L = 0:R
+BC_R = 6:L
+BC_B = WALL
+BC_T = WALL_NOSLIP

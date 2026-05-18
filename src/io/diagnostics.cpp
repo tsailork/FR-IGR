@@ -6,7 +6,7 @@
 #include <iostream>
 
 Diagnostics::Diagnostics(const Parameters& p, const Solver& solver, double startTime) 
-    : params(p) {
+    : params(p), sim_start_time(startTime) {
     
     start_time = std::chrono::steady_clock::now();
     last_print_wall_time = start_time;
@@ -174,7 +174,12 @@ void Diagnostics::update(const Solver& solver, double t, int step) {
 
         double l2_sum = res[0] + res[1] + res[2] + res[3];
         double progress = (t / params.T_FINAL) * 100.0;
-        double eta = (total_elapsed.count() / t) * (params.T_FINAL - t);
+        
+        double dt_run = t - sim_start_time;
+        double eta = 0.0;
+        if (dt_run > 1e-8) {
+            eta = (total_elapsed.count() / dt_run) * (params.T_FINAL - t);
+        }
 
         std::cout << std::fixed << std::setprecision(4)
                   << "[Step " << std::setw(5) << step << "] "

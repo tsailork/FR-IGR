@@ -16,9 +16,10 @@ TEST_TARGET = unit_tests
 
 # Source Files
 CORE_SRC = src/core/parameters.cpp src/core/basis.cpp src/core/solver.cpp
-FLUX_SRC = src/flux/euler_flux.cpp src/flux/sweep_x.cpp src/flux/sweep_y.cpp
+FLUX_SRC = src/flux/euler_flux.cpp src/flux/sweep_x.cpp src/flux/sweep_y.cpp \
+           src/flux/gradient.cpp src/flux/viscous_sweep_x.cpp src/flux/viscous_sweep_y.cpp
 IGR_SRC  = src/igr/sensor.cpp src/igr/adi_solver.cpp src/igr/parabolic.cpp src/igr/entropic_pressure.cpp
-BND_SRC  = src/boundary/boundary.cpp
+BND_SRC  = src/boundary/boundary_wall.cpp src/boundary/boundary_characteristic.cpp src/boundary/boundary_x.cpp src/boundary/boundary_y.cpp
 LIM_SRC  = src/limiters/positivity.cpp src/limiters/entropy.cpp
 TIME_SRC = src/time/stability.cpp src/time/rk3.cpp
 IO_SRC   = src/io/vtk_writer.cpp src/io/restart.cpp src/io/initial_conditions.cpp src/io/diagnostics.cpp

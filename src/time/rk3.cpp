@@ -1,20 +1,17 @@
-/// @file rk3.cpp
-/// @brief Strong Stability Preserving Runge-Kutta 3rd Order (SSP-RK3).
-///
-/// Three stages:
-///   u^(1) = u^n + dt · L(u^n)
-///   u^(2) = ¾ u^n + ¼ (u^(1) + dt · L(u^(1)))
-///   u^(n+1) = ⅓ u^n + ⅔ (u^(2) + dt · L(u^(2)))
-///
-/// After each stage: positivity limiter, entropy limiter, stability check.
-///
-/// Parabolic σ field is advanced in lockstep with the flow.  When
-/// IGR_SUB_ITERS > 1, the σ relaxation is sub-iterated: after each
-/// RK3 stage updates U, the sigma field is evolved through multiple
-/// forward-Euler sub-steps (holding U fixed) to accelerate convergence
-/// toward the elliptic steady state.
-///
-/// OpenMP: the BLAS-like vector updates are parallelised.
+/**
+ * @file rk3.cpp
+ * @brief Strong Stability Preserving Runge-Kutta 3rd Order (SSP-RK3) time-stepping implementation.
+ *
+ * Implements the explicit three-stage SSP-RK3 integration scheme:
+ * \f[ U^{(1)} = U^n + \Delta t L(U^n) \f]
+ * \f[ U^{(2)} = \frac{3}{4} U^n + \frac{1}{4} \left( U^{(1)} + \Delta t L(U^{(1)}) \right) \f]
+ * \f[ U^{n+1} = \frac{1}{3} U^n + \frac{2}{3} \left( U^{(2)} + \Delta t L(U^{(2)}) \right) \f]
+ *
+ * For stability and robust shock handling:
+ *  - Applies the Positivity Preserving Limiter (Zhang-Shu) and Entropy Limiter after each stage.
+ *  - Evolve the parabolic entropic pressure field (\f$\Sigma\f$) in lockstep or via sub-iterated Forward Euler.
+ *  - Parallelized using OpenMP for high performance.
+ */
 
 #include "../core/solver.hpp"
 #include "../limiters/entropy.hpp"
@@ -23,25 +20,14 @@
 #include <omp.h>
 #endif
 
-/// Perform one full SSP-RK3 time step.
-///
-/// @details
-/// Data Structures & Indexing:
-///   - `U(v, ey, ex, iy, ix)`: The global conserved state array. Mutated
-///   in-place during each RK stage.
-///   - `RHS(v, ey, ex, iy, ix)`: The global explicit right-hand side array
-///   computed by `compute_rhs()`.
-///   - `sigma_field`: The global scalar entropic pressure field, advanced
-///   alongside `U` if using Parabolic IGR.
-///   - `sigma_RHS`: The explicit RHS for the `sigma_field`.
-///   - `U_old`, `sig_old`: Thread-local (to this function) copies of the
-///   initial state at $t^n$ needed for RK combinations.
-/// Assumptions:
-///   - `U` and `sigma_field` contain valid states at the start of the timestep.
-///   - OpenMP is used for the BLAS-like vector updates: `#pragma omp parallel
-///   for`. These are thread-safe
-///     because each thread operates on independent indices of the flat 1D
-///     arrays `U.data` and `sigma_field`.
+/**
+ * @brief Evolve the global state U and regularization field Sigma by one SSP-RK3 time-step.
+ *
+ * Coordinates stage-wise updates, numerical limiting, and explicit artificial viscosity updates.
+ * Utilizes OpenMP parallelization for BLAS-like conservation array operations.
+ *
+ * @param[in] dt Time-step size (\f$\Delta t\f$)
+ */
 void Solver::step_rk3(double dt) {
   std::vector<State> U_old;
   std::vector<std::vector<double>> sig_old;
@@ -85,7 +71,7 @@ void Solver::step_rk3(double dt) {
               if (press < 1e-14)
                 press = 1e-14;
 
-
+              b.sigma_field[idx] = std::min(b.sigma_field[idx], press);
 
               if (USE_PRESSURE_GRAD_CAP) {
                 double dpdx = 0, dpdy = 0;

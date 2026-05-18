@@ -70,6 +70,16 @@ double Solver::compute_dt() const {
             double dt_relax = 0.5 * p.IGR_TAU_R;
             dt_block = std::min({dt_conv, dt_diff, dt_relax});
         }
+
+        // Viscous CFL: dt_visc ~ h² / (ν · (2P+1)²)
+        if (p.ENABLE_NS) {
+            double nu = 1.0 / p.RE;  // kinematic viscosity (non-dim, ρ_ref = 1)
+            double h2 = std::min(b.dx * b.dx, b.dy * b.dy);
+            double denom = (2*p.P_DEG+1) * (2*p.P_DEG+1);
+            double dt_visc = 0.25 * p.CFL * h2 / (nu * denom);
+            dt_block = std::min(dt_block, dt_visc);
+        }
+
         min_dt = std::min(min_dt, dt_block);
     }
     return min_dt;

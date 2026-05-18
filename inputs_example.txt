@@ -60,8 +60,11 @@ POS_LIMITER_EPS = 1e-10
 ENABLE_ENTROPY_LIMITER = true
 
 [IO]
-# OUTPUT_DT: Time interval between full VTK 3D snapshots.
-OUTPUT_DT = 0.01
+# OUTPUT_INTERVAL: Time interval between full, continuous VTK plotting snapshots (plot_*.vtm).
+OUTPUT_INTERVAL = 0.01
+
+# RESTART_INTERVAL: Time interval between exact, lossless restart checkpoints (sol_*.vtm).
+RESTART_INTERVAL = 0.1
 
 # RESIDUAL_INTERVAL: Time interval between L2 residual tracking outputs to residuals.dat
 RESIDUAL_INTERVAL = 0.005
@@ -107,12 +110,16 @@ PROBE_3 = 0.9, 0.5, Mach
 # BC_T = 0:B             # Connects to Block 0's Bottom face (self-periodic)
 #
 # Available BCs:
-#   - TRANSMISSIVE: Simple copy-out/ghost-state condition.
+#   - OUTFLOW_SUPERSONIC: Simple copy-out/ghost-state condition.
 #   - WALL: Reflective slip-wall (normal velocity negated).
-#   - INFLOW: Uses the RHO_INF, U_INF, etc. from inputs.dat.
+#   - WALL_NOSLIP: Adiabatic viscous no-slip wall (u=v=0, dT/dn=0).
+#   - WALL_NOSLIP:T: Isothermal viscous no-slip wall at temperature T.
+#   - WALL_MOVING:V: Adiabatic moving wall with tangential velocity V.
+#   - WALL_MOVING:V:T: Isothermal moving wall with velocity V and temperature T.
+#   - INFLOW_SUPERSONIC:rho:u:v:p: Enforces the given reference state.
+#   - CHARACTERISTIC:rho:u:v:p: Riemann invariant based subsonic inflow/outflow using the reference state.
 #   - ID:FACE: Connects to the specified face of neighbor Block ID.
 #     Example: '2:T' means "Connect to the TOP face of Block 2".
 #     Note: For periodic boundaries, simply map opposite faces to each other 
 #     (e.g., Block 0 Left connects to Block 0 Right using '0:R').
-#     Example: '2:T' means "Connect to the TOP face of Block 2".
 ################################################################################

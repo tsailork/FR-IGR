@@ -1,12 +1,14 @@
-/// @file adi_solver.cpp
-/// @brief Thomas algorithm + symmetrised ADI pass for the elliptic IGR solve.
-///
-/// Each 1-D line through the grid yields an independent tridiagonal system
-/// that can be solved in O(N).  The ADI method splits the 2-D Helmholtz
-/// equation into two 1-D passes (X then Y, and Y then X), then averages
-/// the results for directional symmetry.
-///
-/// OpenMP: parallelised over the outer loop (each 1-D line is independent).
+/**
+ * @file adi_solver.cpp
+ * @brief Thomas algorithm and symmetrized ADI passes for the elliptic IGR solver.
+ *
+ * Implements the Alternating Direction Implicit (ADI) method to solve the Helmholtz-like
+ * entropic pressure smoothing equations:
+ * \f[ \left( I - \epsilon \nabla \cdot \left(\frac{1}{\rho} \nabla \right) \right) \Sigma = S \f]
+ * Splitting this 2D operator into 1D directional passes allows solving each line as an
+ * independent tridiagonal system in \f$O(N)\f$ time using the Thomas algorithm.
+ * Double-pass averaging (X->Y and Y->X) is employed to preserve diagonal symmetry.
+ */
 
 #include "adi_solver.hpp"
 #include "../core/solver.hpp"
@@ -14,10 +16,18 @@
 #include <omp.h>
 #endif
 
-// =========================================================================
-// Thomas algorithm for tridiagonal systems
-// =========================================================================
-
+/**
+ * @brief Solve a tridiagonal system of linear equations using the Thomas algorithm.
+ *
+ * Solves a system of the form:
+ * \f[ a_i x_{i-1} + b_i x_i + c_i x_{i+1} = d_i \f]
+ *
+ * @param[in] a Lower diagonal coefficients (size N, index 0 is ignored)
+ * @param[in] b Main diagonal coefficients (size N)
+ * @param[in] c Upper diagonal coefficients (size N, index N-1 is ignored)
+ * @param[in] d Right-hand side values (size N)
+ * @param[out] x Solution vector (size N)
+ */
 void solve_tridiagonal(const std::vector<double>& a,
                        const std::vector<double>& b,
                        const std::vector<double>& c,
@@ -44,10 +54,17 @@ void solve_tridiagonal(const std::vector<double>& a,
         x[i] = dp[i] - cp[i] * x[i + 1];
 }
 
-// =========================================================================
-// ADI pass (one direction-pair: X→Y or Y→X)
-// =========================================================================
-
+/**
+ * @brief Execute a single directional ADI pass on a block.
+ *
+ * Performs sequential 1D sweeps in either X-then-Y or Y-then-X directions. Imposes Dirichlet
+ * interface coupling across block boundaries and zero-gradient Neumann conditions at physical domain edges.
+ *
+ * @param[in,out] b Computational block to process
+ * @param[in] S Source term vector for the ADI smoothing pass
+ * @param[out] Out Smoothed output field
+ * @param[in] x_first If true, sweep X first then Y; if false, sweep Y first then X
+ */
 void Solver::solve_adi_pass(Block& b, const std::vector<double>& S,
                             std::vector<double>& Out, bool x_first)
 {
@@ -109,22 +126,71 @@ void Solver::solve_adi_pass(Block& b, const std::vector<double>& S,
                 RHS_1d[k] = is_first_pass ? source[flat] : source[flat] / rho_curr;
             }
 
-            // Neumann boundaries
+            // Boundaries (Dirichlet coupling for block interfaces, zero-gradient Neumann for physical boundaries)
             {
-                double rho0 = std::max(1e-12, b.U.data[get_idx(0) * 4 + 0]);
-                double rho1 = std::max(1e-12, b.U.data[get_idx(1) * 4 + 0]);
-                double h_R_s = (basis.z[1] - basis.z[0]) * 0.5 * h_elem;
-                double K_R = eps / (0.5 * (rho0 + rho1));
-                double t = K_R / (0.5 * h_R_s * h_R_s);
-                B[0] = 1.0 / rho0 + t;  C[0] = -t;  A[0] = 0.0;
+                // Left / Bottom boundary (k = 0)
+                bool has_neigh_0 = false;
+                double sig_neigh_0 = 0.0;
+                double dummy_state[4], dummy_face[4] = {0.0, 0.0, 0.0, 0.0};
+                if (horizontal) {
+                    int ey = i / p.N_PTS, iy = i % p.N_PTS;
+                    if (b.ni_l.id != -1) {
+                        has_neigh_0 = true;
+                        get_neigh_state_x(b, ey, 0, iy, false, dummy_face, 0.0, dummy_state, sig_neigh_0);
+                    }
+                } else {
+                    int ex = i / p.N_PTS, ix = i % p.N_PTS;
+                    if (b.ni_b.id != -1) {
+                        has_neigh_0 = true;
+                        get_neigh_state_y(b, 0, ex, ix, false, dummy_face, 0.0, dummy_state, sig_neigh_0);
+                    }
+                }
 
+                if (has_neigh_0) {
+                    B[0] = 1.0;
+                    C[0] = 0.0;
+                    A[0] = 0.0;
+                    RHS_1d[0] = sig_neigh_0;
+                } else {
+                    double rho0 = std::max(1e-12, b.U.data[get_idx(0) * 4 + 0]);
+                    double rho1 = std::max(1e-12, b.U.data[get_idx(1) * 4 + 0]);
+                    double h_R_s = (basis.z[1] - basis.z[0]) * 0.5 * h_elem;
+                    double K_R = eps / (0.5 * (rho0 + rho1));
+                    double t = K_R / (0.5 * h_R_s * h_R_s);
+                    B[0] = 1.0 / rho0 + t;  C[0] = -t;  A[0] = 0.0;
+                }
+
+                // Right / Top boundary (k = last)
                 int last = n_1d - 1;
-                double rhoN = std::max(1e-12, b.U.data[get_idx(last) * 4 + 0]);
-                double rhoNm1 = std::max(1e-12, b.U.data[get_idx(last - 1) * 4 + 0]);
-                double h_L_s = (basis.z[p.N_PTS - 1] - basis.z[p.N_PTS - 2]) * 0.5 * h_elem;
-                double K_L = eps / (0.5 * (rhoN + rhoNm1));
-                double tL = K_L / (0.5 * h_L_s * h_L_s);
-                B[last] = 1.0 / rhoN + tL;  A[last] = -tL;  C[last] = 0.0;
+                bool has_neigh_last = false;
+                double sig_neigh_last = 0.0;
+                if (horizontal) {
+                    int ey = i / p.N_PTS, iy = i % p.N_PTS;
+                    if (b.ni_r.id != -1) {
+                        has_neigh_last = true;
+                        get_neigh_state_x(b, ey, b.nx - 1, iy, true, dummy_face, 0.0, dummy_state, sig_neigh_last);
+                    }
+                } else {
+                    int ex = i / p.N_PTS, ix = i % p.N_PTS;
+                    if (b.ni_t.id != -1) {
+                        has_neigh_last = true;
+                        get_neigh_state_y(b, b.ny - 1, ex, ix, true, dummy_face, 0.0, dummy_state, sig_neigh_last);
+                    }
+                }
+
+                if (has_neigh_last) {
+                    B[last] = 1.0;
+                    A[last] = 0.0;
+                    C[last] = 0.0;
+                    RHS_1d[last] = sig_neigh_last;
+                } else {
+                    double rhoN = std::max(1e-12, b.U.data[get_idx(last) * 4 + 0]);
+                    double rhoNm1 = std::max(1e-12, b.U.data[get_idx(last - 1) * 4 + 0]);
+                    double h_L_s = (basis.z[p.N_PTS - 1] - basis.z[p.N_PTS - 2]) * 0.5 * h_elem;
+                    double K_L = eps / (0.5 * (rhoN + rhoNm1));
+                    double tL = K_L / (0.5 * h_L_s * h_L_s);
+                    B[last] = 1.0 / rhoN + tL;  A[last] = -tL;  C[last] = 0.0;
+                }
             }
 
             std::vector<double> x_sol(n_1d);

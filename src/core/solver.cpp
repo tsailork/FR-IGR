@@ -2,17 +2,73 @@
 /// @brief Solver constructor and compute_rhs dispatcher.
 
 #include "solver.hpp"
+#include <stdexcept>
 
+/// Parse a boundary condition string from domain.grid into a NeighborInfo.
+///
+/// Supported formats:
+///   "WALL"              — inviscid slip wall (reflects normal velocity)
+///   "INFLOW"            — freestream inflow
+///   "TRANSMISSIVE"      — copy-out / zero-gradient
+///   "WALL_NOSLIP"       — adiabatic no-slip wall (u=v=0, dT/dn=0)
+///   "WALL_NOSLIP:T"     — isothermal no-slip wall at temperature T
+///   "WALL_MOVING:V"     — adiabatic moving wall, tangential velocity V
+///   "WALL_MOVING:V:T"   — isothermal moving wall, velocity V, temperature T
+///   "ID:FACE"           — block-to-block connectivity (e.g., "1:L")
 static void parse_bc_string(const std::string& bc, NeighborInfo& ni) {
-    if (bc == "WALL") ni.is_wall = true;
-    else if (bc == "INFLOW") ni.is_inflow = true;
-    else if (bc == "TRANSMISSIVE") ni.is_transmissive = true;
-    else if (bc.find(':') != std::string::npos) {
+    if (bc == "WALL") {
+        ni.is_wall = true;
+    } else if (bc.rfind("INFLOW_SUPERSONIC:", 0) == 0) {
+        ni.is_supersonic_inflow = true;
+        std::string params = bc.substr(18);
+        size_t p1 = params.find(':');
+        size_t p2 = params.find(':', p1 + 1);
+        size_t p3 = params.find(':', p2 + 1);
+        if (p1 != std::string::npos && p2 != std::string::npos && p3 != std::string::npos) {
+            ni.ref_rho = std::stod(params.substr(0, p1));
+            ni.ref_u   = std::stod(params.substr(p1 + 1, p2 - p1 - 1));
+            ni.ref_v   = std::stod(params.substr(p2 + 1, p3 - p2 - 1));
+            ni.ref_p   = std::stod(params.substr(p3 + 1));
+        }
+    } else if (bc == "OUTFLOW_SUPERSONIC") {
+        ni.is_supersonic_outflow = true;
+    } else if (bc.rfind("CHARACTERISTIC:", 0) == 0) {
+        ni.is_characteristic = true;
+        std::string params = bc.substr(15);
+        size_t p1 = params.find(':');
+        size_t p2 = params.find(':', p1 + 1);
+        size_t p3 = params.find(':', p2 + 1);
+        if (p1 != std::string::npos && p2 != std::string::npos && p3 != std::string::npos) {
+            ni.ref_rho = std::stod(params.substr(0, p1));
+            ni.ref_u   = std::stod(params.substr(p1 + 1, p2 - p1 - 1));
+            ni.ref_v   = std::stod(params.substr(p2 + 1, p3 - p2 - 1));
+            ni.ref_p   = std::stod(params.substr(p3 + 1));
+        }
+    } else if (bc == "WALL_NOSLIP") {
+        ni.is_noslip_wall = true;
+    } else if (bc.rfind("WALL_NOSLIP:", 0) == 0) {
+        // WALL_NOSLIP:T_wall — isothermal no-slip
+        ni.is_noslip_wall = true;
+        ni.is_isothermal = true;
+        ni.wall_temperature = std::stod(bc.substr(12));
+    } else if (bc.rfind("WALL_MOVING:", 0) == 0) {
+        // WALL_MOVING:velocity  or  WALL_MOVING:velocity:T_wall
+        ni.is_moving_wall = true;
+        std::string params = bc.substr(12);
+        size_t colon = params.find(':');
+        if (colon != std::string::npos) {
+            ni.wall_velocity = std::stod(params.substr(0, colon));
+            ni.is_isothermal = true;
+            ni.wall_temperature = std::stod(params.substr(colon + 1));
+        } else {
+            ni.wall_velocity = std::stod(params);
+        }
+    } else if (bc.find(':') != std::string::npos) {
         size_t sep = bc.find(':');
         ni.id = std::stoi(bc.substr(0, sep));
         ni.face = bc[sep + 1];
     } else {
-        ni.is_transmissive = true;
+        ni.is_supersonic_outflow = true;
     }
 }
 
@@ -33,7 +89,7 @@ Solver::Solver(const Parameters& params)
     }
 }
 
-/// Assemble the full right-hand side: IGR + X-sweep + Y-sweep.
+/// Assemble the full right-hand side: IGR + inviscid sweeps + viscous fluxes.
 void Solver::compute_rhs() {
     for (auto& b : blocks) {
         std::fill(b.RHS.data.begin(), b.RHS.data.end(), 0.0);
@@ -41,4 +97,9 @@ void Solver::compute_rhs() {
     compute_entropic_pressure();
     sweep_x();
     sweep_y();
+    if (p.ENABLE_NS) {
+        compute_gradients();
+        viscous_sweep_x();
+        viscous_sweep_y();
+    }
 }

@@ -16,6 +16,7 @@ public:
 
 private:
     const Parameters& params;
+    double sim_start_time;
     double next_residual_output;
     double next_probe_output;
     double next_print_output;

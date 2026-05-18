@@ -11,7 +11,8 @@ The solver includes a specialized regularization technique called **Isotropic Gr
 - **Numerical Method:** Flux Reconstruction (Tensor Product)
 - **Time Stepping:** Strong Stability Preserving Runge-Kutta 3rd Order (SSP-RK3)
 - **Riemann Solver:** Rusanov / Local Lax-Friedrichs (LLF)
-- **Visualization:** Python (using `plot2d.py`)
+- **Visualization:** ParaView (using `.pvd`/`.vtm` output)
+- **Dependencies:** Listed in `dependencies.txt`
 
 ## Directory Structure & Key Files
 The codebase is structured into modular compilation units inside the `src/` directory:
@@ -88,15 +89,27 @@ Discontinuous initial conditions trigger immediate instabilities in high-order F
 ### 5. Runtime Symmetry Check
 The main simulation loop includes a quantitative symmetry check that mirrors the density field across the diagonal and reports any deviation exceeding $1e^{-10}$, facilitating early detection of numerical bias.
 
-## Technical Refinements & Enhancements (April 2026)
+## Technical Refinements & Enhancements (May 2026)
 
-### 1. Modular Code Architecture
-The monolithic `solver.hpp` was aggressively refactored into a modular file structure (housed in `src/`). This separates the core solver engine from the flux schemes, limiters, boundary conditions, and time-integration loops, significantly improving maintainability, testing, and compilation times.
+### 1. Robust Multiblock Restart & PVD Continuity
+The solver now supports restarting from complex multiblock states:
+- **XML-Based Parsing:** Automatically parses `.vtm` (MultiBlockDataSet) files to map block IDs to their respective `.vts` data files.
+- **PVD History Persistence:** Upon restart, the `VTKWriter` scans the existing `solution.pvd` file to load previous time-step history, ensuring a continuous timeline in ParaView without data-loss on resume.
 
-### 2. Multi-Core Parallelization via OpenMP
-Element-level loops and large vector operations have been heavily parallelized using `#pragma omp parallel for`. 
-- **Inherent Thread Safety:** The FR tensor-product sweeps (X and Y) are embarrassingly parallel across element rows and columns respectively, meaning no race conditions exist during memory writes.
-- **Dynamic Threading:** The number of cores utilized can be natively specified via `NUM_THREADS` within `inputs.dat`, allowing dynamic scaling without recompilation.
+### 2. Automated Grid & Connectivity Validation
+To prevent simulation crashes due to misconfigured domains, a strict validation pass is performed at startup:
+- **1-to-1 Mapping:** Ensures that every block neighbor relationship is symmetric (e.g., if Block A says B is its left neighbor, B must say A is its right neighbor).
+- **Metric Verification:** Validates that physical interface lengths and element counts match across neighboring block boundaries.
+
+### 3. Synchronized Diagnostics & Appending
+Diagnostics are now state-aware across restarts:
+- **Interval Sync:** The internal timers for terminal printing, residuals, and probes are synchronized with the `RESTART_TIME`, preventing immediate output floods on resume.
+- **File Appending:** Diagnostic logs (`residuals.dat`, `probe.csv`) switch to append mode during restarts, preserving the full time-history of the simulation.
+
+### 4. Pressure-Bounded IGR Source Term
+To improve the stability of high-order IGR at strong shocks:
+- **Source Capping:** The raw sensor source term ($S_{buf}$) is now optionally capped by the local pressure ($S \le C \cdot P$) *before* the Helmholtz smoothing pass.
+- **Preserved Diffusion:** Unlike capping the final viscosity field, capping the *source* allows the Helmholtz operator to naturally diffuse viscosity ahead of the shock wave, providing the necessary pre-conditioning for numerical stability.
 
 ## Documentation Maintenance
 - **Input Parameters**: Whenever a new parameter is added to `parameters.hpp` or the solver logic, the `inputs_example.txt` file **must** be updated with a detailed explanation and a sample value. This ensures the user-facing documentation remains synchronized with the implementation.

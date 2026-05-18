@@ -68,6 +68,14 @@ void IC::apply(Solver& solver) {
                             v = p.V_INF;
                             press = p.P_INF;
 
+                        } else if (p.IC_TYPE == "LID_DRIVEN_CAVITY") {
+                            // Quiescent gas at uniform conditions.
+                            // The lid motion is imposed by the WALL_MOVING BC.
+                            rho = p.RHO_INF;
+                            u = 0.0;
+                            v = 0.0;
+                            press = p.P_INF;
+
                         } else { // UNIFORM default
                             rho = 1.0;
                             u = 0.0;

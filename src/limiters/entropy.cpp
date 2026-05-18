@@ -1,11 +1,15 @@
-/// @file entropy.cpp
-/// @brief Entropy minimum-preservation limiter implementation.
-///
-/// For each element, the local entropy floor is the minimum specific entropy
-/// s = p / ρ^γ  taken over the cell's own solution points AND all solution
-/// points in the 4 face-neighbouring cells.
-///
-/// OpenMP: parallelised over elements.
+/**
+ * @file entropy.cpp
+ * @brief Implementation of the Entropy Minimum-Preservation Limiter.
+ *
+ * For each computational cell, the local entropy floor is computed as the minimum
+ * specific entropy:
+ * \f[ s = \frac{p}{\rho^\gamma} \f]
+ * across the cell's own interior solution points AND all solution points in the
+ * 4 face-neighboring cells (including multiblock neighbors).
+ *
+ * This implementation is parallelized across elements using OpenMP.
+ */
 
 #include "entropy.hpp"
 #include "../core/solver.hpp"
@@ -14,6 +18,15 @@
 #include <omp.h>
 #endif
 
+/**
+ * @brief Apply the entropy minimum-preserving limiter to the entire solver domain.
+ *
+ * Enforces specific entropy bounds to maintain positivity and stability in high-order
+ * FR methods without introducing excessive numerical dissipation.
+ *
+ * @param[in,out] solver The active Solver context
+ * @return LimiterStats Statistics containing the number of cells limited and average theta scaling factor
+ */
 Limiters::LimiterStats Limiters::apply_entropy_limiter(Solver &solver) {
   const Parameters &p = solver.p;
   const Basis &basis = solver.basis;
@@ -50,12 +63,11 @@ Limiters::LimiterStats Limiters::apply_entropy_limiter(Solver &solver) {
         if (ex > 0) {
           s_floor = std::min(s_floor, s_min[ey * b.nx + (ex - 1)]);
         } else {
-          std::string bc = b.bc_l;
-          if (bc.find(':') != std::string::npos) {
-            int nid = std::stoi(bc.substr(0, bc.find(':')));
-            char face = bc[bc.find(':') + 1];
-            if (face == 'R') s_floor = std::min(s_floor, blocks_s_min[nid][ey * solver.blocks[nid].nx + (solver.blocks[nid].nx - 1)]);
-          } else if (bc == "PERIODIC") {
+          if (b.ni_l.id != -1) {
+            int nid = b.ni_l.id;
+            int nex = (b.ni_l.face == 'L') ? 0 : solver.blocks[nid].nx - 1;
+            s_floor = std::min(s_floor, blocks_s_min[nid][ey * solver.blocks[nid].nx + nex]);
+          } else if (b.bc_l == "PERIODIC") {
             s_floor = std::min(s_floor, s_min[ey * b.nx + (b.nx - 1)]);
           }
         }
@@ -64,12 +76,11 @@ Limiters::LimiterStats Limiters::apply_entropy_limiter(Solver &solver) {
         if (ex < b.nx - 1) {
           s_floor = std::min(s_floor, s_min[ey * b.nx + (ex + 1)]);
         } else {
-          std::string bc = b.bc_r;
-          if (bc.find(':') != std::string::npos) {
-            int nid = std::stoi(bc.substr(0, bc.find(':')));
-            char face = bc[bc.find(':') + 1];
-            if (face == 'L') s_floor = std::min(s_floor, blocks_s_min[nid][ey * solver.blocks[nid].nx + 0]);
-          } else if (bc == "PERIODIC") {
+          if (b.ni_r.id != -1) {
+            int nid = b.ni_r.id;
+            int nex = (b.ni_r.face == 'L') ? 0 : solver.blocks[nid].nx - 1;
+            s_floor = std::min(s_floor, blocks_s_min[nid][ey * solver.blocks[nid].nx + nex]);
+          } else if (b.bc_r == "PERIODIC") {
             s_floor = std::min(s_floor, s_min[ey * b.nx + 0]);
           }
         }
@@ -78,12 +89,11 @@ Limiters::LimiterStats Limiters::apply_entropy_limiter(Solver &solver) {
         if (ey > 0) {
           s_floor = std::min(s_floor, s_min[(ey - 1) * b.nx + ex]);
         } else {
-          std::string bc = b.bc_b;
-          if (bc.find(':') != std::string::npos) {
-            int nid = std::stoi(bc.substr(0, bc.find(':')));
-            char face = bc[bc.find(':') + 1];
-            if (face == 'T') s_floor = std::min(s_floor, blocks_s_min[nid][(solver.blocks[nid].ny - 1) * solver.blocks[nid].nx + ex]);
-          } else if (bc == "PERIODIC") {
+          if (b.ni_b.id != -1) {
+            int nid = b.ni_b.id;
+            int ney = (b.ni_b.face == 'B') ? 0 : solver.blocks[nid].ny - 1;
+            s_floor = std::min(s_floor, blocks_s_min[nid][ney * solver.blocks[nid].nx + ex]);
+          } else if (b.bc_b == "PERIODIC") {
             s_floor = std::min(s_floor, s_min[(b.ny - 1) * b.nx + ex]);
           }
         }
@@ -92,18 +102,18 @@ Limiters::LimiterStats Limiters::apply_entropy_limiter(Solver &solver) {
         if (ey < b.ny - 1) {
           s_floor = std::min(s_floor, s_min[(ey + 1) * b.nx + ex]);
         } else {
-          std::string bc = b.bc_t;
-          if (bc.find(':') != std::string::npos) {
-            int nid = std::stoi(bc.substr(0, bc.find(':')));
-            char face = bc[bc.find(':') + 1];
-            if (face == 'B') s_floor = std::min(s_floor, blocks_s_min[nid][0 * solver.blocks[nid].nx + ex]);
-          } else if (bc == "PERIODIC") {
+          if (b.ni_t.id != -1) {
+            int nid = b.ni_t.id;
+            int ney = (b.ni_t.face == 'B') ? 0 : solver.blocks[nid].ny - 1;
+            s_floor = std::min(s_floor, blocks_s_min[nid][ney * solver.blocks[nid].nx + ex]);
+          } else if (b.bc_t == "PERIODIC") {
             s_floor = std::min(s_floor, s_min[0 * b.nx + ex]);
           }
         }
 
         // Lower s_floor to avoid being overly dissipative
         s_floor -= 1.0E-4;
+        if (s_floor < 1.0E-14) s_floor = 1.0E-14;
 
         // --- Cell average ---
         double r_avg, ru_avg, rv_avg, E_avg;

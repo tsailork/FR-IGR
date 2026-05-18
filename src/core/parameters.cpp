@@ -100,7 +100,10 @@ void Parameters::load_domain(const std::string& filename) {
         }
 
         auto check_face = [&](const std::string& bc, char self_face) {
-            if (bc.find(':') != std::string::npos) {
+            // Only treat as block-to-block connectivity if the first character
+            // before ':' is a digit (e.g., "1:L").  BC strings like
+            // "WALL_NOSLIP:300" or "WALL_MOVING:1.0" are NOT connectivity.
+            if (bc.find(':') != std::string::npos && !bc.empty() && std::isdigit(static_cast<unsigned char>(bc[0]))) {
                 size_t sep = bc.find(':');
                 int nid = std::stoi(bc.substr(0, sep));
                 char nface = bc[sep + 1];
@@ -196,10 +199,25 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("ENABLE_ENTROPY_LIMITER")) ENABLE_ENTROPY_LIMITER = (kv["ENABLE_ENTROPY_LIMITER"] == "true" || kv["ENABLE_ENTROPY_LIMITER"] == "1");
     }
 
+    // --- [NavierStokes] ---
+    if (ini.count("NavierStokes")) {
+        auto& kv = ini["NavierStokes"];
+        if (kv.count("ENABLE_NS"))    ENABLE_NS    = (kv["ENABLE_NS"] == "true" || kv["ENABLE_NS"] == "1");
+        if (kv.count("RE"))           RE           = std::stod(kv["RE"]);
+        if (kv.count("PR"))           PR           = std::stod(kv["PR"]);
+        if (kv.count("MACH_REF"))     MACH_REF     = std::stod(kv["MACH_REF"]);
+        if (kv.count("NS_BR2_ETA"))   NS_BR2_ETA   = std::stod(kv["NS_BR2_ETA"]);
+    }
+
     // --- [IO] ---
     if (ini.count("IO")) {
         auto& kv = ini["IO"];
-        if (kv.count("OUTPUT_DT"))         OUTPUT_DT         = std::stod(kv["OUTPUT_DT"]);
+        if (kv.count("OUTPUT_DT")) {
+            OUTPUT_DT = std::stod(kv["OUTPUT_DT"]);
+            OUTPUT_INTERVAL = OUTPUT_DT;
+        }
+        if (kv.count("OUTPUT_INTERVAL"))   OUTPUT_INTERVAL  = std::stod(kv["OUTPUT_INTERVAL"]);
+        if (kv.count("RESTART_INTERVAL"))  RESTART_INTERVAL = std::stod(kv["RESTART_INTERVAL"]);
         if (kv.count("RESIDUAL_INTERVAL")) RESIDUAL_INTERVAL = std::stod(kv["RESIDUAL_INTERVAL"]);
         if (kv.count("PROBE_INTERVAL"))    PROBE_INTERVAL    = std::stod(kv["PROBE_INTERVAL"]);
         if (kv.count("PRINT_INTERVAL"))    PRINT_INTERVAL    = std::stod(kv["PRINT_INTERVAL"]);

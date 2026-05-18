@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
   <component name="CMakeSettings">
     <configurations>
       <configuration PROFILE_NAME="Debug" ENABLED="true" CONFIG_NAME="Debug" />
@@ -7,18 +10,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="f42687a1-e2de-4180-8d1e-4b46beb7ed90" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../GEMINI.md" beforeDir="false" afterPath="$PROJECT_DIR$/../GEMINI.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Makefile" beforeDir="false" afterPath="$PROJECT_DIR$/../Makefile" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../basis.hpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../fr_solver" beforeDir="false" afterPath="$PROJECT_DIR$/../fr_solver" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.." beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../domain.grid" beforeDir="false" afterPath="$PROJECT_DIR$/../domain.grid" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../inputs.dat" beforeDir="false" afterPath="$PROJECT_DIR$/../inputs.dat" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../main.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../outputs.hpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../parameters.hpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../run.sh" beforeDir="false" afterPath="$PROJECT_DIR$/../run.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../solver.hpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../state.hpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../test_main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../residuals.dat" beforeDir="false" afterPath="$PROJECT_DIR$/../residuals.dat" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -49,6 +44,11 @@
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
     "git-widget-placeholder": "main",
+    "last_opened_file_path": "C:/Users/tskoepli/Documents/GitHub/FR-IGR",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -61,6 +61,7 @@
       <option name="presentableId" value="Default" />
       <updated>1777317598017</updated>
       <workItem from="1777317601912" duration="17000" />
+      <workItem from="1778783381208" duration="370000" />
     </task>
     <servers />
   </component>

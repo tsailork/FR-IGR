@@ -36,7 +36,8 @@ int main() {
 
     // 4. Initialization: restart from file, or apply fresh IC
     double t = 0.0;
-    int output_count = 0;
+    int checkpoint_count = 0;
+    int plot_count = 0;
 
     if (!params.RESTART_FILE.empty()) {
         std::cout << "Restarting from: " << params.RESTART_FILE << "\n";
@@ -46,8 +47,10 @@ int main() {
             return 1;
         }
         t = params.RESTART_TIME;
-        output_count = static_cast<int>(std::round(t / params.OUTPUT_DT));
-        std::cout << "Resuming at t=" << t << ", output_count=" << output_count << "\n";
+        checkpoint_count = static_cast<int>(std::round(t / params.RESTART_INTERVAL));
+        plot_count = static_cast<int>(std::round(t / params.OUTPUT_INTERVAL));
+        std::cout << "Resuming at t=" << t << ", checkpoint_count=" << checkpoint_count 
+                  << ", plot_count=" << plot_count << "\n";
     } else {
         std::cout << "Initializing solver with IC: " << params.IC_TYPE << "...\n";
         IC::apply(solver);
@@ -63,16 +66,22 @@ int main() {
 
     // 5. Time Stepping Loop
     int step = 0;
-    double next_output = output_count * params.OUTPUT_DT + params.OUTPUT_DT;
+    double next_checkpoint = checkpoint_count * params.RESTART_INTERVAL + params.RESTART_INTERVAL;
+    double next_plot       = plot_count * params.OUTPUT_INTERVAL + params.OUTPUT_INTERVAL;
 
-    writer.write_snapshot(solver, output_count++, t);
+    // Write initial states
+    writer.write_checkpoint(solver, checkpoint_count++, t);
+    writer.write_plot(solver, plot_count++, t);
+    
     Diagnostics diag(params, solver, t);
 
     while (t < params.T_FINAL) {
         double dt = solver.compute_dt();
 
-        if (t + dt > next_output) dt = next_output - t;
-        if (t + dt > params.T_FINAL) dt = params.T_FINAL - t;
+        // Limit dt to hit output intervals exactly
+        if (t + dt > next_checkpoint) dt = next_checkpoint - t;
+        if (t + dt > next_plot)       dt = next_plot - t;
+        if (t + dt > params.T_FINAL)  dt = params.T_FINAL - t;
 
         solver.step_rk3(dt);
         t += dt;
@@ -80,9 +89,16 @@ int main() {
 
         diag.update(solver, t, step);
 
-        if (std::abs(t - next_output) < 1e-12) {
-            writer.write_snapshot(solver, output_count++, t);
-            next_output += params.OUTPUT_DT;
+        // Write checkpoint if scheduled
+        if (std::abs(t - next_checkpoint) < 1e-12) {
+            writer.write_checkpoint(solver, checkpoint_count++, t);
+            next_checkpoint += params.RESTART_INTERVAL;
+        }
+
+        // Write plot if scheduled
+        if (std::abs(t - next_plot) < 1e-12) {
+            writer.write_plot(solver, plot_count++, t);
+            next_plot += params.OUTPUT_INTERVAL;
         }
     }
 

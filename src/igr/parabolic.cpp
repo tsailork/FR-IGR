@@ -128,7 +128,7 @@ void Solver::compute_igr_parabolic_rhs() {
             std::tie(f_nb, sig_nb, rho_nb) = get_val(b.ni_l, false, fL, sigL, rhoL);
             double eta = br2_factor * (epsilon / std::max(1e-12, 0.5*(rhoL + rho_nb))) / b.dx;
             fhatL[iy] = 0.5*(f_nb + fL) + eta*(sigL - sig_nb);
-            if (b.ni_l.is_wall || b.ni_l.is_inflow || b.ni_l.is_transmissive) fhatL[iy] = 0.0;
+            if (b.ni_l.is_wall || b.ni_l.is_noslip_wall || b.ni_l.is_moving_wall || b.ni_l.is_supersonic_inflow || b.ni_l.is_supersonic_outflow || b.ni_l.is_characteristic) fhatL[iy] = 0.0;
           } else {
             f_nb = 0; sig_nb = 0; rho_nb = 0;
             for (int k=0; k<p.N_PTS; ++k) {
@@ -146,7 +146,7 @@ void Solver::compute_igr_parabolic_rhs() {
             std::tie(f_nb, sig_nb, rho_nb) = get_val(b.ni_r, true, fR, sigR, rhoR);
             double eta = br2_factor * (epsilon / std::max(1e-12, 0.5*(rhoR + rho_nb))) / b.dx;
             fhatR[iy] = 0.5*(f_nb + fR) + eta*(sig_nb - sigR);
-            if (b.ni_r.is_wall || b.ni_r.is_inflow || b.ni_r.is_transmissive) fhatR[iy] = 0.0;
+            if (b.ni_r.is_wall || b.ni_r.is_noslip_wall || b.ni_r.is_moving_wall || b.ni_r.is_supersonic_inflow || b.ni_r.is_supersonic_outflow || b.ni_r.is_characteristic) fhatR[iy] = 0.0;
           } else {
             f_nb = 0; sig_nb = 0; rho_nb = 0;
             for (int k=0; k<p.N_PTS; ++k) {
@@ -203,7 +203,7 @@ void Solver::compute_igr_parabolic_rhs() {
             std::tie(f_nb, sig_nb, rho_nb) = get_val_y(b.ni_b, false, fB, sigB, rhoB);
             double eta = br2_factor * (epsilon / std::max(1e-12, 0.5*(rhoB + rho_nb))) / b.dy;
             fhatB[ix] = 0.5*(f_nb + fB) + eta*(sigB - sig_nb);
-            if (b.ni_b.is_wall || b.ni_b.is_inflow || b.ni_b.is_transmissive) fhatB[ix] = 0.0;
+            if (b.ni_b.is_wall || b.ni_b.is_noslip_wall || b.ni_b.is_moving_wall || b.ni_b.is_supersonic_inflow || b.ni_b.is_supersonic_outflow || b.ni_b.is_characteristic) fhatB[ix] = 0.0;
           } else {
             f_nb = 0; sig_nb = 0; rho_nb = 0;
             for (int k=0; k<p.N_PTS; ++k) {
@@ -221,7 +221,7 @@ void Solver::compute_igr_parabolic_rhs() {
             std::tie(f_nb, sig_nb, rho_nb) = get_val_y(b.ni_t, true, fT, sigT, rhoT);
             double eta = br2_factor * (epsilon / std::max(1e-12, 0.5*(rhoT + rho_nb))) / b.dy;
             fhatT[ix] = 0.5*(f_nb + fT) + eta*(sig_nb - sigT);
-            if (b.ni_t.is_wall || b.ni_t.is_inflow || b.ni_t.is_transmissive) fhatT[ix] = 0.0;
+            if (b.ni_t.is_wall || b.ni_t.is_noslip_wall || b.ni_t.is_moving_wall || b.ni_t.is_supersonic_inflow || b.ni_t.is_supersonic_outflow || b.ni_t.is_characteristic) fhatT[ix] = 0.0;
           } else {
             f_nb = 0; sig_nb = 0; rho_nb = 0;
             for (int k=0; k<p.N_PTS; ++k) {
