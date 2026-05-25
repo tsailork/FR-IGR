@@ -14,6 +14,8 @@
 #include <vector>
 #include <sstream>
 #include <string>
+#include "../ib/ib.hpp"
+
 
 /**
  * @struct ProbeDef
@@ -111,6 +113,31 @@ struct Parameters {
     bool   ENABLE_POS_LIMITER     = false;  ///< Toggle density/pressure positivity-preserving limiter (Zhang-Shu).
     double POS_LIMITER_EPS        = 1e-10;  ///< Physical cutoff tolerance for density and pressure floors.
     bool   ENABLE_ENTROPY_LIMITER = false;  ///< Toggle high-order specific entropy minimum preservation limiter.
+
+    // -------------------------------------------------------------------------
+    // Immersed Boundary (IB)
+    // -------------------------------------------------------------------------
+    bool        ENABLE_IB           = false;      ///< Toggle Immersed Boundary Method.
+    std::string IB_METHOD           = "ANALYTICAL"; ///< VPM integration method ("ANALYTICAL" or "EXPLICIT").
+    std::string IB_SHAPE            = "CIRCLE";   ///< Shape definition type (e.g. "CIRCLE", "NACA").
+    std::string IB_NACA_CODE        = "0012";     ///< NACA 4-digit code (e.g. "0012", "2412").
+    double      IB_AOA              = 0.0;        ///< Angle of attack in degrees for the airfoil.
+    double      IB_CENTER_X         = 0.0;        ///< Circle/Cylinder center X coordinate.
+    double      IB_CENTER_Y         = 0.0;        ///< Circle/Cylinder center Y coordinate.
+    double      IB_RADIUS           = 0.5;        ///< Circle/Cylinder radius.
+    double      IB_PENALIZATION_ETA = 1e-7;       ///< Solid permeability penalization parameter.
+    double      IB_VELOCITY_X       = 0.0;        ///< Immersed solid velocity along X.
+    double      IB_VELOCITY_Y       = 0.0;        ///< Immersed solid velocity along Y.
+    std::string IB_THERMAL_TYPE     = "ADIABATIC"; ///< IB thermal boundary type ("ADIABATIC" or "ISOTHERMAL").
+    double      IB_TEMPERATURE      = 1.0;        ///< Solid wall temperature target for isothermal.
+    bool        IB_SHARP            = false;      ///< Use sharp solid mask (true) or smoothed Heaviside mask (false).
+    double      IB_SMOOTH_WIDTH     = 1.5;        ///< Smooth interface thickness factor (in units of grid spacing).
+    std::vector<ImmersedBoundary::QuadShape> ib_quads; ///< User-defined static/dynamic quadrilaterals.
+    std::vector<ImmersedBoundary::ParabolaShape> ib_polys; ///< User-defined static/dynamic lines/parabolas.
+    std::vector<std::pair<double, double>> ib_q_time_map; ///< Piecewise-linear checkpoints for time parameter q(t) (time, q).
+    bool ib_is_dynamic = false; ///< True if any geometry is moving / dynamic.
+    double evaluate_ib_q(double t) const; ///< Evaluates dynamic time parameter q(t) by interpolating time map.
+
 
     // -------------------------------------------------------------------------
     // Restart

@@ -12,6 +12,8 @@
 #include <sys/stat.h>
 #endif
 
+#define RGASAIR (287.43)
+
 void ensure_output_directory(const std::string& path) {
 #ifdef _WIN32
     _mkdir(path.c_str());
@@ -151,7 +153,7 @@ void VTKWriter::write_checkpoint(Solver& solver, int step, double time) {
             if (var == 0) return u;
             if (var == 1) return v;
             if (var == 2) return press;
-            if (var == 3) return press/r;
+            if (var == 3) return press/(r*RGASAIR);
             if (var == 4) return std::sqrt(u*u + v*v) / std::sqrt(p.GAMMA * std::abs(press) / r);
             return 0.0;
         };
@@ -168,6 +170,14 @@ void VTKWriter::write_checkpoint(Solver& solver, int step, double time) {
             });
             write_array("Sigma_Source", [&](int ey, int ex, int iy, int ix) {
                 return b.S_buf[b.get_flat_idx(ey, ex, iy, ix, p.N_PTS)];
+            });
+        }
+
+        if (p.ENABLE_IB) {
+            write_array("phi", [&](int ey, int ex, int iy, int ix) {
+                double x_pt = b.x_min + (ex + 0.5*(1+solver.basis.z[ix])) * b.dx;
+                double y_pt = b.y_min + (ey + 0.5*(1+solver.basis.z[iy])) * b.dy;
+                return solver.get_ib_mask(x_pt, y_pt, b.dx, b.dy);
             });
         }
 
@@ -364,7 +374,7 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
                     if (var == 0) val = u;
                     else if (var == 1) val = v;
                     else if (var == 2) val = press;
-                    else if (var == 3) val = press / r_val;
+                    else if (var == 3) val = press / (RGASAIR*r_val);
                     else if (var == 4) val = std::sqrt(u*u + v*v) / std::sqrt(p.GAMMA * std::abs(press) / r_val);
 
                     vts << val << " ";
@@ -386,6 +396,14 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
             });
             write_array("Sigma_Source", [&](int ey, int ex, int iy, int ix) {
                 return b.S_buf[b.get_flat_idx(ey, ex, iy, ix, p.N_PTS)];
+            });
+        }
+
+        if (p.ENABLE_IB) {
+            write_array("phi", [&](int ey, int ex, int iy, int ix) {
+                double x_pt = b.x_min + (ex + 0.5*(1+solver.basis.z[ix])) * b.dx;
+                double y_pt = b.y_min + (ey + 0.5*(1+solver.basis.z[iy])) * b.dy;
+                return solver.get_ib_mask(x_pt, y_pt, b.dx, b.dy);
             });
         }
 

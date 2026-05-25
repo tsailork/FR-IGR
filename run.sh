@@ -13,7 +13,7 @@ export OMP_NUM_THREADS=$THREADS
 
 echo "Building FR-IGR Solver..."
 make clean
-make -j4 all
+make -j12 all
 
 echo "Running Simulation..."
 ./fr_solver

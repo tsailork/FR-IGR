@@ -27,6 +27,14 @@ T_FINAL = 0.3
 # NUM_THREADS: Number of OpenMP threads to use
 NUM_THREADS = 4
 
+[NavierStokes]
+ENABLE_NS = true
+RE = 100.0
+PR = 0.72
+MACH_REF = 5.0
+NS_BR2_ETA = 1.0
+
+
 [Regularization]
 # ENABLE_IGR: Toggle Isotropic Gradient Regularization (artificial viscosity)
 ENABLE_IGR = false
@@ -58,6 +66,80 @@ POS_LIMITER_EPS = 1e-10
 
 # ENABLE_ENTROPY_LIMITER: Prevents unphysical entropy undershoots.
 ENABLE_ENTROPY_LIMITER = true
+
+[ImmersedBoundary]
+# ENABLE_IB: Toggle the Volume Penalization Immersed Boundary Method
+ENABLE_IB = false
+
+# IB_METHOD: Integration type. Options: 
+#   - ANALYTICAL: Exact semi-implicit fractional-step integration (unconditionally stable for any eta).
+#   - EXPLICIT: Adds VPM source terms directly to the RHS (requires dt <= eta for stability).
+IB_METHOD = ANALYTICAL
+
+# IB_SHAPE: Geometry definition. Supported: "CIRCLE", "NACA", "MULTI"
+#   - CIRCLE: Uses standard single cylinder geometry.
+#   - NACA: Uses a standard 4-digit airfoil geometry.
+#   - MULTI: Allows user-defined lists of convex quadrilaterals & lines/parabolas.
+IB_SHAPE = CIRCLE
+
+# IB_NACA_CODE: Standard 4-digit NACA airfoil code (e.g. "0012", "2412"). Used if IB_SHAPE = NACA.
+IB_NACA_CODE = 0012
+
+# IB_AOA: Airfoil angle of attack (AOA) in degrees. Used if IB_SHAPE = NACA.
+IB_AOA = 0.0
+
+# Geometry dimensions of the cylinder/airfoil (Used if IB_SHAPE = CIRCLE or NACA)
+# For CIRCLE: Center coordinate (IB_CENTER_X, IB_CENTER_Y) and Radius (IB_RADIUS).
+# For NACA: Leading edge coordinate (IB_CENTER_X, IB_CENTER_Y) and Chord length (IB_RADIUS).
+IB_CENTER_X = 2.0
+IB_CENTER_Y = 1.0
+IB_RADIUS = 0.25
+
+# --- MULTI Shape Options (Used if IB_SHAPE = MULTI) ---
+# IB_Q_TIME_MAP: Piecewise-linear checkpoints for time parameter q(t) (format: t_0:q_0 t_1:q_1 ...).
+# Useful for prescribing moving/morphing geometries. Default is 0.0:0.0.
+# Example: 0.0:0.0 1.0:0.0 2.0:1.0 (remains at q=0 from t=0 to 1, then linearly increases to q=1 at t=2)
+IB_Q_TIME_MAP = 0.0:0.0 1.0:0.0 2.0:1.0
+
+# IB_NUM_QUADS: Number of convex quadrilaterals to mask out.
+IB_NUM_QUADS = 0
+# IB_QUAD_i: 8 coordinates representing ordered vertices (x1 y1 x2 y2 x3 y3 x4 y4) for quadrilateral i.
+# IB_QUAD_0 = 0.2 0.2 0.4 0.2 0.4 0.4 0.2 0.4
+
+# IB_NUM_POLYS: Number of lines/parabolas to mask out.
+IB_NUM_POLYS = 0
+# IB_POLY_i: Defines curve f(xi) = a*xi^2 + b*xi + c where coefficients interpolate linearly with q(t).
+# Format: DIR a0 b0 c0 a1 b1 c1 SIDE
+#   - DIR: 'Y' for vertical offset f(x) = y, 'X' for horizontal offset f(y) = x
+#   - a0, b0, c0: Coefficients [a, b, c] at state q = 0
+#   - a1, b1, c1: Coefficients [a, b, c] at state q = 1
+#   - SIDE: Which side of the curve to mask out: "ABOVE", "BELOW" (for DIR=Y) or "LEFT", "RIGHT" (for DIR=X)
+# Example: Y 0.0 0.0 0.2 0.0 0.0 0.4 BELOW
+#   (defines a flat horizontal line moving vertically from y=0.2 at q=0 to y=0.4 at q=1, masking below it)
+# IB_POLY_0 = Y 0.0 0.0 0.2 0.0 0.0 0.4 BELOW
+
+# IB_PENALIZATION_ETA: Solid permeability parameter (eta). Smaller = more rigid/impermeable.
+IB_PENALIZATION_ETA = 1e-7
+
+# Solid boundary velocities (static)
+IB_VELOCITY_X = 0.0
+IB_VELOCITY_Y = 0.0
+
+# IB_THERMAL_TYPE: Solid thermal boundary condition. Options:
+#   - ADIABATIC: Penalizes velocity only, leaving internal pressure/temperature adiabatic.
+#   - ISOTHERMAL: Penalizes velocity and forces solid temperature to IB_TEMPERATURE.
+IB_THERMAL_TYPE = ADIABATIC
+
+# Target wall temperature (used if IB_THERMAL_TYPE = ISOTHERMAL)
+IB_TEMPERATURE = 1.0
+
+# IB_SHARP: Use a sharp solid boundary interface mask (true) or regularized Heaviside (false).
+# Note: False is highly recommended for high-order methods to prevent Gibbs oscillations.
+IB_SHARP = false
+
+# IB_SMOOTH_WIDTH: Half-width thickness of the smoothed Heaviside boundary interface 
+# (measured in units of grid spacing dx, dy). Typically 1.0 to 2.0.
+IB_SMOOTH_WIDTH = 1.5
 
 [IO]
 # OUTPUT_INTERVAL: Time interval between full, continuous VTK plotting snapshots (plot_*.vtm).
@@ -118,6 +200,9 @@ PROBE_3 = 0.9, 0.5, Mach
 #   - WALL_MOVING:V:T: Isothermal moving wall with velocity V and temperature T.
 #   - INFLOW_SUPERSONIC:rho:u:v:p: Enforces the given reference state.
 #   - CHARACTERISTIC:rho:u:v:p: Riemann invariant based subsonic inflow/outflow using the reference state.
+#   - TOTAL_PRESSURE_COMP:Pt: Subsonic backpressure boundary scaling the state to match target compressible total pressure Pt.
+#   - TOTAL_PRESSURE_INCOMP:Pt: Subsonic backpressure boundary using Bernoulli's incompressible equation to match target total pressure Pt.
+#   - STATIC_PRESSURE:P: Subsonic backpressure boundary enforcing the target static pressure P while copying interior density and velocity.
 #   - ID:FACE: Connects to the specified face of neighbor Block ID.
 #     Example: '2:T' means "Connect to the TOP face of Block 2".
 #     Note: For periodic boundaries, simply map opposite faces to each other 

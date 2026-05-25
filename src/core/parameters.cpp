@@ -225,6 +225,103 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("RESTART_TIME"))      RESTART_TIME      = std::stod(kv["RESTART_TIME"]);
     }
 
+    // --- [ImmersedBoundary] ---
+    if (ini.count("ImmersedBoundary")) {
+        auto& kv = ini["ImmersedBoundary"];
+        if (kv.count("ENABLE_IB"))           ENABLE_IB           = (kv["ENABLE_IB"] == "true" || kv["ENABLE_IB"] == "1");
+        if (kv.count("IB_METHOD"))           IB_METHOD           = kv["IB_METHOD"];
+        if (kv.count("IB_SHAPE"))            IB_SHAPE            = kv["IB_SHAPE"];
+        if (kv.count("IB_NACA_CODE"))        IB_NACA_CODE        = kv["IB_NACA_CODE"];
+        if (kv.count("IB_AOA"))              IB_AOA              = std::stod(kv["IB_AOA"]);
+        if (kv.count("IB_CENTER_X"))         IB_CENTER_X         = std::stod(kv["IB_CENTER_X"]);
+        if (kv.count("IB_CENTER_Y"))         IB_CENTER_Y         = std::stod(kv["IB_CENTER_Y"]);
+        if (kv.count("IB_RADIUS"))           IB_RADIUS           = std::stod(kv["IB_RADIUS"]);
+        if (kv.count("IB_PENALIZATION_ETA")) IB_PENALIZATION_ETA = std::stod(kv["IB_PENALIZATION_ETA"]);
+        if (kv.count("IB_VELOCITY_X"))       IB_VELOCITY_X       = std::stod(kv["IB_VELOCITY_X"]);
+        if (kv.count("IB_VELOCITY_Y"))       IB_VELOCITY_Y       = std::stod(kv["IB_VELOCITY_Y"]);
+        if (kv.count("IB_THERMAL_TYPE"))     IB_THERMAL_TYPE     = kv["IB_THERMAL_TYPE"];
+        if (kv.count("IB_TEMPERATURE"))      IB_TEMPERATURE      = std::stod(kv["IB_TEMPERATURE"]);
+        if (kv.count("IB_SHARP"))            IB_SHARP            = (kv["IB_SHARP"] == "true" || kv["IB_SHARP"] == "1");
+        if (kv.count("IB_SMOOTH_WIDTH"))     IB_SMOOTH_WIDTH     = std::stod(kv["IB_SMOOTH_WIDTH"]);
+
+        // --- Custom parser for expanded dynamic/piecewise IB ---
+        ib_quads.clear();
+        ib_polys.clear();
+        ib_q_time_map.clear();
+        ib_is_dynamic = false;
+
+        // 1. Parse time checkpoints
+        if (kv.count("IB_Q_TIME_MAP")) {
+            std::stringstream ss(kv["IB_Q_TIME_MAP"]);
+            std::string token;
+            while (ss >> token) {
+                size_t colon = token.find(':');
+                if (colon != std::string::npos) {
+                    double t_val = std::stod(token.substr(0, colon));
+                    double q_val = std::stod(token.substr(colon + 1));
+                    ib_q_time_map.push_back({t_val, q_val});
+                }
+            }
+            if (ib_q_time_map.size() > 1) {
+                // Check if q actually changes in time map to set dynamic flag
+                for (size_t i = 1; i < ib_q_time_map.size(); ++i) {
+                    if (std::abs(ib_q_time_map[i].second - ib_q_time_map[0].second) > 1e-12) {
+                        ib_is_dynamic = true;
+                    }
+                }
+            }
+        }
+        if (ib_q_time_map.empty()) {
+            ib_q_time_map.push_back({0.0, 0.0});
+        }
+
+        // 2. Parse quadrilaterals
+        int num_quads = 0;
+        if (kv.count("IB_NUM_QUADS")) num_quads = std::stoi(kv["IB_NUM_QUADS"]);
+        for (int i = 0; i < num_quads; ++i) {
+            std::string key = "IB_QUAD_" + std::to_string(i);
+            if (kv.count(key)) {
+                std::stringstream ss(kv[key]);
+                ImmersedBoundary::QuadShape q;
+                bool ok = true;
+                for (int j = 0; j < 4; ++j) {
+                    if (!(ss >> q.x[j] >> q.y[j])) {
+                        ok = false;
+                        break;
+                    }
+                }
+                if (ok) {
+                    ib_quads.push_back(q);
+                } else {
+                    std::cerr << "Warning: Invalid coordinate count for Quad " << i << std::endl;
+                }
+            }
+        }
+
+        // 3. Parse polynomials/parabolas
+        int num_polys = 0;
+        if (kv.count("IB_NUM_POLYS")) num_polys = std::stoi(kv["IB_NUM_POLYS"]);
+        for (int i = 0; i < num_polys; ++i) {
+            std::string key = "IB_POLY_" + std::to_string(i);
+            if (kv.count(key)) {
+                std::stringstream ss(kv[key]);
+                ImmersedBoundary::ParabolaShape p_shape;
+                if (ss >> p_shape.dir >> p_shape.a0 >> p_shape.b0 >> p_shape.c0 
+                       >> p_shape.a1 >> p_shape.b1 >> p_shape.c1 >> p_shape.side) {
+                    ib_polys.push_back(p_shape);
+                    // If start and end coefficients differ, it is dynamically moving
+                    if (std::abs(p_shape.a0 - p_shape.a1) > 1e-12 ||
+                        std::abs(p_shape.b0 - p_shape.b1) > 1e-12 ||
+                        std::abs(p_shape.c0 - p_shape.c1) > 1e-12) {
+                        ib_is_dynamic = true;
+                    }
+                } else {
+                    std::cerr << "Warning: Invalid formatting for Poly " << i << std::endl;
+                }
+            }
+        }
+    }
+
     // --- [Probes] ---
     if (ini.count("Probes")) {
         auto& kv = ini["Probes"];
@@ -259,3 +356,22 @@ void Parameters::load_inputs(const std::string& filename) {
 
     std::cout << "Solver parameters loaded from " << filename << std::endl;
 }
+
+double Parameters::evaluate_ib_q(double t) const {
+    if (ib_q_time_map.empty()) return 0.0;
+    if (t <= ib_q_time_map.front().first) return ib_q_time_map.front().second;
+    if (t >= ib_q_time_map.back().first) return ib_q_time_map.back().second;
+
+    for (size_t i = 0; i < ib_q_time_map.size() - 1; ++i) {
+        double t0 = ib_q_time_map[i].first;
+        double t1 = ib_q_time_map[i+1].first;
+        if (t >= t0 && t <= t1) {
+            double q0 = ib_q_time_map[i].second;
+            double q1 = ib_q_time_map[i+1].second;
+            if (std::abs(t1 - t0) < 1e-12) return q0;
+            return q0 + (t - t0) / (t1 - t0) * (q1 - q0);
+        }
+    }
+    return 0.0;
+}
+

@@ -45,3 +45,22 @@ void build_viscous_wall_ghost(const double* face_state, double* neigh_state,
 void build_characteristic_ghost(const double* face_state, const double* ref_state,
                                 double n_x, double n_y, double gamma,
                                 double* neigh_state);
+
+/**
+ * @brief Construct a compressible total pressure ghost state.
+ */
+void build_total_pressure_comp_ghost(const double* face_state, double Pt_target,
+                                     double gamma, double* neigh_state);
+
+/**
+ * @brief Construct an incompressible/Bernoulli total pressure ghost state.
+ */
+void build_total_pressure_incomp_ghost(const double* face_state, double Pt_target,
+                                       double gamma, double* neigh_state);
+
+/**
+ * @brief Construct a static pressure ghost state.
+ */
+void build_static_pressure_ghost(const double* face_state, double P_target,
+                                 double gamma, double* neigh_state);
+

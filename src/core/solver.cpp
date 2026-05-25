@@ -63,6 +63,15 @@ static void parse_bc_string(const std::string& bc, NeighborInfo& ni) {
         } else {
             ni.wall_velocity = std::stod(params);
         }
+    } else if (bc.rfind("TOTAL_PRESSURE_COMP:", 0) == 0) {
+        ni.is_total_pressure_comp = true;
+        ni.ref_p = std::stod(bc.substr(20));
+    } else if (bc.rfind("TOTAL_PRESSURE_INCOMP:", 0) == 0) {
+        ni.is_total_pressure_incomp = true;
+        ni.ref_p = std::stod(bc.substr(22));
+    } else if (bc.rfind("STATIC_PRESSURE:", 0) == 0) {
+        ni.is_static_pressure = true;
+        ni.ref_p = std::stod(bc.substr(16));
     } else if (bc.find(':') != std::string::npos) {
         size_t sep = bc.find(':');
         ni.id = std::stoi(bc.substr(0, sep));
@@ -75,6 +84,7 @@ static void parse_bc_string(const std::string& bc, NeighborInfo& ni) {
 Solver::Solver(const Parameters& params)
     : p(params), basis(p.P_DEG)
 {
+    current_time = p.RESTART_TIME;
     blocks.clear();
     for (const auto& config : p.blocks) {
         blocks.emplace_back(config, p.N_PTS);
@@ -86,6 +96,11 @@ Solver::Solver(const Parameters& params)
         parse_bc_string(b.bc_r, b.ni_r);
         parse_bc_string(b.bc_b, b.ni_b);
         parse_bc_string(b.bc_t, b.ni_t);
+    }
+
+    // Compute initial IB mask field
+    if (p.ENABLE_IB) {
+        update_ib_mask_field(current_time);
     }
 }
 
@@ -101,5 +116,8 @@ void Solver::compute_rhs() {
         compute_gradients();
         viscous_sweep_x();
         viscous_sweep_y();
+    }
+    if (p.ENABLE_IB && p.IB_METHOD == "EXPLICIT") {
+        apply_ib_explicit();
     }
 }

@@ -8,8 +8,8 @@ set offsets 0, 0, graph 0.1, graph 0.1
  
 # 2. Plotting command (Update 'data.csv' to your filename)
 # Using 1:2 means Column 1 is X and Column 2 is Y
-plot  for [i=2:4] "< tail -n 99999999 residuals.dat" using 1:i with lines title "Residual "
-#plot for [i=2:4] "< tail -n 500 probe.csv" using 1:i with lines title "Probe "
+plot  for [i=2:5] "< tail -n 500 residuals.dat" using 1:i with lines title "Residual "
+###  plot for [i=2:4] "< tail -n 500 probe.csv" using 1:i with lines title "Probe "
 
 # 3. Real-time Loop (Every 1 second)
 while (1) {

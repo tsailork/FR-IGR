@@ -53,6 +53,15 @@ void Solver::get_neigh_state_y(const Block& b, int ey, int ex, int ix, bool is_t
                 ref_state[3] = ni.ref_p / (p.GAMMA - 1.0) + 0.5 * ni.ref_rho * (ni.ref_u*ni.ref_u + ni.ref_v*ni.ref_v);
                 build_characteristic_ghost(face_state, ref_state, 0.0, -1.0, p.GAMMA, neigh_state);
                 sig_neigh = 0.0;
+            } else if (ni.is_total_pressure_comp) {
+                build_total_pressure_comp_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
+                sig_neigh = sig_face;
+            } else if (ni.is_total_pressure_incomp) {
+                build_total_pressure_incomp_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
+                sig_neigh = sig_face;
+            } else if (ni.is_static_pressure) {
+                build_static_pressure_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
+                sig_neigh = sig_face;
             } else if (ni.is_supersonic_outflow) {
                 for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
                 sig_neigh = sig_face;
@@ -104,6 +113,15 @@ void Solver::get_neigh_state_y(const Block& b, int ey, int ex, int ix, bool is_t
                 ref_state[3] = ni.ref_p / (p.GAMMA - 1.0) + 0.5 * ni.ref_rho * (ni.ref_u*ni.ref_u + ni.ref_v*ni.ref_v);
                 build_characteristic_ghost(face_state, ref_state, 0.0, 1.0, p.GAMMA, neigh_state);
                 sig_neigh = 0.0;
+            } else if (ni.is_total_pressure_comp) {
+                build_total_pressure_comp_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
+                sig_neigh = sig_face;
+            } else if (ni.is_total_pressure_incomp) {
+                build_total_pressure_incomp_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
+                sig_neigh = sig_face;
+            } else if (ni.is_static_pressure) {
+                build_static_pressure_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
+                sig_neigh = sig_face;
             } else if (ni.is_supersonic_outflow) {
                 for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
                 sig_neigh = sig_face;

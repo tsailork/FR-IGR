@@ -36,6 +36,10 @@ void Solver::step_rk3(double dt) {
     sig_old.push_back(b.sigma_field);
   }
 
+  if (p.ENABLE_IB && p.ib_is_dynamic) {
+    update_ib_mask_field(current_time);
+  }
+
   const bool is_parabolic = (p.IGR_TYPE == "PARABOLIC");
   const int n_sub = std::max(1, p.IGR_SUB_ITERS);
   const double dt_sub = dt / n_sub;
@@ -157,6 +161,10 @@ void Solver::step_rk3(double dt) {
   if (is_parabolic)
     sub_iterate_sigma_all(sig_old, 0.0, 1.0);
 
+  if (p.ENABLE_IB && p.IB_METHOD == "ANALYTICAL") {
+    apply_ib_analytical(dt);
+  }
+
   if (p.ENABLE_POS_LIMITER) {
     for (auto &b : blocks)
       add_stats(Limiters::apply_positivity_limiter(b.U, basis, p));
@@ -166,6 +174,9 @@ void Solver::step_rk3(double dt) {
   check_stability();
 
   // Stage 2
+  if (p.ENABLE_IB && p.ib_is_dynamic) {
+    update_ib_mask_field(current_time + dt);
+  }
   compute_rhs();
   for (size_t bid = 0; bid < blocks.size(); ++bid) {
     auto &b = blocks[bid];
@@ -178,6 +189,10 @@ void Solver::step_rk3(double dt) {
   if (is_parabolic)
     sub_iterate_sigma_all(sig_old, 0.75, 0.25);
 
+  if (p.ENABLE_IB && p.IB_METHOD == "ANALYTICAL") {
+    apply_ib_analytical(0.25 * dt);
+  }
+
   if (p.ENABLE_POS_LIMITER) {
     for (auto &b : blocks)
       add_stats(Limiters::apply_positivity_limiter(b.U, basis, p));
@@ -187,6 +202,9 @@ void Solver::step_rk3(double dt) {
   check_stability();
 
   // Stage 3
+  if (p.ENABLE_IB && p.ib_is_dynamic) {
+    update_ib_mask_field(current_time + 0.5 * dt);
+  }
   compute_rhs();
   for (size_t bid = 0; bid < blocks.size(); ++bid) {
     auto &b = blocks[bid];
@@ -199,6 +217,10 @@ void Solver::step_rk3(double dt) {
   if (is_parabolic)
     sub_iterate_sigma_all(sig_old, 1.0 / 3.0, 2.0 / 3.0);
 
+  if (p.ENABLE_IB && p.IB_METHOD == "ANALYTICAL") {
+    apply_ib_analytical((2.0 / 3.0) * dt);
+  }
+
   if (p.ENABLE_POS_LIMITER) {
     for (auto &b : blocks)
       add_stats(Limiters::apply_positivity_limiter(b.U, basis, p));
@@ -206,4 +228,9 @@ void Solver::step_rk3(double dt) {
   if (p.ENABLE_ENTROPY_LIMITER)
     add_stats(Limiters::apply_entropy_limiter(*this));
   check_stability();
+
+  current_time += dt;
+  if (p.ENABLE_IB && p.ib_is_dynamic) {
+    update_ib_mask_field(current_time);
+  }
 }

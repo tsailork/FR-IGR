@@ -12,6 +12,7 @@
 #include "basis.hpp"
 #include "parameters.hpp"
 #include "state.hpp"
+#include "../ib/ib.hpp"
 #include <algorithm>
 #include <cmath>
 #include <vector>
@@ -36,6 +37,9 @@ struct NeighborInfo {
     bool is_supersonic_inflow = false;  ///< Supersonic inflow boundary condition indicator.
     bool is_supersonic_outflow = false; ///< Supersonic outflow boundary condition indicator.
     bool is_characteristic = false;   ///< Characteristic Riemann invariant-based boundary indicator.
+    bool is_total_pressure_comp = false; ///< Compressible total pressure boundary condition.
+    bool is_total_pressure_incomp = false; ///< Incompressible total pressure boundary condition.
+    bool is_static_pressure = false;   ///< Static pressure boundary condition.
     double ref_rho = 1.0;             ///< Reference density imposed at the boundary.
     double ref_u = 0.0;               ///< Reference X-velocity imposed at the boundary.
     double ref_v = 0.0;               ///< Reference Y-velocity imposed at the boundary.
@@ -84,6 +88,7 @@ struct Block {
 
     std::vector<double> grad_Ux;      ///< Extrapolated gradient buffer \f$\partial_x U\f$ for all 4 conservative variables.
     std::vector<double> grad_Uy;      ///< Extrapolated gradient buffer \f$\partial_y U\f$ for all 4 conservative variables.
+    std::vector<double> ib_mask;      ///< Cached Immersed Boundary solid fraction mask (chi).
 
     /**
      * @brief Construct and allocate all workspace arrays for a given block topology.
@@ -111,6 +116,7 @@ struct Block {
         qy_buf.resize(n_dofs, 0.0);
         grad_Ux.resize(N_VARS * n_dofs, 0.0);
         grad_Uy.resize(N_VARS * n_dofs, 0.0);
+        ib_mask.resize(n_dofs, 0.0);
     }
 
     /**
@@ -136,6 +142,7 @@ class Solver {
 public:
     const Parameters& p;              ///< Reference to the global solver parameters database.
     std::vector<Block> blocks;        ///< Registered element blocks partition.
+    double current_time = 0.0;        ///< Current simulation time tracker.
     Basis  basis;                     ///< 1-D Lagrange basis mapping polynomials for reconstruction.
     Limiters::LimiterStats current_limiter_stats; ///< Thread-safe collector for current step's limiter activity.
 
@@ -289,4 +296,34 @@ public:
      * @param dt Timestep size
      */
     void step_rk3(double dt);
+
+    // -------------------------------------------------------------------------
+    // Immersed Boundary Method (VPM)
+    // -------------------------------------------------------------------------
+    /**
+     * @brief Precomputes or updates the cached solid volume fraction mask (ib_mask) for all blocks at a given solution time.
+     *
+     * @param time The current simulation/stage time
+     */
+    void update_ib_mask_field(double time);
+
+    /**
+     * @brief Evaluates the local solid volume fraction (indicator function chi) at a specific coordinate.
+     */
+    double get_ib_mask(double x, double y, double dx, double dy) const;
+
+    /**
+     * @brief Evaluates the local solid volume fraction (indicator function chi) at a specific coordinate and time.
+     */
+    double get_ib_mask_at_time(double x, double y, double time, double dx, double dy) const;
+
+    /**
+     * @brief Apply explicit volume penalization to the RHS.
+     */
+    void apply_ib_explicit();
+
+    /**
+     * @brief Apply analytical/semi-implicit volume penalization directly to the conservative state.
+     */
+    void apply_ib_analytical(double dt_stage);
 };

@@ -18,6 +18,9 @@ Transitioning from the Euler equations to the full Navier-Stokes (NS) equations 
 *   **Update Boundary Conditions:** Viscous simulations require new BCs, specifically no-slip isothermal and no-slip adiabatic walls, which dictate how the velocity and temperature gradients are mirrored in the ghost states.
 *   **Sutherland's Law:** Implement dynamic viscosity $\mu(T)$ and thermal conductivity $k(T)$ calculations based on local temperature to accurately model real gases.
 
+
+TODO Sutherlands
+
 ## 2. Enhanced I/O, Diagnostics, and Configuration
 
 For a solver to be "general use," it must be exceptionally easy for a researcher to set up a case, monitor its progress, and extract quantitative data without touching the C++ source code.
@@ -27,6 +30,8 @@ For a solver to be "general use," it must be exceptionally easy for a researcher
 *   **Global Diagnostics Tracking:** Add a mechanism to compute and log integral quantities at every timestep (or output interval).
     *   *Step A:* Track total mass, total energy, and maximum Mach number to monitor conservation and stability.
     *   *Step B:* Track aerodynamic forces (Lift/Drag) by integrating pressure and shear stress along designated boundaries.
+
+TODO: Total diagnostics
 
 ## 3. Immersed Boundary Method (IBM)
 
@@ -42,6 +47,8 @@ Since we are committing to a Cartesian background mesh, simulating flow around c
     *   *Pros:* Recovers high-order accuracy; sharp interface representation without the fragility of cut-cell volume quadratures.
     *   *Cons:* A much more complex operation requiring careful consideration and significant effort to implement correctly.
 
+TODO : Phase 2, high order IB
+
 ## 4. Multi-Block Cartesian Grids
 
 Uniform single-grid Cartesian domains are inefficient. The first major structural step to alleviate this is transitioning to a Multi-Block architecture. This provides a massive "bang for your buck" and refines the data structures before attempting more complex tree-based meshes.
@@ -49,7 +56,8 @@ Uniform single-grid Cartesian domains are inefficient. The first major structura
 *   **Block-Structured Refinement:** Group elements into "Blocks" (e.g., $10 \times 10$ elements per block).
     *   *Step A:* Refactor the `State` data structure so that instead of one giant grid, it manages a list of `Block` objects.
     *   *Step B:* Implement block-to-block communication interfaces (MPI-ready or shared memory).
-    *   *Step C:* Allow blocks to have different uniform resolutions (e.g., a fine block nested inside a coarse block). This requires conservative interpolation (prolongation/restriction) at the boundaries between blocks of different sizes.
+
+DONE 
 
 ## 5. Octree Adaptive Mesh Refinement (AMR)
 
@@ -60,3 +68,5 @@ Once the Multi-Block foundation is rock solid, the final frontier for a Cartesia
     *   *Goal:* Utilize linear trees to manage the hierarchy and connectivity of the mesh elements efficiently, paving the way for future GPU acceleration.
 *   **Dynamic Load Balancing:** Distribute the leaves of the linear tree across OpenMP threads (or eventually MPI ranks) dynamically to prevent idle CPU cores.
 *   **User-Defined AMR Regions:** Instead of dynamic sensor-driven $h$-refinement, refinement regions will be explicitly defined by the user in the input file. This ensures predictable computational loads and avoids the overhead of dynamic re-meshing. We will look into dynamic $P$-refinement (polynomial adaptation) in the future.
+
+TODO: ALL

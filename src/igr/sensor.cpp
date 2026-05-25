@@ -51,7 +51,7 @@ static constexpr double SOURCE_CAP_COEFF = 1.0;
 // Thresholds for divergence and sensor magnitude filtering
 static constexpr double DIVERGENCE_THRESHOLD = 1.0e99; // Must be compressive
 static constexpr double SENSOR_THRESHOLD =
-    -9.0e999; // 0.1; // Threshold for raw sensor 'val'
+    -9.0e99; // 0.1; // Threshold for raw sensor 'val'
 
 void Solver::compute_sensor_source() {
   for (auto &b : blocks) {

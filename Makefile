@@ -19,13 +19,14 @@ CORE_SRC = src/core/parameters.cpp src/core/basis.cpp src/core/solver.cpp
 FLUX_SRC = src/flux/euler_flux.cpp src/flux/sweep_x.cpp src/flux/sweep_y.cpp \
            src/flux/gradient.cpp src/flux/viscous_sweep_x.cpp src/flux/viscous_sweep_y.cpp
 IGR_SRC  = src/igr/sensor.cpp src/igr/adi_solver.cpp src/igr/parabolic.cpp src/igr/entropic_pressure.cpp
-BND_SRC  = src/boundary/boundary_wall.cpp src/boundary/boundary_characteristic.cpp src/boundary/boundary_x.cpp src/boundary/boundary_y.cpp
+BND_SRC  = src/boundary/boundary_wall.cpp src/boundary/boundary_characteristic.cpp src/boundary/boundary_x.cpp src/boundary/boundary_y.cpp src/boundary/boundary_backpressure.cpp
 LIM_SRC  = src/limiters/positivity.cpp src/limiters/entropy.cpp
 TIME_SRC = src/time/stability.cpp src/time/rk3.cpp
 IO_SRC   = src/io/vtk_writer.cpp src/io/restart.cpp src/io/initial_conditions.cpp src/io/diagnostics.cpp
+IB_SRC   = src/ib/ib_common.cpp src/ib/ib_vpm.cpp
 
 # Combine into objects
-OBJ_SRCS = $(CORE_SRC) $(FLUX_SRC) $(IGR_SRC) $(BND_SRC) $(LIM_SRC) $(TIME_SRC) $(IO_SRC)
+OBJ_SRCS = $(CORE_SRC) $(FLUX_SRC) $(IGR_SRC) $(BND_SRC) $(LIM_SRC) $(TIME_SRC) $(IO_SRC) $(IB_SRC)
 OBJS = $(OBJ_SRCS:.cpp=.o)
 
 MAIN_SRC = src/main.cpp
@@ -58,7 +59,7 @@ debug: clean $(TARGET)
 
 # Clean build artifacts
 clean:
-	find src src/time src/limiters src/io src/igr src/flux src/core src/boundary tests -type f -name "*.o" -delete
+	find src src/time src/limiters src/io src/igr src/flux src/core src/boundary src/ib tests -type f -name "*.o" -delete
 	rm -rf $(TARGET)
 
 # Clean build and solution files
