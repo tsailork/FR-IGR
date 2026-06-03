@@ -1,6 +1,6 @@
-./oldsols
-./fr_solver
-./saved_outputs
+oldsols/
+fr_solver/
+saved_outputs/
 *.tar
 *.pvd
 *.vts
@@ -10,3 +10,11 @@ inputs
 residuals.dat
 
 \
+solver.prof
+sbm_diag_*
+sbm_faces_*
+pv_outputs/
+*.prof
+fr_solver
+*.pvsm
+.idea/
