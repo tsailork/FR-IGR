@@ -1,15 +1,29 @@
-/// @file basis.cpp
-/// @brief Construction of the 1-D Lagrange / FR-DG basis.
-///
-/// Hardcoded Gauss-Legendre quadrature points for P = 0..3.
-/// The derivative matrix, boundary evaluations, and Radau correction
-/// derivatives are computed analytically from the quadrature nodes.
+/**
+ * @file basis.cpp
+ * @brief Construction of the 1-D Lagrange / FR-DG basis.
+ *
+ * Implements the initialization of the Basis structure. It defines hardcoded 
+ * Gauss-Legendre quadrature points for polynomial degrees \f$ P \in [0, 3] \f$. 
+ * The derivative matrix, boundary evaluations, and Radau correction derivatives 
+ * are computed analytically from the quadrature nodes using barycentric Lagrange interpolation.
+ * 
+ * @see Basis
+ */
 
 #include "basis.hpp"
 
-// ---------------------------------------------------------------------------
-// Private helper: barycentric Lagrange interpolation
-// ---------------------------------------------------------------------------
+/**
+ * @brief Private helper: Barycentric Lagrange interpolation.
+ * 
+ * Evaluates the \f$ j \f$-th Lagrange basis polynomial \f$ l_j(x) \f$ at point \f$ x \f$, 
+ * using the numerically stable barycentric form.
+ * 
+ * @param j Index of the basis polynomial.
+ * @param x Evaluation coordinate.
+ * @param z Vector of quadrature nodes.
+ * @param bary_w Precomputed barycentric weights.
+ * @return The interpolated value \f$ l_j(x) \f$.
+ */
 static double lagrange_poly(int j, double x,
                             const std::vector<double>& z,
                             const std::vector<double>& bary_w) {

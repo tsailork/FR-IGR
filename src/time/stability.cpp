@@ -1,11 +1,14 @@
-/// @file stability.cpp
-/// @brief Stability error detection and CFL-based time-step computation.
-///
-/// check_stability() terminates the program on non-physical states (ρ ≤ 0,
-/// p ≤ 0, NaN).  compute_dt() returns the largest stable time-step based on
-/// convective and diffusive limits.
-///
-/// OpenMP: compute_dt uses a max-reduction for the global wave speed.
+/**
+ * @file stability.cpp
+ * @brief Stability error detection and CFL dynamic stability bounds computation.
+ *
+ * This file contains critical routines to guarantee the stability of the high-order Flux Reconstruction solver.
+ * It enforces strict positivity on density and pressure, halting execution if non-physical values arise.
+ * Additionally, it dictates the dynamic time-stepping limits based on local wave speeds.
+ *
+ * @see Solver::check_stability
+ * @see Solver::compute_dt
+ */
 
 #include "../core/solver.hpp"
 #ifdef _OPENMP
@@ -15,6 +18,15 @@
 #include <iomanip>
 #include <cstdlib>
 
+/**
+ * @brief Asserts the physical validity of the global thermodynamic state.
+ *
+ * Scans all degrees of freedom to ensure density (\f$\rho > 0\f$) and pressure (\f$p > 0\f$) remain positive,
+ * and that no `NaN` values have been introduced. If a stability violation is found, it terminates the 
+ * execution and dumps the failing state vector to `stderr`.
+ *
+ * @note This is typically invoked after every stage in the SSP-RK3 explicit time-stepping cycle.
+ */
 void Solver::check_stability() const {
     for (auto& b : blocks) {
         for (int ey = 0; ey < b.ny; ++ey)
@@ -41,6 +53,19 @@ void Solver::check_stability() const {
     }
 }
 
+/**
+ * @brief Determines the maximal stable time-step \f$\Delta t\f$ based on the CFL condition.
+ *
+ * Iterates over the entire computational domain using OpenMP reductions to identify the 
+ * maximum absolute wave speed: \f$ \lambda_{max} = |u| + c \f$. The resulting time-step incorporates
+ * the Courant-Friedrichs-Lewy (CFL) limit for convective transport, and is further constrained
+ * by diffusive Fourier limits if Isotropic Gradient Regularization (IGR) or viscous fluxes are active.
+ *
+ * \f[ \Delta t_{conv} = \frac{\text{CFL} \cdot h}{(2P+1) \cdot \lambda_{max}} \f]
+ *
+ * @return The globally stable explicit time-step \f$\Delta t\f$.
+ * @see Parameters::CFL
+ */
 double Solver::compute_dt() const {
     double min_dt = 1e30;
 

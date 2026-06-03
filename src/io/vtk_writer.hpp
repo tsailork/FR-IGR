@@ -2,9 +2,10 @@
  * @file vtk_writer.hpp
  * @brief VTK StructuredGrid (.vts) file generator and ParaView PVD collection manager.
  *
- * Handles the generation of multi-block structured XML datasets for ParaView.
- * Supports checkpoint files (raw solution-point state data for restarting) and
- * high-resolution plot files (interpolated states to visual element boundaries).
+ * Handles the generation of multi-block structured XML datasets for ParaView visualization.
+ * Supports checkpoint files (raw double-precision solution-point state data for exact restarting) and
+ * high-resolution plot files (interpolated states to visualization sub-element boundaries).
+ * Utilizes VTK format serialization natively without third-party dependencies.
  */
 
 #pragma once

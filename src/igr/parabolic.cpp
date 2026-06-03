@@ -1,13 +1,18 @@
-/// @file parabolic.cpp
-/// @brief Parabolic IGR evolution — BR2 gradient + divergence operator.
-///
-/// Solves  ∂Σ/∂t = (1/τ)(S − Σ) + (ε·ρ/τ) ∇·(ρ⁻¹ ∇Σ)
-/// using two FR-style passes:
-///   Phase 1: Gradient pass — q = ∇Σ  (with interface corrections).
-///   Phase 2: Divergence pass — div(q/ρ)  (with BR2 penalty + Neumann BCs).
-///   Phase 3: Assembly — combine relaxation and diffusion into sigma_RHS.
-///
-/// OpenMP: parallelised over elements (ey, ex) in both phases.
+/**
+ * @file parabolic.cpp
+ * @brief Parabolic IGR evolution — BR2 gradient + divergence operator.
+ *
+ * Solves  ∂Σ/∂t = (1/τ)(S − Σ) + (ε·ρ/τ) ∇·(ρ⁻¹ ∇Σ)
+ * using two FR-style passes:
+ *   Phase 1: Gradient pass — q = ∇Σ  (with interface corrections).
+ *   Phase 2: Divergence pass — div(q/ρ)  (with BR2 penalty + Neumann BCs).
+ *   Phase 3: Assembly — combine relaxation and diffusion into sigma_RHS.
+ *
+ * OpenMP: parallelised over elements (ey, ex) in both phases.
+ *
+ * @see Solver::compute_igr_parabolic_rhs
+ * @see Solver::compute_entropic_pressure
+ */
 
 #include "../core/solver.hpp"
 #include <tuple>
@@ -15,7 +20,15 @@
 #include <omp.h>
 #endif
 
-/// Compute the Parabolic IGR right-hand side.
+/**
+ * @brief Compute the Parabolic IGR right-hand side.
+ *
+ * Calculates the RHS for the parabolic evolution of the entropic pressure
+ * using a two-pass Flux Reconstruction approach with BR2 interface penalties.
+ *
+ * @note This method is an alternative to the elliptic ADI solver.
+ * @see Solver::compute_entropic_pressure
+ */
 void Solver::compute_igr_parabolic_rhs() {
   // Phase 1: Gradient pass (q = grad(sigma))
   for (auto& b : blocks) {

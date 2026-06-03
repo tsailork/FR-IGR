@@ -1,11 +1,16 @@
-/// @file sweep_y.cpp
-/// @brief Y-direction Flux Reconstruction sweep (tensor-product).
-///
-/// Mirrors sweep_x but operates along columns.  For each (ex, ix)
-/// pair, sweeps over ey computing G-fluxes, face states, Riemann
-/// solvers, and FR corrections.
-///
-/// OpenMP: parallelised over ex (each column is independent).
+/**
+ * @file sweep_y.cpp
+ * @brief Y-direction Flux Reconstruction sweep (tensor-product).
+ *
+ * Mirrors sweep_x but operates along columns. For each (ex, ix)
+ * pair, sweeps over ey computing G-fluxes, face states, Riemann
+ * solvers, and FR corrections. Applies Radau correction limits
+ * along the Y-axis.
+ *
+ * OpenMP: parallelised over ex (each column is independent).
+ *
+ * @see Solver::sweep_x
+ */
 
 #include "../core/solver.hpp"
 #include "../ib/sbm_geometry.hpp"
@@ -13,19 +18,28 @@
 #include <omp.h>
 #endif
 
-/// Perform the Y-direction Flux Reconstruction sweep.
-///
-/// @details
-/// Data Structures & Indexing:
-///   - `U(v, ey, ex, iy, ix)`: The global conserved state array. Read-only in this pass.
-///   - `RHS(v, ey, ex, iy, ix)`: The global explicit right-hand side array. This function 
-///     accumulates the flux divergence and interface corrections into RHS via subtraction (`-=`).
-///   - `sigma_field[get_flat_idx(ey, ex, iy, ix)]`: The global scalar entropic pressure field.
-///   - `basis.l_L`, `basis.l_R`: 1D arrays of size N_PTS used to extrapolate solution points to the bottom/top faces.
-///   - `basis.dgl`, `basis.dgr`: 1D arrays of size N_PTS containing the derivatives of the Radau correction polynomials.
-/// Assumptions:
-///   - The global arrays are pre-allocated and `RHS` contains the partial accumulation from `sweep_x`.
-///   - The memory access pattern is designed to be OpenMP thread-safe by assigning disjoint columns (`ex`) to different threads.
+/**
+ * @brief Perform the Y-direction Flux Reconstruction sweep.
+ *
+ * @details
+ * Accumulates the flux divergence \f$ \partial G / \partial y \f$ into the RHS vector.
+ * Utilizes the FR (Correction Procedure via Reconstruction) method with 
+ * tensor-product bases and Radau correction polynomials.
+ *
+ * Data Structures & Indexing:
+ *   - `U(v, ey, ex, iy, ix)`: The global conserved state array. Read-only in this pass.
+ *   - `RHS(v, ey, ex, iy, ix)`: The global explicit right-hand side array. This function 
+ *     accumulates the flux divergence and interface corrections into RHS via subtraction (`-=`).
+ *   - `sigma_field[get_flat_idx(ey, ex, iy, ix)]`: The global scalar entropic pressure field.
+ *   - `basis.l_L`, `basis.l_R`: 1D arrays of size N_PTS used to extrapolate solution points to the bottom/top faces.
+ *   - `basis.dgl`, `basis.dgr`: 1D arrays of size N_PTS containing the derivatives of the Radau correction polynomials.
+ *
+ * Assumptions:
+ *   - The global arrays are pre-allocated and `RHS` contains the partial accumulation from `sweep_x`.
+ *   - The memory access pattern is designed to be OpenMP thread-safe by assigning disjoint columns (`ex`) to different threads.
+ *
+ * @note Completes the divergence operator application started by Solver::sweep_x.
+ */
 void Solver::sweep_y() {
     for (auto& b : blocks) {
         #pragma omp for schedule(static)

@@ -8,12 +8,15 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
     <nav class="sidebar">
         <div class="sidebar-title">FR-IGR Documentation</div>
         <button class="tab-btn active" onclick="openTab(event, 'overview')">Overview</button>
         <button class="tab-btn" onclick="openTab(event, 'architecture')">Architecture</button>
+        <button class="tab-btn" onclick="openTab(event, 'ib-methods')">Immersed Boundaries</button>
         <button class="tab-btn" onclick="openTab(event, 'configuration')">Configuration & Gridding</button>
         <button class="tab-btn" onclick="openTab(event, 'testing-structure')">Testing Structure</button>
         <button class="tab-btn" onclick="openTab(event, 'testing-coverage')">Test Coverage</button>
@@ -48,6 +51,12 @@
                 Written natively in modern C++17, the application architecture is highly modular. The simulation state is continuously packed into flattened, 1D contiguous array structures, providing exceptional data locality and mitigating cache misses. 
                 Symmetric multidimensional flux evaluations are parallelized using OpenMP, scaling seamlessly across multi-core processor environments.
             </p>
+            
+            <h2>High-Level Execution Flow</h2>
+            <div style="overflow-x: auto; white-space: nowrap; margin: 20px 0; padding-bottom: 10px; text-align: center;">
+                <img src="assets/solver_flow_diagram.svg" alt="Solver Flow Diagram" onclick="openLightbox(this.src)" style="cursor: zoom-in; max-width: none; border: 1px solid #e0e0e0; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); background: #1e293b; padding: 10px;">
+            </div>
+            <p style="text-align: center; color: #64748b; font-size: 0.9em; margin-top: -10px; margin-bottom: 20px;"><em>Scroll horizontally to view the full diagram, or click to expand.</em></p>
         </div>
 
         <!-- Architecture Tab -->
@@ -90,6 +99,55 @@
             <ul>
                 <li><strong>Elliptic IGR:</strong> Solves the steady-state Helmholtz equation implicitly at every time step using a Symmetrized Alternating Direction Implicit (ADI) matrix solver. The ADI approach is computationally expensive but provides instantaneous, infinite-speed propagation of shock viscosity. The symmetrized dual-pass (XY and YX) eliminates inherent directional bias.</li>
                 <li><strong>Parabolic IGR:</strong> Treats the viscosity field as a transient variable, evolving it explicitly alongside the physical flow state using an internal forward-Euler sub-stepping routine. This method leverages BR2 viscous flux discretization to stabilize the parabolic diffusion gradients.</li>
+            </ul>
+        </div>
+
+        <!-- Configuration Tab -->
+        <div id="ib-methods" class="tab-pane">
+            <h1>Immersed Boundary Methods</h1>
+            <p>
+                In standard body-fitted meshes, boundaries conform precisely to the geometry of the solid. While highly accurate, generating these meshes for complex or moving geometries is computationally expensive and difficult. 
+                FR-IGR utilizes <strong>Immersed Boundary (IB) Methods</strong> to circumvent this by overlaying solids onto a simple Cartesian grid.
+            </p>
+
+            <h2>1. Volume Penalization Method (VPM)</h2>
+            <div style="text-align: center; margin: 20px 0;">
+                <img src="assets/vpm_diagram.svg" alt="VPM Conceptual Diagram" style="max-width: 600px; width: 100%; border: 1px solid #e0e0e0; border-radius: 4px;">
+            </div>
+            <p>
+                The Volume Penalization Method models the solid geometry as a highly porous medium. Instead of explicitly tracking the boundary, it modifies the governing Navier-Stokes momentum and energy equations by adding a penalization source term \( S \):
+            </p>
+            <pre><code>S = -( \chi / \eta ) * ( u - u_s )</code></pre>
+            <p>Where:</p>
+            <ul>
+                <li><strong>\(\chi\) (Mask Function)</strong>: 1 inside the solid, 0 in the fluid.</li>
+                <li><strong>\(\eta\) (Porosity)</strong>: A very small positive penalty parameter (e.g., \(10^{-4}\)). As \(\eta \to 0\), the term aggressively forces the local fluid velocity \(u\) to match the solid velocity \(u_s\).</li>
+            </ul>
+            <p>
+                <strong>Implementation:</strong> Because the penalization term is extremely stiff (causing standard explicit time integration to become violently unstable), FR-IGR utilizes an <em>analytical/exact</em> integration of the penalty source term over the Runge-Kutta time steps. 
+                This allows the solver to strictly enforce the zero-velocity boundary condition inside the mask without requiring impossibly small time steps.
+            </p>
+
+            <h2>2. Shifted Boundary Method (SBM)</h2>
+            <div style="text-align: center; margin: 20px 0;">
+                <img src="assets/sbm_diagram.svg" alt="SBM Conceptual Diagram" style="max-width: 600px; width: 100%; border: 1px solid #e0e0e0; border-radius: 4px;">
+            </div>
+            <p>
+                While VPM is robust, it results in a diffuse boundary representation and reduced accuracy near the wall. The Shifted Boundary Method (SBM) preserves high-order spatial accuracy by applying a strict boundary condition at a <em>surrogate boundary</em> (\(\~{\Gamma}\))—composed of the faces of the Cartesian cells immediately adjacent to the physical boundary (\(\Gamma\)).
+            </p>
+            <p>
+                <strong>Mathematical Formulation:</strong><br>
+                For every face on the surrogate boundary, a normal vector is cast towards the true physical boundary to find the physical boundary point, \(D\). 
+                The vector is then extended outward into the fluid domain to define a 1D interpolation stencil consisting of <em>donor points</em>. 
+                Using a 1D Lagrangian polynomial, the known physical boundary state at \(D\) is extrapolated back to the surrogate face using Taylor-series expansion principles.
+            </p>
+            <p>
+                <strong>Implementation & Stability:</strong>
+            </p>
+            <ul>
+                <li><strong>Donor Interval Scaling (\(dL\)):</strong> High-order polynomials suffer from Runge's phenomenon if evaluation nodes are poorly spaced. To maintain a stable <em>Lebesgue constant</em> (amplification factor), the donor interval \(dL\) must scale linearly with the physical distance. The robust formula used is <code>dL = IB_DL_SCALE * h * alpha * sqrt(2.0)</code>.</li>
+                <li><strong>Positivity Preserving Limiter:</strong> Due to Gibbs phenomenon, the high-order extrapolated state at the surrogate boundary can occasionally produce unphysical negative densities or pressures. The solver enforces strict positivity constraints (<code>POS_LIMITER_EPS</code>) on the extrapolated boundary state to maintain absolute thermodynamic stability.</li>
+                <li><strong>Colombo Constraint 3.c:</strong> To handle ultra-thin geometries (e.g., trailing edges of airfoils), the solver provides an optional <code>ENABLE_IB_3C</code> toggle to prevent the surrogate flags of opposing thin faces from overwriting each other in the Cartesian cells.</li>
             </ul>
         </div>
 
@@ -263,6 +321,14 @@ make test-regression</code></pre>
         </div>
     </main>
 
+    <!-- Lightbox Modal -->
+    <div id="diagramLightbox" class="modal" onclick="closeLightbox(event)">
+        <span class="close" onclick="closeLightbox(event)">&times;</span>
+        <div class="modal-content-wrapper">
+            <img class="modal-content" id="lightboxImg">
+        </div>
+    </div>
+
     <script>
         function openTab(evt, tabName) {
             var i, tabcontent, tablinks;
@@ -282,6 +348,19 @@ make test-regression</code></pre>
             // Show the current tab and add active class to button
             document.getElementById(tabName).className += " active";
             evt.currentTarget.className += " active";
+        }
+
+        function openLightbox(imgSrc) {
+            var modal = document.getElementById("diagramLightbox");
+            var modalImg = document.getElementById("lightboxImg");
+            modal.style.display = "block";
+            modalImg.src = imgSrc;
+        }
+
+        function closeLightbox(event) {
+            if (event.target.id === 'diagramLightbox' || event.target.className === 'close') {
+                document.getElementById("diagramLightbox").style.display = "none";
+            }
         }
     </script>
 </body>

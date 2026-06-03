@@ -1,5 +1,10 @@
-/// @file restart.cpp
-/// @brief Restart loader implementation.
+/**
+ * @file restart.cpp
+ * @brief Restart loader implementation for VTK datasets.
+ *
+ * Responsible for parsing VTK XML multiblock (.vtm) and structured grid (.vts) 
+ * files, mapping the state vector values back onto the high-order Gauss-Legendre grids.
+ */
 
 #include "restart.hpp"
 #include <fstream>
@@ -7,6 +12,13 @@
 #include <sstream>
 #include <vector>
 
+/**
+ * @brief Scans a VTK file stream until a specific DataArray tag is found.
+ * 
+ * @param[in,out] file The active file stream.
+ * @param[in] name The attribute name of the DataArray to locate.
+ * @return `true` if found, `false` otherwise.
+ */
 static bool seek_data_array(std::ifstream& file, const std::string& name) {
     std::string line;
     std::string target = "Name=\"" + name + "\"";
@@ -19,6 +31,13 @@ static bool seek_data_array(std::ifstream& file, const std::string& name) {
     return false;
 }
 
+/**
+ * @brief Reads a specified number of floating-point values from an ASCII VTK DataArray.
+ *
+ * @param[in,out] file The active file stream.
+ * @param[in] count The expected number of scalar elements.
+ * @return A vector containing the parsed double-precision values.
+ */
 static std::vector<double> read_values(std::ifstream& file, int count) {
     std::vector<double> vals;
     vals.reserve(count);
@@ -37,6 +56,17 @@ static std::vector<double> read_values(std::ifstream& file, int count) {
 
 #include "../core/solver.hpp"
 
+/**
+ * @brief Loads checkpoint data into a single computational Block.
+ *
+ * Deserializes \f$\rho\f$, \f$\rho u\f$, \f$\rho v\f$, and \f$\rho E\f$ from a .vts file 
+ * and populates the `Block::U` multidimensional array.
+ *
+ * @param[in] filename The path to the .vts file.
+ * @param[in,out] b The target Block structure to populate.
+ * @param[in] p Global simulation parameters.
+ * @return `true` if loading succeeded, `false` otherwise.
+ */
 static bool load_single_block(const std::string& filename, Block& b, const Parameters& p) {
     std::ifstream file(filename);
     if (!file.is_open()) {

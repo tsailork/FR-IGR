@@ -1,5 +1,11 @@
-/// @file diagnostics.cpp
-/// @brief Implementation of diagnostic tracking.
+/**
+ * @file diagnostics.cpp
+ * @brief Implementation of diagnostic tracking and performance logging.
+ *
+ * Calculates the \f$L_2\f$ norm of the solution right-hand side (RHS) across all blocks 
+ * using OpenMP reductions, and extracts sub-element scalar values for point probes 
+ * using high-order polynomial interpolation.
+ */
 
 #include "diagnostics.hpp"
 #include <iomanip>

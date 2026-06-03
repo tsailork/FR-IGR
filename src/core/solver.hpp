@@ -4,7 +4,10 @@
  *
  * Declares the core Solver class which manages multi-block grid domains, coordinates
  * numerical sweeps (inviscid and viscous), handles artificial viscosity smoothing (IGR),
- * and advances the solution in time.
+ * and advances the solution in time using SSP-RK3. 
+ *
+ * @see Solver
+ * @see Block
  */
 
 #pragma once
@@ -140,6 +143,14 @@ struct Block {
 /**
  * @class Solver
  * @brief Central solver class governing numerical integration, multi-block communication, and limiters.
+ *
+ * Manages the global high-order FR formulation, coordinating operations like 
+ * Riemann fluxes, artificial viscosity via Isotropic Gradient Regularisation (IGR), 
+ * and explicit SSP-RK3 time-marching for the compressible 2D Euler/Navier-Stokes equations.
+ * 
+ * @see Block
+ * @see State
+ * @see Basis
  */
 class Solver {
 public:
@@ -285,6 +296,10 @@ public:
     /**
      * @brief Compute dynamic timestep size (\f$\Delta t\f$) based on CFL criteria.
      *
+     * Iterates over all blocks to find the maximum wave speed \f$ \lambda_{\max} = |u| + c \f$ 
+     * and bounds the time step:
+     * \f[ \Delta t = 0.5 \cdot \text{CFL} \cdot \frac{\min(\Delta x, \Delta y)}{(2P+1) \cdot \lambda_{\max}} \f]
+     * 
      * @return Calculated timestep size
      */
     double compute_dt() const;
@@ -297,7 +312,14 @@ public:
     /**
      * @brief Perform one full SSP-RK3 integration step.
      *
-     * @param dt Timestep size
+     * Advances the state using the third-order Strong Stability Preserving Runge-Kutta scheme:
+     * \f{align*}{
+     *   U^{(1)} &= U^n + \Delta t L(U^n) \\
+     *   U^{(2)} &= \frac{3}{4} U^n + \frac{1}{4} U^{(1)} + \frac{1}{4} \Delta t L(U^{(1)}) \\
+     *   U^{n+1} &= \frac{1}{3} U^n + \frac{2}{3} U^{(2)} + \frac{2}{3} \Delta t L(U^{(2)})
+     * \f}
+     *
+     * @param dt Timestep size \f$ \Delta t \f$.
      */
     void step_rk3(double dt);
 

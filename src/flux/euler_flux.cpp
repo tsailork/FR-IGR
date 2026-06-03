@@ -1,9 +1,14 @@
-/// @file euler_flux.cpp
-/// @brief Pointwise Euler flux evaluation and Rusanov Riemann solver.
-///
-/// These functions are called at every solution and face point during
-/// the X- and Y-sweeps.  They are small, scalar routines that benefit
-/// from inlining by the compiler at -O2 / -O3.
+/**
+ * @file euler_flux.cpp
+ * @brief Pointwise Euler flux evaluation and Rusanov Riemann solver.
+ *
+ * These functions are called at every solution and face point during
+ * the X- and Y-sweeps. They are small, scalar routines that benefit
+ * from inlining by the compiler at -O2 / -O3.
+ *
+ * @see sweep_x.cpp
+ * @see sweep_y.cpp
+ */
 
 #include "../core/solver.hpp"
 
@@ -11,20 +16,34 @@
 // Pointwise physical flux (with entropic pressure σ)
 // =========================================================================
 
-/// Compute the Euler flux at a single solution point.
-///
-/// @details
-/// Data Structures & Indexing:
-///   - U(v, ey, ex, iy, ix): The global state array. `v` is the variable (rho, rho*u, rho*v, E). 
-///     `ey`, `ex` are global element indices. `iy`, `ix` are local solution point indices.
-///   - F, G: Output arrays of size 4. Flat 1D arrays for the local physical fluxes.
-/// Assumptions:
-///   - `U` contains physically valid states (handled by limiters). Density and pressure are 
-///     clamped to a small positive floor (1e-10) to prevent division by zero or NaN wavespeeds.
-///
-/// @param F  Output: X-direction flux vector (4 components), or nullptr.
-/// @param G  Output: Y-direction flux vector (4 components), or nullptr.
-/// @param sigma  Local entropic pressure value.
+/**
+ * @brief Compute the Euler flux at a single solution point.
+ *
+ * @details
+ * Evaluates the pointwise physical flux \f$ F(U) \f$ and \f$ G(U) \f$ for the 2D Euler equations.
+ * Incorporates the Isotropic Gradient Regularization (IGR) entropic pressure \f$ \sigma \f$ 
+ * into the momentum and energy fluxes to handle shocks.
+ *
+ * Data Structures & Indexing:
+ *   - U(v, ey, ex, iy, ix): The global state array. `v` is the variable (rho, rho*u, rho*v, E). 
+ *     `ey`, `ex` are global element indices. `iy`, `ix` are local solution point indices.
+ *   - F, G: Output arrays of size 4. Flat 1D arrays for the local physical fluxes.
+ * Assumptions:
+ *   - `U` contains physically valid states (handled by limiters like the Zhang-Shu bounds-preserving limiter). 
+ *     Density and pressure are clamped to a small positive floor (1e-10) to prevent division by zero or NaN wavespeeds.
+ *
+ * @param b      Reference to the Block containing the state.
+ * @param ey     Element Y index.
+ * @param ex     Element X index.
+ * @param iy     Solution point Y index.
+ * @param ix     Solution point X index.
+ * @param F      Output: X-direction flux vector (4 components), or nullptr.
+ * @param G      Output: Y-direction flux vector (4 components), or nullptr.
+ * @param sigma  Local entropic pressure value (\f$ \sigma \f$).
+ *
+ * @note Relies on prior application of Zhang-Shu bounds-preserving limiters to ensure \f$ \rho > 0, p > 0 \f$.
+ * @see Limiters::apply_positivity_limiter
+ */
 void Solver::get_flux_pointwise(const Block& b, int ey, int ex, int iy, int ix,
                                  double* F, double* G, double sigma) const
 {
@@ -52,21 +71,32 @@ void Solver::get_flux_pointwise(const Block& b, int ey, int ex, int iy, int ix,
 // Rusanov / Local Lax-Friedrichs Riemann solver
 // =========================================================================
 
-/// Compute the common interface flux via the Rusanov approximation.
-///
-/// @details
-/// Data Structures & Indexing:
-///   - UL, UR: Flat arrays of size 4 containing the extrapolated conservative state at the left 
-///     and right sides of an element interface.
-///   - F_comm: Flat array of size 4 to store the resulting common numerical flux.
-/// Assumptions:
-///   - UL and UR have already been computed by interpolating the interior solution points to the face.
-///   - Density and pressure are clamped to a small positive floor (1e-10) to prevent NaNs.
-///
-/// @param UL, UR  Left and right conserved states (4 components each).
-/// @param F_comm  Output: common flux at the interface.
-/// @param dir     0 = X-direction, 1 = Y-direction.
-/// @param sigl, sigr  Left / right entropic pressure values.
+/**
+ * @brief Compute the common interface flux via the Rusanov (Local Lax-Friedrichs) approximation.
+ *
+ * @details
+ * Evaluates the Rusanov Riemann solver at element interfaces:
+ * \f[ F_{comm} = \frac{1}{2}(F(U_L) + F(U_R)) - \frac{1}{2} \max(|\lambda_L|, |\lambda_R|) (U_R - U_L) \f]
+ * where \f$ \lambda = |v_n| + c \f$ is the maximum wave speed.
+ * 
+ * Data Structures & Indexing:
+ *   - UL, UR: Flat arrays of size 4 containing the extrapolated conservative state at the left 
+ *     and right sides of an element interface.
+ *   - F_comm: Flat array of size 4 to store the resulting common numerical flux.
+ * Assumptions:
+ *   - UL and UR have already been computed by interpolating the interior solution points to the face.
+ *   - Density and pressure are clamped to a small positive floor (1e-10) to prevent NaNs.
+ *
+ * @param UL      Left conserved state vector (4 components).
+ * @param UR      Right conserved state vector (4 components).
+ * @param F_comm  Output: Common numerical flux at the interface.
+ * @param dir     Direction flag (0 = X-direction, 1 = Y-direction).
+ * @param sigl    Left entropic pressure value (\f$ \sigma_L \f$).
+ * @param sigr    Right entropic pressure value (\f$ \sigma_R \f$).
+ *
+ * @see Solver::sweep_x
+ * @see Solver::sweep_y
+ */
 void Solver::solve_riemann(const double* UL, const double* UR, double* F_comm,
                             int dir, double sigl, double sigr) const
 {

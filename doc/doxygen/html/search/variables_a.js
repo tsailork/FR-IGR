@@ -1,0 +1,21 @@
+var searchData=
+[
+  ['n_5fdofs_5fper_5fvar_0',['n_dofs_per_var',['../struct_state.html#af68d8d9e6c8383f62d9a7bd440d17a5c',1,'State']]],
+  ['n_5felem_5fx_1',['N_ELEM_X',['../struct_block_config.html#a926fb592badec2a6330affff6dbc4282',1,'BlockConfig']]],
+  ['n_5felem_5fy_2',['N_ELEM_Y',['../struct_block_config.html#a949252e4966042ca94f242e287cc8420',1,'BlockConfig']]],
+  ['n_5fpts_3',['N_PTS',['../struct_parameters.html#a338dc49820a25809c5c6c1befb5d7fc8',1,'Parameters']]],
+  ['n_5fvars_4',['N_VARS',['../state_8hpp.html#aa4dff249676f1d29413ea4bd03d70afc',1,'state.hpp']]],
+  ['ni_5fb_5',['ni_b',['../struct_block.html#a4e5dd8a87b61bd76265ad11c0abe1f8c',1,'Block']]],
+  ['ni_5fl_6',['ni_l',['../struct_block.html#a033cecbd4f97cab9deedbc279ec5d846',1,'Block']]],
+  ['ni_5fr_7',['ni_r',['../struct_block.html#a8c110e855b94c3633b5dd5f2830f1f0c',1,'Block']]],
+  ['ni_5ft_8',['ni_t',['../struct_block.html#a2b4ba434f0d847162707aeaca359c4a0',1,'Block']]],
+  ['node_5fidx_9',['node_idx',['../struct_immersed_boundary_1_1_surrogate_flux_point.html#a12aaf84aa917736c96b0e88d8141e8d1',1,'ImmersedBoundary::SurrogateFluxPoint']]],
+  ['npts_10',['npts',['../struct_state.html#ac2717111380e33819b55fa9969b8ca71',1,'State']]],
+  ['ns_5fbr2_5feta_11',['NS_BR2_ETA',['../struct_parameters.html#a7a2312527a91fbcd83902c87acb847b0',1,'Parameters']]],
+  ['num_5flimited_12',['num_limited',['../struct_limiters_1_1_limiter_stats.html#a6de230daf24874ddd89ecf37b4d5d2a3',1,'Limiters::LimiterStats']]],
+  ['num_5fthreads_13',['NUM_THREADS',['../struct_parameters.html#ad55debbfc6fb0d949aa55f91b891d67a',1,'Parameters']]],
+  ['nx_14',['nx',['../struct_block.html#ab9788c2b927a982f7d831def469ccd3b',1,'Block::nx'],['../struct_state.html#a33194ebff813e4e8802d25ee27897f3e',1,'State::nx']]],
+  ['nx_5ftrue_15',['nx_true',['../struct_immersed_boundary_1_1_surrogate_flux_point.html#a1dac2ee251aa0fa0aed25ba69370a865',1,'ImmersedBoundary::SurrogateFluxPoint']]],
+  ['ny_16',['ny',['../struct_block.html#ac9225ce0afdb6ab0c4dd66e6b224afe4',1,'Block::ny'],['../struct_state.html#a05bef1ec55063989661b82aaffd02210',1,'State::ny']]],
+  ['ny_5ftrue_17',['ny_true',['../struct_immersed_boundary_1_1_surrogate_flux_point.html#a73fe56b553d3bed2a894e0237e92754c',1,'ImmersedBoundary::SurrogateFluxPoint']]]
+];

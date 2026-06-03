@@ -1,11 +1,19 @@
-/// @file basis.hpp
-/// @brief 1-D Lagrange basis on Gauss-Legendre points for Flux Reconstruction.
-///
-/// Provides:
-///   - Solution-point locations  z[]  and quadrature weights  w[].
-///   - Lagrange basis values at faces:  l_L[]  (x = −1)  and  l_R[]  (x = +1).
-///   - Derivative matrix  D[i][j] = l'_j(z_i).
-///   - Radau correction polynomial derivatives  dgl[], dgr[]  (FR-DG variant).
+/**
+ * @file basis.hpp
+ * @brief 1-D Lagrange basis on Gauss-Legendre points for Flux Reconstruction.
+ *
+ * Provides the foundational mathematical structures for the high-order Flux Reconstruction
+ * (FR) method, specifically the FR-DG (Discontinuous Galerkin) variant.
+ * 
+ * Includes:
+ *   - Solution-point locations \f$ z_i \f$ and quadrature weights \f$ w_i \f$.
+ *   - Lagrange basis values at cell interfaces: \f$ l_L \f$ at \f$ x = -1 \f$ and \f$ l_R \f$ at \f$ x = +1 \f$.
+ *   - Derivative matrix \f$ D_{ij} = l'_j(z_i) \f$.
+ *   - Radau correction polynomial derivatives \f$ g'_L, g'_R \f$ evaluated at solution points.
+ * 
+ * @see Solver
+ * @see Parameters
+ */
 
 #pragma once
 #include <cmath>
@@ -17,7 +25,17 @@
 // Legendre polynomial helpers (small, keep inline for performance)
 // ============================================================================
 
-/// Evaluate the Legendre polynomial P_n(x) via the three-term recurrence.
+/**
+ * @brief Evaluate the Legendre polynomial \f$ P_n(x) \f$ via the three-term recurrence.
+ *
+ * The recurrence relation used is:
+ * \f[ (k) P_k(x) = (2k - 1) x P_{k-1}(x) - (k - 1) P_{k-2}(x) \f]
+ *
+ * @param n Degree of the Legendre polynomial.
+ * @param x Evaluation point \f$ x \in [-1, 1] \f$.
+ * @return Value of \f$ P_n(x) \f$.
+ * @note Kept inline for performance during basis generation.
+ */
 inline double legendre(int n, double x) {
     if (n == 0) return 1.0;
     if (n == 1) return x;
@@ -30,7 +48,18 @@ inline double legendre(int n, double x) {
     return L;
 }
 
-/// Evaluate P'_n(x).  Uses:  (x²−1) P'_n = n (x P_n − P_{n−1}).
+/**
+ * @brief Evaluate the derivative of the Legendre polynomial \f$ P'_n(x) \f$.
+ *
+ * Utilizes the analytical identity:
+ * \f[ (x^2 - 1) P'_n(x) = n (x P_n(x) - P_{n-1}(x)) \f]
+ * At the boundaries \f$ x = \pm 1 \f$, L'Hopital's rule or known identities are applied.
+ *
+ * @param n Degree of the Legendre polynomial.
+ * @param x Evaluation point \f$ x \in [-1, 1] \f$.
+ * @return Value of \f$ P'_n(x) \f$.
+ * @see legendre
+ */
 inline double legendre_prime(int n, double x) {
     if (n == 0) return 0.0;
     if (std::abs(x) >= 1.0 - 1e-12) {
@@ -44,15 +73,30 @@ inline double legendre_prime(int n, double x) {
 // Basis struct — constructor is implemented in basis.cpp
 // ============================================================================
 
+/**
+ * @struct Basis
+ * @brief Encapsulates the 1D Lagrange polynomial basis and FR-DG correction operators.
+ *
+ * Central to the tensor-product formulation of the 2D solver. It provides 
+ * all operators required to compute gradients and flux divergences.
+ * 
+ * @see Solver::sweep_x
+ * @see Solver::sweep_y
+ */
 struct Basis {
-    std::vector<double> z;     ///< Gauss-Legendre solution points on [−1, 1].
-    std::vector<double> w;     ///< Quadrature weights.
-    std::vector<double> l_L;   ///< Lagrange basis evaluated at x = −1.
-    std::vector<double> l_R;   ///< Lagrange basis evaluated at x = +1.
-    std::vector<std::vector<double>> D;  ///< Derivative matrix.
-    std::vector<double> dgl;   ///< Left Radau correction derivative.
-    std::vector<double> dgr;   ///< Right Radau correction derivative.
+    std::vector<double> z;     ///< Gauss-Legendre solution points on \f$ [-1, 1] \f$.
+    std::vector<double> w;     ///< Quadrature weights for numerical integration.
+    std::vector<double> l_L;   ///< Lagrange basis evaluated at the left interface (\f$ x = -1 \f$).
+    std::vector<double> l_R;   ///< Lagrange basis evaluated at the right interface (\f$ x = +1 \f$).
+    std::vector<std::vector<double>> D;  ///< Nodal derivative matrix \f$ D_{ij} \f$.
+    std::vector<double> dgl;   ///< Left Radau correction derivative \f$ g'_L \f$.
+    std::vector<double> dgr;   ///< Right Radau correction derivative \f$ g'_R \f$.
 
-    /// Build the basis for the given polynomial degree.
+    /**
+     * @brief Construct the basis operators for a given polynomial degree.
+     * 
+     * Computes nodes, weights, barycentric weights, and analytical derivatives.
+     * @param P_DEG Polynomial degree \f$ P \f$ defining \f$ P+1 \f$ solution points.
+     */
     explicit Basis(int P_DEG);
 };

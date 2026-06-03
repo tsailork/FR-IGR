@@ -1,6 +1,13 @@
-/// @file parameters.cpp
-/// @brief Input file parser implementation (INI format).
-
+/**
+ * @file parameters.cpp
+ * @brief Input file parser implementation (INI format).
+ *
+ * Implements the methods for the `Parameters` structure. Provides routines 
+ * to parse `.ini` style text files and populate the global simulation database, 
+ * including validating block connectivities from the grid definition.
+ * 
+ * @see Parameters
+ */
 #include "parameters.hpp"
 #include <algorithm>
 
@@ -8,7 +15,10 @@
 #include <omp.h>
 #endif
 
-// Helper function to trim whitespace from a string
+/**
+ * @brief Helper function to trim whitespace from both ends of a string.
+ * @param s String to be trimmed in-place.
+ */
 static inline void trim(std::string &s) {
     s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) { return !std::isspace(ch); }));
     s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), s.end());

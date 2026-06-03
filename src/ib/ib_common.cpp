@@ -1,3 +1,13 @@
+/**
+ * @file ib_common.cpp
+ * @brief Implementation of Immersed Boundary (IB) mask generators and signed distance functions.
+ *
+ * Contains implementations for various immersed boundary shapes including circles,
+ * NACA airfoils, quadrilaterals, and parabolas. It calculates the signed distance 
+ * functions (SDF) and solid masks (both sharp and regularized Heaviside) used 
+ * in the Shifted Boundary Method (SBM) and Volume Penalty Method (VPM).
+ */
+
 #include "ib.hpp"
 #include "../core/solver.hpp"
 #include <cmath>
@@ -6,12 +16,41 @@
 
 namespace ImmersedBoundary {
 
+/**
+ * @brief Computes the signed distance function (SDF) for a circle.
+ *
+ * @param x X coordinate of the query point
+ * @param y Y coordinate of the query point
+ * @param center_x X coordinate of the circle center
+ * @param center_y Y coordinate of the circle center
+ * @param radius Radius of the circle
+ * @return Signed distance \f$ \phi \f$ (negative inside, positive outside)
+ */
 double get_circle_sdf(double x, double y, double center_x, double center_y, double radius) {
     double rx = x - center_x;
     double ry = y - center_y;
     return std::sqrt(rx * rx + ry * ry) - radius;
 }
 
+/**
+ * @brief Computes the solid volume fraction mask for a circle.
+ *
+ * Generates an indicator function \f$ \chi \f$ where 1 indicates solid and 0 indicates fluid.
+ * If a smoothed interface is requested, it uses a regularized Heaviside function
+ * to smear the interface over a specified width. This regularization is crucial for 
+ * stability in high-order FR Volume Penalty Methods (VPM).
+ *
+ * @param x X coordinate of the query point
+ * @param y Y coordinate of the query point
+ * @param center_x X coordinate of the circle center
+ * @param center_y Y coordinate of the circle center
+ * @param radius Radius of the circle
+ * @param sharp True to use a sharp Heaviside step, false for a smoothed transition
+ * @param smooth_width Smoothing width multiplier (epsilon = smooth_width * h)
+ * @param dx Element size in x-direction
+ * @param dy Element size in y-direction
+ * @return Indicator value \f$ \chi \in [0, 1] \f$
+ */
 double compute_circle_mask(double x, double y, double center_x, double center_y, double radius,
                            bool sharp, double smooth_width, double dx, double dy)
 {
@@ -40,6 +79,21 @@ double compute_circle_mask(double x, double y, double center_x, double center_y,
     }
 }
 
+/**
+ * @brief Computes the signed distance function (SDF) for a NACA 4-digit airfoil.
+ *
+ * Accurately models a NACA 4-digit airfoil by rotating the query point to align with the
+ * chord line and evaluating the thickness and camber equations.
+ *
+ * @param x X coordinate of the query point
+ * @param y Y coordinate of the query point
+ * @param x_le X coordinate of the leading edge
+ * @param y_le Y coordinate of the leading edge
+ * @param chord Chord length of the airfoil
+ * @param naca_code A 4-digit string representing the NACA profile (e.g., "0012")
+ * @param aoa_deg Angle of attack \f$ \alpha \f$ in degrees
+ * @return Signed distance \f$ \phi \f$ from the query point to the airfoil surface
+ */
 double get_naca_sdf(double x, double y, double x_le, double y_le, double chord,
                     const std::string& naca_code, double aoa_deg)
 {
@@ -106,6 +160,25 @@ double get_naca_sdf(double x, double y, double x_le, double y_le, double chord,
     return phi;
 }
 
+/**
+ * @brief Computes the solid volume fraction mask for a NACA airfoil.
+ *
+ * Generates an indicator function \f$ \chi \f$ based on the NACA SDF.
+ *
+ * @see compute_circle_mask
+ * @param x X coordinate
+ * @param y Y coordinate
+ * @param x_le Leading edge X coordinate
+ * @param y_le Leading edge Y coordinate
+ * @param chord Airfoil chord length
+ * @param naca_code NACA 4-digit code
+ * @param aoa_deg Angle of attack (degrees)
+ * @param sharp True to use sharp boundary, false for smooth
+ * @param smooth_width Smoothing width coefficient
+ * @param dx Cell size dx
+ * @param dy Cell size dy
+ * @return Indicator value \f$ \chi \in [0, 1] \f$
+ */
 double compute_naca_mask(double x, double y, double x_le, double y_le, double chord,
                          const std::string& naca_code, double aoa_deg,
                          bool sharp, double smooth_width, double dx, double dy)
@@ -204,7 +277,14 @@ double get_parabola_sdf(double px, double py, const ParabolaShape& poly, double 
 
 } // namespace ImmersedBoundary
 
-// Precomputes or updates the cached solid volume fraction mask (ib_mask) for all blocks
+/**
+ * @brief Precomputes or updates the cached solid volume fraction mask (ib_mask) for all blocks.
+ *
+ * Evaluates the appropriate Immersed Boundary indicator \f$ \chi \f$ at each high-order solution node
+ * and caches it in `b.ib_mask`. Called during initialization or at each time step for moving geometries.
+ *
+ * @param time Current simulation time
+ */
 void Solver::update_ib_mask_field(double time) {
     if (!p.ENABLE_IB) return;
 
@@ -225,12 +305,35 @@ void Solver::update_ib_mask_field(double time) {
     }
 }
 
-// Implements the Solver-level mask check (backward compatibility)
+/**
+ * @brief Legacy method for Solver-level mask evaluation (backward compatibility).
+ *
+ * Evaluates the IB mask at the current solver time.
+ *
+ * @param x Query point X coordinate
+ * @param y Query point Y coordinate
+ * @param dx Element dx size for regularization
+ * @param dy Element dy size for regularization
+ * @return Indicator \f$ \chi \f$ value
+ * @see get_ib_mask_at_time
+ */
 double Solver::get_ib_mask(double x, double y, double dx, double dy) const {
     return get_ib_mask_at_time(x, y, current_time, dx, dy);
 }
 
-// Time-aware immersed boundary mask lookup/evaluation
+/**
+ * @brief Time-aware immersed boundary mask lookup/evaluation.
+ *
+ * Dispatches the SDF query to the corresponding shape (Circle, NACA, Multi) and applies
+ * the required Heaviside (sharp or smoothed) filtering based on configuration parameters.
+ *
+ * @param x Query point X coordinate
+ * @param y Query point Y coordinate
+ * @param time Current simulation time (for moving boundaries)
+ * @param dx Element dx
+ * @param dy Element dy
+ * @return Indicator \f$ \chi \f$
+ */
 double Solver::get_ib_mask_at_time(double x, double y, double time, double dx, double dy) const {
     if (!p.ENABLE_IB) return 0.0;
 
@@ -283,6 +386,16 @@ double Solver::get_ib_mask_at_time(double x, double y, double time, double dx, d
     return 0.0;
 }
 
+/**
+ * @brief Time-aware signed distance function (SDF) evaluation.
+ *
+ * Dispatches the evaluation to the appropriate shape function.
+ *
+ * @param x Query point X coordinate
+ * @param y Query point Y coordinate
+ * @param time Current simulation time
+ * @return Signed distance \f$ \phi \f$
+ */
 double Solver::get_ib_sdf_at_time(double x, double y, double time) const {
     if (!p.ENABLE_IB) return 1e20; // safe distance
 
@@ -313,6 +426,18 @@ double Solver::get_ib_sdf_at_time(double x, double y, double time) const {
     return 1e20;
 }
 
+/**
+ * @brief Computes the gradient of the signed distance function at a point.
+ *
+ * Utilizes second-order central differences to compute the normal vector \f$ \vec{n} = \nabla \phi / |\nabla \phi| \f$.
+ * This is crucial for applying appropriate wall boundary conditions in Immersed Boundary (IB) Shifted Boundary Methods (SBM).
+ *
+ * @param x Query point X coordinate
+ * @param y Query point Y coordinate
+ * @param time Current simulation time
+ * @param[out] nx Output normal vector X component
+ * @param[out] ny Output normal vector Y component
+ */
 void Solver::get_ib_sdf_gradient_at_time(double x, double y, double time, double& nx, double& ny) const {
     const double eps = 1e-6;
     double dphi_dx = (get_ib_sdf_at_time(x + eps, y, time) - get_ib_sdf_at_time(x - eps, y, time)) / (2.0 * eps);

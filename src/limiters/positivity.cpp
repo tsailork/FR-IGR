@@ -1,19 +1,23 @@
-/// @file positivity.cpp
-/// @brief Zhang-Shu positivity-preserving limiter implementation.
-///
-/// Enforces ρ ≥ ε and p ≥ ε by scaling the polynomial toward the cell
-/// average.  Two passes per element:
-///   Pass 1 (density): scale toward mean until ρ_i ≥ ε  at ALL checking pts.
-///   Pass 2 (pressure): scale toward mean until p_i ≥ ε at ALL checking pts.
-///
-/// CRITICAL: For Gauss-Legendre solution points the checking set S must
-/// include BOTH the interior GL nodes AND the face-extrapolated values at
-/// ξ = ±1.  GL points do not include element endpoints, so the polynomial
-/// can overshoot at faces even when all interior points are admissible.
-/// Omitting the face points is the classic cause of positivity failure
-/// with GL-based DG / FR schemes (Zhang & Shu, JCP 2010, §3.3).
-///
-/// OpenMP: parallelised over elements.
+/**
+ * @file positivity.cpp
+ * @brief Zhang-Shu bounds-preserving (positivity) limiter implementation.
+ *
+ * Enforces \f$ \rho \ge \varepsilon \f$ and \f$ p \ge \varepsilon \f$ by scaling the polynomial toward the cell
+ * average. Two passes per element:
+ *   - Pass 1 (density): scale toward mean until \f$ \rho_i \ge \varepsilon \f$ at ALL checking pts.
+ *   - Pass 2 (pressure): scale toward mean until \f$ p_i \ge \varepsilon \f$ at ALL checking pts.
+ *
+ * @note CRITICAL: For Gauss-Legendre solution points the checking set \f$ S \f$ must
+ * include BOTH the interior GL nodes AND the face-extrapolated values at
+ * \f$ \xi = \pm 1 \f$. GL points do not include element endpoints, so the polynomial
+ * can overshoot at faces even when all interior points are admissible.
+ * Omitting the face points is the classic cause of positivity failure
+ * with GL-based DG / FR schemes (Zhang & Shu, JCP 2010, §3.3).
+ *
+ * OpenMP: parallelised over elements.
+ *
+ * @see Limiters::apply_positivity_limiter
+ */
 
 #include "positivity.hpp"
 #include "limiter_common.hpp"
@@ -21,15 +25,29 @@
 #include <omp.h>
 #endif
 
-/// Apply the Zhang-Shu positivity-preserving limiter.
-///
-/// @details
-/// Data Structures & Indexing:
-///   - `U(v, ey, ex, iy, ix)`: The global conserved state array. Read and mutated in-place.
-/// Assumptions:
-///   - Elements are completely independent. Limiting relies strictly on the local element's 
-///     interior solution points to compute the cell average and the minimum value. No neighbor 
-///     ghost states are accessed, guaranteeing perfect OpenMP thread safety across elements.
+/**
+ * @brief Apply the Zhang-Shu positivity-preserving limiter.
+ *
+ * @details
+ * This limiter maintains the physical admissibility of the solution by ensuring that
+ * density and pressure remain positive (or above a small threshold \f$ \varepsilon \f$).
+ * It operates by linearly scaling the high-order polynomial towards the cell average.
+ *
+ * Data Structures & Indexing:
+ *   - `U(v, ey, ex, iy, ix)`: The global conserved state array. Read and mutated in-place.
+ *
+ * Assumptions:
+ *   - Elements are completely independent. Limiting relies strictly on the local element's 
+ *     interior solution points to compute the cell average and the minimum value. No neighbor 
+ *     ghost states are accessed, guaranteeing perfect OpenMP thread safety across elements.
+ *
+ * @param U      The state to be limited (modified in place).
+ * @param basis  The polynomial basis (used for computing cell averages and extrapolations).
+ * @param p      The solver parameters, containing the positivity threshold `POS_LIMITER_EPS`.
+ * @return LimiterStats Statistics containing the number of cells limited and average scaling factor \f$ \theta \f$.
+ *
+ * @see Limiters::LimiterStats
+ */
 Limiters::LimiterStats Limiters::apply_positivity_limiter(State& U, const Basis& basis,
                                          const Parameters& p)
 {

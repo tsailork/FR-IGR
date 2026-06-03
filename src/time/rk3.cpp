@@ -2,15 +2,19 @@
  * @file rk3.cpp
  * @brief Strong Stability Preserving Runge-Kutta 3rd Order (SSP-RK3) time-stepping implementation.
  *
- * Implements the explicit three-stage SSP-RK3 integration scheme:
+ * Implements the explicit three-stage SSP-RK3 integration scheme for the Flux Reconstruction solver.
+ * Mathematically, the temporal integration advances the state \f$U\f$ as follows:
  * \f[ U^{(1)} = U^n + \Delta t L(U^n) \f]
  * \f[ U^{(2)} = \frac{3}{4} U^n + \frac{1}{4} \left( U^{(1)} + \Delta t L(U^{(1)}) \right) \f]
  * \f[ U^{n+1} = \frac{1}{3} U^n + \frac{2}{3} \left( U^{(2)} + \Delta t L(U^{(2)}) \right) \f]
  *
  * For stability and robust shock handling:
  *  - Applies the Positivity Preserving Limiter (Zhang-Shu) and Entropy Limiter after each stage.
- *  - Evolve the parabolic entropic pressure field (\f$\Sigma\f$) in lockstep or via sub-iterated Forward Euler.
- *  - Parallelized using OpenMP for high performance.
+ *  - Evolves the parabolic entropic pressure field (\f$\Sigma\f$) in lockstep or via sub-iterated Forward Euler.
+ *  - Parallelized using OpenMP for high performance across Cartesian grids.
+ *
+ * @see Solver::step_rk3
+ * @see Solver::compute_dt
  */
 
 #include "../core/solver.hpp"
@@ -26,7 +30,9 @@
  * Coordinates stage-wise updates, numerical limiting, and explicit artificial viscosity updates.
  * Utilizes OpenMP parallelization for BLAS-like conservation array operations.
  *
- * @param[in] dt Time-step size (\f$\Delta t\f$)
+ * @param[in] dt Time-step size (\f$\Delta t\f$) computed by CFL dynamic stability constraints.
+ * @see Solver::compute_dt
+ * @note This method applies Positivity and Entropy limiters internally if enabled.
  */
 void Solver::step_rk3(double dt) {
   std::vector<State> U_old;

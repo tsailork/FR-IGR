@@ -1,19 +1,24 @@
-/// @file sensor.cpp
-/// @brief IGR source-term sensor with multiple toggleable approaches.
-///
-/// Base sensor: Cao-Schaefer velocity-gradient norm
-///   S = ε · 2(u_x² + v_y² + u_x·v_y + v_x·u_y)
-///
-/// Toggleable modifications (compile-time switches):
-///   USE_DUCROS_SWITCH    — multiply by Ducros ratio to suppress vortical noise
-///   USE_PRESSURE_SENSOR  — replace velocity sensor with |∇p|²-based sensor
-///   USE_MOMENTUM_DIV     — use ∇·(ρu) instead of ∇·u for compression check
-///
-/// Modes:
-///   LOCAL     — element-interior gradients only.
-///   CORRECTED — BR2-style interface-corrected gradients.
-///
-/// OpenMP: parallelised over elements (ey, ex).
+/**
+ * @file sensor.cpp
+ * @brief IGR source-term sensor with multiple toggleable approaches.
+ *
+ * Base sensor: Cao-Schaefer velocity-gradient norm
+ *   S = ε · 2(u_x² + v_y² + u_x·v_y + v_x·u_y)
+ *
+ * Toggleable modifications (compile-time switches):
+ *   USE_DUCROS_SWITCH    — multiply by Ducros ratio to suppress vortical noise
+ *   USE_PRESSURE_SENSOR  — replace velocity sensor with |∇p|²-based sensor
+ *   USE_MOMENTUM_DIV     — use ∇·(ρu) instead of ∇·u for compression check
+ *
+ * Modes:
+ *   LOCAL     — element-interior gradients only.
+ *   CORRECTED — BR2-style interface-corrected gradients.
+ *
+ * OpenMP: parallelised over elements (ey, ex).
+ *
+ * @see Solver::compute_sensor_source
+ * @see Solver::compute_entropic_pressure
+ */
 
 #include "../core/solver.hpp"
 #ifdef _OPENMP
@@ -24,27 +29,20 @@
 // Toggleable switches — set to true/false to enable/disable each approach
 // ==========================================================================
 
-/// Approach A: Ducros switch.  Multiplies the sensor by
-///   F_D = (∇·u)² / ((∇·u)² + |ω|² + ε_machine)
-/// where ω = ∂v/∂x − ∂u/∂y.  Suppresses the sensor in regions dominated
-/// by vorticity / shear (e.g. aliased contacts) while preserving signal
-/// at irrotational shocks.
+/// @brief Approach A: Ducros switch. Multiplies the sensor by F_D = (∇·u)² / ((∇·u)² + |ω|² + ε_machine)
+/// @note where ω = ∂v/∂x − ∂u/∂y. Suppresses the sensor in regions dominated by vorticity / shear (e.g. aliased contacts) while preserving signal at irrotational shocks.
 static constexpr bool USE_DUCROS_SWITCH = false;
 
-/// Approach B: Pressure-gradient sensor.  Replaces the velocity-gradient
-/// sensor with  S = ε · |∇p|² / p_ref²  where p_ref = max(p_local, ε).
-/// Contacts have continuous pressure → zero signal.
+/// @brief Approach B: Pressure-gradient sensor. Replaces the velocity-gradient sensor with S = ε · |∇p|² / p_ref² where p_ref = max(p_local, ε).
+/// @note Contacts have continuous pressure → zero signal.
 static constexpr bool USE_PRESSURE_SENSOR = false;
 
-/// Approach E: Use momentum divergence ∇·(ρu) for the compression check
-/// instead of velocity divergence ∇·u.  Avoids the 1/ρ division that
-/// amplifies density aliasing at contacts.
+/// @brief Approach E: Use momentum divergence ∇·(ρu) for the compression check instead of velocity divergence ∇·u.
+/// @note Avoids the 1/ρ division that amplifies density aliasing at contacts.
 static constexpr bool USE_MOMENTUM_DIV = false;
 
-/// Approach F: Pressure-based Source Cap. Caps the computed IGR source term 
-/// (S_buf) to be no larger than C * p_local. This restricts the maximum injection
-/// of artificial viscosity at shocks while allowing the Helmholtz smoothing to 
-/// naturally diffuse the viscosity ahead of the shock wave.
+/// @brief Approach F: Pressure-based Source Cap. Caps the computed IGR source term (S_buf) to be no larger than C * p_local.
+/// @note This restricts the maximum injection of artificial viscosity at shocks while allowing the Helmholtz smoothing to naturally diffuse the viscosity ahead of the shock wave.
 static constexpr bool USE_PRESSURE_SOURCE_CAP = true;
 static constexpr double SOURCE_CAP_COEFF = 1.0;
 
@@ -53,6 +51,15 @@ static constexpr double DIVERGENCE_THRESHOLD = 1.0e99; // Must be compressive
 static constexpr double SENSOR_THRESHOLD =
     -9.0e99; // 0.1; // Threshold for raw sensor 'val'
 
+/**
+ * @brief Computes the Isotropic Gradient Regularization (IGR) source term sensor.
+ *
+ * This function calculates the shock sensor based on velocity gradients or pressure jumps.
+ * The computed source term is used as the right-hand side for the Helmholtz smoothing equation.
+ * 
+ * @note Implements a compression check to activate only in compressive regions.
+ * @see Solver::compute_entropic_pressure
+ */
 void Solver::compute_sensor_source() {
   for (auto &b : blocks) {
     const double epsilon = p.ALPHA_SCALE * (b.dx * b.dy);

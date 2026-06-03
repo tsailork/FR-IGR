@@ -1,5 +1,11 @@
-/// @file vtk_writer.cpp
-/// @brief VTK StructuredGrid (.vts) output writer implementation.
+/**
+ * @file vtk_writer.cpp
+ * @brief VTK StructuredGrid (.vts) output writer implementation.
+ *
+ * Serializes physical fluid fields (density, momentum, energy, pressure, Mach number) 
+ * into ParaView-compatible XML representations. Interlinks with PVD timesteps to maintain 
+ * continuity across SSP-RK3 run histories.
+ */
 
 #include "vtk_writer.hpp"
 #include <fstream>

@@ -1,14 +1,32 @@
-/// @file entropic_pressure.cpp
-/// @brief Top-level dispatch for the entropic pressure computation.
-///
-/// Routes to either the elliptic ADI solver or the parabolic BR2 evolution.
-/// After solving, σ is clamped at each point to ≤ local physical pressure
-/// to prevent the dissipative IGR term from draining more internal energy
-/// than is available — a key robustness constraint for long-running
-/// blast-wave simulations with wall reflections.
+/**
+ * @file entropic_pressure.cpp
+ * @brief Top-level dispatch for the entropic pressure computation.
+ *
+ * Routes to either the elliptic ADI solver or the parabolic BR2 evolution.
+ * After solving, σ is clamped at each point to ≤ local physical pressure
+ * to prevent the dissipative IGR term from draining more internal energy
+ * than is available — a key robustness constraint for long-running
+ * blast-wave simulations with wall reflections.
+ *
+ * @see Solver::compute_entropic_pressure
+ * @see Solver::solve_adi_pass
+ * @see Solver::compute_igr_parabolic_rhs
+ */
 
 #include "../core/solver.hpp"
 
+/**
+ * @brief Computes the entropic pressure field for the IGR methodology.
+ *
+ * Acts as the main driver for the regularization. First calls the shock sensor
+ * to evaluate the source term, then solves the Helmholtz smoothing equation
+ * via Symmetrized Alternating Direction Implicit (ADI) or parabolic evolution.
+ *
+ * @note Finally, clamps the entropic pressure strictly to the local thermodynamic pressure.
+ * @see Solver::compute_sensor_source
+ * @see Solver::solve_adi_pass
+ * @see Solver::compute_igr_parabolic_rhs
+ */
 void Solver::compute_entropic_pressure() {
   if (!p.ENABLE_IGR)
     return;

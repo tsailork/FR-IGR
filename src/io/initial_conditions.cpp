@@ -1,5 +1,12 @@
-/// @file initial_conditions.cpp
-/// @brief Initial condition setup implementation.
+/**
+ * @file initial_conditions.cpp
+ * @brief Initial condition setup implementation.
+ *
+ * Implements standard fluid dynamics benchmark initializations such as 2D Riemann problems,
+ * blast waves, sine waves, and freestream uniform flow.
+ *
+ * @see IC::apply
+ */
 
 #include "initial_conditions.hpp"
 #include "../core/solver.hpp"

@@ -1,5 +1,16 @@
-/// @file main.cpp
-/// @brief Main entry point for the Flux Reconstruction Euler solver.
+/**
+ * @file main.cpp
+ * @brief Main entry point for the Flux Reconstruction Euler solver.
+ *
+ * Orchestrates the full CFD simulation pipeline:
+ *  1. Parameter and domain grid loading.
+ *  2. Solver initialization (applying initial conditions or VTK format restart serialization).
+ *  3. Explicit time-stepping loop using dynamic CFL stability conditions and SSP-RK3 integration.
+ *  4. Periodic execution of diagnostics, state checkpoints, and ParaView plot generation.
+ *
+ * @see Solver::step_rk3
+ * @see VTKWriter::write_plot
+ */
 
 #include "core/parameters.hpp"
 #include "core/solver.hpp"

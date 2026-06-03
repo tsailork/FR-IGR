@@ -1,21 +1,34 @@
-/// @file solver.cpp
-/// @brief Solver constructor and compute_rhs dispatcher.
-
+/**
+ * @file solver.cpp
+ * @brief Solver constructor and compute_rhs dispatcher.
+ *
+ * Implements the initialization logic for the high-order `Solver` structure, 
+ * including string parsing for boundary condition setups and the main 
+ * RHS assembly pipeline (`compute_rhs`).
+ * 
+ * @see Solver
+ */
 #include "solver.hpp"
 #include <stdexcept>
 #include "../ib/sbm_geometry.hpp"
 
-/// Parse a boundary condition string from domain.grid into a NeighborInfo.
-///
-/// Supported formats:
-///   "WALL"              — inviscid slip wall (reflects normal velocity)
-///   "INFLOW"            — freestream inflow
-///   "TRANSMISSIVE"      — copy-out / zero-gradient
-///   "WALL_NOSLIP"       — adiabatic no-slip wall (u=v=0, dT/dn=0)
-///   "WALL_NOSLIP:T"     — isothermal no-slip wall at temperature T
-///   "WALL_MOVING:V"     — adiabatic moving wall, tangential velocity V
-///   "WALL_MOVING:V:T"   — isothermal moving wall, velocity V, temperature T
-///   "ID:FACE"           — block-to-block connectivity (e.g., "1:L")
+/**
+ * @brief Parse a boundary condition string from domain.grid into a NeighborInfo metadata struct.
+ *
+ * Converts a configuration string into strongly typed boolean flags and reference values.
+ * Supported formats:
+ * - `"WALL"`              — inviscid slip wall (reflects normal velocity).
+ * - `"INFLOW"`            — freestream inflow.
+ * - `"TRANSMISSIVE"`      — copy-out / zero-gradient.
+ * - `"WALL_NOSLIP"`       — adiabatic no-slip wall (\f$ u=v=0 \f$, \f$ dT/dn=0 \f$).
+ * - `"WALL_NOSLIP:T"`     — isothermal no-slip wall at temperature \f$ T \f$.
+ * - `"WALL_MOVING:V"`     — adiabatic moving wall, tangential velocity \f$ V \f$.
+ * - `"WALL_MOVING:V:T"`   — isothermal moving wall, velocity \f$ V \f$, temperature \f$ T \f$.
+ * - `"ID:FACE"`           — block-to-block connectivity (e.g., `"1:L"`).
+ *
+ * @param[in] bc The boundary condition string to parse.
+ * @param[out] ni The NeighborInfo structure to populate.
+ */
 static void parse_bc_string(const std::string& bc, NeighborInfo& ni) {
     if (bc == "WALL") {
         ni.is_wall = true;

@@ -8,6 +8,9 @@
  * Splitting this 2D operator into 1D directional passes allows solving each line as an
  * independent tridiagonal system in \f$O(N)\f$ time using the Thomas algorithm.
  * Double-pass averaging (X->Y and Y->X) is employed to preserve diagonal symmetry.
+ *
+ * @see Solver::solve_adi_pass
+ * @see Solver::compute_entropic_pressure
  */
 
 #include "adi_solver.hpp"
@@ -27,6 +30,8 @@
  * @param[in] c Upper diagonal coefficients (size N, index N-1 is ignored)
  * @param[in] d Right-hand side values (size N)
  * @param[out] x Solution vector (size N)
+ *
+ * @see Solver::solve_adi_pass
  */
 void solve_tridiagonal(const std::vector<double>& a,
                        const std::vector<double>& b,
@@ -64,6 +69,9 @@ void solve_tridiagonal(const std::vector<double>& a,
  * @param[in] S Source term vector for the ADI smoothing pass
  * @param[out] Out Smoothed output field
  * @param[in] x_first If true, sweep X first then Y; if false, sweep Y first then X
+ *
+ * @see solve_tridiagonal
+ * @see Solver::compute_entropic_pressure
  */
 void Solver::solve_adi_pass(Block& b, const std::vector<double>& S,
                             std::vector<double>& Out, bool x_first)

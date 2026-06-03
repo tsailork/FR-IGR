@@ -4,6 +4,10 @@
  *
  * Defines structures to represent spatial grid topologies, point probe definitions,
  * and comprehensive solver/physics parameters parsed from standard input files.
+ * The `Parameters` struct acts as the central state registry used by all components.
+ * 
+ * @see Parameters
+ * @see Solver
  */
 
 #pragma once
@@ -52,6 +56,9 @@ struct BlockConfig {
 /**
  * @class Parameters
  * @brief Global simulation database holding all options parsed from inputs.dat and domain.grid.
+ *
+ * This struct is passed to the core `Solver` and dictates everything from the polynomial 
+ * degree \f$ P_{deg} \f$ to the choice of Immersed Boundary methods and fluid properties.
  */
 struct Parameters {
     // -------------------------------------------------------------------------
