@@ -1,5 +1,6 @@
 #include "../doctest.h"
 #include "../../src/core/parameters.hpp"
+#include "../../src/core/solver.hpp"
 #include <fstream>
 #include <cstdio>
 
@@ -52,6 +53,7 @@ TEST_CASE("Parameters - Load inputs.dat") {
     out << "[Physics]\nGAMMA = 1.3\n";
     out << "[Solver]\nCFL = 0.8\n";
     out << "[Regularization]\nENABLE_IGR = true\nIGR_TYPE = PARABOLIC\n";
+    out << "[ImmersedBoundary]\nIB_L_SCALE = 0.75\nIB_DL_SCALE = 1.5\n";
     out.close();
 
     Parameters p;
@@ -61,6 +63,29 @@ TEST_CASE("Parameters - Load inputs.dat") {
     CHECK(p.CFL == doctest::Approx(0.8));
     CHECK(p.ENABLE_IGR == true);
     CHECK(p.IGR_TYPE == "PARABOLIC");
+    CHECK(p.IB_L_SCALE == doctest::Approx(0.75));
+    CHECK(p.IB_DL_SCALE == doctest::Approx(1.5));
     
     std::remove("test_inputs.dat");
+}
+
+TEST_CASE("Parameters - WALL_SLIP alias test") {
+    std::ofstream out("test_domain_wall_slip.grid");
+    out << "[Block0]\n";
+    out << "N_ELEM_X = 10\nN_ELEM_Y = 20\n";
+    out << "X_MIN = -1.0\nX_MAX = 1.0\n";
+    out << "Y_MIN = 0.0\nY_MAX = 2.0\n";
+    out << "BC_L = WALL_SLIP\nBC_R = WALL\nBC_B = INFLOW\nBC_T = PERIODIC\n";
+    out.close();
+
+    Parameters p;
+    p.load_domain("test_domain_wall_slip.grid");
+
+    Solver solver(p);
+    
+    REQUIRE(solver.blocks.size() == 1);
+    CHECK(solver.blocks[0].ni_l.is_wall == true);
+    CHECK(solver.blocks[0].ni_r.is_wall == true);
+
+    std::remove("test_domain_wall_slip.grid");
 }

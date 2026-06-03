@@ -8,11 +8,10 @@ saved_outputs/
 inputs
 ./pv_outputs
 residuals.dat
+csv_outputs/
 
 \
 solver.prof
-sbm_diag_*
-sbm_faces_*
 pv_outputs/
 *.prof
 fr_solver
@@ -20,3 +19,5 @@ fr_solver
 .idea/
 test_regression
 test_unit
+__pycache__/
+out.log

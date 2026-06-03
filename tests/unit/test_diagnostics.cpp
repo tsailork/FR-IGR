@@ -43,8 +43,8 @@ TEST_SUITE("Diagnostics") {
         Diagnostics d(p, solver, 0.0);
         d.update(solver, 0.0, 0);
         
-        CHECK(std::filesystem::exists("probe.csv"));
-        CHECK(std::filesystem::exists("residuals.dat"));
+        CHECK(std::filesystem::exists("csv_outputs/probe.csv"));
+        CHECK(std::filesystem::exists("csv_outputs/residuals.csv"));
         
         std::filesystem::current_path(old_path);
     }

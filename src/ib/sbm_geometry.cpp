@@ -11,6 +11,24 @@ namespace ImmersedBoundary {
 std::vector<SurrogateFluxPoint> sbm_registry;
 std::unordered_map<uint64_t, const SurrogateFluxPoint*> sbm_lookup;
 
+SBMDiagnostics current_sbm_diags;
+
+void reset_sbm_diagnostics() {
+    double saved_dist_ratio = current_sbm_diags.max_dist_ratio;
+    double saved_d_dl_ratio = current_sbm_diags.max_d_dl_ratio;
+    double saved_lebesgue   = current_sbm_diags.max_lebesgue;
+    
+    current_sbm_diags = SBMDiagnostics();
+    
+    current_sbm_diags.max_dist_ratio = saved_dist_ratio;
+    current_sbm_diags.max_d_dl_ratio = saved_d_dl_ratio;
+    current_sbm_diags.max_lebesgue   = saved_lebesgue;
+}
+
+SBMDiagnostics get_sbm_diagnostics() {
+    return current_sbm_diags;
+}
+
 inline uint64_t get_sbm_hash(int b_id, int ey, int ex, int face, int node) {
     uint64_t h = 0;
     h |= ((uint64_t)b_id & 0xFFFF) << 48;
@@ -24,6 +42,7 @@ inline uint64_t get_sbm_hash(int b_id, int ey, int ex, int face, int node) {
 // Helper to evaluate 1D Lagrange polynomial basis weights
 void compute_lagrange_weights(int P, double xi_eval, const std::vector<double>& nodes, std::vector<double>& weights) {
     weights.assign(P + 1, 0.0);
+    double sum_abs_weights = 0.0;
     for (int i = 0; i <= P; ++i) {
         double L = 1.0;
         for (int j = 0; j <= P; ++j) {
@@ -32,6 +51,14 @@ void compute_lagrange_weights(int P, double xi_eval, const std::vector<double>& 
             }
         }
         weights[i] = L;
+        sum_abs_weights += std::abs(L);
+    }
+    
+    #pragma omp critical
+    {
+        if (sum_abs_weights > current_sbm_diags.max_lebesgue) {
+            current_sbm_diags.max_lebesgue = sum_abs_weights;
+        }
     }
 }
 
@@ -187,7 +214,7 @@ void initialize_sbm_geometry(Solver& solver) {
         }
 
         // Output Diagnostic File
-        std::string diag_filename = "sbm_diag_block" + std::to_string(b.id) + ".csv";
+        std::string diag_filename = "csv_outputs/sbm_diag_block" + std::to_string(b.id) + ".csv";
         std::ofstream diag(diag_filename);
         diag << "ey,ex,type,is_shifted,L,R,B,T,xc,yc,sdf\n";
         
@@ -292,9 +319,20 @@ void initialize_sbm_geometry(Solver& solver) {
                             
                             double h     = std::max(b.dx, b.dy);
                             double alpha = 1.0 + sfp.D / h;
-                            double L     = sfp.D + alpha * std::sqrt(2.0) * h;
-                            // dL: Length of the donor interval.
-                            double dL = solver.p.IB_DL_SCALE * h * alpha * std::sqrt(2.0);
+                            double L     = sfp.D + solver.p.IB_L_SCALE * alpha * std::sqrt(2.0) * h;
+                            double dL    = solver.p.IB_DL_SCALE * h * std::sqrt(2.0);
+                            
+                            double ratio = sfp.D / L;
+                            double d_dl_ratio = sfp.D / dL;
+                            #pragma omp critical
+                            {
+                                if (ratio > current_sbm_diags.max_dist_ratio) {
+                                    current_sbm_diags.max_dist_ratio = ratio;
+                                }
+                                if (d_dl_ratio > current_sbm_diags.max_d_dl_ratio) {
+                                    current_sbm_diags.max_d_dl_ratio = d_dl_ratio;
+                                }
+                            }
                             
                             std::vector<double> psi(P_interp + 1);
                             psi[0] = sfp.D;  // physical boundary node
@@ -333,8 +371,8 @@ void initialize_sbm_geometry(Solver& solver) {
         
         // ----------------------------------------------------------------
         // Output Shifted Faces VTK PolyData (.vtp) for easy visualization
-        // ----------------------------------------------------------------
-        std::string vtp_filename = "sbm_faces_block" + std::to_string(b.id) + ".vtp";
+        // (Even though it's .vtp, putting it in csv_outputs as requested)
+        std::string vtp_filename = "csv_outputs/sbm_faces_block" + std::to_string(b.id) + ".vtp";
         std::ofstream vtp(vtp_filename);
         int num_faces = 0;
         for(int ey = 0; ey < b.ny; ++ey)
@@ -488,11 +526,15 @@ void compute_sbm_state(const Solver& solver, const SurrogateFluxPoint* sfp, doub
     if (u_sb[0] < solver.p.POS_LIMITER_EPS) {
         u_sb[0] = solver.p.POS_LIMITER_EPS;
         solver.sbm_nonphysical_count++;
+        #pragma omp atomic
+        current_sbm_diags.limiter_count++;
     }
     
     double press = (solver.p.GAMMA - 1.0) * (u_sb[3] - 0.5 * (u_sb[1]*u_sb[1] + u_sb[2]*u_sb[2]) / u_sb[0]);
     if (press < solver.p.POS_LIMITER_EPS) {
         solver.sbm_nonphysical_count++;
+        #pragma omp atomic
+        current_sbm_diags.limiter_count++;
         u_sb[3] = solver.p.POS_LIMITER_EPS / (solver.p.GAMMA - 1.0) + 0.5 * (u_sb[1]*u_sb[1] + u_sb[2]*u_sb[2]) / u_sb[0];
     }
 }

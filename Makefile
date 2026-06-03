@@ -3,6 +3,8 @@ CXX = g++
 # Standard production flags: optimized + OpenMP
 CXXFLAGS = -std=c++17 -g -Wall -Wextra -fopenmp -O3
 
+PROFFLAGS = 
+
 # Debugging flags (comprehensive error checking)
 # Note: UndefinedBehaviorSanitizer (UBSan) and AddressSanitizer (ASan) 
 # sometimes conflict with OpenMP threads on certain GCC versions.
@@ -11,9 +13,9 @@ DEBUG_FLAGS = -std=c++17 -g -O0 -Wall -Wextra -Wpedantic \
               -D_GLIBCXX_DEBUG -fstack-protector-all -fopenmp
 
 # Target Executables
-TARGET = fr_solver
-TEST_UNIT_TARGET = test_unit
-TEST_REGR_TARGET = test_regression
+TARGET = bin/fr_solver
+TEST_UNIT_TARGET = bin/test_unit
+TEST_REGR_TARGET = bin/test_regression
 
 # Source Files
 CORE_SRC = src/core/parameters.cpp src/core/basis.cpp src/core/solver.cpp
@@ -43,11 +45,11 @@ all: $(TARGET)
 
 # Compile object files
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@ -lprofiler
+	$(CXX) $(CXXFLAGS) -c $< -o $@ $(PROFFLAGS)
 
 # Build the main executable
 $(TARGET): $(OBJS) $(MAIN_OBJ)
-	$(CXX) $(CXXFLAGS) $^ -o $@ -lprofiler
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(PROFFLAGS)
 
 # Unit tests (fast, <30s)
 test-unit: CXXFLAGS += -g -O0
@@ -81,7 +83,8 @@ clean:
 
 # Clean build and solution files
 cleanall: clean
-	rm -rf pv_outputs
+	rm -rf pv_outputs/*
+	rm -rf csv_outputs/*
 
 # Convenience target: Build, Run, and Plot
 full: clean all

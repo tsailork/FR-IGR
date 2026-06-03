@@ -18,8 +18,11 @@
 #include "io/restart.hpp"
 #include "io/vtk_writer.hpp"
 #include "io/diagnostics.hpp"
+#include "ib/sbm_geometry.hpp"
 #include <cmath>
 #include <iostream>
+#include <filesystem>
+#include <cstdio>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -30,6 +33,19 @@ int main() {
     Parameters params;
     params.load_domain("domain.grid");
     params.load_inputs("inputs.dat");
+
+    // Redirect stdout and stderr to out.log, disable buffering
+    if (!params.RESTART_FILE.empty()) {
+        std::freopen("out.log", "a", stdout);
+        std::freopen("out.log", "a", stderr);
+    } else {
+        std::freopen("out.log", "w", stdout);
+        std::freopen("out.log", "w", stderr);
+    }
+    std::setvbuf(stdout, NULL, _IONBF, 0);
+    std::setvbuf(stderr, NULL, _IONBF, 0);
+    std::cout << std::unitbuf;
+    std::cerr << std::unitbuf;
 
     std::cout << "Starting FR-IGR Solver\n";
 #ifdef _OPENMP
@@ -43,6 +59,7 @@ int main() {
 
     // 3. Initialize Output Directory and Writer
     ensure_output_directory("pv_outputs");
+    ensure_output_directory("csv_outputs");
     VTKWriter writer("solution");
 
     // 4. Initialization: restart from file, or apply fresh IC
@@ -73,12 +90,20 @@ int main() {
                 b.sigma_field = b.S_buf;
             }
         }
+        
+        if (params.ENABLE_SBM_DIAGNOSTICS && params.IB_METHOD == "SBM") {
+            std::ofstream sbm_file("csv_outputs/sbm_diagnostics.csv");
+            if (sbm_file.is_open()) {
+                sbm_file << "Time,Max_Lebesgue,Limiter_Count,Max_Dist_Ratio,Max_D_dL_Ratio\n";
+            }
+        }
     }
 
     // 5. Time Stepping Loop
     int step = 0;
     double next_checkpoint = checkpoint_count * params.RESTART_INTERVAL + params.RESTART_INTERVAL;
     double next_plot       = plot_count * params.OUTPUT_INTERVAL + params.OUTPUT_INTERVAL;
+    double next_residual_sbm = (std::floor(t / params.RESIDUAL_INTERVAL) + 1.0) * params.RESIDUAL_INTERVAL;
 
     // Write initial states
     writer.write_checkpoint(solver, checkpoint_count++, t);
@@ -87,6 +112,13 @@ int main() {
     Diagnostics diag(params, solver, t);
 
     while (t < params.T_FINAL) {
+        if (std::filesystem::exists("STOP")) {
+            std::cout << "\n[STOP] STOP file detected. Shutting down solver cleanly...\n";
+            std::cout.flush();
+            std::filesystem::remove("STOP");
+            break;
+        }
+
         double dt = solver.compute_dt();
 
         // Limit dt to hit output intervals exactly
@@ -105,6 +137,27 @@ int main() {
         }
 
         diag.update(solver, t, step);
+
+        // Write SBM Diagnostics if scheduled
+        if (t >= next_residual_sbm) {
+            if (params.ENABLE_SBM_DIAGNOSTICS && params.IB_METHOD == "SBM") {
+                auto sbm_diags = ImmersedBoundary::get_sbm_diagnostics();
+                std::ofstream sbm_file("csv_outputs/sbm_diagnostics.csv", std::ios::app);
+                if (sbm_file.is_open()) {
+                    sbm_file << std::scientific << t << "," 
+                             << sbm_diags.max_lebesgue << "," 
+                             << sbm_diags.limiter_count << "," 
+                             << sbm_diags.max_dist_ratio << ","
+                             << sbm_diags.max_d_dl_ratio << "\n";
+                }
+                std::cout << "\n[SBM DIAGNOSTICS] Max Lebesgue: " << sbm_diags.max_lebesgue 
+                          << " | Limiter Triggers: " << sbm_diags.limiter_count 
+                          << " | Max D/L: " << sbm_diags.max_dist_ratio 
+                          << " | Max D/dL: " << sbm_diags.max_d_dl_ratio << "\n";
+                ImmersedBoundary::reset_sbm_diagnostics();
+            }
+            next_residual_sbm += params.RESIDUAL_INTERVAL;
+        }
 
         // Write checkpoint if scheduled
         if (std::abs(t - next_checkpoint) < 1e-12) {

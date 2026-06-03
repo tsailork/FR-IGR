@@ -71,6 +71,19 @@ ENABLE_ENTROPY_LIMITER = true
 # ENABLE_IB: Toggle the Immersed Boundary Method for solid boundaries
 ENABLE_IB = false
 
+# ENABLE_SBM_DIAGNOSTICS: Toggle runtime diagnostics for SBM extrapolation quality.
+# Outputs to sbm_diagnostics.csv at every RESTART_INTERVAL.
+ENABLE_SBM_DIAGNOSTICS = false
+
+# IB_DL_SCALE: Scale factor for the shifted boundary 1D donor interval length (dL).
+# Can be tuned if the SBM extrapolations suffer from Gibbs oscillations.
+# Note: Aligning with the Colombo paper, dL is independent of boundary distance D.
+IB_DL_SCALE = 1.0
+
+# IB_L_SCALE: Scale factor for the shifted boundary 1D donor offset distance (L).
+# Allows shrinking the distance from the shifted boundary to the first donor node.
+IB_L_SCALE = 1.0
+
 # ENABLE_IB_3C: Toggle Colombo Constraint 3.c. Set to false for solid airfoils to prevent boundary loss.
 ENABLE_IB_3C = false
 
@@ -134,7 +147,7 @@ OUTPUT_INTERVAL = 0.01
 # RESTART_INTERVAL: Time interval between exact, lossless restart checkpoints (sol_*.vtm).
 RESTART_INTERVAL = 0.1
 
-# RESIDUAL_INTERVAL: Time interval between L2 residual tracking outputs to residuals.dat
+# RESIDUAL_INTERVAL: Time interval between L2 residual tracking outputs to csv_outputs/residuals.csv
 RESIDUAL_INTERVAL = 0.005
 
 # PROBE_INTERVAL: Time interval between point probe tracking to probe.csv

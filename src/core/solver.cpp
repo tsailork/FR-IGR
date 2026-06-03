@@ -17,7 +17,7 @@
  *
  * Converts a configuration string into strongly typed boolean flags and reference values.
  * Supported formats:
- * - `"WALL"`              — inviscid slip wall (reflects normal velocity).
+ * - `"WALL"` or `"WALL_SLIP"` — inviscid slip wall (reflects normal velocity).
  * - `"INFLOW"`            — freestream inflow.
  * - `"TRANSMISSIVE"`      — copy-out / zero-gradient.
  * - `"WALL_NOSLIP"`       — adiabatic no-slip wall (\f$ u=v=0 \f$, \f$ dT/dn=0 \f$).
@@ -30,7 +30,7 @@
  * @param[out] ni The NeighborInfo structure to populate.
  */
 static void parse_bc_string(const std::string& bc, NeighborInfo& ni) {
-    if (bc == "WALL") {
+    if (bc == "WALL" || bc == "WALL_SLIP") {
         ni.is_wall = true;
     } else if (bc.rfind("INFLOW_SUPERSONIC:", 0) == 0) {
         ni.is_supersonic_inflow = true;

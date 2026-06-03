@@ -38,6 +38,7 @@ digraph SolverFlow {
         style="rounded,dashed";
         
         node [fillcolor="#4338ca", color="#818cf8", fontcolor="#eef2ff"];
+        stop_check [label="Check STOP File\\n(Exists? -> break)"];
         dt [label="Compute Time Step\\n(Solver::compute_dt)"];
         
         subgraph cluster_rk3 {
@@ -59,10 +60,10 @@ digraph SolverFlow {
         diag [label="Update Diagnostics\\n(Diagnostics::update)"];
         output [label="Checkpoints & Plots\\n(VTKWriter::write)"];
         
-        { rank=same; dt; ib; igr; fluxes; update_state; limiters; diag; output; }
-        dt -> ib -> igr -> fluxes -> update_state -> limiters -> diag -> output;
+        { rank=same; stop_check; dt; ib; igr; fluxes; update_state; limiters; diag; output; }
+        stop_check -> dt -> ib -> igr -> fluxes -> update_state -> limiters -> diag -> output;
         
-        output -> dt [label=" t < T_FINAL", style=dashed, constraint=false];
+        output -> stop_check [label=" t < T_FINAL", style=dashed, constraint=false];
     }
 
     subgraph cluster_post {
@@ -78,11 +79,12 @@ digraph SolverFlow {
         { rank=same; finish; }
     }
 
-    init_igr -> dt;
+    init_igr -> stop_check;
+    stop_check -> finish [label=" STOP exists", color="#ef4444", fontcolor="#ef4444"];
     output -> finish [label=" t >= T_FINAL"];
     
     /* Invisible edges to force left-alignment of clusters */
-    load_params -> dt -> finish [style=invis, weight=100];
+    load_params -> stop_check -> finish [style=invis, weight=100];
 }
 """
 

@@ -34,6 +34,18 @@ struct SurrogateFluxPoint {
     std::vector<double> l_weights;        ///< P+1 weights of the 1D Lagrange polynomial evaluated at the surrogate face (index 0 = physical boundary)
 };
 
+struct SBMDiagnostics {
+    double max_lebesgue = 0.0;
+    int limiter_count = 0;
+    double max_dist_ratio = 0.0;
+    double max_d_dl_ratio = 0.0;
+};
+
+extern SBMDiagnostics current_sbm_diags;
+
+void reset_sbm_diagnostics();
+SBMDiagnostics get_sbm_diagnostics();
+
 extern std::vector<SurrogateFluxPoint> sbm_registry;
 
 /**

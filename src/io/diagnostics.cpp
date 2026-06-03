@@ -10,6 +10,7 @@
 #include "diagnostics.hpp"
 #include <iomanip>
 #include <iostream>
+#include <filesystem>
 
 Diagnostics::Diagnostics(const Parameters& p, const Solver& solver, double startTime) 
     : params(p), sim_start_time(startTime) {
@@ -22,11 +23,13 @@ Diagnostics::Diagnostics(const Parameters& p, const Solver& solver, double start
     next_probe_output    = (std::floor(startTime / params.PROBE_INTERVAL) + 1.0) * params.PROBE_INTERVAL;
     next_print_output    = (std::floor(startTime / params.PRINT_INTERVAL) + 1.0) * params.PRINT_INTERVAL;
 
+    std::filesystem::create_directories("csv_outputs");
+
     // Initialize Residuals File (Append if restarting)
     if (startTime > 0) {
-        res_file.open("residuals.dat", std::ios::app);
+        res_file.open("csv_outputs/residuals.csv", std::ios::app);
     } else {
-        res_file.open("residuals.dat");
+        res_file.open("csv_outputs/residuals.csv");
         if (res_file.is_open()) {
             res_file << "# FR-IGR Residual Tracker (Multiblock)\n";
             res_file << "Time, L2_rho, L2_rhou, L2_rhov, L2_E\n";
@@ -36,9 +39,9 @@ Diagnostics::Diagnostics(const Parameters& p, const Solver& solver, double start
     // Initialize Probes File (Append if restarting)
     if (!p.probes.empty()) {
         if (startTime > 0) {
-            probe_file.open("probe.csv", std::ios::app);
+            probe_file.open("csv_outputs/probe.csv", std::ios::app);
         } else {
-            probe_file.open("probe.csv");
+            probe_file.open("csv_outputs/probe.csv");
             if (probe_file.is_open()) {
                 probe_file << "Time";
                 for (size_t i = 0; i < p.probes.size(); ++i) {

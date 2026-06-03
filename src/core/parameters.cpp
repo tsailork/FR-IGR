@@ -240,7 +240,9 @@ void Parameters::load_inputs(const std::string& filename) {
         auto& kv = ini["ImmersedBoundary"];
         if (kv.count("ENABLE_IB"))           ENABLE_IB           = (kv["ENABLE_IB"] == "true");
         if (kv.count("ENABLE_IB_3C"))        ENABLE_IB_3C        = (kv["ENABLE_IB_3C"] == "true");
+        if (kv.count("ENABLE_SBM_DIAGNOSTICS")) ENABLE_SBM_DIAGNOSTICS = (kv["ENABLE_SBM_DIAGNOSTICS"] == "true" || kv["ENABLE_SBM_DIAGNOSTICS"] == "1");
         if (kv.count("IB_DL_SCALE"))         IB_DL_SCALE         = std::stod(kv["IB_DL_SCALE"]);
+        if (kv.count("IB_L_SCALE"))          IB_L_SCALE          = std::stod(kv["IB_L_SCALE"]);
         if (kv.count("IB_METHOD"))           IB_METHOD           = kv["IB_METHOD"];
         if (kv.count("IB_SHAPE"))            IB_SHAPE            = kv["IB_SHAPE"];
         if (kv.count("IB_NACA_CODE"))        IB_NACA_CODE        = kv["IB_NACA_CODE"];

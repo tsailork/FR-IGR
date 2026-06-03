@@ -26,8 +26,8 @@ TEST_CASE("Diagnostics Integration") {
         diag.update(solver, current_time, step);
     }
     
-    CHECK(std::filesystem::exists("probe.csv"));
-    CHECK(std::filesystem::exists("residuals.dat"));
+    CHECK(std::filesystem::exists("csv_outputs/probe.csv"));
+    CHECK(std::filesystem::exists("csv_outputs/residuals.csv"));
     
     std::filesystem::current_path(old_path);
 }

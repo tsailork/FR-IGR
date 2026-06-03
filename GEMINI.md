@@ -104,12 +104,40 @@ To prevent simulation crashes due to misconfigured domains, a strict validation 
 ### 3. Synchronized Diagnostics & Appending
 Diagnostics are now state-aware across restarts:
 - **Interval Sync:** The internal timers for terminal printing, residuals, and probes are synchronized with the `RESTART_TIME`, preventing immediate output floods on resume.
-- **File Appending:** Diagnostic logs (`residuals.dat`, `probe.csv`) switch to append mode during restarts, preserving the full time-history of the simulation.
+- **File Appending:** Diagnostic logs (`csv_outputs/residuals.csv`, `csv_outputs/probe.csv`) switch to append mode during restarts, preserving the full time-history of the simulation.
 
 ### 4. Pressure-Bounded IGR Source Term
 To improve the stability of high-order IGR at strong shocks:
 - **Source Capping:** The raw sensor source term ($S_{buf}$) is now optionally capped by the local pressure ($S \le C \cdot P$) *before* the Helmholtz smoothing pass.
 - **Preserved Diffusion:** Unlike capping the final viscosity field, capping the *source* allows the Helmholtz operator to naturally diffuse viscosity ahead of the shock wave, providing the necessary pre-conditioning for numerical stability.
 
-## Documentation Maintenance
-- **Input Parameters**: Whenever a new parameter is added to `parameters.hpp` or the solver logic, the `inputs_example.txt` file **must** be updated with a detailed explanation and a sample value. This ensures the user-facing documentation remains synchronized with the implementation.
+## Technical Refinements & Enhancements (June 2026)
+
+### 1. Headless Execution Redirection & STOP Trigger
+- **Buffer-free File Redirection:** Re-routes the solver's stdout and stderr streams to `out.log` inside `main.cpp`, employing non-buffered operations (`_IONBF`) to guarantee immediate diagnostic flushes.
+- **Headless STOP Interrupt:** Actively scans the simulation directory for a `STOP` trigger file during each time step, removing the file and executing a graceful solver termination upon detection.
+
+### 2. Live Runtime Dashboard (TUI)
+- **Multi-Zone Monitor:** Implements a real-time command terminal user interface (`tui.py`) parsing solver execution states, warning levels, and SBM boundary diagnostics.
+- **Subprocess Group Control:** Integrates non-blocking keyboard controls allowing on-demand stops, kills, or restarts (`run.sh` re-runs) from within the dashboard.
+
+### 3. Automated Checkpoint Detection & Restart Sync
+- **PVD Scan Integration:** The TUI parses the `pv_outputs/solution.pvd` file using regex, dynamically identifies the latest physical dataset file (.vtm) and its simulation timestamp, and automatically writes these to the `RESTART_FILE` and `RESTART_TIME` parameters in `inputs.dat` when a restart (`R`) is triggered.
+- **Clean State Restarting:** When a clean restart (`C`) is triggered, the TUI automatically clears these restart parameters, allowing the solver to build cleanly and start a fresh simulation run from $t=0.0$.
+
+## Documentation Maintenance (Agent Hook)
+Whenever tasked with "updating the documentation" for a new feature or change, you **MUST** ensure all the following locations are kept perfectly synchronized with the codebase:
+
+1. **In-Code Doxygen (`src/`)**: 
+   - Add or update Javadoc-style `/** ... */` block comments for any new or modified classes, structs, and function signatures.
+   - Use rigorous tags (`@brief`, `@param`, `@return`, `@see`) to maintain interconnectivity.
+2. **User-Facing HTML Guide (`doc/index.html`)**:
+   - Update the respective tab (Overview, Architecture, IB Methods, Configuration, Testing) when introducing major components or structural shifts.
+   - Maintain the professional, highly-technical tone and use MathJax for new equations.
+3. **Execution Flow Diagrams (`doc/scripts/`)**:
+   - If the main time-stepping loop, pre-iterations, or initialization steps change, update `doc/scripts/generate_flow_diagram.py`.
+   - Re-run the python script to regenerate the `doc/assets/solver_flow_diagram.svg` artifact.
+4. **Input Parameter Definitions (`inputs_example.txt`)**:
+   - Whenever a new configuration flag or numerical parameter is added to `src/core/parameters.hpp`, it **must** be documented in `inputs_example.txt` with a detailed explanation and sample value.
+5. **Project Context (`GEMINI.md`)**:
+   - Append major architectural paradigms, algorithmic improvements, or testing infrastructure changes to the "Technical Refinements" section of this file to ensure future agents understand the context.
