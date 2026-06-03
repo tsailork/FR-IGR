@@ -1,0 +1,19 @@
+[Physics]
+GAMMA = 1.4
+IC_TYPE = BLAST
+[Solver]
+P_DEG = 1
+CFL = 0.5
+T_FINAL = 0.005
+NUM_THREADS = 1
+[NavierStokes]
+ENABLE_NS = false
+[Regularization]
+ENABLE_IGR = false
+[IO]
+RESIDUAL_INTERVAL = 0.001
+PROBE_INTERVAL = 0.001
+OUTPUT_INTERVAL = 0.005
+RESTART_INTERVAL = 0.005
+[Probes]
+PROBE_1 = 0.5, 0.5, Pressure

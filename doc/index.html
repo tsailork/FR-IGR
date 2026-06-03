@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FR-IGR Technical Documentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="sidebar-title">FR-IGR Documentation</div>
+        <button class="tab-btn active" onclick="openTab(event, 'overview')">Overview</button>
+        <button class="tab-btn" onclick="openTab(event, 'architecture')">Architecture</button>
+        <button class="tab-btn" onclick="openTab(event, 'configuration')">Configuration & Gridding</button>
+        <button class="tab-btn" onclick="openTab(event, 'testing-structure')">Testing Structure</button>
+        <button class="tab-btn" onclick="openTab(event, 'testing-coverage')">Test Coverage</button>
+    </nav>
+
+    <main class="main-content">
+        <!-- Overview Tab -->
+        <div id="overview" class="tab-pane active">
+            <h1>Solver Overview</h1>
+            <p>
+                FR-IGR is a comprehensive, high-order numerical solver engineered for the simulation of compressible fluid dynamics. 
+                Specifically targeting the 2D Euler and Navier-Stokes equations, the solver is designed to accurately model complex aerodynamic phenomena ranging from smooth freestream flows to highly dynamic, shock-driven blast waves.
+            </p>
+            
+            <h2>Governing Equations</h2>
+            <p>
+                The foundational physical system modeled by the solver is the compressible Navier-Stokes equations in two dimensions, accounting for the conservation of mass, momentum, and energy.
+                For inviscid simulations, the viscous stress tensor and heat flux terms are disabled, strictly reducing the system to the 2D Euler equations. 
+                The continuous physical equations are advanced in time using an explicit Strong Stability Preserving Runge-Kutta (SSP-RK3) temporal discretization, which guarantees strictly bounded variation across discrete time steps.
+            </p>
+
+            <h2>Core Numerics and Methodology</h2>
+            <p>
+                The solver utilizes the <strong>Flux Reconstruction (FR)</strong> method (often referred to in literature as the Correction Procedure via Reconstruction, or CPR). 
+                FR bridges the gap between traditional finite volume and discontinuous finite element methods. 
+                By utilizing tensor-product polynomials defined on Cartesian multi-block grids, FR-IGR maps continuous geometric domains into standardized computational reference elements. 
+                This formulation achieves extreme computational efficiency and mathematically rigorous spatial convergence up to degree P3.
+            </p>
+
+            <h2>System Architecture</h2>
+            <p>
+                Written natively in modern C++17, the application architecture is highly modular. The simulation state is continuously packed into flattened, 1D contiguous array structures, providing exceptional data locality and mitigating cache misses. 
+                Symmetric multidimensional flux evaluations are parallelized using OpenMP, scaling seamlessly across multi-core processor environments.
+            </p>
+        </div>
+
+        <!-- Architecture Tab -->
+        <div id="architecture" class="tab-pane">
+            <h1>Mathematical Architecture</h1>
+            
+            <h2>Spatial Discretization: Flux Reconstruction</h2>
+            <p>
+                The core of the solver evaluates spatial gradients by projecting physical states onto orthogonal Gauss-Legendre quadrature points. 
+                Discontinuous interfacial fluxes are reconciled via approximate Riemann solvers, strictly implementing Rusanov and Local Lax-Friedrichs (LLF) upwinding schemes. 
+                The divergence of the flux is then reconstructed using high-order Radau correction polynomials, guaranteeing conservation across element boundaries.
+            </p>
+
+            <h2>Immersed Boundary Methods</h2>
+            <p>
+                Traditional Cartesian solvers struggle with complex geometric boundaries. To elegantly bypass the need for body-fitted unstructured meshes, the solver supports native Immersed Boundary (IB) formulations to mask solid objects directly within the Cartesian field.
+            </p>
+            <ul>
+                <li><strong>Shifted Boundary Method (SBM):</strong> Instead of modifying the governing equations, SBM explicitly computes boundary conditions at surrogate Cartesian interfaces by applying high-order Taylor-series expansions mapped from the true physical boundary.</li>
+                <li><strong>Volume Penalty Method (VPM):</strong> Utilizes an internal source-term penalization mask to aggressively enforce zero-velocity states inside defined solid regions, mathematically treating the solid as a highly porous medium.</li>
+            </ul>
+
+            <h2>Numerical Limiters</h2>
+            <p>
+                High-order discretizations are mathematically susceptible to Gibbs phenomenon oscillations near sharp gradients or under-resolved flow features. 
+                To prevent unphysical states from generating floating-point exceptions (NaNs), the solver integrates robust limiters:
+            </p>
+            <ul>
+                <li><strong>Positivity Preservation:</strong> A Zhang-Shu bounds-preserving limiter iteratively scales the polynomial coefficients around the element average to ensure density (<code>&rho; > 0</code>) and pressure (<code>p > 0</code>) remain strictly positive.</li>
+                <li><strong>Entropy Limiters:</strong> Enforces minimum-preservation on the specific thermodynamic entropy, preventing non-physical expansion shocks.</li>
+            </ul>
+
+            <h2>Isotropic Gradient Regularization (IGR)</h2>
+            <p>
+                In flows containing exceptionally strong discontinuities, localized limiters alone may fail to suppress instability. 
+                To handle these scenarios, the solver introduces Isotropic Gradient Regularization—acting as an intelligent artificial viscosity mechanism (Entropic Pressure). 
+                The viscosity field is computed by evaluating a Helmholtz-like smoothing equation, which diffuses localized shock-sensor data throughout the computational domain without degrading accuracy in smooth regions.
+            </p>
+            <p>The solver provides two distinct PDE pathways to solve the IGR field:</p>
+            <ul>
+                <li><strong>Elliptic IGR:</strong> Solves the steady-state Helmholtz equation implicitly at every time step using a Symmetrized Alternating Direction Implicit (ADI) matrix solver. The ADI approach is computationally expensive but provides instantaneous, infinite-speed propagation of shock viscosity. The symmetrized dual-pass (XY and YX) eliminates inherent directional bias.</li>
+                <li><strong>Parabolic IGR:</strong> Treats the viscosity field as a transient variable, evolving it explicitly alongside the physical flow state using an internal forward-Euler sub-stepping routine. This method leverages BR2 viscous flux discretization to stabilize the parabolic diffusion gradients.</li>
+            </ul>
+        </div>
+
+        <!-- Configuration Tab -->
+        <div id="configuration" class="tab-pane">
+            <h1>Configuration & Gridding</h1>
+            <p>
+                The solver is initialized dynamically at runtime without recompilation by reading two plaintext configuration files: 
+                <code>inputs.dat</code> (parameterizing physics and numerics) and <code>domain.grid</code> (defining spatial topology).
+            </p>
+
+            <h2>Parameter Configuration (inputs.dat)</h2>
+            <p>
+                <code>inputs.dat</code> is parsed using a standard INI-format syntax. It exposes comprehensive control over the simulation environment. Users can reference the comprehensively documented <code>inputs_example.txt</code> file in the root directory for a full template of available configurations and default parameters. Key sections include:
+            </p>
+            <ul>
+                <li><strong>[Physics]:</strong> Defines macroscopic constants (<code>GAMMA</code>), freestream initialization constraints, and the target initial condition scenario (e.g., <code>BLAST</code>, <code>SINE_WAVE</code>, <code>RIEMANN_2D_C3</code>).</li>
+                <li><strong>[Solver]:</strong> Dictates core numerics, including the element polynomial degree (<code>P_DEG</code>), Courant number (<code>CFL</code>), end simulation time (<code>T_FINAL</code>), and <code>NUM_THREADS</code>.</li>
+                <li><strong>[NavierStokes]:</strong> Configures physical viscosity via the Reynolds number (<code>RE</code>), Prandtl number (<code>PR</code>), and reference Mach number.</li>
+                <li><strong>[IO] & [Probes]:</strong> Granular control over output frequencies for VTK snapshot plots, exact multi-block restart checkpoints, L2 residual tracking, and explicit spatial point probes.</li>
+                <li><strong>[ImmersedBoundary]:</strong> Constructs dynamic or static geometries using <code>IB_SHAPE</code>. Supports standard circular cylinders, 4-digit NACA airfoils, and highly customized piecewise multi-polygon boundaries evaluated through a dynamic timeline (<code>IB_Q_TIME_MAP</code>).</li>
+            </ul>
+
+            <h2>Domain Gridding (domain.grid)</h2>
+            <p>
+                Spatial discretization is defined using a block-structured Cartesian approach. The <code>domain.grid</code> file establishes individual, contiguous blocks and declares the mapping connections between their faces.
+            </p>
+            <p>An example definition for <code>[Block0]</code>:</p>
+            <pre><code>[Block0]
+N_ELEM_X = 20           # Elements in X direction
+N_ELEM_Y = 20           # Elements in Y direction
+X_MIN = 0.0             # Left boundary coordinate
+X_MAX = 1.0             # Right boundary coordinate
+Y_MIN = 0.0             # Bottom boundary coordinate
+Y_MAX = 1.0             # Top boundary coordinate
+
+BC_L = CHARACTERISTIC:1.0:0.0:0.0:1.0
+BC_R = 1:L
+BC_B = 0:T
+BC_T = 0:B</code></pre>
+            
+            <h3>Boundary Condition Specifications</h3>
+            <p>Block edges are assigned boundary conditions using specific string identifiers. Standard physical constraints include:</p>
+            <ul>
+                <li><code>OUTFLOW_SUPERSONIC</code>: Simple transmissive ghost-state.</li>
+                <li><code>WALL</code>: Reflective slip-wall.</li>
+                <li><code>WALL_NOSLIP:T</code>: Viscous adiabatic (or isothermal at temperature T) no-slip boundary.</li>
+                <li><code>WALL_MOVING:V</code>: Translating boundary with tangential velocity V.</li>
+                <li><code>CHARACTERISTIC:rho:u:v:p</code>: Riemann-invariant non-reflecting far-field boundaries computed against the reference state.</li>
+                <li><code>TOTAL_PRESSURE_COMP:Pt</code> / <code>STATIC_PRESSURE:P</code>: Subsonic backpressure specifications.</li>
+            </ul>
+            <p>
+                <strong>Multiblock Connectivity:</strong> Inter-block data transfer is established using a face-mapping syntax <code>ID:FACE</code>. 
+                For example, <code>BC_R = 1:L</code> connects the right boundary of the current block to the left boundary of Block 1. 
+                Periodic boundaries are configured effortlessly by mapping a block's faces to itself (e.g., <code>BC_B = 0:T</code>).
+            </p>
+        </div>
+
+        <!-- Testing Structure Tab -->
+        <div id="testing-structure" class="tab-pane">
+            <h1>Testing Structure</h1>
+            <p>
+                The testing infrastructure is built upon the single-header <code>doctest</code> framework. 
+                The suite is logically divided into isolated unit tests targeting mathematical invariants, and integrated regression tests verifying system-level properties.
+            </p>
+            
+            <h2>Execution via Makefile</h2>
+            <p>Tests are executed through specific build targets, ensuring isolated testing environments without dependencies on external binaries.</p>
+            <pre><code># Execute the unit test suite
+make test-unit
+
+# Execute the regression test suite
+make test-regression</code></pre>
+            <p>A shell script wrapper (<code>tests/run_tests.sh</code>) automates the build and execution process, returning standard exit codes intended for Continuous Integration (CI) systems.</p>
+
+            <h2>Integration Fixtures</h2>
+            <p>
+                Regression tests utilize parameter fixtures located in the <code>tests/fixtures/</code> directory. 
+                Each fixture defines a minimal <code>domain.grid</code> and <code>inputs.dat</code> to establish a deterministic testing state. 
+                Examples include <code>blast_walls</code> for testing strong shocks, and <code>sine_periodic</code> for smooth, differentiable flows suitable for algorithmic convergence checks.
+            </p>
+        </div>
+
+        <!-- Testing Coverage Tab -->
+        <div id="testing-coverage" class="tab-pane">
+            <h1>Test Coverage</h1>
+            <p>
+                The suite comprises 45 isolated test files (27 unit tests and 18 regression tests), validating numerical behavior across thousands of assertions per execution pass.
+            </p>
+
+            <h2>Unit Test Coverage</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Component</th>
+                        <th>Target File</th>
+                        <th>Verification Scope</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Polynomial Basis</td>
+                        <td><code>test_basis.cpp</code></td>
+                        <td>Exactness of Radau correction endpoints, Gauss-Legendre quadrature weights, and differentiation matrix exactness.</td>
+                    </tr>
+                    <tr>
+                        <td>Data Structures</td>
+                        <td><code>test_state.cpp</code></td>
+                        <td>1D flat-array indexing, initialization boundaries, and zero-aliasing verification.</td>
+                    </tr>
+                    <tr>
+                        <td>Inviscid Fluxes</td>
+                        <td><code>test_euler_flux.cpp</code></td>
+                        <td>X/Y sweep directionality, symmetry of fluxes, and integration of the IGR specific viscosity terms.</td>
+                    </tr>
+                    <tr>
+                        <td>Riemann Solvers</td>
+                        <td><code>test_riemann.cpp</code></td>
+                        <td>Upwinding behavior, Sod shock tube exactness limits, and maximum wave speed estimates.</td>
+                    </tr>
+                    <tr>
+                        <td>Linear Solvers</td>
+                        <td><code>test_thomas.cpp</code></td>
+                        <td>Tridiagonal Matrix Algorithm correctness against large identically-banded systems.</td>
+                    </tr>
+                    <tr>
+                        <td>Geometry Constraints</td>
+                        <td><code>test_ib_geometry.cpp</code></td>
+                        <td>Signed Distance Field (SDF) approximations, gradient norms, and temporal mappings for dynamic masks.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2>Regression Test Coverage</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Target File</th>
+                        <th>Verification Scope</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Spatial Convergence</td>
+                        <td><code>test_spatial_convergence.cpp</code></td>
+                        <td>Computes L2 error norms across refined meshes to assert rigorous theoretical spatial accuracy limits for P1 and P2 elements.</td>
+                    </tr>
+                    <tr>
+                        <td>Temporal Convergence</td>
+                        <td><code>test_rk3_convergence.cpp</code></td>
+                        <td>Verifies global error reduction scaling matches exactly O(dt^3) for the SSP-RK3 integrator.</td>
+                    </tr>
+                    <tr>
+                        <td>Global Conservation</td>
+                        <td><code>test_conservation.cpp</code></td>
+                        <td>Integrates a high-pressure blast expansion to ensure total mass and total energy invariant preservation up to machine precision.</td>
+                    </tr>
+                    <tr>
+                        <td>Physics Pathways</td>
+                        <td><code>test_igr_elliptic.cpp</code></td>
+                        <td>Verifies ADI solver convergence and artificial viscosity distribution stability natively inside the main execution loop.</td>
+                    </tr>
+                    <tr>
+                        <td>Viscous Pathways</td>
+                        <td><code>test_navier_stokes.cpp</code></td>
+                        <td>Validates BR2 viscous flux discretization using freestream and Couette flow constraints.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <script>
+        function openTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            
+            // Hide all tab panes
+            tabcontent = document.getElementsByClassName("tab-pane");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].className = tabcontent[i].className.replace(" active", "");
+            }
+            
+            // Remove active class from all buttons
+            tablinks = document.getElementsByClassName("tab-btn");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+            
+            // Show the current tab and add active class to button
+            document.getElementById(tabName).className += " active";
+            evt.currentTarget.className += " active";
+        }
+    </script>
+</body>
+</html>

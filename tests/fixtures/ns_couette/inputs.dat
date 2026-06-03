@@ -1,0 +1,18 @@
+[Physics]
+GAMMA = 1.4
+IC_TYPE = LID_DRIVEN_CAVITY
+RHO_INF = 1.0
+P_INF = 1.0
+[Solver]
+P_DEG = 1
+CFL = 0.5
+T_FINAL = 0.01
+NUM_THREADS = 1
+[NavierStokes]
+ENABLE_NS = true
+RE = 100.0
+PR = 0.72
+MACH_REF = 0.2
+NS_BR2_ETA = 1.0
+[Regularization]
+ENABLE_IGR = false

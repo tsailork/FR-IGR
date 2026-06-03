@@ -1,0 +1,11 @@
+[Block0]
+N_ELEM_X = 16
+N_ELEM_Y = 1
+X_MIN = 0.0
+X_MAX = 1.0
+Y_MIN = 0.0
+Y_MAX = 0.1
+BC_L = 0:R
+BC_R = 0:L
+BC_B = WALL
+BC_T = WALL

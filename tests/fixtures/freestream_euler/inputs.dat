@@ -1,0 +1,16 @@
+[Physics]
+GAMMA = 1.4
+IC_TYPE = FREESTREAM
+RHO_INF = 1.0
+U_INF = 0.5
+V_INF = 0.0
+P_INF = 1.0
+[Solver]
+P_DEG = 1
+CFL = 0.5
+T_FINAL = 0.01
+NUM_THREADS = 1
+[NavierStokes]
+ENABLE_NS = false
+[Regularization]
+ENABLE_IGR = false

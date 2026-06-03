@@ -1,0 +1,14 @@
+[Physics]
+GAMMA = 1.4
+IC_TYPE = BLAST
+[Solver]
+P_DEG = 1
+CFL = 0.5
+T_FINAL = 0.01
+NUM_THREADS = 1
+[NavierStokes]
+ENABLE_NS = false
+[Regularization]
+ENABLE_IGR = true
+ALPHA_SCALE = 1.0
+IGR_TYPE = ELLIPTIC

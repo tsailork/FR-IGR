@@ -18,3 +18,5 @@ pv_outputs/
 fr_solver
 *.pvsm
 .idea/
+test_regression
+test_unit

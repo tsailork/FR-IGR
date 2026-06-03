@@ -1,0 +1,25 @@
+[Physics]
+GAMMA = 1.4
+IC_TYPE = FREESTREAM
+RHO_INF = 1.0
+U_INF = 0.5
+V_INF = 0.0
+P_INF = 1.0
+[Solver]
+P_DEG = 1
+CFL = 0.5
+T_FINAL = 0.005
+NUM_THREADS = 1
+[NavierStokes]
+ENABLE_NS = false
+[Regularization]
+ENABLE_IGR = false
+[ImmersedBoundary]
+ENABLE_IB = true
+IB_METHOD = VPM_ANALYTICAL
+IB_SHAPE = CIRCLE
+IB_CENTER_X = 1.0
+IB_CENTER_Y = 1.0
+IB_RADIUS = 0.25
+IB_SHARP = false
+IB_SMOOTH_WIDTH = 1.0

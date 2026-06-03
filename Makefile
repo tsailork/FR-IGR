@@ -12,7 +12,8 @@ DEBUG_FLAGS = -std=c++17 -g -O0 -Wall -Wextra -Wpedantic \
 
 # Target Executables
 TARGET = fr_solver
-TEST_TARGET = unit_tests
+TEST_UNIT_TARGET = test_unit
+TEST_REGR_TARGET = test_regression
 
 # Source Files
 CORE_SRC = src/core/parameters.cpp src/core/basis.cpp src/core/solver.cpp
@@ -32,8 +33,10 @@ OBJS = $(OBJ_SRCS:.cpp=.o)
 MAIN_SRC = src/main.cpp
 MAIN_OBJ = $(MAIN_SRC:.cpp=.o)
 
-TEST_SRC = tests/test_main.cpp
-TEST_OBJ = $(TEST_SRC:.cpp=.o)
+# Test Source Files
+TEST_MAIN_SRC = tests/test_main.cpp
+UNIT_TEST_SRCS = $(wildcard tests/unit/*.cpp)
+REGR_TEST_SRCS = $(wildcard tests/regression/*.cpp)
 
 # Default Target
 all: $(TARGET)
@@ -46,11 +49,25 @@ all: $(TARGET)
 $(TARGET): $(OBJS) $(MAIN_OBJ)
 	$(CXX) $(CXXFLAGS) $^ -o $@ -lprofiler
 
-# Build the tests
-test: CXXFLAGS += -g -O0  # Tests should be built unoptimized for fast compile
-test: $(OBJS) $(TEST_OBJ)
-	$(CXX) $(CXXFLAGS) $^ -o $(TEST_TARGET)
-	./$(TEST_TARGET)
+# Unit tests (fast, <30s)
+test-unit: CXXFLAGS += -g -O0
+test-unit: $(OBJS) $(TEST_MAIN_SRC:.cpp=.o) $(UNIT_TEST_SRCS:.cpp=.o)
+	$(CXX) $(CXXFLAGS) $^ -o $(TEST_UNIT_TARGET)
+	./$(TEST_UNIT_TARGET) --duration=true
+
+# Regression tests (slower, ~2-3 min)
+test-regression: CXXFLAGS += -g -O1
+test-regression: $(OBJS) $(TEST_MAIN_SRC:.cpp=.o) $(REGR_TEST_SRCS:.cpp=.o)
+	$(CXX) $(CXXFLAGS) $^ -o $(TEST_REGR_TARGET)
+	./$(TEST_REGR_TARGET) --duration=true
+
+# All tests
+test: test-unit test-regression
+
+# Tests with JUnit XML output (for CI/AI agent parsing)
+test-ci: test-unit test-regression
+	./$(TEST_UNIT_TARGET) --reporters=junit --out=test_results_unit.xml
+	./$(TEST_REGR_TARGET) --reporters=junit --out=test_results_regression.xml
 
 # Debug build
 debug: CXXFLAGS = $(DEBUG_FLAGS)
