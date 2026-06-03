@@ -8,6 +8,7 @@
 /// OpenMP: parallelised over ey (X-gradient) and ex (Y-gradient).
 
 #include "../core/solver.hpp"
+#include "../ib/sbm_geometry.hpp"
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -19,7 +20,7 @@ void Solver::compute_gradients() {
         // =====================================================================
         // X-gradient pass: dU/dx for all 4 conservative variables
         // =====================================================================
-        #pragma omp parallel for schedule(static)
+        #pragma omp for schedule(static)
         for (int ey = 0; ey < b.ny; ++ey) {
             for (int iy = 0; iy < p.N_PTS; ++iy) {
                 for (int ex = 0; ex < b.nx; ++ex) {
@@ -35,10 +36,22 @@ void Solver::compute_gradients() {
                     // Get neighbour face states
                     double U_neigh_L[4], U_neigh_R[4];
                     double sig_dummy;
-                    get_neigh_state_x(b, ey, ex, iy, false,
-                                      UL_face, 0.0, U_neigh_L, sig_dummy);
-                    get_neigh_state_x(b, ey, ex, iy, true,
-                                      UR_face, 0.0, U_neigh_R, sig_dummy);
+                    
+                    const ImmersedBoundary::SurrogateFluxPoint* sfp_L = ImmersedBoundary::get_sbm_face(b.id, ey, ex, 0, iy);
+                    if (sfp_L) {
+                        ImmersedBoundary::compute_sbm_state(*this, sfp_L, U_neigh_L);
+                    } else {
+                        get_neigh_state_x(b, ey, ex, iy, false,
+                                          UL_face, 0.0, U_neigh_L, sig_dummy);
+                    }
+                    
+                    const ImmersedBoundary::SurrogateFluxPoint* sfp_R = ImmersedBoundary::get_sbm_face(b.id, ey, ex, 1, iy);
+                    if (sfp_R) {
+                        ImmersedBoundary::compute_sbm_state(*this, sfp_R, U_neigh_R);
+                    } else {
+                        get_neigh_state_x(b, ey, ex, iy, true,
+                                          UR_face, 0.0, U_neigh_R, sig_dummy);
+                    }
 
                     // Central interface state: U_hat = 0.5*(U_int + U_neigh)
                     double UL_hat[4], UR_hat[4];
@@ -70,7 +83,7 @@ void Solver::compute_gradients() {
         // =====================================================================
         // Y-gradient pass: dU/dy for all 4 conservative variables
         // =====================================================================
-        #pragma omp parallel for schedule(static)
+        #pragma omp for schedule(static)
         for (int ex = 0; ex < b.nx; ++ex) {
             for (int ix = 0; ix < p.N_PTS; ++ix) {
                 for (int ey = 0; ey < b.ny; ++ey) {
@@ -86,10 +99,22 @@ void Solver::compute_gradients() {
                     // Get neighbour face states
                     double U_neigh_B[4], U_neigh_T[4];
                     double sig_dummy;
-                    get_neigh_state_y(b, ey, ex, ix, false,
-                                      UB_face, 0.0, U_neigh_B, sig_dummy);
-                    get_neigh_state_y(b, ey, ex, ix, true,
-                                      UT_face, 0.0, U_neigh_T, sig_dummy);
+                    
+                    const ImmersedBoundary::SurrogateFluxPoint* sfp_B = ImmersedBoundary::get_sbm_face(b.id, ey, ex, 2, ix);
+                    if (sfp_B) {
+                        ImmersedBoundary::compute_sbm_state(*this, sfp_B, U_neigh_B);
+                    } else {
+                        get_neigh_state_y(b, ey, ex, ix, false,
+                                          UB_face, 0.0, U_neigh_B, sig_dummy);
+                    }
+                    
+                    const ImmersedBoundary::SurrogateFluxPoint* sfp_T = ImmersedBoundary::get_sbm_face(b.id, ey, ex, 3, ix);
+                    if (sfp_T) {
+                        ImmersedBoundary::compute_sbm_state(*this, sfp_T, U_neigh_T);
+                    } else {
+                        get_neigh_state_y(b, ey, ex, ix, true,
+                                          UT_face, 0.0, U_neigh_T, sig_dummy);
+                    }
 
                     // Central interface state
                     double UB_hat[4], UT_hat[4];

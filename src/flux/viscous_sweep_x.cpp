@@ -70,10 +70,11 @@ void Solver::viscous_sweep_x() {
     for (auto& b : blocks) {
         const int n_dofs = b.nx * b.ny * p.N_PTS * p.N_PTS;
 
-        #pragma omp parallel for schedule(static)
+        #pragma omp for schedule(static)
         for (int ey = 0; ey < b.ny; ++ey) {
-            for (int iy = 0; iy < p.N_PTS; ++iy) {
-                for (int ex = 0; ex < b.nx; ++ex) {
+            double prev_Fv_R_comm[MAX_PTS][4];
+            for (int ex = 0; ex < b.nx; ++ex) {
+                for (int iy = 0; iy < p.N_PTS; ++iy) {
 
                     // --- 1. Pointwise viscous X-flux at each solution point ---
                     double Fv_sol[MAX_PTS][4];
@@ -92,8 +93,8 @@ void Solver::viscous_sweep_x() {
                     // --- 2. Face-extrapolated viscous fluxes & states ---
                     double Fv_L[4] = {}, Fv_R[4] = {};
                     double UL_face[4] = {}, UR_face[4] = {};
-                    for (int ix = 0; ix < p.N_PTS; ++ix) {
-                        for (int v = 0; v < 4; ++v) {
+                    for (int v = 0; v < 4; ++v) {
+                        for (int ix = 0; ix < p.N_PTS; ++ix) {
                             Fv_L[v] += Fv_sol[ix][v] * basis.l_L[ix];
                             Fv_R[v] += Fv_sol[ix][v] * basis.l_R[ix];
                             UL_face[v] += b.U(v, ey, ex, iy, ix) * basis.l_L[ix];
@@ -105,42 +106,59 @@ void Solver::viscous_sweep_x() {
                     // Left face
                     double Fv_L_nb[4] = {};
                     double UL_nb[4];
-                    {
-                        double sig_dummy;
-                        get_neigh_state_x(b, ey, ex, iy, false,
-                                          UL_face, 0.0, UL_nb, sig_dummy);
-                        if (ex > 0 || b.ni_l.id != -1) {
-                            int nex;
-                            const Block* nb_ptr;
-                            const double* weights;
-                            if (ex > 0) {
-                                nb_ptr = &b;
-                                nex = ex - 1;
-                                weights = basis.l_R.data();
-                            } else {
-                                nb_ptr = &blocks[b.ni_l.id];
-                                nex = (b.ni_l.face == 'L') ? 0 : nb_ptr->nx - 1;
-                                weights = (b.ni_l.face == 'L') ? basis.l_L.data() : basis.l_R.data();
-                            }
-                            const Block& nb = *nb_ptr;
-                            int nb_n_dofs = nb.nx * nb.ny * p.N_PTS * p.N_PTS;
-                            for (int kk = 0; kk < p.N_PTS; ++kk) {
-                                int nflat = nb.get_flat_idx(ey, nex, iy, kk, p.N_PTS);
-                                double U_nb[4], dUdx_nb[4], dUdy_nb[4];
-                                for (int v = 0; v < 4; ++v) {
-                                    U_nb[v]    = nb.U(v, ey, nex, iy, kk);
-                                    dUdx_nb[v] = nb.grad_Ux[v * nb_n_dofs + nflat];
-                                    dUdy_nb[v] = nb.grad_Uy[v * nb_n_dofs + nflat];
+                    bool bnd_L = (ex == 0 && b.ni_l.id == -1);
+                    double Fv_L_comm[4], Fv_R_comm[4];
+                    double penalty = br2_eta * mu / b.dx;
+
+                    if (ex > 0) {
+                        for (int v = 0; v < 4; ++v)
+                            Fv_L_comm[v] = prev_Fv_R_comm[iy][v];
+                    } else {
+                        {
+                            double sig_dummy;
+                            get_neigh_state_x(b, ey, ex, iy, false,
+                                              UL_face, 0.0, UL_nb, sig_dummy);
+                            if (ex > 0 || b.ni_l.id != -1) {
+                                int nex;
+                                const Block* nb_ptr;
+                                const double* weights;
+                                if (ex > 0) {
+                                    nb_ptr = &b;
+                                    nex = ex - 1;
+                                    weights = basis.l_R.data();
+                                } else {
+                                    nb_ptr = &blocks[b.ni_l.id];
+                                    nex = (b.ni_l.face == 'L') ? 0 : nb_ptr->nx - 1;
+                                    weights = (b.ni_l.face == 'L') ? basis.l_L.data() : basis.l_R.data();
                                 }
-                                double Fv_kk[4];
-                                compute_viscous_flux_x(U_nb, dUdx_nb, dUdy_nb,
-                                                        mu, kappa, p.GAMMA, Fv_kk);
+                                const Block& nb = *nb_ptr;
+                                int nb_n_dofs = nb.nx * nb.ny * p.N_PTS * p.N_PTS;
+                                for (int kk = 0; kk < p.N_PTS; ++kk) {
+                                    int nflat = nb.get_flat_idx(ey, nex, iy, kk, p.N_PTS);
+                                    double U_nb[4], dUdx_nb[4], dUdy_nb[4];
+                                    for (int v = 0; v < 4; ++v) {
+                                        U_nb[v]    = nb.U(v, ey, nex, iy, kk);
+                                        dUdx_nb[v] = nb.grad_Ux[v * nb_n_dofs + nflat];
+                                        dUdy_nb[v] = nb.grad_Uy[v * nb_n_dofs + nflat];
+                                    }
+                                    double Fv_kk[4];
+                                    compute_viscous_flux_x(U_nb, dUdx_nb, dUdy_nb,
+                                                            mu, kappa, p.GAMMA, Fv_kk);
+                                    for (int v = 0; v < 4; ++v)
+                                        Fv_L_nb[v] += Fv_kk[v] * weights[kk];
+                                }
+                            } else {
                                 for (int v = 0; v < 4; ++v)
-                                    Fv_L_nb[v] += Fv_kk[v] * weights[kk];
+                                    Fv_L_nb[v] = Fv_L[v];
                             }
-                        } else {
-                            for (int v = 0; v < 4; ++v)
-                                Fv_L_nb[v] = Fv_L[v];
+                        }
+                        for (int v = 0; v < 4; ++v) {
+                            if (bnd_L) {
+                                Fv_L_comm[v] = Fv_L[v];
+                            } else {
+                                Fv_L_comm[v] = 0.5 * (Fv_L_nb[v] + Fv_L[v])
+                                             + penalty * (UL_face[v] - UL_nb[v]);
+                            }
                         }
                     }
 
@@ -186,23 +204,9 @@ void Solver::viscous_sweep_x() {
                         }
                     }
 
-                    // --- 4. Common interface viscous flux with BR2 penalty ---
-                    // At domain boundaries, no BR2 penalty: wall BC is enforced
-                    // through the gradient (Phase 1). At interior faces, use
-                    // the standard BR2 penalty for stability.
-                    double Fv_L_comm[4], Fv_R_comm[4];
-                    double penalty = br2_eta * mu / b.dx;
-
-                    bool bnd_L = (ex == 0 && b.ni_l.id == -1);
                     bool bnd_R = (ex == b.nx - 1 && b.ni_r.id == -1);
 
                     for (int v = 0; v < 4; ++v) {
-                        if (bnd_L) {
-                            Fv_L_comm[v] = Fv_L[v];
-                        } else {
-                            Fv_L_comm[v] = 0.5 * (Fv_L_nb[v] + Fv_L[v])
-                                         + penalty * (UL_face[v] - UL_nb[v]);
-                        }
                         if (bnd_R) {
                             Fv_R_comm[v] = Fv_R[v];
                         } else {
@@ -211,10 +215,13 @@ void Solver::viscous_sweep_x() {
                         }
                     }
 
+                    for (int v = 0; v < 4; ++v)
+                        prev_Fv_R_comm[iy][v] = Fv_R_comm[v];
+
                     // --- 5. Accumulate viscous contribution into RHS ---
                     //   RHS += div(Fv) · (2/dx)
-                    for (int ix = 0; ix < p.N_PTS; ++ix)
-                        for (int v = 0; v < 4; ++v) {
+                    for (int v = 0; v < 4; ++v) {
+                        for (int ix = 0; ix < p.N_PTS; ++ix) {
                             double df = 0.0;
                             for (int kk = 0; kk < p.N_PTS; ++kk)
                                 df += basis.D[ix][kk] * Fv_sol[kk][v];
@@ -224,6 +231,7 @@ void Solver::viscous_sweep_x() {
                                  + (Fv_R_comm[v] - Fv_R[v]) * basis.dgr[ix])
                                 * (2.0 / b.dx);
                         }
+                    }
                 }
             }
         }

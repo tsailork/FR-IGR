@@ -26,7 +26,7 @@ void Solver::compute_entropic_pressure() {
       for (size_t i = 0; i < b.sigma_field.size(); ++i)
         b.sigma_field[i] = 0.5 * (b.sigma_xy_buf[i] + b.sigma_yx_buf[i]);
 
-      #pragma omp parallel for schedule(static)
+      #pragma omp for schedule(static)
       for (int ey = 0; ey < b.ny; ++ey)
         for (int ex = 0; ex < b.nx; ++ex)
           for (int iy = 0; iy < p.N_PTS; ++iy)

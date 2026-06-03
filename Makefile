@@ -1,7 +1,7 @@
 # Compiler and Flags
 CXX = g++
 # Standard production flags: optimized + OpenMP
-CXXFLAGS = -std=c++17 -O3 -Wall -Wextra -fopenmp
+CXXFLAGS = -std=c++17 -g -Wall -Wextra -fopenmp -O3
 
 # Debugging flags (comprehensive error checking)
 # Note: UndefinedBehaviorSanitizer (UBSan) and AddressSanitizer (ASan) 
@@ -23,7 +23,7 @@ BND_SRC  = src/boundary/boundary_wall.cpp src/boundary/boundary_characteristic.c
 LIM_SRC  = src/limiters/positivity.cpp src/limiters/entropy.cpp
 TIME_SRC = src/time/stability.cpp src/time/rk3.cpp
 IO_SRC   = src/io/vtk_writer.cpp src/io/restart.cpp src/io/initial_conditions.cpp src/io/diagnostics.cpp
-IB_SRC   = src/ib/ib_common.cpp src/ib/ib_vpm.cpp
+IB_SRC   = src/ib/ib_common.cpp src/ib/ib_vpm.cpp src/ib/sbm_geometry.cpp
 
 # Combine into objects
 OBJ_SRCS = $(CORE_SRC) $(FLUX_SRC) $(IGR_SRC) $(BND_SRC) $(LIM_SRC) $(TIME_SRC) $(IO_SRC) $(IB_SRC)
@@ -40,11 +40,11 @@ all: $(TARGET)
 
 # Compile object files
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@ -lprofiler
 
 # Build the main executable
 $(TARGET): $(OBJS) $(MAIN_OBJ)
-	$(CXX) $(CXXFLAGS) $^ -o $@
+	$(CXX) $(CXXFLAGS) $^ -o $@ -lprofiler
 
 # Build the tests
 test: CXXFLAGS += -g -O0  # Tests should be built unoptimized for fast compile

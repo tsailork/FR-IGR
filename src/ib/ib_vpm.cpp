@@ -15,7 +15,7 @@ void Solver::apply_ib_explicit() {
     if (!p.ENABLE_IB) return;
 
     for (auto &b : blocks) {
-        #pragma omp parallel for collapse(2) schedule(static)
+        #pragma omp for collapse(2) schedule(static)
         for (int ey = 0; ey < b.ny; ++ey) {
             for (int ex = 0; ex < b.nx; ++ex) {
                 for (int iy = 0; iy < p.N_PTS; ++iy) {

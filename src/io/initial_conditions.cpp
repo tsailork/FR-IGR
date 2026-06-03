@@ -22,6 +22,9 @@ void IC::apply(Solver& solver) {
 
         for (int ey = 0; ey < b.ny; ++ey) {
             for (int ex = 0; ex < b.nx; ++ex) {
+                // Do not overwrite elements that are fully inside the IB (they are initialized in sbm_geometry)
+                if (p.ENABLE_IB && !b.solid_mask.empty() && b.solid_mask[ey * b.nx + ex]) continue;
+
                 for (int iy = 0; iy < p.N_PTS; ++iy) {
                     for (int ix = 0; ix < p.N_PTS; ++ix) {
                         double x = b.x_min + (ex + 0.5 * (1 + basis.z[ix])) * b.dx;

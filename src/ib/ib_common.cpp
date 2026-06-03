@@ -6,13 +6,17 @@
 
 namespace ImmersedBoundary {
 
+double get_circle_sdf(double x, double y, double center_x, double center_y, double radius) {
+    double rx = x - center_x;
+    double ry = y - center_y;
+    return std::sqrt(rx * rx + ry * ry) - radius;
+}
+
 double compute_circle_mask(double x, double y, double center_x, double center_y, double radius,
                            bool sharp, double smooth_width, double dx, double dy)
 {
     // Signed distance function (phi < 0 inside solid, phi > 0 in fluid)
-    double rx = x - center_x;
-    double ry = y - center_y;
-    double phi = std::sqrt(rx * rx + ry * ry) - radius;
+    double phi = get_circle_sdf(x, y, center_x, center_y, radius);
 
     if (sharp) {
         return (phi <= 0.0) ? 1.0 : 0.0;
@@ -36,9 +40,8 @@ double compute_circle_mask(double x, double y, double center_x, double center_y,
     }
 }
 
-double compute_naca_mask(double x, double y, double x_le, double y_le, double chord,
-                         const std::string& naca_code, double aoa_deg,
-                         bool sharp, double smooth_width, double dx, double dy)
+double get_naca_sdf(double x, double y, double x_le, double y_le, double chord,
+                    const std::string& naca_code, double aoa_deg)
 {
     // Parse NACA 4-digit code (e.g., "0012", "2412")
     double m = 0.0;
@@ -60,8 +63,6 @@ double compute_naca_mask(double x, double y, double x_le, double y_le, double ch
     double dy_pt = y - y_le;
 
     // Rotate query point by -alpha around leading edge to align chord along positive X axis.
-    // For positive angle of attack, the airfoil is pitched up (rotated counter-clockwise).
-    // Therefore, the local coordinate is transformed by:
     double x_rot = dx_pt * std::cos(alpha) + dy_pt * std::sin(alpha);
     double y_rot = -dx_pt * std::sin(alpha) + dy_pt * std::cos(alpha);
 
@@ -102,6 +103,15 @@ double compute_naca_mask(double x, double y, double x_le, double y_le, double ch
         // Signed distance to the airfoil surface
         phi = std::abs(yc - y_camber) - yt;
     }
+    return phi;
+}
+
+double compute_naca_mask(double x, double y, double x_le, double y_le, double chord,
+                         const std::string& naca_code, double aoa_deg,
+                         bool sharp, double smooth_width, double dx, double dy)
+{
+    double phi = get_naca_sdf(x, y, x_le, y_le, chord, naca_code, aoa_deg);
+    static const double PI = 3.14159265358979323846;
 
     if (sharp) {
         return (phi <= 0.0) ? 1.0 : 0.0;
@@ -271,4 +281,49 @@ double Solver::get_ib_mask_at_time(double x, double y, double time, double dx, d
     }
 
     return 0.0;
+}
+
+double Solver::get_ib_sdf_at_time(double x, double y, double time) const {
+    if (!p.ENABLE_IB) return 1e20; // safe distance
+
+    if (p.IB_SHAPE == "CIRCLE") {
+        return ImmersedBoundary::get_circle_sdf(
+            x, y, p.IB_CENTER_X, p.IB_CENTER_Y, p.IB_RADIUS
+        );
+    } else if (p.IB_SHAPE == "NACA") {
+        return ImmersedBoundary::get_naca_sdf(
+            x, y, p.IB_CENTER_X, p.IB_CENTER_Y, p.IB_RADIUS, // actually used as chord and x_le,y_le
+            p.IB_NACA_CODE, p.IB_AOA
+        );
+    } else if (p.IB_SHAPE == "MULTI") {
+        double phi = 1e20;
+
+        for (const auto& quad : p.ib_quads) {
+            double d = ImmersedBoundary::get_quad_sdf(x, y, quad);
+            if (d < phi) phi = d;
+        }
+
+        double q_val = p.evaluate_ib_q(time);
+        for (const auto& poly : p.ib_polys) {
+            double d = ImmersedBoundary::get_parabola_sdf(x, y, poly, q_val);
+            if (d < phi) phi = d;
+        }
+        return phi;
+    }
+    return 1e20;
+}
+
+void Solver::get_ib_sdf_gradient_at_time(double x, double y, double time, double& nx, double& ny) const {
+    const double eps = 1e-6;
+    double dphi_dx = (get_ib_sdf_at_time(x + eps, y, time) - get_ib_sdf_at_time(x - eps, y, time)) / (2.0 * eps);
+    double dphi_dy = (get_ib_sdf_at_time(x, y + eps, time) - get_ib_sdf_at_time(x, y - eps, time)) / (2.0 * eps);
+    
+    double mag = std::sqrt(dphi_dx * dphi_dx + dphi_dy * dphi_dy);
+    if (mag > 1e-12) {
+        nx = dphi_dx / mag;
+        ny = dphi_dy / mag;
+    } else {
+        nx = 0.0;
+        ny = 0.0;
+    }
 }

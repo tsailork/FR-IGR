@@ -68,13 +68,14 @@ POS_LIMITER_EPS = 1e-10
 ENABLE_ENTROPY_LIMITER = true
 
 [ImmersedBoundary]
-# ENABLE_IB: Toggle the Volume Penalization Immersed Boundary Method
+# ENABLE_IB: Toggle the Immersed Boundary Method for solid boundaries
 ENABLE_IB = false
 
-# IB_METHOD: Integration type. Options: 
-#   - ANALYTICAL: Exact semi-implicit fractional-step integration (unconditionally stable for any eta).
-#   - EXPLICIT: Adds VPM source terms directly to the RHS (requires dt <= eta for stability).
-IB_METHOD = ANALYTICAL
+# ENABLE_IB_3C: Toggle Colombo Constraint 3.c. Set to false for solid airfoils to prevent boundary loss.
+ENABLE_IB_3C = false
+
+# IB_METHOD: Immersed Boundary method ("SBM", "VPM_ANALYTICAL", "VPM_EXPLICIT")
+IB_METHOD = SBM
 
 # IB_SHAPE: Geometry definition. Supported: "CIRCLE", "NACA", "MULTI"
 #   - CIRCLE: Uses standard single cylinder geometry.
@@ -118,24 +119,9 @@ IB_NUM_POLYS = 0
 #   (defines a flat horizontal line moving vertically from y=0.2 at q=0 to y=0.4 at q=1, masking below it)
 # IB_POLY_0 = Y 0.0 0.0 0.2 0.0 0.0 0.4 BELOW
 
-# IB_PENALIZATION_ETA: Solid permeability parameter (eta). Smaller = more rigid/impermeable.
-IB_PENALIZATION_ETA = 1e-7
-
-# Solid boundary velocities (static)
-IB_VELOCITY_X = 0.0
-IB_VELOCITY_Y = 0.0
-
-# IB_THERMAL_TYPE: Solid thermal boundary condition. Options:
-#   - ADIABATIC: Penalizes velocity only, leaving internal pressure/temperature adiabatic.
-#   - ISOTHERMAL: Penalizes velocity and forces solid temperature to IB_TEMPERATURE.
-IB_THERMAL_TYPE = ADIABATIC
-
-# Target wall temperature (used if IB_THERMAL_TYPE = ISOTHERMAL)
-IB_TEMPERATURE = 1.0
-
 # IB_SHARP: Use a sharp solid boundary interface mask (true) or regularized Heaviside (false).
-# Note: False is highly recommended for high-order methods to prevent Gibbs oscillations.
-IB_SHARP = false
+# For SBM, this determines whether to output sharp diagnostic representations.
+IB_SHARP = true
 
 # IB_SMOOTH_WIDTH: Half-width thickness of the smoothed Heaviside boundary interface 
 # (measured in units of grid spacing dx, dy). Typically 1.0 to 2.0.

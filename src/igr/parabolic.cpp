@@ -19,7 +19,7 @@
 void Solver::compute_igr_parabolic_rhs() {
   // Phase 1: Gradient pass (q = grad(sigma))
   for (auto& b : blocks) {
-    #pragma omp parallel for collapse(2) schedule(static)
+    #pragma omp for collapse(2) schedule(static)
     for (int ey = 0; ey < b.ny; ++ey) {
       for (int ex = 0; ex < b.nx; ++ex) {
         // X-gradient
@@ -81,7 +81,7 @@ void Solver::compute_igr_parabolic_rhs() {
     const double epsilon = p.ALPHA_SCALE * (b.dx * b.dy);
     const double br2_factor = p.IGR_BR2_ETA * (p.P_DEG + 1) * (p.P_DEG + 1);
 
-    #pragma omp parallel for collapse(2) schedule(static)
+    #pragma omp for collapse(2) schedule(static)
     for (int ey = 0; ey < b.ny; ++ey) {
       for (int ex = 0; ex < b.nx; ++ex) {
         

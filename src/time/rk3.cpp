@@ -40,7 +40,7 @@ void Solver::step_rk3(double dt) {
     update_ib_mask_field(current_time);
   }
 
-  const bool is_parabolic = (p.IGR_TYPE == "PARABOLIC");
+  const bool is_parabolic = (p.ENABLE_IGR && p.IGR_TYPE == "PARABOLIC");
   const int n_sub = std::max(1, p.IGR_SUB_ITERS);
   const double dt_sub = dt / n_sub;
 
@@ -56,7 +56,7 @@ void Solver::step_rk3(double dt) {
 
   auto clamp_sigma_all = [&]() {
     for (auto &b : blocks) {
-#pragma omp parallel for schedule(static)
+#pragma omp for schedule(static)
       for (int ey = 0; ey < b.ny; ++ey)
         for (int ex = 0; ex < b.nx; ++ex)
           for (int iy = 0; iy < p.N_PTS; ++iy)
@@ -113,39 +113,42 @@ void Solver::step_rk3(double dt) {
   auto sub_iterate_sigma_all =
       [&](const std::vector<std::vector<double>> &sig_stage_old, double alpha,
           double beta) {
-        if (n_sub == 1) {
-          for (size_t bid = 0; bid < blocks.size(); ++bid) {
-            auto &b = blocks[bid];
-            const size_t N_sig = b.sigma_field.size();
-#pragma omp parallel for schedule(static)
-            for (size_t i = 0; i < N_sig; ++i)
-              b.sigma_field[i] =
-                  alpha * sig_stage_old[bid][i] +
-                  beta * (b.sigma_field[i] + dt * b.sigma_RHS[i]);
-          }
-          clamp_sigma_all();
-        } else {
-          for (size_t bid = 0; bid < blocks.size(); ++bid) {
-            auto &b = blocks[bid];
-            const size_t N_sig = b.sigma_field.size();
-#pragma omp parallel for schedule(static)
-            for (size_t i = 0; i < N_sig; ++i)
-              b.sigma_field[i] =
-                  alpha * sig_stage_old[bid][i] +
-                  beta * (b.sigma_field[i] + dt_sub * b.sigma_RHS[i]);
-          }
-          clamp_sigma_all();
-
-          for (int sub = 1; sub < n_sub; ++sub) {
-            compute_igr_parabolic_rhs();
-            for (auto &b : blocks) {
-              const size_t N_sig = b.sigma_field.size();
-#pragma omp parallel for schedule(static)
-              for (size_t i = 0; i < N_sig; ++i)
-                b.sigma_field[i] += dt_sub * b.sigma_RHS[i];
+        #pragma omp parallel
+        {
+            if (n_sub == 1) {
+              for (size_t bid = 0; bid < blocks.size(); ++bid) {
+                auto &b = blocks[bid];
+                const size_t N_sig = b.sigma_field.size();
+    #pragma omp for schedule(static)
+                for (size_t i = 0; i < N_sig; ++i)
+                  b.sigma_field[i] =
+                      alpha * sig_stage_old[bid][i] +
+                      beta * (b.sigma_field[i] + dt * b.sigma_RHS[i]);
+              }
+              clamp_sigma_all();
+            } else {
+              for (size_t bid = 0; bid < blocks.size(); ++bid) {
+                auto &b = blocks[bid];
+                const size_t N_sig = b.sigma_field.size();
+    #pragma omp for schedule(static)
+                for (size_t i = 0; i < N_sig; ++i)
+                  b.sigma_field[i] =
+                      alpha * sig_stage_old[bid][i] +
+                      beta * (b.sigma_field[i] + dt_sub * b.sigma_RHS[i]);
+              }
+              clamp_sigma_all();
+    
+              for (int sub = 1; sub < n_sub; ++sub) {
+                compute_igr_parabolic_rhs();
+                for (auto &b : blocks) {
+                  const size_t N_sig = b.sigma_field.size();
+    #pragma omp for schedule(static)
+                  for (size_t i = 0; i < N_sig; ++i)
+                    b.sigma_field[i] += dt_sub * b.sigma_RHS[i];
+                }
+                clamp_sigma_all();
+              }
             }
-            clamp_sigma_all();
-          }
         }
       };
 
@@ -161,7 +164,7 @@ void Solver::step_rk3(double dt) {
   if (is_parabolic)
     sub_iterate_sigma_all(sig_old, 0.0, 1.0);
 
-  if (p.ENABLE_IB && p.IB_METHOD == "ANALYTICAL") {
+  if (p.ENABLE_IB && p.IB_METHOD == "VPM_ANALYTICAL") {
     apply_ib_analytical(dt);
   }
 
@@ -189,7 +192,7 @@ void Solver::step_rk3(double dt) {
   if (is_parabolic)
     sub_iterate_sigma_all(sig_old, 0.75, 0.25);
 
-  if (p.ENABLE_IB && p.IB_METHOD == "ANALYTICAL") {
+  if (p.ENABLE_IB && p.IB_METHOD == "VPM_ANALYTICAL") {
     apply_ib_analytical(0.25 * dt);
   }
 
@@ -217,7 +220,7 @@ void Solver::step_rk3(double dt) {
   if (is_parabolic)
     sub_iterate_sigma_all(sig_old, 1.0 / 3.0, 2.0 / 3.0);
 
-  if (p.ENABLE_IB && p.IB_METHOD == "ANALYTICAL") {
+  if (p.ENABLE_IB && p.IB_METHOD == "VPM_ANALYTICAL") {
     apply_ib_analytical((2.0 / 3.0) * dt);
   }
 

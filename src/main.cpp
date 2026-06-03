@@ -87,6 +87,12 @@ int main() {
         t += dt;
         step++;
 
+        if (solver.sbm_nonphysical_count > 0) {
+            std::cout << "[WARNING] " << solver.sbm_nonphysical_count 
+                      << " nonphysical SBM states (rho <= 0 or E <= 0) detected at step " << step << "\n";
+            solver.sbm_nonphysical_count = 0;
+        }
+
         diag.update(solver, t, step);
 
         // Write checkpoint if scheduled

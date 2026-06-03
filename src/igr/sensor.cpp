@@ -58,7 +58,7 @@ void Solver::compute_sensor_source() {
     const double epsilon = p.ALPHA_SCALE * (b.dx * b.dy);
 
     if (p.IGR_GRADIENT_TYPE == "CORRECTED") {
-#pragma omp parallel for collapse(2) schedule(static)
+#pragma omp for collapse(2) schedule(static)
       for (int ey = 0; ey < b.ny; ++ey) {
         for (int ex = 0; ex < b.nx; ++ex) {
 
@@ -203,7 +203,7 @@ void Solver::compute_sensor_source() {
         }
       }
     } else {
-#pragma omp parallel for collapse(2) schedule(static)
+#pragma omp for collapse(2) schedule(static)
       for (int ey = 0; ey < b.ny; ++ey) {
         for (int ex = 0; ex < b.nx; ++ex) {
           for (int iy = 0; iy < p.N_PTS; ++iy) {

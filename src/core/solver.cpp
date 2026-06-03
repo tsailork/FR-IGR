@@ -3,6 +3,7 @@
 
 #include "solver.hpp"
 #include <stdexcept>
+#include "../ib/sbm_geometry.hpp"
 
 /// Parse a boundary condition string from domain.grid into a NeighborInfo.
 ///
@@ -101,23 +102,55 @@ Solver::Solver(const Parameters& params)
     // Compute initial IB mask field
     if (p.ENABLE_IB) {
         update_ib_mask_field(current_time);
+        if (p.IB_METHOD == "SBM") {
+            ImmersedBoundary::initialize_sbm_geometry(*this);
+        }
     }
 }
 
 /// Assemble the full right-hand side: IGR + inviscid sweeps + viscous fluxes.
 void Solver::compute_rhs() {
-    for (auto& b : blocks) {
-        std::fill(b.RHS.data.begin(), b.RHS.data.end(), 0.0);
-    }
-    compute_entropic_pressure();
-    sweep_x();
-    sweep_y();
-    if (p.ENABLE_NS) {
-        compute_gradients();
-        viscous_sweep_x();
-        viscous_sweep_y();
-    }
-    if (p.ENABLE_IB && p.IB_METHOD == "EXPLICIT") {
-        apply_ib_explicit();
+    #pragma omp parallel
+    {
+        for (auto& b : blocks) {
+            #pragma omp for schedule(static)
+            for (size_t i = 0; i < b.RHS.data.size(); ++i) {
+                b.RHS.data[i] = 0.0;
+            }
+        }
+        compute_entropic_pressure();
+        sweep_x();
+        sweep_y();
+        if (p.ENABLE_NS) {
+            compute_gradients();
+            viscous_sweep_x();
+            viscous_sweep_y();
+        }
+        if (p.ENABLE_IB && p.IB_METHOD == "VPM_EXPLICIT") {
+            apply_ib_explicit();
+        }
+
+        // Blank the RHS for elements that are fully inside the immersed body.
+        // These cells have their state held at freestream by initialize_sbm_geometry;
+        // zeroing the RHS ensures the SSP-RK3 update never modifies them.
+        if (p.ENABLE_IB) {
+            for (auto& b : blocks) {
+                if (b.solid_mask.empty()) continue;
+                #pragma omp for schedule(static)
+                for (int ey = 0; ey < b.ny; ++ey) {
+                    for (int ex = 0; ex < b.nx; ++ex) {
+                        if (b.solid_mask[ey * b.nx + ex]) {
+                            for (int v = 0; v < N_VARS; ++v) {
+                                for (int iy = 0; iy < p.N_PTS; ++iy) {
+                                    for (int ix = 0; ix < p.N_PTS; ++ix) {
+                                        b.RHS(v, ey, ex, iy, ix) = 0.0;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

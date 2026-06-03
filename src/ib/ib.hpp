@@ -65,6 +65,18 @@ double get_quad_sdf(double px, double py, const QuadShape& quad);
 double get_parabola_sdf(double px, double py, const ParabolaShape& poly, double q);
 
 /**
+ * @brief Computes the raw signed distance function (phi) for a circle/cylinder shape.
+ *
+ * @param x Physical X coordinate of the query point
+ * @param y Physical Y coordinate of the query point
+ * @param center_x Circle center X coordinate
+ * @param center_y Circle center Y coordinate
+ * @param radius Circle radius
+ * @return Signed distance (negative inside, positive outside)
+ */
+double get_circle_sdf(double x, double y, double center_x, double center_y, double radius);
+
+/**
  * @brief Computes the mask value chi (solid indicator) for a cylinder/circle shape.
  *
  * @param x Physical X coordinate of the query point
@@ -80,6 +92,21 @@ double get_parabola_sdf(double px, double py, const ParabolaShape& poly, double 
  */
 double compute_circle_mask(double x, double y, double center_x, double center_y, double radius,
                            bool sharp, double smooth_width, double dx, double dy);
+
+/**
+ * @brief Computes the raw signed distance function (phi) for a NACA 4-digit airfoil.
+ *
+ * @param x Physical X coordinate of the query point
+ * @param y Physical Y coordinate of the query point
+ * @param x_le Airfoil leading edge X coordinate
+ * @param y_le Airfoil leading edge Y coordinate
+ * @param chord Airfoil chord length
+ * @param naca_code NACA 4-digit code (e.g. "0012")
+ * @param aoa_deg Angle of attack in degrees
+ * @return Signed distance (negative inside, positive outside)
+ */
+double get_naca_sdf(double x, double y, double x_le, double y_le, double chord,
+                    const std::string& naca_code, double aoa_deg);
 
 /**
  * @brief Computes the mask value chi (solid indicator) for a NACA 4-digit airfoil.

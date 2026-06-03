@@ -285,26 +285,56 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
             return numerator / denominator;
         };
 
+        auto get_eval_elem = [&](int J, int I, int& ey, int& ky, int& ex, int& kx) {
+            ey = J / n_sub;
+            ky = J % n_sub;
+            if (ey == b.ny) { ey = b.ny - 1; ky = n_sub; }
+
+            ex = I / n_sub;
+            kx = I % n_sub;
+            if (ex == b.nx) { ex = b.nx - 1; kx = n_sub; }
+
+            if (!p.ENABLE_IB || b.solid_mask.empty()) return;
+
+            if (b.solid_mask[ey * b.nx + ex]) {
+                bool on_x_bnd = (kx == 0);
+                bool on_x_bnd_right = (kx == n_sub);
+                bool on_y_bnd = (ky == 0);
+                bool on_y_bnd_top = (ky == n_sub);
+
+                std::vector<std::pair<int, int>> candidates;
+                if (on_x_bnd && ex > 0) candidates.push_back({ey, ex - 1});
+                if (on_x_bnd_right && ex < b.nx - 1) candidates.push_back({ey, ex + 1});
+                if (on_y_bnd && ey > 0) candidates.push_back({ey - 1, ex});
+                if (on_y_bnd_top && ey < b.ny - 1) candidates.push_back({ey + 1, ex});
+                if (on_x_bnd && on_y_bnd && ex > 0 && ey > 0) candidates.push_back({ey - 1, ex - 1});
+                if (on_x_bnd_right && on_y_bnd && ex < b.nx - 1 && ey > 0) candidates.push_back({ey - 1, ex + 1});
+                if (on_x_bnd && on_y_bnd_top && ex > 0 && ey < b.ny - 1) candidates.push_back({ey + 1, ex - 1});
+                if (on_x_bnd_right && on_y_bnd_top && ex < b.nx - 1 && ey < b.ny - 1) candidates.push_back({ey + 1, ex + 1});
+
+                for (auto& cand : candidates) {
+                    if (!b.solid_mask[cand.first * b.nx + cand.second]) {
+                        ey = cand.first;
+                        ex = cand.second;
+                        ky = J - ey * n_sub;
+                        kx = I - ex * n_sub;
+                        break;
+                    }
+                }
+            }
+        };
+
         auto write_array = [&](const std::string& name, auto getter) {
             vts << "        <DataArray type=\"Float32\" Name=\"" << name << "\" format=\"ascii\">\n";
             for (int J = 0; J < ny; ++J) {
-                int ey = J / n_sub;
-                int ky = J % n_sub;
-                if (ey == b.ny) {
-                    ey = b.ny - 1;
-                    ky = n_sub;
-                }
-                double s = -1.0 + 2.0 * ky / n_sub;
-                std::vector<double> wy(p.N_PTS);
-                for (int iy = 0; iy < p.N_PTS; ++iy) wy[iy] = eval_lagrange(iy, s, solver.basis.z);
-
                 for (int I = 0; I < nx; ++I) {
-                    int ex = I / n_sub;
-                    int kx = I % n_sub;
-                    if (ex == b.nx) {
-                        ex = b.nx - 1;
-                        kx = n_sub;
-                    }
+                    int ey, ky, ex, kx;
+                    get_eval_elem(J, I, ey, ky, ex, kx);
+
+                    double s = -1.0 + 2.0 * ky / n_sub;
+                    std::vector<double> wy(p.N_PTS);
+                    for (int iy = 0; iy < p.N_PTS; ++iy) wy[iy] = eval_lagrange(iy, s, solver.basis.z);
+
                     double r = -1.0 + 2.0 * kx / n_sub;
                     std::vector<double> wx(p.N_PTS);
                     for (int ix = 0; ix < p.N_PTS; ++ix) wx[ix] = eval_lagrange(ix, r, solver.basis.z);
@@ -330,23 +360,14 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
         auto write_prim_array = [&](const std::string& name, int var) {
             vts << "        <DataArray type=\"Float32\" Name=\"" << name << "\" format=\"ascii\">\n";
             for (int J = 0; J < ny; ++J) {
-                int ey = J / n_sub;
-                int ky = J % n_sub;
-                if (ey == b.ny) {
-                    ey = b.ny - 1;
-                    ky = n_sub;
-                }
-                double s = -1.0 + 2.0 * ky / n_sub;
-                std::vector<double> wy(p.N_PTS);
-                for (int iy = 0; iy < p.N_PTS; ++iy) wy[iy] = eval_lagrange(iy, s, solver.basis.z);
-
                 for (int I = 0; I < nx; ++I) {
-                    int ex = I / n_sub;
-                    int kx = I % n_sub;
-                    if (ex == b.nx) {
-                        ex = b.nx - 1;
-                        kx = n_sub;
-                    }
+                    int ey, ky, ex, kx;
+                    get_eval_elem(J, I, ey, ky, ex, kx);
+
+                    double s = -1.0 + 2.0 * ky / n_sub;
+                    std::vector<double> wy(p.N_PTS);
+                    for (int iy = 0; iy < p.N_PTS; ++iy) wy[iy] = eval_lagrange(iy, s, solver.basis.z);
+
                     double r = -1.0 + 2.0 * kx / n_sub;
                     std::vector<double> wx(p.N_PTS);
                     for (int ix = 0; ix < p.N_PTS; ++ix) wx[ix] = eval_lagrange(ix, r, solver.basis.z);

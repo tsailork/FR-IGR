@@ -8,6 +8,7 @@
 /// OpenMP: parallelised over ex (each column is independent).
 
 #include "../core/solver.hpp"
+#include "../ib/sbm_geometry.hpp"
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -27,10 +28,11 @@
 ///   - The memory access pattern is designed to be OpenMP thread-safe by assigning disjoint columns (`ex`) to different threads.
 void Solver::sweep_y() {
     for (auto& b : blocks) {
-        #pragma omp parallel for schedule(static)
+        #pragma omp for schedule(static)
         for (int ex = 0; ex < b.nx; ++ex) {
-            for (int ix = 0; ix < p.N_PTS; ++ix) {
-                for (int ey = 0; ey < b.ny; ++ey) {
+            double prev_Flux_T_comm[MAX_PTS][4];
+            for (int ey = 0; ey < b.ny; ++ey) {
+                for (int ix = 0; ix < p.N_PTS; ++ix) {
 
                     // --- 1. Pointwise Y-flux ---
                     double G_sol[MAX_PTS][4];
@@ -46,7 +48,9 @@ void Solver::sweep_y() {
                         double s = b.sigma_field[b.get_flat_idx(ey, ex, iy, ix, p.N_PTS)];
                         sig_B_face += s * basis.l_L[iy];
                         sig_T_face += s * basis.l_R[iy];
-                        for (int v = 0; v < 4; ++v) {
+                    }
+                    for (int v = 0; v < 4; ++v) {
+                        for (int iy = 0; iy < p.N_PTS; ++iy) {
                             UB_face[v] += b.U(v, ey, ex, iy, ix) * basis.l_L[iy];
                             UT_face[v] += b.U(v, ey, ex, iy, ix) * basis.l_R[iy];
                         }
@@ -57,27 +61,50 @@ void Solver::sweep_y() {
                     double U_neigh[4];
                     double sig_neigh;
 
-                    get_neigh_state_y(b, ey, ex, ix, false,
-                                      UB_face, sig_B_face, U_neigh, sig_neigh);
-                    solve_riemann(U_neigh, UB_face, Flux_B_comm, 1,
-                                  sig_neigh, sig_B_face);
+                    if (ey > 0) {
+                        for (int v = 0; v < 4; ++v)
+                            Flux_B_comm[v] = prev_Flux_T_comm[ix][v];
+                    } else {
+                        const ImmersedBoundary::SurrogateFluxPoint* sfp_B = ImmersedBoundary::get_sbm_face(b.id, ey, ex, 2, ix);
+                        if (sfp_B) {
+                            double u_sb[4];
+                            ImmersedBoundary::compute_sbm_state(*this, sfp_B, u_sb);
+                            solve_riemann(u_sb, UB_face, Flux_B_comm, 1, sig_B_face, sig_B_face);
+                        } else {
+                            get_neigh_state_y(b, ey, ex, ix, false,
+                                              UB_face, sig_B_face, U_neigh, sig_neigh);
+                            solve_riemann(U_neigh, UB_face, Flux_B_comm, 1,
+                                          sig_neigh, sig_B_face);
+                        }
+                    }
 
-                    get_neigh_state_y(b, ey, ex, ix, true,
-                                      UT_face, sig_T_face, U_neigh, sig_neigh);
-                    solve_riemann(UT_face, U_neigh, Flux_T_comm, 1,
-                                  sig_T_face, sig_neigh);
+                    const ImmersedBoundary::SurrogateFluxPoint* sfp_T = ImmersedBoundary::get_sbm_face(b.id, ey, ex, 3, ix);
+                    if (sfp_T) {
+                        double u_sb[4];
+                        ImmersedBoundary::compute_sbm_state(*this, sfp_T, u_sb);
+                        solve_riemann(UT_face, u_sb, Flux_T_comm, 1, sig_T_face, sig_T_face);
+                    } else {
+                        get_neigh_state_y(b, ey, ex, ix, true,
+                                          UT_face, sig_T_face, U_neigh, sig_neigh);
+                        solve_riemann(UT_face, U_neigh, Flux_T_comm, 1,
+                                      sig_T_face, sig_neigh);
+                    }
+
+                    for (int v = 0; v < 4; ++v)
+                        prev_Flux_T_comm[ix][v] = Flux_T_comm[v];
 
                     // --- 4. Interior flux at faces ---
                     double G_B[4] = {}, G_T[4] = {};
-                    for (int iy = 0; iy < p.N_PTS; ++iy)
-                        for (int v = 0; v < 4; ++v) {
+                    for (int v = 0; v < 4; ++v) {
+                        for (int iy = 0; iy < p.N_PTS; ++iy) {
                             G_B[v] += G_sol[iy][v] * basis.l_L[iy];
                             G_T[v] += G_sol[iy][v] * basis.l_R[iy];
                         }
+                    }
 
                     // --- 5. Accumulate into RHS ---
-                    for (int iy = 0; iy < p.N_PTS; ++iy)
-                        for (int v = 0; v < 4; ++v) {
+                    for (int v = 0; v < 4; ++v) {
+                        for (int iy = 0; iy < p.N_PTS; ++iy) {
                             double dg = 0.0;
                             for (int k = 0; k < p.N_PTS; ++k)
                                 dg += basis.D[iy][k] * G_sol[k][v];
@@ -87,6 +114,7 @@ void Solver::sweep_y() {
                                  + (Flux_T_comm[v] - G_T[v]) * basis.dgr[iy])
                                 * (2.0 / b.dy);
                         }
+                    }
                 }
             }
         }

@@ -118,7 +118,9 @@ struct Parameters {
     // Immersed Boundary (IB)
     // -------------------------------------------------------------------------
     bool        ENABLE_IB           = false;      ///< Toggle Immersed Boundary Method.
-    std::string IB_METHOD           = "ANALYTICAL"; ///< VPM integration method ("ANALYTICAL" or "EXPLICIT").
+    bool        ENABLE_IB_3C        = false;      ///< Toggle Colombo Constraint 3.c (strips opposing flags).
+    double      IB_DL_SCALE         = 1.0;        ///< Scale factor for the shifted boundary 1D donor interval
+    std::string IB_METHOD           = "SBM"; ///< Immersed Boundary method ("SBM", "VPM_ANALYTICAL", "VPM_EXPLICIT").
     std::string IB_SHAPE            = "CIRCLE";   ///< Shape definition type (e.g. "CIRCLE", "NACA").
     std::string IB_NACA_CODE        = "0012";     ///< NACA 4-digit code (e.g. "0012", "2412").
     double      IB_AOA              = 0.0;        ///< Angle of attack in degrees for the airfoil.

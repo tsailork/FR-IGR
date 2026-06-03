@@ -13,6 +13,8 @@
 #include "parameters.hpp"
 #include "state.hpp"
 #include "../ib/ib.hpp"
+#include "../boundary/boundary.hpp"
+#include <atomic>
 #include <algorithm>
 #include <cmath>
 #include <vector>
@@ -89,6 +91,7 @@ struct Block {
     std::vector<double> grad_Ux;      ///< Extrapolated gradient buffer \f$\partial_x U\f$ for all 4 conservative variables.
     std::vector<double> grad_Uy;      ///< Extrapolated gradient buffer \f$\partial_y U\f$ for all 4 conservative variables.
     std::vector<double> ib_mask;      ///< Cached Immersed Boundary solid fraction mask (chi).
+    std::vector<bool>   solid_mask;   ///< Per-element flag: true if element is FULLY inside the IB solid (all faces inside).
 
     /**
      * @brief Construct and allocate all workspace arrays for a given block topology.
@@ -145,6 +148,7 @@ public:
     double current_time = 0.0;        ///< Current simulation time tracker.
     Basis  basis;                     ///< 1-D Lagrange basis mapping polynomials for reconstruction.
     Limiters::LimiterStats current_limiter_stats; ///< Thread-safe collector for current step's limiter activity.
+    mutable std::atomic<int> sbm_nonphysical_count{0}; ///< Counter for nonphysical state evaluations on SBM faces.
 
     /**
      * @brief Construct the solver engine and initialize block layouts.
@@ -318,6 +322,17 @@ public:
     double get_ib_mask_at_time(double x, double y, double time, double dx, double dy) const;
 
     /**
+     * @brief Evaluates the raw signed distance function (phi) at a specific coordinate and time.
+     * Negative is inside solid, positive is in fluid.
+     */
+    double get_ib_sdf_at_time(double x, double y, double time) const;
+
+    /**
+     * @brief Evaluates the gradient of the SDF using central differences to obtain the normal vector.
+     */
+    void get_ib_sdf_gradient_at_time(double x, double y, double time, double& nx, double& ny) const;
+
+    /**
      * @brief Apply explicit volume penalization to the RHS.
      */
     void apply_ib_explicit();
@@ -327,3 +342,272 @@ public:
      */
     void apply_ib_analytical(double dt_stage);
 };
+
+inline __attribute__((always_inline))
+void Solver::get_neigh_state_x(const Block& b, int ey, int ex, int iy, bool is_right,
+                                const double* face_state, double sig_face,
+                                double* neigh_state, double& sig_neigh) const
+{
+    sig_neigh = 0.0;
+    for (int v = 0; v < 4; ++v) neigh_state[v] = 0.0;
+
+    const NeighborInfo& ni = is_right ? b.ni_r : b.ni_l;
+
+    if (!is_right) {
+        // ---- Left interface ----
+        if (ex == 0) {
+            if (ni.id != -1) {
+                const Block& nb = blocks[ni.id];
+                int nex = (ni.face == 'L') ? 0 : nb.nx - 1;
+                const double* weights = (ni.face == 'L') ? basis.l_L.data() : basis.l_R.data();
+                for (int k = 0; k < p.N_PTS; ++k) {
+                    for (int v = 0; v < 4; ++v)
+                        neigh_state[v] += nb.U(v, ey, nex, iy, k) * weights[k];
+                    sig_neigh += nb.sigma_field[nb.get_flat_idx(ey, nex, iy, k, p.N_PTS)] * weights[k];
+                }
+
+            } else if (ni.is_noslip_wall || ni.is_moving_wall) {
+                // Viscous wall: tangential direction for L/R walls is y
+                double u_w = 0.0, v_w = 0.0;
+                if (ni.is_moving_wall) v_w = ni.wall_velocity;
+                build_viscous_wall_ghost(face_state, neigh_state, u_w, v_w, p.GAMMA,
+                                         ni.is_isothermal, ni.wall_temperature);
+                sig_neigh = sig_face;
+            } else if (ni.is_wall) {
+                for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
+                neigh_state[1] = -face_state[1];
+                sig_neigh = sig_face;
+            } else if (ni.is_supersonic_inflow) {
+                neigh_state[0] = ni.ref_rho;
+                neigh_state[1] = ni.ref_rho * ni.ref_u;
+                neigh_state[2] = ni.ref_rho * ni.ref_v;
+                neigh_state[3] = ni.ref_p / (p.GAMMA - 1.0) + 0.5 * ni.ref_rho * (ni.ref_u*ni.ref_u + ni.ref_v*ni.ref_v);
+                sig_neigh = 0.0;
+            } else if (ni.is_characteristic) {
+                double ref_state[4];
+                ref_state[0] = ni.ref_rho;
+                ref_state[1] = ni.ref_rho * ni.ref_u;
+                ref_state[2] = ni.ref_rho * ni.ref_v;
+                ref_state[3] = ni.ref_p / (p.GAMMA - 1.0) + 0.5 * ni.ref_rho * (ni.ref_u*ni.ref_u + ni.ref_v*ni.ref_v);
+                build_characteristic_ghost(face_state, ref_state, -1.0, 0.0, p.GAMMA, neigh_state);
+                sig_neigh = 0.0;
+            } else if (ni.is_total_pressure_comp) {
+                build_total_pressure_comp_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
+                sig_neigh = sig_face;
+            } else if (ni.is_total_pressure_incomp) {
+                build_total_pressure_incomp_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
+                sig_neigh = sig_face;
+            } else if (ni.is_static_pressure) {
+                build_static_pressure_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
+                sig_neigh = sig_face;
+            } else if (ni.is_supersonic_outflow) {
+                for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
+                sig_neigh = sig_face;
+            } else {
+                for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
+                sig_neigh = sig_face;
+            }
+        } else {
+            for (int k = 0; k < p.N_PTS; ++k) {
+                for (int v = 0; v < 4; ++v)
+                    neigh_state[v] += b.U(v, ey, ex - 1, iy, k) * basis.l_R[k];
+                sig_neigh += b.sigma_field[b.get_flat_idx(ey, ex - 1, iy, k, p.N_PTS)] * basis.l_R[k];
+            }
+        }
+    } else {
+        // ---- Right interface ----
+        if (ex == b.nx - 1) {
+            if (ni.id != -1) {
+                const Block& nb = blocks[ni.id];
+                int nex = (ni.face == 'L') ? 0 : nb.nx - 1;
+                const double* weights = (ni.face == 'L') ? basis.l_L.data() : basis.l_R.data();
+                for (int k = 0; k < p.N_PTS; ++k) {
+                    for (int v = 0; v < 4; ++v)
+                        neigh_state[v] += nb.U(v, ey, nex, iy, k) * weights[k];
+                    sig_neigh += nb.sigma_field[nb.get_flat_idx(ey, nex, iy, k, p.N_PTS)] * weights[k];
+                }
+
+            } else if (ni.is_noslip_wall || ni.is_moving_wall) {
+                double u_w = 0.0, v_w = 0.0;
+                if (ni.is_moving_wall) v_w = ni.wall_velocity;
+                build_viscous_wall_ghost(face_state, neigh_state, u_w, v_w, p.GAMMA,
+                                         ni.is_isothermal, ni.wall_temperature);
+                sig_neigh = sig_face;
+            } else if (ni.is_wall) {
+                for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
+                neigh_state[1] = -face_state[1];
+                sig_neigh = sig_face;
+            } else if (ni.is_supersonic_inflow) {
+                neigh_state[0] = ni.ref_rho;
+                neigh_state[1] = ni.ref_rho * ni.ref_u;
+                neigh_state[2] = ni.ref_rho * ni.ref_v;
+                neigh_state[3] = ni.ref_p / (p.GAMMA - 1.0) + 0.5 * ni.ref_rho * (ni.ref_u*ni.ref_u + ni.ref_v*ni.ref_v);
+                sig_neigh = 0.0;
+            } else if (ni.is_characteristic) {
+                double ref_state[4];
+                ref_state[0] = ni.ref_rho;
+                ref_state[1] = ni.ref_rho * ni.ref_u;
+                ref_state[2] = ni.ref_rho * ni.ref_v;
+                ref_state[3] = ni.ref_p / (p.GAMMA - 1.0) + 0.5 * ni.ref_rho * (ni.ref_u*ni.ref_u + ni.ref_v*ni.ref_v);
+                build_characteristic_ghost(face_state, ref_state, 1.0, 0.0, p.GAMMA, neigh_state);
+                sig_neigh = 0.0;
+            } else if (ni.is_total_pressure_comp) {
+                build_total_pressure_comp_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
+                sig_neigh = sig_face;
+            } else if (ni.is_total_pressure_incomp) {
+                build_total_pressure_incomp_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
+                sig_neigh = sig_face;
+            } else if (ni.is_static_pressure) {
+                build_static_pressure_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
+                sig_neigh = sig_face;
+            } else if (ni.is_supersonic_outflow) {
+                for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
+                sig_neigh = sig_face;
+            } else {
+                for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
+                sig_neigh = sig_face;
+            }
+        } else {
+            for (int k = 0; k < p.N_PTS; ++k) {
+                for (int v = 0; v < 4; ++v)
+                    neigh_state[v] += b.U(v, ey, ex + 1, iy, k) * basis.l_L[k];
+                sig_neigh += b.sigma_field[b.get_flat_idx(ey, ex + 1, iy, k, p.N_PTS)] * basis.l_L[k];
+            }
+        }
+    }
+}
+
+inline __attribute__((always_inline))
+void Solver::get_neigh_state_y(const Block& b, int ey, int ex, int ix, bool is_top,
+                                const double* face_state, double sig_face,
+                                double* neigh_state, double& sig_neigh) const
+{
+    sig_neigh = 0.0;
+    for (int v = 0; v < 4; ++v) neigh_state[v] = 0.0;
+
+    const NeighborInfo& ni = is_top ? b.ni_t : b.ni_b;
+
+    if (!is_top) {
+        // ---- Bottom interface ----
+        if (ey == 0) {
+            if (ni.id != -1) {
+                const Block& nb = blocks[ni.id];
+                int ney = (ni.face == 'B') ? 0 : nb.ny - 1;
+                const double* weights = (ni.face == 'B') ? basis.l_L.data() : basis.l_R.data();
+                for (int k = 0; k < p.N_PTS; ++k) {
+                    for (int v = 0; v < 4; ++v)
+                        neigh_state[v] += nb.U(v, ney, ex, k, ix) * weights[k];
+                    sig_neigh += nb.sigma_field[nb.get_flat_idx(ney, ex, k, ix, p.N_PTS)] * weights[k];
+                }
+
+            } else if (ni.is_noslip_wall || ni.is_moving_wall) {
+                // Viscous wall: tangential direction for B/T walls is x
+                double u_w = 0.0, v_w = 0.0;
+                if (ni.is_moving_wall) u_w = ni.wall_velocity;
+                build_viscous_wall_ghost(face_state, neigh_state, u_w, v_w, p.GAMMA,
+                                         ni.is_isothermal, ni.wall_temperature);
+                sig_neigh = sig_face;
+            } else if (ni.is_wall) {
+                for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
+                neigh_state[2] = -face_state[2];
+                sig_neigh = sig_face;
+            } else if (ni.is_supersonic_inflow) {
+                neigh_state[0] = ni.ref_rho;
+                neigh_state[1] = ni.ref_rho * ni.ref_u;
+                neigh_state[2] = ni.ref_rho * ni.ref_v;
+                neigh_state[3] = ni.ref_p / (p.GAMMA - 1.0) + 0.5 * ni.ref_rho * (ni.ref_u*ni.ref_u + ni.ref_v*ni.ref_v);
+                sig_neigh = 0.0;
+            } else if (ni.is_characteristic) {
+                double ref_state[4];
+                ref_state[0] = ni.ref_rho;
+                ref_state[1] = ni.ref_rho * ni.ref_u;
+                ref_state[2] = ni.ref_rho * ni.ref_v;
+                ref_state[3] = ni.ref_p / (p.GAMMA - 1.0) + 0.5 * ni.ref_rho * (ni.ref_u*ni.ref_u + ni.ref_v*ni.ref_v);
+                build_characteristic_ghost(face_state, ref_state, 0.0, -1.0, p.GAMMA, neigh_state);
+                sig_neigh = 0.0;
+            } else if (ni.is_total_pressure_comp) {
+                build_total_pressure_comp_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
+                sig_neigh = sig_face;
+            } else if (ni.is_total_pressure_incomp) {
+                build_total_pressure_incomp_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
+                sig_neigh = sig_face;
+            } else if (ni.is_static_pressure) {
+                build_static_pressure_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
+                sig_neigh = sig_face;
+            } else if (ni.is_supersonic_outflow) {
+                for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
+                sig_neigh = sig_face;
+            } else {
+                for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
+                sig_neigh = sig_face;
+            }
+        } else {
+            for (int k = 0; k < p.N_PTS; ++k) {
+                for (int v = 0; v < 4; ++v)
+                    neigh_state[v] += b.U(v, ey - 1, ex, k, ix) * basis.l_R[k];
+                sig_neigh += b.sigma_field[b.get_flat_idx(ey - 1, ex, k, ix, p.N_PTS)] * basis.l_R[k];
+            }
+        }
+    } else {
+        // ---- Top interface ----
+        if (ey == b.ny - 1) {
+            if (ni.id != -1) {
+                const Block& nb = blocks[ni.id];
+                int ney = (ni.face == 'B') ? 0 : nb.ny - 1;
+                const double* weights = (ni.face == 'B') ? basis.l_L.data() : basis.l_R.data();
+                for (int k = 0; k < p.N_PTS; ++k) {
+                    for (int v = 0; v < 4; ++v)
+                        neigh_state[v] += nb.U(v, ney, ex, k, ix) * weights[k];
+                    sig_neigh += nb.sigma_field[nb.get_flat_idx(ney, ex, k, ix, p.N_PTS)] * weights[k];
+                }
+
+            } else if (ni.is_noslip_wall || ni.is_moving_wall) {
+                double u_w = 0.0, v_w = 0.0;
+                if (ni.is_moving_wall) u_w = ni.wall_velocity;
+                build_viscous_wall_ghost(face_state, neigh_state, u_w, v_w, p.GAMMA,
+                                         ni.is_isothermal, ni.wall_temperature);
+                sig_neigh = sig_face;
+            } else if (ni.is_wall) {
+                for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
+                neigh_state[2] = -face_state[2];
+                sig_neigh = sig_face;
+            } else if (ni.is_supersonic_inflow) {
+                neigh_state[0] = ni.ref_rho;
+                neigh_state[1] = ni.ref_rho * ni.ref_u;
+                neigh_state[2] = ni.ref_rho * ni.ref_v;
+                neigh_state[3] = ni.ref_p / (p.GAMMA - 1.0) + 0.5 * ni.ref_rho * (ni.ref_u*ni.ref_u + ni.ref_v*ni.ref_v);
+                sig_neigh = 0.0;
+            } else if (ni.is_characteristic) {
+                double ref_state[4];
+                ref_state[0] = ni.ref_rho;
+                ref_state[1] = ni.ref_rho * ni.ref_u;
+                ref_state[2] = ni.ref_rho * ni.ref_v;
+                ref_state[3] = ni.ref_p / (p.GAMMA - 1.0) + 0.5 * ni.ref_rho * (ni.ref_u*ni.ref_u + ni.ref_v*ni.ref_v);
+                build_characteristic_ghost(face_state, ref_state, 0.0, 1.0, p.GAMMA, neigh_state);
+                sig_neigh = 0.0;
+            } else if (ni.is_total_pressure_comp) {
+                build_total_pressure_comp_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
+                sig_neigh = sig_face;
+            } else if (ni.is_total_pressure_incomp) {
+                build_total_pressure_incomp_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
+                sig_neigh = sig_face;
+            } else if (ni.is_static_pressure) {
+                build_static_pressure_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
+                sig_neigh = sig_face;
+            } else if (ni.is_supersonic_outflow) {
+                for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
+                sig_neigh = sig_face;
+            } else {
+                for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
+                sig_neigh = sig_face;
+            }
+        } else {
+            for (int k = 0; k < p.N_PTS; ++k) {
+                for (int v = 0; v < 4; ++v)
+                    neigh_state[v] += b.U(v, ey + 1, ex, k, ix) * basis.l_L[k];
+                sig_neigh += b.sigma_field[b.get_flat_idx(ey + 1, ex, k, ix, p.N_PTS)] * basis.l_L[k];
+            }
+        }
+    }
+}
+

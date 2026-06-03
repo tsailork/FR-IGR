@@ -81,7 +81,7 @@ void Solver::solve_adi_pass(Block& b, const std::vector<double>& S,
         double h_elem = horizontal ? b.dx : b.dy;
         double eps = p.ALPHA_SCALE * (h_elem * h_elem);
 
-        #pragma omp parallel for schedule(static)
+        #pragma omp for schedule(static)
         for (int i = 0; i < n_outer; ++i) {
             int n_1d = n_elems * p.N_PTS;
             std::vector<double> A(n_1d, 0.0), B(n_1d), C(n_1d, 0.0), RHS_1d(n_1d);
