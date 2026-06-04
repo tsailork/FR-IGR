@@ -188,6 +188,40 @@ def update_restart_in_inputs_dat(restart_file, restart_time):
     except Exception:
         return False
 
+def edit_inputs_dat(nbi):
+    if not nbi.is_tty:
+        return
+    
+    # 1. Restore normal cooked terminal settings
+    termios.tcsetattr(sys.stdin, termios.TCSADRAIN, nbi.old_settings)
+    
+    # 2. Clear terminal screen
+    sys.stdout.write("\033[H\033[J")
+    sys.stdout.flush()
+    
+    # 3. Choose the text editor
+    editor = os.environ.get("EDITOR", "vim")
+    print(f"Opening inputs.dat in {editor}...")
+    time.sleep(0.5)
+    
+    try:
+        # 4. Spawn editor in-place
+        subprocess.run([editor, "inputs.dat"])
+    except Exception as e:
+        print(f"Error launching editor '{editor}': {e}")
+        print("Falling back to nano...")
+        try:
+            subprocess.run(["nano", "inputs.dat"])
+        except Exception:
+            pass
+            
+    # 5. Re-enable non-blocking raw/cbreak mode
+    tty.setcbreak(sys.stdin.fileno())
+    
+    # 6. Clear screen again to cleanly redraw the TUI
+    sys.stdout.write("\033[H\033[J")
+    sys.stdout.flush()
+
 class SolverProcess:
     def __init__(self, popen_obj=None, attached_pid=None):
         self.popen_obj = popen_obj
@@ -493,7 +527,7 @@ def main():
                     ui_output.extend(make_panel("RECENT LOG FEED", log_lines))
 
                     # 6. Actions Panel
-                    action_line = f"[{CLR_BOLD}{CLR_GREEN}S{CLR_RESET}] Stop   [{CLR_BOLD}{CLR_GREEN}R{CLR_RESET}] Restart   [{CLR_BOLD}{CLR_GREEN}C{CLR_RESET}] Clean Restart   [{CLR_BOLD}{CLR_GREEN}K{CLR_RESET}] Kill   [{CLR_BOLD}{CLR_GREEN}Q{CLR_RESET}] Quit"
+                    action_line = f"[{CLR_BOLD}{CLR_GREEN}S{CLR_RESET}] Stop  [{CLR_BOLD}{CLR_GREEN}R{CLR_RESET}] Restart  [{CLR_BOLD}{CLR_GREEN}C{CLR_RESET}] Clean Restart  [{CLR_BOLD}{CLR_GREEN}E{CLR_RESET}] Edit  [{CLR_BOLD}{CLR_GREEN}K{CLR_RESET}] Kill  [{CLR_BOLD}{CLR_GREEN}Q{CLR_RESET}] Quit"
                     ui_output.extend(make_panel("ACTIONS", [action_line]))
 
                     # Print screen at once
@@ -543,6 +577,18 @@ def main():
                         enable_sbm_diags = (curr_inputs.get("ENABLE_SBM_DIAGNOSTICS", "false").lower() == "true") and \
                                            (curr_inputs.get("IB_METHOD", "").upper() == "SBM")
                         start_solver(clean=True)
+                    elif c == "E":
+                        state["recent_logs"].append("Opening inputs.dat for editing...")
+                        edit_inputs_dat(nbi)
+                        
+                        # Re-parse inputs.dat configuration to update state
+                        curr_inputs = parse_inputs_dat()
+                        state["t_final"] = float(curr_inputs.get("T_FINAL", 1.0))
+                        state["num_threads"] = int(curr_inputs.get("NUM_THREADS", 1))
+                        enable_sbm_diags = (curr_inputs.get("ENABLE_SBM_DIAGNOSTICS", "false").lower() == "true") and \
+                                           (curr_inputs.get("IB_METHOD", "").upper() == "SBM")
+                        
+                        state["recent_logs"].append("Finished editing inputs.dat. Configuration reloaded.")
                         last_status = "" # Force immediate redraw
                     elif c == "K":
                         state["recent_logs"].append("Forcing process SIGKILL...")

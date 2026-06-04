@@ -233,23 +233,27 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
     int n_sub = std::max(1, p.P_DEG);
 
     for (auto& b : solver.blocks) {
-        std::string block_filename = "plot_b" + std::to_string(b.id) + "_" + std::to_string(step) + ".vts";
+        std::string block_filename = "plot_b" + std::to_string(b.id) + "_" + std::to_string(step) + ".vtu";
         std::string block_path = "pv_outputs/" + block_filename;
         
-        std::ofstream vts(block_path);
-        if (!vts.is_open()) continue;
+        std::ofstream vtu(block_path);
+        if (!vtu.is_open()) continue;
 
         int nx = b.nx * n_sub + 1;
         int ny = b.ny * n_sub + 1;
+        int n_pts = nx * ny + (nx - 1) * (ny - 1);
+        int n_cells = 4 * (nx - 1) * (ny - 1);
 
-        vts << "<?xml version=\"1.0\"?>\n";
-        vts << "<VTKFile type=\"StructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
-        vts << "  <StructuredGrid WholeExtent=\"0 " << nx-1 << " 0 " << ny-1 << " 0 0\">\n";
-        vts << "    <Piece Extent=\"0 " << nx-1 << " 0 " << ny-1 << " 0 0\">\n";
+        vtu << "<?xml version=\"1.0\"?>\n";
+        vtu << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+        vtu << "  <UnstructuredGrid>\n";
+        vtu << "    <Piece NumberOfPoints=\"" << n_pts << "\" NumberOfCells=\"" << n_cells << "\">\n";
 
-        vts << "      <Points>\n";
-        vts << "        <DataArray type=\"Float32\" Name=\"Points\" NumberOfComponents=\"3\" format=\"ascii\">\n";
-        vts << std::fixed << std::setprecision(6);
+        vtu << "      <Points>\n";
+        vtu << "        <DataArray type=\"Float32\" Name=\"Points\" NumberOfComponents=\"3\" format=\"ascii\">\n";
+        vtu << std::fixed << std::setprecision(6);
+        
+        // 1. Original vertices
         for (int J = 0; J < ny; ++J) {
             int ey = J / n_sub;
             int ky = J % n_sub;
@@ -269,13 +273,66 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
                 }
                 double r = -1.0 + 2.0 * kx / n_sub;
                 double x = b.x_min + (ex + 0.5 * (1.0 + r)) * b.dx;
-                vts << x << " " << y << " 0.0\n";
+                vtu << x << " " << y << " 0.0\n";
             }
         }
-        vts << "        </DataArray>\n";
-        vts << "      </Points>\n";
+        
+        // 2. Cell centers
+        for (int j = 0; j < ny - 1; ++j) {
+            int ey = j / n_sub;
+            int ky = j % n_sub;
+            double s = -1.0 + 2.0 * (ky + 0.5) / n_sub;
+            double y = b.y_min + (ey + 0.5 * (1.0 + s)) * b.dy;
 
-        vts << "      <PointData Scalars=\"rho\">\n";
+            for (int i = 0; i < nx - 1; ++i) {
+                int ex = i / n_sub;
+                int kx = i % n_sub;
+                double r = -1.0 + 2.0 * (kx + 0.5) / n_sub;
+                double x = b.x_min + (ex + 0.5 * (1.0 + r)) * b.dx;
+                vtu << x << " " << y << " 0.0\n";
+            }
+        }
+        vtu << "        </DataArray>\n";
+        vtu << "      </Points>\n";
+
+        vtu << "      <Cells>\n";
+        vtu << "        <DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
+        for (int j = 0; j < ny - 1; ++j) {
+            for (int i = 0; i < nx - 1; ++i) {
+                int v_bl = j * nx + i;
+                int v_br = j * nx + i + 1;
+                int v_tr = (j + 1) * nx + i + 1;
+                int v_tl = (j + 1) * nx + i;
+                int v_c  = nx * ny + j * (nx - 1) + i;
+
+                // Bottom: BL, BR, C
+                vtu << v_bl << " " << v_br << " " << v_c << " ";
+                // Right: BR, TR, C
+                vtu << v_br << " " << v_tr << " " << v_c << " ";
+                // Top: TR, TL, C
+                vtu << v_tr << " " << v_tl << " " << v_c << " ";
+                // Left: TL, BL, C
+                vtu << v_tl << " " << v_bl << " " << v_c << "\n";
+            }
+        }
+        vtu << "        </DataArray>\n";
+
+        vtu << "        <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
+        for (int c = 1; c <= n_cells; ++c) {
+            vtu << c * 3 << " ";
+            if (c % 20 == 0) vtu << "\n";
+        }
+        vtu << "\n        </DataArray>\n";
+
+        vtu << "        <DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">\n";
+        for (int c = 1; c <= n_cells; ++c) {
+            vtu << "5 ";
+            if (c % 20 == 0) vtu << "\n";
+        }
+        vtu << "\n        </DataArray>\n";
+        vtu << "      </Cells>\n";
+
+        vtu << "      <PointData Scalars=\"rho\">\n";
 
         auto eval_lagrange = [&](int j, double x, const std::vector<double>& z) {
             int n = z.size();
@@ -303,35 +360,57 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
             if (!p.ENABLE_IB || b.solid_mask.empty()) return;
 
             if (b.solid_mask[ey * b.nx + ex]) {
-                bool on_x_bnd = (kx == 0);
-                bool on_x_bnd_right = (kx == n_sub);
-                bool on_y_bnd = (ky == 0);
-                bool on_y_bnd_top = (ky == n_sub);
-
-                std::vector<std::pair<int, int>> candidates;
-                if (on_x_bnd && ex > 0) candidates.push_back({ey, ex - 1});
-                if (on_x_bnd_right && ex < b.nx - 1) candidates.push_back({ey, ex + 1});
-                if (on_y_bnd && ey > 0) candidates.push_back({ey - 1, ex});
-                if (on_y_bnd_top && ey < b.ny - 1) candidates.push_back({ey + 1, ex});
-                if (on_x_bnd && on_y_bnd && ex > 0 && ey > 0) candidates.push_back({ey - 1, ex - 1});
-                if (on_x_bnd_right && on_y_bnd && ex < b.nx - 1 && ey > 0) candidates.push_back({ey - 1, ex + 1});
-                if (on_x_bnd && on_y_bnd_top && ex > 0 && ey < b.ny - 1) candidates.push_back({ey + 1, ex - 1});
-                if (on_x_bnd_right && on_y_bnd_top && ex < b.nx - 1 && ey < b.ny - 1) candidates.push_back({ey + 1, ex + 1});
-
-                for (auto& cand : candidates) {
-                    if (!b.solid_mask[cand.first * b.nx + cand.second]) {
-                        ey = cand.first;
-                        ex = cand.second;
-                        ky = J - ey * n_sub;
-                        kx = I - ex * n_sub;
-                        break;
+                std::vector<int> ex_candidates;
+                int ex_primary = I / n_sub;
+                if (ex_primary >= b.nx) ex_primary = b.nx - 1;
+                ex_candidates.push_back(ex_primary);
+                if (I % n_sub == 0 && I > 0) {
+                    int ex_alt = I / n_sub - 1;
+                    if (ex_alt < b.nx && ex_alt != ex_primary) {
+                        ex_candidates.push_back(ex_alt);
                     }
+                }
+
+                std::vector<int> ey_candidates;
+                int ey_primary = J / n_sub;
+                if (ey_primary >= b.ny) ey_primary = b.ny - 1;
+                ey_candidates.push_back(ey_primary);
+                if (J % n_sub == 0 && J > 0) {
+                    int ey_alt = J / n_sub - 1;
+                    if (ey_alt < b.ny && ey_alt != ey_primary) {
+                        ey_candidates.push_back(ey_alt);
+                    }
+                }
+
+                bool found_fluid = false;
+                for (int ec : ex_candidates) {
+                    for (int yc : ey_candidates) {
+                        if (!b.solid_mask[yc * b.nx + ec]) {
+                            ey = yc;
+                            ex = ec;
+                            ky = J - ey * n_sub;
+                            kx = I - ex * n_sub;
+                            found_fluid = true;
+                            break;
+                        }
+                    }
+                    if (found_fluid) break;
                 }
             }
         };
 
+        auto get_eval_center = [&](int j, int i, int& ey, int& ex, double& r, double& s) {
+            ey = j / n_sub;
+            ex = i / n_sub;
+            int ky = j % n_sub;
+            int kx = i % n_sub;
+            r = -1.0 + 2.0 * (kx + 0.5) / n_sub;
+            s = -1.0 + 2.0 * (ky + 0.5) / n_sub;
+        };
+
         auto write_array = [&](const std::string& name, auto getter) {
-            vts << "        <DataArray type=\"Float32\" Name=\"" << name << "\" format=\"ascii\">\n";
+            vtu << "        <DataArray type=\"Float32\" Name=\"" << name << "\" format=\"ascii\">\n";
+            // 1. Vertices
             for (int J = 0; J < ny; ++J) {
                 for (int I = 0; I < nx; ++I) {
                     int ey, ky, ex, kx;
@@ -351,11 +430,34 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
                             val += getter(ey, ex, iy, ix) * wy[iy] * wx[ix];
                         }
                     }
-                    vts << val << " ";
+                    vtu << val << " ";
                 }
-                vts << "\n";
+                vtu << "\n";
             }
-            vts << "        </DataArray>\n";
+            // 2. Centers
+            for (int j = 0; j < ny - 1; ++j) {
+                for (int i = 0; i < nx - 1; ++i) {
+                    int ey, ex;
+                    double r, s;
+                    get_eval_center(j, i, ey, ex, r, s);
+
+                    std::vector<double> wy(p.N_PTS);
+                    for (int iy = 0; iy < p.N_PTS; ++iy) wy[iy] = eval_lagrange(iy, s, solver.basis.z);
+
+                    std::vector<double> wx(p.N_PTS);
+                    for (int ix = 0; ix < p.N_PTS; ++ix) wx[ix] = eval_lagrange(ix, r, solver.basis.z);
+
+                    double val = 0.0;
+                    for (int iy = 0; iy < p.N_PTS; ++iy) {
+                        for (int ix = 0; ix < p.N_PTS; ++ix) {
+                            val += getter(ey, ex, iy, ix) * wy[iy] * wx[ix];
+                        }
+                    }
+                    vtu << val << " ";
+                }
+                vtu << "\n";
+            }
+            vtu << "        </DataArray>\n";
         };
 
         write_array("rho",   [&](int ey, int ex, int iy, int ix) { return b.U(0, ey, ex, iy, ix); });
@@ -364,7 +466,8 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
         write_array("rho_E", [&](int ey, int ex, int iy, int ix) { return b.U(3, ey, ex, iy, ix); });
 
         auto write_prim_array = [&](const std::string& name, int var) {
-            vts << "        <DataArray type=\"Float32\" Name=\"" << name << "\" format=\"ascii\">\n";
+            vtu << "        <DataArray type=\"Float32\" Name=\"" << name << "\" format=\"ascii\">\n";
+            // 1. Vertices
             for (int J = 0; J < ny; ++J) {
                 for (int I = 0; I < nx; ++I) {
                     int ey, ky, ex, kx;
@@ -404,11 +507,54 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
                     else if (var == 3) val = press / (RGASAIR*r_val);
                     else if (var == 4) val = std::sqrt(u*u + v*v) / std::sqrt(p.GAMMA * std::abs(press) / r_val);
 
-                    vts << val << " ";
+                    vtu << val << " ";
                 }
-                vts << "\n";
+                vtu << "\n";
             }
-            vts << "        </DataArray>\n";
+            // 2. Centers
+            for (int j = 0; j < ny - 1; ++j) {
+                for (int i = 0; i < nx - 1; ++i) {
+                    int ey, ex;
+                    double r, s;
+                    get_eval_center(j, i, ey, ex, r, s);
+
+                    std::vector<double> wy(p.N_PTS);
+                    for (int iy = 0; iy < p.N_PTS; ++iy) wy[iy] = eval_lagrange(iy, s, solver.basis.z);
+
+                    std::vector<double> wx(p.N_PTS);
+                    for (int ix = 0; ix < p.N_PTS; ++ix) wx[ix] = eval_lagrange(ix, r, solver.basis.z);
+
+                    double U_interp[4] = {0.0, 0.0, 0.0, 0.0};
+                    for (int iy = 0; iy < p.N_PTS; ++iy) {
+                        for (int ix = 0; ix < p.N_PTS; ++ix) {
+                            double w = wy[iy] * wx[ix];
+                            for (int v = 0; v < 4; ++v) {
+                                U_interp[v] += b.U(v, ey, ex, iy, ix) * w;
+                            }
+                        }
+                    }
+
+                    double r_val = std::max(1e-14, U_interp[0]);
+                    double ru = U_interp[1];
+                    double rv = U_interp[2];
+                    double E = U_interp[3];
+                    double u = ru / r_val;
+                    double v = rv / r_val;
+                    double press = (p.GAMMA - 1.0) * (E - 0.5 * r_val * (u*u + v*v));
+                    if (press < 1e-14) press = 1e-14;
+
+                    double val = 0.0;
+                    if (var == 0) val = u;
+                    else if (var == 1) val = v;
+                    else if (var == 2) val = press;
+                    else if (var == 3) val = press / (RGASAIR*r_val);
+                    else if (var == 4) val = std::sqrt(u*u + v*v) / std::sqrt(p.GAMMA * std::abs(press) / r_val);
+
+                    vtu << val << " ";
+                }
+                vtu << "\n";
+            }
+            vtu << "        </DataArray>\n";
         };
 
         write_prim_array("u", 0);
@@ -434,10 +580,10 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
             });
         }
 
-        vts << "      </PointData>\n";
-        vts << "    </Piece>\n";
-        vts << "  </StructuredGrid>\n";
-        vts << "</VTKFile>\n";
+        vtu << "      </PointData>\n";
+        vtu << "    </Piece>\n";
+        vtu << "  </UnstructuredGrid>\n";
+        vtu << "</VTKFile>\n";
 
         vtm << "    <DataSet index=\"" << b.id << "\" name=\"Block_" << b.id << "\" file=\"" << block_filename << "\"/>\n";
     }

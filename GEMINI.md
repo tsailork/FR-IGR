@@ -125,6 +125,10 @@ To improve the stability of high-order IGR at strong shocks:
 - **PVD Scan Integration:** The TUI parses the `pv_outputs/solution.pvd` file using regex, dynamically identifies the latest physical dataset file (.vtm) and its simulation timestamp, and automatically writes these to the `RESTART_FILE` and `RESTART_TIME` parameters in `inputs.dat` when a restart (`R`) is triggered.
 - **Clean State Restarting:** When a clean restart (`C`) is triggered, the TUI automatically clears these restart parameters, allowing the solver to build cleanly and start a fresh simulation run from $t=0.0$.
 
+### 4. In-Place Input Configuration Editor
+- **Interactive Terminal Takeover:** Implements the `edit_inputs_dat` function to suspend the raw input terminal mode, clear the screen, launch the system's `$EDITOR` (e.g. `vim` or `nano`) in-place, and wait for the user to edit `inputs.dat`.
+- **Dynamic Parameter Reloading:** Upon editor termination, the TUI re-enters non-blocking cbreak mode, re-parses the new configuration parameters from `inputs.dat` to update live variables, and triggers a full dashboard redraw.
+
 ## Documentation Maintenance (Agent Hook)
 Whenever tasked with "updating the documentation" for a new feature or change, you **MUST** ensure all the following locations are kept perfectly synchronized with the codebase:
 

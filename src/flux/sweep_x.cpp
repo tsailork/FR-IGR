@@ -77,21 +77,19 @@ void Solver::sweep_x() {
                     double U_neigh[4];
                     double sig_neigh;
 
-                    if (ex > 0) {
+                    const ImmersedBoundary::SurrogateFluxPoint* sfp_L = ImmersedBoundary::get_sbm_face(b.id, ey, ex, 0, iy);
+                    if (sfp_L) {
+                        double u_sb[4];
+                        ImmersedBoundary::compute_sbm_state(*this, sfp_L, u_sb);
+                        solve_riemann(u_sb, UL_face, Flux_L_comm, 0, sig_L_face, sig_L_face);
+                    } else if (ex > 0) {
                         for (int v = 0; v < 4; ++v)
                             Flux_L_comm[v] = prev_Flux_R_comm[iy][v];
                     } else {
-                        const ImmersedBoundary::SurrogateFluxPoint* sfp_L = ImmersedBoundary::get_sbm_face(b.id, ey, ex, 0, iy);
-                        if (sfp_L) {
-                            double u_sb[4];
-                            ImmersedBoundary::compute_sbm_state(*this, sfp_L, u_sb);
-                            solve_riemann(u_sb, UL_face, Flux_L_comm, 0, sig_L_face, sig_L_face);
-                        } else {
-                            get_neigh_state_x(b, ey, ex, iy, false,
-                                              UL_face, sig_L_face, U_neigh, sig_neigh);
-                            solve_riemann(U_neigh, UL_face, Flux_L_comm, 0,
-                                          sig_neigh, sig_L_face);
-                        }
+                        get_neigh_state_x(b, ey, ex, iy, false,
+                                          UL_face, sig_L_face, U_neigh, sig_neigh);
+                        solve_riemann(U_neigh, UL_face, Flux_L_comm, 0,
+                                      sig_neigh, sig_L_face);
                     }
 
                     const ImmersedBoundary::SurrogateFluxPoint* sfp_R = ImmersedBoundary::get_sbm_face(b.id, ey, ex, 1, iy);
