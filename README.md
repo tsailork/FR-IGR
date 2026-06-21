@@ -23,7 +23,7 @@ This project has also been an exploration of AI-LLM assisted code generation. LL
 - [GEMINI.md](GEMINI.md): Detailed technical history, architecture notes, and feature descriptions.
 - [dependencies.txt](dependencies.txt): Software and library requirements.
 - [inputs_example.txt](inputs_example.txt): Comprehensive guide to all simulation parameters.
-- [High level overview](doc/index.html) of the methods used in this code.
-- [Doxygen](doc/doxygen/html/index.html) documentation pages. 
+- (.html) [High level overview](doc/index.html) of the methods used in this code.
+- (.html) [Doxygen](doc/doxygen/html/index.html) documentation pages. 
 
 ---
