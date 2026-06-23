@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded',() => { initNavTree('entropy_8hpp.h
 </div><!--header-->
 <div class="contents">
 
-<p>Entropy minimum-preservation limiter declaration.  
+<p>Specific thermodynamic entropy minimum preservation limiter.  
 <a href="#details">More...</a></p>
 <div class="textblock"><code>#include &quot;<a class="el" href="limiter__common_8hpp_source.html">limiter_common.hpp</a>&quot;</code><br />
 </div>
@@ -132,10 +132,11 @@ Namespaces</h2></td></tr>
 <tr class="heading"><td colspan="2"><h2 id="header-func-members" class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
 <tr class="memitem:a50e04ed895063f747512e4825bfb89c7" id="r_a50e04ed895063f747512e4825bfb89c7"><td class="memItemLeft"><a class="el" href="struct_limiters_1_1_limiter_stats.html">LimiterStats</a>&#160;</td><td class="memItemRight"><a class="el" href="namespace_limiters.html#a50e04ed895063f747512e4825bfb89c7">Limiters::apply_entropy_limiter</a> (<a class="el" href="class_solver.html">Solver</a> &amp;solver)</td></tr>
-<tr class="memdesc:a50e04ed895063f747512e4825bfb89c7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Apply the entropy minimum-preserving limiter to the entire solver domain.  <br /></td></tr>
+<tr class="memdesc:a50e04ed895063f747512e4825bfb89c7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Apply the entropy minimum preservation limiter to the active solver grid.  <br /></td></tr>
 </table>
 <a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>Entropy minimum-preservation limiter declaration. </p>
+<div class="textblock"><p>Specific thermodynamic entropy minimum preservation limiter. </p>
+<p>Prevents non-physical expansion shocks (which violate the second law of thermodynamics) by scaling the polynomial degrees of freedom towards the cell average if the local entropy drops below an admissible threshold (the minimum over the cell and its neighbors). </p>
 </div></div><!-- contents -->
 </div><!-- doc-content -->
 <div id="page-nav" class="page-nav-panel">

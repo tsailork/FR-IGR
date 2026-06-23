@@ -57,7 +57,7 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "adi__solver_8cpp.html",
-"struct_block_config.html#a8581eec8c8669de74b0e214484f0dadd"
+"struct_block_config.html#a5f006b66f48d143b94b415fcd4d366cc"
 ];
 
 const SYNCONMSG = 'click to disable panel synchronization';

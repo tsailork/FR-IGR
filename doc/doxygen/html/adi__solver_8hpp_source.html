@@ -119,16 +119,16 @@ document.addEventListener('DOMContentLoaded',() => { initNavTree('adi__solver_8h
 </div><!--header-->
 <div class="contents">
 <a href="adi__solver_8hpp.html">Go to the documentation of this file.</a><div class="fragment"><div class="line"><a id="l00001" name="l00001"></a><span class="lineno">    1</span></div>
-<div class="line"><a id="l00003" name="l00003"></a><span class="lineno">    3</span> </div>
-<div class="line"><a id="l00004" name="l00004"></a><span class="lineno">    4</span><span class="preprocessor">#pragma once</span></div>
-<div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span><span class="preprocessor">#include &lt;vector&gt;</span></div>
-<div class="line"><a id="l00006" name="l00006"></a><span class="lineno">    6</span></div>
-<div class="line"><a id="l00008" name="l00008"></a><span class="lineno">    8</span><span class="keywordtype">void</span> <a class="code hl_function" href="adi__solver_8hpp.html#a8099a6d513786658caaf2abdfb4bd24f">solve_tridiagonal</a>(<span class="keyword">const</span> std::vector&lt;double&gt;&amp; a,</div>
-<div class="line"><a id="l00009" name="l00009"></a><span class="lineno">    9</span>                       <span class="keyword">const</span> std::vector&lt;double&gt;&amp; b,</div>
-<div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span>                       <span class="keyword">const</span> std::vector&lt;double&gt;&amp; c,</div>
-<div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span>                       <span class="keyword">const</span> std::vector&lt;double&gt;&amp; d,</div>
-<div class="line"><a id="l00012" name="l00012"></a><span class="lineno">   12</span>                       std::vector&lt;double&gt;&amp; x);</div>
-<div class="ttc" id="aadi__solver_8hpp_html_a8099a6d513786658caaf2abdfb4bd24f"><div class="ttname"><a href="adi__solver_8hpp.html#a8099a6d513786658caaf2abdfb4bd24f">solve_tridiagonal</a></div><div class="ttdeci">void solve_tridiagonal(const std::vector&lt; double &gt; &amp;a, const std::vector&lt; double &gt; &amp;b, const std::vector&lt; double &gt; &amp;c, const std::vector&lt; double &gt; &amp;d, std::vector&lt; double &gt; &amp;x)</div><div class="ttdoc">Solve a tridiagonal system A x_{i-1} + B x_i + C x_{i+1} = D_i.</div><div class="ttdef"><b>Definition</b> adi_solver.cpp:36</div></div>
+<div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span> </div>
+<div class="line"><a id="l00006" name="l00006"></a><span class="lineno">    6</span><span class="preprocessor">#pragma once</span></div>
+<div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span><span class="preprocessor">#include &lt;vector&gt;</span></div>
+<div class="line"><a id="l00008" name="l00008"></a><span class="lineno">    8</span></div>
+<div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span><span class="keywordtype">void</span> <a class="code hl_function" href="adi__solver_8hpp.html#a8099a6d513786658caaf2abdfb4bd24f">solve_tridiagonal</a>(<span class="keyword">const</span> std::vector&lt;double&gt;&amp; a,</div>
+<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span>                       <span class="keyword">const</span> std::vector&lt;double&gt;&amp; b,</div>
+<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span>                       <span class="keyword">const</span> std::vector&lt;double&gt;&amp; c,</div>
+<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span>                       <span class="keyword">const</span> std::vector&lt;double&gt;&amp; d,</div>
+<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span>                       std::vector&lt;double&gt;&amp; x);</div>
+<div class="ttc" id="aadi__solver_8hpp_html_a8099a6d513786658caaf2abdfb4bd24f"><div class="ttname"><a href="adi__solver_8hpp.html#a8099a6d513786658caaf2abdfb4bd24f">solve_tridiagonal</a></div><div class="ttdeci">void solve_tridiagonal(const std::vector&lt; double &gt; &amp;a, const std::vector&lt; double &gt; &amp;b, const std::vector&lt; double &gt; &amp;c, const std::vector&lt; double &gt; &amp;d, std::vector&lt; double &gt; &amp;x)</div><div class="ttdoc">Solve a tridiagonal system of linear equations using the Thomas algorithm (TDMA).</div><div class="ttdef"><b>Definition</b> adi_solver.cpp:36</div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 </div><!-- container -->

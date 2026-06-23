@@ -1,5 +1,6 @@
 var searchData=
 [
-  ['write_5fcheckpoint_0',['write_checkpoint',['../class_v_t_k_writer.html#a84a53e42ddb13829ea6e8c8cbdf3122e',1,'VTKWriter']]],
-  ['write_5fplot_1',['write_plot',['../class_v_t_k_writer.html#aaaac7b3b094b8679d26c345469b2361f',1,'VTKWriter']]]
+  ['viscous_5fsweep_5fx_0',['viscous_sweep_x',['../class_solver.html#a5d213458254f1318139a374b2e63b724',1,'Solver']]],
+  ['viscous_5fsweep_5fy_1',['viscous_sweep_y',['../class_solver.html#aadac024a7c33f325a94c767535178c38',1,'Solver']]],
+  ['vtkwriter_2',['VTKWriter',['../class_v_t_k_writer.html#a70c0d5154fd656a181498c456bbeac80',1,'VTKWriter']]]
 ];

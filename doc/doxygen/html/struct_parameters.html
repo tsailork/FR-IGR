@@ -208,8 +208,12 @@ Public Attributes</h2></td></tr>
 <tr class="memdesc:a8a09d2131266435a236f2cccc018dc20"><td class="mdescLeft">&#160;</td><td class="mdescRight">Toggle Immersed Boundary Method.  <br /></td></tr>
 <tr class="memitem:addab8f879be126c13b88e029994519d5" id="r_addab8f879be126c13b88e029994519d5"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#addab8f879be126c13b88e029994519d5">ENABLE_IB_3C</a> = false</td></tr>
 <tr class="memdesc:addab8f879be126c13b88e029994519d5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Toggle Colombo Constraint 3.c (strips opposing flags).  <br /></td></tr>
+<tr class="memitem:ac6211a5d4c791c013be7bb283511591b" id="r_ac6211a5d4c791c013be7bb283511591b"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#ac6211a5d4c791c013be7bb283511591b">ENABLE_SBM_DIAGNOSTICS</a> = false</td></tr>
+<tr class="memdesc:ac6211a5d4c791c013be7bb283511591b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Toggle runtime diagnostics for SBM extrapolation quality.  <br /></td></tr>
 <tr class="memitem:a168f8de8f4b8b9a401fcc87d5d8a9e41" id="r_a168f8de8f4b8b9a401fcc87d5d8a9e41"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a168f8de8f4b8b9a401fcc87d5d8a9e41">IB_DL_SCALE</a> = 1.0</td></tr>
-<tr class="memdesc:a168f8de8f4b8b9a401fcc87d5d8a9e41"><td class="mdescLeft">&#160;</td><td class="mdescRight">Scale factor for the shifted boundary 1D donor interval.  <br /></td></tr>
+<tr class="memdesc:a168f8de8f4b8b9a401fcc87d5d8a9e41"><td class="mdescLeft">&#160;</td><td class="mdescRight">Scale factor for the shifted boundary 1D donor interval (dL).  <br /></td></tr>
+<tr class="memitem:aa1b0e1e41e2c2d4551f65f9b24c24540" id="r_aa1b0e1e41e2c2d4551f65f9b24c24540"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#aa1b0e1e41e2c2d4551f65f9b24c24540">IB_L_SCALE</a> = 1.0</td></tr>
+<tr class="memdesc:aa1b0e1e41e2c2d4551f65f9b24c24540"><td class="mdescLeft">&#160;</td><td class="mdescRight">Scale factor for the shifted boundary 1D donor offset (L).  <br /></td></tr>
 <tr class="memitem:af9ae6bebf47d1bf8cad245a04e3ab1b2" id="r_af9ae6bebf47d1bf8cad245a04e3ab1b2"><td class="memItemLeft">std::string&#160;</td><td class="memItemRight"><a class="el" href="#af9ae6bebf47d1bf8cad245a04e3ab1b2">IB_METHOD</a> = &quot;SBM&quot;</td></tr>
 <tr class="memdesc:af9ae6bebf47d1bf8cad245a04e3ab1b2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Immersed Boundary method ("SBM", "VPM_ANALYTICAL", "VPM_EXPLICIT").  <br /></td></tr>
 <tr class="memitem:afa56485486ddbf5a4c2175220bafb6f7" id="r_afa56485486ddbf5a4c2175220bafb6f7"><td class="memItemLeft">std::string&#160;</td><td class="memItemRight"><a class="el" href="#afa56485486ddbf5a4c2175220bafb6f7">IB_SHAPE</a> = &quot;CIRCLE&quot;</td></tr>
@@ -510,6 +514,22 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="ac6211a5d4c791c013be7bb283511591b" name="ac6211a5d4c791c013be7bb283511591b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac6211a5d4c791c013be7bb283511591b">&#9670;&#160;</a></span>ENABLE_SBM_DIAGNOSTICS</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool Parameters::ENABLE_SBM_DIAGNOSTICS = false</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Toggle runtime diagnostics for SBM extrapolation quality. </p>
+
+</div>
+</div>
 <a id="a835a0d51a130ed27bd17184621e2728c" name="a835a0d51a130ed27bd17184621e2728c"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a835a0d51a130ed27bd17184621e2728c">&#9670;&#160;</a></span>GAMMA</h2>
 
@@ -586,7 +606,7 @@ Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Scale factor for the shifted boundary 1D donor interval. </p>
+<p>Scale factor for the shifted boundary 1D donor interval (dL). </p>
 
 </div>
 </div>
@@ -603,6 +623,22 @@ Public Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>True if any geometry is moving / dynamic. </p>
+
+</div>
+</div>
+<a id="aa1b0e1e41e2c2d4551f65f9b24c24540" name="aa1b0e1e41e2c2d4551f65f9b24c24540"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa1b0e1e41e2c2d4551f65f9b24c24540">&#9670;&#160;</a></span>IB_L_SCALE</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::IB_L_SCALE = 1.0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Scale factor for the shifted boundary 1D donor offset (L). </p>
 
 </div>
 </div>

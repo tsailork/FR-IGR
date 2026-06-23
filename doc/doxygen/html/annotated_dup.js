@@ -4,6 +4,7 @@ var annotated_dup =
       [ "DonorPoint", "struct_immersed_boundary_1_1_donor_point.html", "struct_immersed_boundary_1_1_donor_point" ],
       [ "ParabolaShape", "struct_immersed_boundary_1_1_parabola_shape.html", "struct_immersed_boundary_1_1_parabola_shape" ],
       [ "QuadShape", "struct_immersed_boundary_1_1_quad_shape.html", "struct_immersed_boundary_1_1_quad_shape" ],
+      [ "SBMDiagnostics", "struct_immersed_boundary_1_1_s_b_m_diagnostics.html", "struct_immersed_boundary_1_1_s_b_m_diagnostics" ],
       [ "SurrogateFluxPoint", "struct_immersed_boundary_1_1_surrogate_flux_point.html", "struct_immersed_boundary_1_1_surrogate_flux_point" ]
     ] ],
     [ "Limiters", "namespace_limiters.html", [

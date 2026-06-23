@@ -119,12 +119,20 @@ document.addEventListener('DOMContentLoaded',() => { initNavTree('rk3_8hpp.html'
 </div><!--header-->
 <div class="contents">
 
-<p>SSP-RK3 time-stepper declaration.  
+<p>Redirection hook and placeholder for the temporal integrator subsystem (SSP-RK3).  
 <a href="#details">More...</a></p>
 
 <p><a href="rk3_8hpp_source.html">Go to the source code of this file.</a></p>
 <a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>SSP-RK3 time-stepper declaration. </p>
+<div class="textblock"><p>Redirection hook and placeholder for the temporal integrator subsystem (SSP-RK3). </p>
+<dl class="section note"><dt>Note</dt><dd>The Strong Stability Preserving Runge-Kutta 3rd order time-stepper is implemented as member functions of the main <span class="tt"><a class="el" href="class_solver.html" title="Central solver class governing numerical integration, multi-block communication, and limiters.">Solver</a></span> class:<ul>
+<li><span class="tt"><a class="el" href="class_solver.html#aa140ab3343657e002b37fed10f1b2e81" title="Perform one full SSP-RK3 integration step.">Solver::step_rk3(double dt)</a></span></li>
+</ul>
+</dd></dl>
+<p>The corresponding declaration is located in <span class="tt"><a class="el" href="solver_8hpp.html" title="Main Solver class and grid block structures for the FR-IGR simulation engine.">solver.hpp</a></span>, and its implementation is located in <span class="tt"><a class="el" href="rk3_8cpp.html" title="Strong Stability Preserving Runge-Kutta 3rd Order (SSP-RK3) time-stepping implementation.">rk3.cpp</a></span>. This file acts as a placeholder to preserve compilation unit boundaries.</p>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="solver_8hpp.html" title="Main Solver class and grid block structures for the FR-IGR simulation engine.">solver.hpp</a> </dd>
+<dd>
+<a class="el" href="rk3_8cpp.html" title="Strong Stability Preserving Runge-Kutta 3rd Order (SSP-RK3) time-stepping implementation.">rk3.cpp</a> </dd></dl>
 </div></div><!-- contents -->
 </div><!-- doc-content -->
 <div id="page-nav" class="page-nav-panel">

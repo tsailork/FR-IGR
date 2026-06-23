@@ -127,17 +127,17 @@ Classes</h2></td></tr>
 <tr class="heading"><td colspan="2"><h2 id="header-func-members" class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
 <tr class="memitem:a50e04ed895063f747512e4825bfb89c7" id="r_a50e04ed895063f747512e4825bfb89c7"><td class="memItemLeft"><a class="el" href="struct_limiters_1_1_limiter_stats.html">LimiterStats</a>&#160;</td><td class="memItemRight"><a class="el" href="#a50e04ed895063f747512e4825bfb89c7">apply_entropy_limiter</a> (<a class="el" href="class_solver.html">Solver</a> &amp;solver)</td></tr>
-<tr class="memdesc:a50e04ed895063f747512e4825bfb89c7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Apply the entropy minimum-preserving limiter to the entire solver domain.  <br /></td></tr>
+<tr class="memdesc:a50e04ed895063f747512e4825bfb89c7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Apply the entropy minimum preservation limiter to the active solver grid.  <br /></td></tr>
 <tr class="memitem:ac039ab5e12f198658deef7fba65ddba8" id="r_ac039ab5e12f198658deef7fba65ddba8"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#ac039ab5e12f198658deef7fba65ddba8">pressure</a> (double rho, double rhou, double rhov, double E, double gamma)</td></tr>
 <tr class="memdesc:ac039ab5e12f198658deef7fba65ddba8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Compute thermodynamic pressure from conserved variables.  <br /></td></tr>
 <tr class="memitem:a3334592c4203876a8996f9a61de141fd" id="r_a3334592c4203876a8996f9a61de141fd"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a3334592c4203876a8996f9a61de141fd">specific_entropy</a> (double rho, double rhou, double rhov, double E, double gamma)</td></tr>
-<tr class="memdesc:a3334592c4203876a8996f9a61de141fd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Compute specific entropy <picture><source srcset="form_93_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ s = p / \rho^\gamma $" src="form_93.png"/></picture>.  <br /></td></tr>
+<tr class="memdesc:a3334592c4203876a8996f9a61de141fd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Compute specific entropy <picture><source srcset="form_96_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ s = p / \rho^\gamma $" src="form_96.png"/></picture>.  <br /></td></tr>
 <tr class="memitem:ade4a86b7fb815db18482750e5482d1ec" id="r_ade4a86b7fb815db18482750e5482d1ec"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#ade4a86b7fb815db18482750e5482d1ec">pressure_at_theta</a> (double theta, double r, double ru, double rv, double E, double r_avg, double ru_avg, double rv_avg, double E_avg, double gamma)</td></tr>
-<tr class="memdesc:ade4a86b7fb815db18482750e5482d1ec"><td class="mdescLeft">&#160;</td><td class="mdescRight">Compute pressure along the convex combination path <picture><source srcset="form_94_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ U(\theta) = \theta U + (1-\theta) \bar{U} $" src="form_94.png"/></picture>.  <br /></td></tr>
+<tr class="memdesc:ade4a86b7fb815db18482750e5482d1ec"><td class="mdescLeft">&#160;</td><td class="mdescRight">Compute pressure along the convex combination path <picture><source srcset="form_97_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ U(\theta) = \theta U + (1-\theta) \bar{U} $" src="form_97.png"/></picture>.  <br /></td></tr>
 <tr class="memitem:a6fe21068e2031e9694f4e7da8ad8dbf8" id="r_a6fe21068e2031e9694f4e7da8ad8dbf8"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a6fe21068e2031e9694f4e7da8ad8dbf8">entropy_at_theta</a> (double theta, double r, double ru, double rv, double E, double r_avg, double ru_avg, double rv_avg, double E_avg, double gamma)</td></tr>
 <tr class="memdesc:a6fe21068e2031e9694f4e7da8ad8dbf8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Compute specific entropy along the convex combination path.  <br /></td></tr>
 <tr class="memitem:a807a435d6b38e9e2a392cad50f899e70" id="r_a807a435d6b38e9e2a392cad50f899e70"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a807a435d6b38e9e2a392cad50f899e70">bisect_for_theta</a> (double r, double ru, double rv, double E, double r_avg, double ru_avg, double rv_avg, double E_avg, double gamma, double target, bool is_pressure, int n_iter=30)</td></tr>
-<tr class="memdesc:a807a435d6b38e9e2a392cad50f899e70"><td class="mdescLeft">&#160;</td><td class="mdescRight">Bisection search to find the maximum admissible <picture><source srcset="form_96_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\theta \in [0,1]$" src="form_96.png"/></picture>.  <br /></td></tr>
+<tr class="memdesc:a807a435d6b38e9e2a392cad50f899e70"><td class="mdescLeft">&#160;</td><td class="mdescRight">Bisection search to find the maximum admissible <picture><source srcset="form_99_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\theta \in [0,1]$" src="form_99.png"/></picture>.  <br /></td></tr>
 <tr class="memitem:a0d6a709951c7d4e95e5f0536caf3a61c" id="r_a0d6a709951c7d4e95e5f0536caf3a61c"><td class="memItemLeft">int&#160;</td><td class="memItemRight"><a class="el" href="#a0d6a709951c7d4e95e5f0536caf3a61c">extrapolate_face_values</a> (const <a class="el" href="struct_state.html">State</a> &amp;U, const <a class="el" href="struct_basis.html">Basis</a> &amp;basis, int ey, int ex, double face_pts[][4])</td></tr>
 <tr class="memdesc:a0d6a709951c7d4e95e5f0536caf3a61c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Extrapolate conserved variables to element face checking points.  <br /></td></tr>
 <tr class="memitem:a160a6d8cd38c12a706e2ed8677915394" id="r_a160a6d8cd38c12a706e2ed8677915394"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#a160a6d8cd38c12a706e2ed8677915394">compute_cell_average</a> (const <a class="el" href="struct_state.html">State</a> &amp;U, const <a class="el" href="struct_basis.html">Basis</a> &amp;basis, int ey, int ex, double &amp;r_avg, double &amp;ru_avg, double &amp;rv_avg, double &amp;E_avg)</td></tr>
@@ -145,7 +145,7 @@ Functions</h2></td></tr>
 <tr class="memitem:a1e0bd3a264b1a5e302d2a16b625882de" id="r_a1e0bd3a264b1a5e302d2a16b625882de"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a1e0bd3a264b1a5e302d2a16b625882de">min_entropy_in_cell</a> (const <a class="el" href="struct_state.html">State</a> &amp;U, const <a class="el" href="struct_parameters.html">Parameters</a> &amp;p, int ey, int ex)</td></tr>
 <tr class="memdesc:a1e0bd3a264b1a5e302d2a16b625882de"><td class="mdescLeft">&#160;</td><td class="mdescRight">Find the minimum specific entropy across all interior quadrature points of a cell.  <br /></td></tr>
 <tr class="memitem:a10bd784a4e4374eed6c43287c248050a" id="r_a10bd784a4e4374eed6c43287c248050a"><td class="memItemLeft"><a class="el" href="struct_limiters_1_1_limiter_stats.html">LimiterStats</a>&#160;</td><td class="memItemRight"><a class="el" href="#a10bd784a4e4374eed6c43287c248050a">apply_positivity_limiter</a> (<a class="el" href="struct_state.html">State</a> &amp;U, const <a class="el" href="struct_basis.html">Basis</a> &amp;basis, const <a class="el" href="struct_parameters.html">Parameters</a> &amp;p)</td></tr>
-<tr class="memdesc:a10bd784a4e4374eed6c43287c248050a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Apply the Zhang-Shu positivity-preserving limiter.  <br /></td></tr>
+<tr class="memdesc:a10bd784a4e4374eed6c43287c248050a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enforce positive density and pressure fields at all physical degrees of freedom.  <br /></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-var-members" class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
@@ -168,8 +168,16 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Apply the entropy minimum-preserving limiter to the entire solver domain. </p>
-<p>Prevent spurious entropy undershoots by scaling toward the cell average. The entropy floor is the minimum over the cell and its face neighbours.</p>
+<p>Apply the entropy minimum preservation limiter to the active solver grid. </p>
+<p>Apply the entropy minimum-preserving limiter to the entire solver domain.</p>
+<p>Scans each block element, identifies the local specific entropy floor, and scales polynomial coefficients toward the cell average where necessary using bisection.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in,out]</td><td class="paramname">solver</td><td>The active solver instance whose state fields will be limited. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd><a class="el" href="struct_limiters_1_1_limiter_stats.html" title="Structure to track limiter application statistics across the mesh.">LimiterStats</a> containing the count of modified elements and average scaling parameter.</dd></dl>
 <p>Enforces specific entropy bounds to maintain positivity and stability in high-order FR methods without introducing excessive numerical dissipation.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
@@ -205,9 +213,19 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Apply the Zhang-Shu positivity-preserving limiter. </p>
-<p>Enforce ρ ≥ ε and p ≥ ε at every solution point by scaling toward the cell average. Each element is independent.</p>
-<p>This limiter maintains the physical admissibility of the solution by ensuring that density and pressure remain positive (or above a small threshold <picture><source srcset="form_106_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \varepsilon $" src="form_106.png"/></picture>). It operates by linearly scaling the high-order polynomial towards the cell average.</p>
+<p>Enforce positive density and pressure fields at all physical degrees of freedom. </p>
+<p>Apply the Zhang-Shu positivity-preserving limiter.</p>
+<p>Checks density and pressure values at both internal solution points and face-extrapolated interface points. If values drop below the defined floor, scales the element's local polynomial coefficients around the cell average to recover positivity while preserving mass.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in,out]</td><td class="paramname">U</td><td>The state struct containing the conservative variables to limit. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">basis</td><td>The high-order polynomial basis definition. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">p</td><td>Global simulation parameters defining positivity floors. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd><a class="el" href="struct_limiters_1_1_limiter_stats.html" title="Structure to track limiter application statistics across the mesh.">LimiterStats</a> containing the count of modified elements and average scaling parameter.</dd></dl>
+<p>This limiter maintains the physical admissibility of the solution by ensuring that density and pressure remain positive (or above a small threshold <picture><source srcset="form_109_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \varepsilon $" src="form_109.png"/></picture>). It operates by linearly scaling the high-order polynomial towards the cell average.</p>
 <p>Data Structures &amp; Indexing:</p><ul>
 <li><span class="tt">U(v, ey, ex, iy, ix)</span>: The global conserved state array. Read and mutated in-place.</li>
 </ul>
@@ -222,7 +240,7 @@ Variables</h2></td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd><a class="el" href="struct_limiters_1_1_limiter_stats.html" title="Structure to track limiter application statistics across the mesh.">LimiterStats</a> Statistics containing the number of cells limited and average scaling factor <picture><source srcset="form_107_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \theta $" src="form_107.png"/></picture>.</dd></dl>
+<dl class="section return"><dt>Returns</dt><dd><a class="el" href="struct_limiters_1_1_limiter_stats.html" title="Structure to track limiter application statistics across the mesh.">LimiterStats</a> Statistics containing the number of cells limited and average scaling factor <picture><source srcset="form_110_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \theta $" src="form_110.png"/></picture>.</dd></dl>
 <dl class="section see"><dt>See also</dt><dd><a class="el" href="struct_limiters_1_1_limiter_stats.html" title="Structure to track limiter application statistics across the mesh.">Limiters::LimiterStats</a> </dd></dl>
 
 </div>
@@ -304,8 +322,8 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Bisection search to find the maximum admissible <picture><source srcset="form_96_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\theta \in [0,1]$" src="form_96.png"/></picture>. </p>
-<p>Finds the largest <picture><source srcset="form_97_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\theta$" src="form_97.png"/></picture> such that the scaled state remains strictly above the physical target admissibility bound (e.g. minimum pressure or specific entropy).</p>
+<p>Bisection search to find the maximum admissible <picture><source srcset="form_99_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\theta \in [0,1]$" src="form_99.png"/></picture>. </p>
+<p>Finds the largest <picture><source srcset="form_100_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\theta$" src="form_100.png"/></picture> such that the scaled state remains strictly above the physical target admissibility bound (e.g. minimum pressure or specific entropy).</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">r</td><td>Local point density </td></tr>
@@ -316,14 +334,14 @@ Variables</h2></td></tr>
     <tr><td class="paramname">ru_avg</td><td>Cell-average X-momentum </td></tr>
     <tr><td class="paramname">rv_avg</td><td>Cell-average Y-momentum </td></tr>
     <tr><td class="paramname">E_avg</td><td>Cell-average total energy </td></tr>
-    <tr><td class="paramname">gamma</td><td>Specific heat ratio ( <picture><source srcset="form_92_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\gamma$" src="form_92.png"/></picture>) </td></tr>
+    <tr><td class="paramname">gamma</td><td>Specific heat ratio ( <picture><source srcset="form_95_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\gamma$" src="form_95.png"/></picture>) </td></tr>
     <tr><td class="paramname">target</td><td>Admissibility floor </td></tr>
     <tr><td class="paramname">is_pressure</td><td>True to check pressure, false to check specific entropy </td></tr>
     <tr><td class="paramname">n_iter</td><td>Number of bisection iterations (default 30) </td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>Optimal scaling factor <picture><source srcset="form_97_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\theta$" src="form_97.png"/></picture> </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>Optimal scaling factor <picture><source srcset="form_100_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\theta$" src="form_100.png"/></picture> </dd></dl>
 
 </div>
 </div>
@@ -471,7 +489,7 @@ Variables</h2></td></tr>
 <p>Compute specific entropy along the convex combination path. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">theta</td><td>Scaling factor <picture><source srcset="form_95_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\theta \in [0, 1]$" src="form_95.png"/></picture> </td></tr>
+    <tr><td class="paramname">theta</td><td>Scaling factor <picture><source srcset="form_98_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\theta \in [0, 1]$" src="form_98.png"/></picture> </td></tr>
     <tr><td class="paramname">r</td><td>Local point density </td></tr>
     <tr><td class="paramname">ru</td><td>Local point X-momentum </td></tr>
     <tr><td class="paramname">rv</td><td>Local point Y-momentum </td></tr>
@@ -480,7 +498,7 @@ Variables</h2></td></tr>
     <tr><td class="paramname">ru_avg</td><td>Cell-average X-momentum </td></tr>
     <tr><td class="paramname">rv_avg</td><td>Cell-average Y-momentum </td></tr>
     <tr><td class="paramname">E_avg</td><td>Cell-average total energy </td></tr>
-    <tr><td class="paramname">gamma</td><td>Specific heat ratio ( <picture><source srcset="form_92_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\gamma$" src="form_92.png"/></picture>) </td></tr>
+    <tr><td class="paramname">gamma</td><td>Specific heat ratio ( <picture><source srcset="form_95_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\gamma$" src="form_95.png"/></picture>) </td></tr>
   </table>
   </dd>
 </dl>
@@ -531,7 +549,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Extrapolate conserved variables to element face checking points. </p>
-<p>For positivity preservation under high-order Gauss-Legendre quadrature, the checking set must include face-extrapolated values at <picture><source srcset="form_98_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\xi = \pm 1, \eta = \pm 1$" src="form_98.png"/></picture> to prevent sub-element polynomial overshoot.</p>
+<p>For positivity preservation under high-order Gauss-Legendre quadrature, the checking set must include face-extrapolated values at <picture><source srcset="form_101_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\xi = \pm 1, \eta = \pm 1$" src="form_101.png"/></picture> to prevent sub-element polynomial overshoot.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">U</td><td>Conservated state database </td></tr>
@@ -542,7 +560,7 @@ Variables</h2></td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>Number of checking points populated (always <picture><source srcset="form_99_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$4 \times N_{pts}$" src="form_99.png"/></picture>) </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>Number of checking points populated (always <picture><source srcset="form_102_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$4 \times N_{pts}$" src="form_102.png"/></picture>) </dd></dl>
 
 </div>
 </div>
@@ -641,15 +659,15 @@ Variables</h2></td></tr>
 
 <p>Compute thermodynamic pressure from conserved variables. </p>
 <p>Evaluates the ideal gas equation of state: </p><p class="formulaDsp">
-<picture><source srcset="form_90_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ p = (\gamma - 1) \left( E - \frac{1}{2} \rho (u^2 + v^2) \right) \&zwj;]" src="form_90.png"/></picture>
+<picture><source srcset="form_93_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ p = (\gamma - 1) \left( E - \frac{1}{2} \rho (u^2 + v^2) \right) \&zwj;]" src="form_93.png"/></picture>
 </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">rho</td><td>Density ( <picture><source srcset="form_85_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\rho$" src="form_85.png"/></picture>) </td></tr>
-    <tr><td class="paramname">rhou</td><td>X-momentum ( <picture><source srcset="form_86_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\rho u$" src="form_86.png"/></picture>) </td></tr>
-    <tr><td class="paramname">rhov</td><td>Y-momentum ( <picture><source srcset="form_87_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\rho v$" src="form_87.png"/></picture>) </td></tr>
-    <tr><td class="paramname">E</td><td>Total energy density ( <picture><source srcset="form_91_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$E$" src="form_91.png"/></picture>) </td></tr>
-    <tr><td class="paramname">gamma</td><td>Specific heat ratio ( <picture><source srcset="form_92_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\gamma$" src="form_92.png"/></picture>) </td></tr>
+    <tr><td class="paramname">rho</td><td>Density ( <picture><source srcset="form_88_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\rho$" src="form_88.png"/></picture>) </td></tr>
+    <tr><td class="paramname">rhou</td><td>X-momentum ( <picture><source srcset="form_89_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\rho u$" src="form_89.png"/></picture>) </td></tr>
+    <tr><td class="paramname">rhov</td><td>Y-momentum ( <picture><source srcset="form_90_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\rho v$" src="form_90.png"/></picture>) </td></tr>
+    <tr><td class="paramname">E</td><td>Total energy density ( <picture><source srcset="form_94_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$E$" src="form_94.png"/></picture>) </td></tr>
+    <tr><td class="paramname">gamma</td><td>Specific heat ratio ( <picture><source srcset="form_95_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\gamma$" src="form_95.png"/></picture>) </td></tr>
   </table>
   </dd>
 </dl>
@@ -724,10 +742,10 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Compute pressure along the convex combination path <picture><source srcset="form_94_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ U(\theta) = \theta U + (1-\theta) \bar{U} $" src="form_94.png"/></picture>. </p>
+<p>Compute pressure along the convex combination path <picture><source srcset="form_97_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ U(\theta) = \theta U + (1-\theta) \bar{U} $" src="form_97.png"/></picture>. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">theta</td><td>Scaling factor <picture><source srcset="form_95_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\theta \in [0, 1]$" src="form_95.png"/></picture> </td></tr>
+    <tr><td class="paramname">theta</td><td>Scaling factor <picture><source srcset="form_98_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\theta \in [0, 1]$" src="form_98.png"/></picture> </td></tr>
     <tr><td class="paramname">r</td><td>Local point density </td></tr>
     <tr><td class="paramname">ru</td><td>Local point X-momentum </td></tr>
     <tr><td class="paramname">rv</td><td>Local point Y-momentum </td></tr>
@@ -736,7 +754,7 @@ Variables</h2></td></tr>
     <tr><td class="paramname">ru_avg</td><td>Cell-average X-momentum </td></tr>
     <tr><td class="paramname">rv_avg</td><td>Cell-average Y-momentum </td></tr>
     <tr><td class="paramname">E_avg</td><td>Cell-average total energy </td></tr>
-    <tr><td class="paramname">gamma</td><td>Specific heat ratio ( <picture><source srcset="form_92_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\gamma$" src="form_92.png"/></picture>) </td></tr>
+    <tr><td class="paramname">gamma</td><td>Specific heat ratio ( <picture><source srcset="form_95_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\gamma$" src="form_95.png"/></picture>) </td></tr>
   </table>
   </dd>
 </dl>
@@ -786,14 +804,14 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Compute specific entropy <picture><source srcset="form_93_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ s = p / \rho^\gamma $" src="form_93.png"/></picture>. </p>
+<p>Compute specific entropy <picture><source srcset="form_96_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ s = p / \rho^\gamma $" src="form_96.png"/></picture>. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">rho</td><td>Density ( <picture><source srcset="form_85_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\rho$" src="form_85.png"/></picture>) </td></tr>
-    <tr><td class="paramname">rhou</td><td>X-momentum ( <picture><source srcset="form_86_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\rho u$" src="form_86.png"/></picture>) </td></tr>
-    <tr><td class="paramname">rhov</td><td>Y-momentum ( <picture><source srcset="form_87_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\rho v$" src="form_87.png"/></picture>) </td></tr>
-    <tr><td class="paramname">E</td><td>Total energy density ( <picture><source srcset="form_91_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$E$" src="form_91.png"/></picture>) </td></tr>
-    <tr><td class="paramname">gamma</td><td>Specific heat ratio ( <picture><source srcset="form_92_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\gamma$" src="form_92.png"/></picture>) </td></tr>
+    <tr><td class="paramname">rho</td><td>Density ( <picture><source srcset="form_88_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\rho$" src="form_88.png"/></picture>) </td></tr>
+    <tr><td class="paramname">rhou</td><td>X-momentum ( <picture><source srcset="form_89_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\rho u$" src="form_89.png"/></picture>) </td></tr>
+    <tr><td class="paramname">rhov</td><td>Y-momentum ( <picture><source srcset="form_90_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\rho v$" src="form_90.png"/></picture>) </td></tr>
+    <tr><td class="paramname">E</td><td>Total energy density ( <picture><source srcset="form_94_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$E$" src="form_94.png"/></picture>) </td></tr>
+    <tr><td class="paramname">gamma</td><td>Specific heat ratio ( <picture><source srcset="form_95_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\gamma$" src="form_95.png"/></picture>) </td></tr>
   </table>
   </dd>
 </dl>

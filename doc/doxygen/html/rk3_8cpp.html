@@ -126,14 +126,14 @@ document.addEventListener('DOMContentLoaded',() => { initNavTree('rk3_8cpp.html'
 <code>#include &quot;<a class="el" href="positivity_8hpp_source.html">../limiters/positivity.hpp</a>&quot;</code><br />
 </div><a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Strong Stability Preserving Runge-Kutta 3rd Order (SSP-RK3) time-stepping implementation. </p>
-<p>Implements the explicit three-stage SSP-RK3 integration scheme for the Flux Reconstruction solver. Mathematically, the temporal integration advances the state <picture><source srcset="form_82_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$U$" src="form_82.png"/></picture> as follows: </p><p class="formulaDsp">
-<picture><source srcset="form_108_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ U^{(1)} = U^n + \Delta t L(U^n) \&zwj;]" src="form_108.png"/></picture>
+<p>Implements the explicit three-stage SSP-RK3 integration scheme for the Flux Reconstruction solver. Mathematically, the temporal integration advances the state <picture><source srcset="form_85_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$U$" src="form_85.png"/></picture> as follows: </p><p class="formulaDsp">
+<picture><source srcset="form_111_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ U^{(1)} = U^n + \Delta t L(U^n) \&zwj;]" src="form_111.png"/></picture>
 </p>
  <p class="formulaDsp">
-<picture><source srcset="form_109_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ U^{(2)} = \frac{3}{4} U^n + \frac{1}{4} \left( U^{(1)} + \Delta t L(U^{(1)}) \right) \&zwj;]" src="form_109.png"/></picture>
+<picture><source srcset="form_112_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ U^{(2)} = \frac{3}{4} U^n + \frac{1}{4} \left( U^{(1)} + \Delta t L(U^{(1)}) \right) \&zwj;]" src="form_112.png"/></picture>
 </p>
  <p class="formulaDsp">
-<picture><source srcset="form_110_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ U^{n+1} = \frac{1}{3} U^n + \frac{2}{3} \left( U^{(2)} + \Delta t L(U^{(2)}) \right) \&zwj;]" src="form_110.png"/></picture>
+<picture><source srcset="form_113_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ U^{n+1} = \frac{1}{3} U^n + \frac{2}{3} \left( U^{(2)} + \Delta t L(U^{(2)}) \right) \&zwj;]" src="form_113.png"/></picture>
 </p>
 <p>For stability and robust shock handling:</p><ul>
 <li>Applies the Positivity Preserving Limiter (Zhang-Shu) and Entropy Limiter after each stage.</li>

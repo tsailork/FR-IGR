@@ -194,6 +194,8 @@ Public Attributes</h2></td></tr>
 </table>
 <a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Central solver class governing numerical integration, multi-block communication, and limiters. </p>
+<p>Forward declaration of the <a class="el" href="class_solver.html" title="Central solver class governing numerical integration, multi-block communication, and limiters.">Solver</a> class.</p>
+<p>Forward declaration of the main <a class="el" href="class_solver.html" title="Central solver class governing numerical integration, multi-block communication, and limiters.">Solver</a> class to break dependency cycles.</p>
 <p>Manages the global high-order FR formulation, coordinating operations like Riemann fluxes, artificial viscosity via Isotropic Gradient Regularisation (IGR), and explicit SSP-RK3 time-marching for the compressible 2D Euler/Navier-Stokes equations.</p>
 <dl class="section see"><dt>See also</dt><dd><a class="el" href="struct_block.html" title="Represents an individual computational block in the multi-block domain.">Block</a> </dd>
 <dd>
@@ -290,7 +292,7 @@ Public Attributes</h2></td></tr>
 
 <p>Verify the physical admissibility of conserved states (no NaN/Inf density or pressure). </p>
 <p>Asserts the physical validity of the global thermodynamic state.</p>
-<p>Scans all degrees of freedom to ensure density ( <picture><source srcset="form_111_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\rho &gt; 0$" src="form_111.png"/></picture>) and pressure ( <picture><source srcset="form_112_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$p &gt; 0$" src="form_112.png"/></picture>) remain positive, and that no <span class="tt">NaN</span> values have been introduced. If a stability violation is found, it terminates the execution and dumps the failing state vector to <span class="tt">stderr</span>.</p>
+<p>Scans all degrees of freedom to ensure density ( <picture><source srcset="form_114_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\rho &gt; 0$" src="form_114.png"/></picture>) and pressure ( <picture><source srcset="form_115_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$p &gt; 0$" src="form_115.png"/></picture>) remain positive, and that no <span class="tt">NaN</span> values have been introduced. If a stability violation is found, it terminates the execution and dumps the failing state vector to <span class="tt">stderr</span>.</p>
 <dl class="section note"><dt>Note</dt><dd>This is typically invoked after every stage in the SSP-RK3 explicit time-stepping cycle. </dd></dl>
 
 </div>
@@ -316,9 +318,9 @@ Public Attributes</h2></td></tr>
 <picture><source srcset="form_48_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ \Delta t = 0.5 \cdot \text{CFL} \cdot \frac{\min(\Delta x, \Delta y)}{(2P+1) \cdot \lambda_{\max}} \&zwj;]" src="form_48.png"/></picture>
 </p>
 <dl class="section return"><dt>Returns</dt><dd>Calculated timestep size</dd></dl>
-<p>Iterates over the entire computational domain using OpenMP reductions to identify the maximum absolute wave speed: <picture><source srcset="form_113_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \lambda_{max} = |u| + c $" src="form_113.png"/></picture>. The resulting time-step incorporates the Courant-Friedrichs-Lewy (CFL) limit for convective transport, and is further constrained by diffusive Fourier limits if Isotropic Gradient Regularization (IGR) or viscous fluxes are active.</p>
+<p>Iterates over the entire computational domain using OpenMP reductions to identify the maximum absolute wave speed: <picture><source srcset="form_116_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \lambda_{max} = |u| + c $" src="form_116.png"/></picture>. The resulting time-step incorporates the Courant-Friedrichs-Lewy (CFL) limit for convective transport, and is further constrained by diffusive Fourier limits if Isotropic Gradient Regularization (IGR) or viscous fluxes are active.</p>
 <p class="formulaDsp">
-<picture><source srcset="form_114_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ \Delta t_{conv} = \frac{\text{CFL} \cdot h}{(2P+1) \cdot \lambda_{max}} \&zwj;]" src="form_114.png"/></picture>
+<picture><source srcset="form_117_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ \Delta t_{conv} = \frac{\text{CFL} \cdot h}{(2P+1) \cdot \lambda_{max}} \&zwj;]" src="form_117.png"/></picture>
 </p>
 <dl class="section return"><dt>Returns</dt><dd>The globally stable explicit time-step <picture><source srcset="form_46_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\Delta t$" src="form_46.png"/></picture>. </dd></dl>
 <dl class="section see"><dt>See also</dt><dd><a class="el" href="struct_parameters.html#ab90a1155ebf0531f64822f1c193c5957" title="Courant-Friedrichs-Lewy stability safety factor.">Parameters::CFL</a> </dd></dl>
@@ -528,7 +530,7 @@ Public Attributes</h2></td></tr>
   </dd>
 </dl>
 <dl class="section note"><dt>Note</dt><dd>Relies on prior application of Zhang-Shu bounds-preserving limiters to ensure <picture><source srcset="form_65_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \rho &gt; 0, p &gt; 0 $" src="form_65.png"/></picture>. </dd></dl>
-<dl class="section see"><dt>See also</dt><dd><a class="el" href="namespace_limiters.html#a10bd784a4e4374eed6c43287c248050a" title="Apply the Zhang-Shu positivity-preserving limiter.">Limiters::apply_positivity_limiter</a> </dd></dl>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="namespace_limiters.html#a10bd784a4e4374eed6c43287c248050a" title="Enforce positive density and pressure fields at all physical degrees of freedom.">Limiters::apply_positivity_limiter</a> </dd></dl>
 
 </div>
 </div>

@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded',() => { initNavTree('positivity_8hp
 </div><!--header-->
 <div class="contents">
 
-<p>Zhang-Shu positivity-preserving limiter declaration.  
+<p>Zhang-Shu bounds-preserving positivity limiter.  
 <a href="#details">More...</a></p>
 <div class="textblock"><code>#include &quot;<a class="el" href="state_8hpp_source.html">../core/state.hpp</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="basis_8hpp_source.html">../core/basis.hpp</a>&quot;</code><br />
@@ -135,10 +135,11 @@ Namespaces</h2></td></tr>
 <tr class="heading"><td colspan="2"><h2 id="header-func-members" class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
 <tr class="memitem:a10bd784a4e4374eed6c43287c248050a" id="r_a10bd784a4e4374eed6c43287c248050a"><td class="memItemLeft"><a class="el" href="struct_limiters_1_1_limiter_stats.html">LimiterStats</a>&#160;</td><td class="memItemRight"><a class="el" href="namespace_limiters.html#a10bd784a4e4374eed6c43287c248050a">Limiters::apply_positivity_limiter</a> (<a class="el" href="struct_state.html">State</a> &amp;U, const <a class="el" href="struct_basis.html">Basis</a> &amp;basis, const <a class="el" href="struct_parameters.html">Parameters</a> &amp;p)</td></tr>
-<tr class="memdesc:a10bd784a4e4374eed6c43287c248050a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Apply the Zhang-Shu positivity-preserving limiter.  <br /></td></tr>
+<tr class="memdesc:a10bd784a4e4374eed6c43287c248050a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enforce positive density and pressure fields at all physical degrees of freedom.  <br /></td></tr>
 </table>
 <a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>Zhang-Shu positivity-preserving limiter declaration. </p>
+<div class="textblock"><p>Zhang-Shu bounds-preserving positivity limiter. </p>
+<p>Implements the mathematical scaling technique to guarantee that density and pressure remain strictly positive at all physical points, preventing NaNs and unphysical states near strong shocks and expansion regions. </p>
 </div></div><!-- contents -->
 </div><!-- doc-content -->
 <div id="page-nav" class="page-nav-panel">

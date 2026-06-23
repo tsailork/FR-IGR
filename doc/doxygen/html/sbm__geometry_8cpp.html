@@ -118,6 +118,9 @@ document.addEventListener('DOMContentLoaded',() => { initNavTree('sbm__geometry_
   <div class="headertitle"><div class="title">sbm_geometry.cpp File Reference</div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Implementations of shifted boundary face detection, 1D normal ray stencils, and state extrapolations.  
+<a href="#details">More...</a></p>
 <div class="textblock"><code>#include &quot;<a class="el" href="sbm__geometry_8hpp_source.html">sbm_geometry.hpp</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="solver_8hpp_source.html">../core/solver.hpp</a>&quot;</code><br />
 <code>#include &lt;iostream&gt;</code><br />
@@ -132,21 +135,30 @@ Namespaces</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-func-members" class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
+<tr class="memitem:a6ddbe105b567a6786559a64852eacc80" id="r_a6ddbe105b567a6786559a64852eacc80"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="namespace_immersed_boundary.html#a6ddbe105b567a6786559a64852eacc80">ImmersedBoundary::reset_sbm_diagnostics</a> ()</td></tr>
+<tr class="memdesc:a6ddbe105b567a6786559a64852eacc80"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reset the active SBM diagnostics structure.  <br /></td></tr>
+<tr class="memitem:ac21babb545c74e73b2ab556ddb0c9b9f" id="r_ac21babb545c74e73b2ab556ddb0c9b9f"><td class="memItemLeft"><a class="el" href="struct_immersed_boundary_1_1_s_b_m_diagnostics.html">SBMDiagnostics</a>&#160;</td><td class="memItemRight"><a class="el" href="namespace_immersed_boundary.html#ac21babb545c74e73b2ab556ddb0c9b9f">ImmersedBoundary::get_sbm_diagnostics</a> ()</td></tr>
+<tr class="memdesc:ac21babb545c74e73b2ab556ddb0c9b9f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve a copy of the current SBM diagnostics.  <br /></td></tr>
 <tr class="memitem:ac760bf2b14bc99f1cfab9003bc673516" id="r_ac760bf2b14bc99f1cfab9003bc673516"><td class="memItemLeft">uint64_t&#160;</td><td class="memItemRight"><a class="el" href="namespace_immersed_boundary.html#ac760bf2b14bc99f1cfab9003bc673516">ImmersedBoundary::get_sbm_hash</a> (int b_id, int ey, int ex, int face, int node)</td></tr>
 <tr class="memitem:af700d3cc51edcf89c395c47c8ee1f720" id="r_af700d3cc51edcf89c395c47c8ee1f720"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="namespace_immersed_boundary.html#af700d3cc51edcf89c395c47c8ee1f720">ImmersedBoundary::compute_lagrange_weights</a> (int P, double xi_eval, const std::vector&lt; double &gt; &amp;nodes, std::vector&lt; double &gt; &amp;weights)</td></tr>
 <tr class="memitem:a14762f1b73a225fef97f558de2c2898d" id="r_a14762f1b73a225fef97f558de2c2898d"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="namespace_immersed_boundary.html#a14762f1b73a225fef97f558de2c2898d">ImmersedBoundary::initialize_sbm_geometry</a> (<a class="el" href="class_solver.html">Solver</a> &amp;solver)</td></tr>
 <tr class="memdesc:a14762f1b73a225fef97f558de2c2898d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Detects shifted faces, constructs 1D rays, and computes surrogate boundary metadata. Outputs initial geometric diagnostics.  <br /></td></tr>
 <tr class="memitem:a81e78f4f2f8dce33856d3f29f5c4bfeb" id="r_a81e78f4f2f8dce33856d3f29f5c4bfeb"><td class="memItemLeft">const <a class="el" href="struct_immersed_boundary_1_1_surrogate_flux_point.html">SurrogateFluxPoint</a> *&#160;</td><td class="memItemRight"><a class="el" href="namespace_immersed_boundary.html#a81e78f4f2f8dce33856d3f29f5c4bfeb">ImmersedBoundary::get_sbm_face</a> (int b_id, int ey, int ex, int face, int node)</td></tr>
-<tr class="memdesc:a81e78f4f2f8dce33856d3f29f5c4bfeb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve a <a class="el" href="struct_immersed_boundary_1_1_surrogate_flux_point.html" title="Represents a single flux integration point on a surrogate interface face.">SurrogateFluxPoint</a> if it exists for the given face and node.  <br /></td></tr>
+<tr class="memdesc:a81e78f4f2f8dce33856d3f29f5c4bfeb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve a <a class="el" href="struct_immersed_boundary_1_1_surrogate_flux_point.html" title="Represents a single flux integration node located on a surrogate interface face.">SurrogateFluxPoint</a> if it exists for the given face and node.  <br /></td></tr>
 <tr class="memitem:a8c2ed0d378bc9e0156119f9bd3dd8ae7" id="r_a8c2ed0d378bc9e0156119f9bd3dd8ae7"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="namespace_immersed_boundary.html#a8c2ed0d378bc9e0156119f9bd3dd8ae7">ImmersedBoundary::compute_sbm_state</a> (const <a class="el" href="class_solver.html">Solver</a> &amp;solver, const <a class="el" href="struct_immersed_boundary_1_1_surrogate_flux_point.html">SurrogateFluxPoint</a> *sfp, double u_sb[4])</td></tr>
 <tr class="memdesc:a8c2ed0d378bc9e0156119f9bd3dd8ae7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the shifted boundary state u_sb for the given surrogate point.  <br /></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-var-members" class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
 <tr class="memitem:ad50c2243453f27d54b776be5cfaeda60" id="r_ad50c2243453f27d54b776be5cfaeda60"><td class="memItemLeft">std::vector&lt; <a class="el" href="struct_immersed_boundary_1_1_surrogate_flux_point.html">SurrogateFluxPoint</a> &gt;&#160;</td><td class="memItemRight"><a class="el" href="namespace_immersed_boundary.html#ad50c2243453f27d54b776be5cfaeda60">ImmersedBoundary::sbm_registry</a></td></tr>
+<tr class="memdesc:ad50c2243453f27d54b776be5cfaeda60"><td class="mdescLeft">&#160;</td><td class="mdescRight">Active registry containing all registered surrogate boundary points.  <br /></td></tr>
 <tr class="memitem:a83eb068a9933290602e1f98d149042f9" id="r_a83eb068a9933290602e1f98d149042f9"><td class="memItemLeft">std::unordered_map&lt; uint64_t, const <a class="el" href="struct_immersed_boundary_1_1_surrogate_flux_point.html">SurrogateFluxPoint</a> * &gt;&#160;</td><td class="memItemRight"><a class="el" href="namespace_immersed_boundary.html#a83eb068a9933290602e1f98d149042f9">ImmersedBoundary::sbm_lookup</a></td></tr>
+<tr class="memitem:a357f33e545f03268c9fab8bab7e92089" id="r_a357f33e545f03268c9fab8bab7e92089"><td class="memItemLeft"><a class="el" href="struct_immersed_boundary_1_1_s_b_m_diagnostics.html">SBMDiagnostics</a>&#160;</td><td class="memItemRight"><a class="el" href="namespace_immersed_boundary.html#a357f33e545f03268c9fab8bab7e92089">ImmersedBoundary::current_sbm_diags</a></td></tr>
+<tr class="memdesc:a357f33e545f03268c9fab8bab7e92089"><td class="mdescLeft">&#160;</td><td class="mdescRight">Global SBM diagnostic tracking instance.  <br /></td></tr>
 </table>
-</div><!-- contents -->
+<a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Implementations of shifted boundary face detection, 1D normal ray stencils, and state extrapolations. </p>
+</div></div><!-- contents -->
 </div><!-- doc-content -->
 <div id="page-nav" class="page-nav-panel">
 <div id="page-nav-resize-handle"></div>

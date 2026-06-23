@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded',() => { initNavTree('restart_8hpp.h
 </div><!--header-->
 <div class="contents">
 
-<p>Load conserved variables from a previous VTS output file.  
+<p>Serialization utilities for checkpoint-based simulation restarts.  
 <a href="#details">More...</a></p>
 <div class="textblock"><code>#include &quot;<a class="el" href="parameters_8hpp_source.html">../core/parameters.hpp</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="state_8hpp_source.html">../core/state.hpp</a>&quot;</code><br />
@@ -130,13 +130,16 @@ document.addEventListener('DOMContentLoaded',() => { initNavTree('restart_8hpp.h
 <tr class="heading"><td colspan="2"><h2 id="header-namespaces" class="groupheader"><a id="namespaces" name="namespaces"></a>
 Namespaces</h2></td></tr>
 <tr class="memitem:Restart" id="r_Restart"><td class="memItemLeft">namespace &#160;</td><td class="memItemRight"><a class="el" href="namespace_restart.html">Restart</a></td></tr>
+<tr class="memdesc:namespace_restart"><td class="mdescLeft">&#160;</td><td class="mdescRight">Contains routines for loading saved checkpoint states to resume simulations. <br /></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-func-members" class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
 <tr class="memitem:a7d1e75e9da82d7e31b801cf0bbf0808a" id="r_a7d1e75e9da82d7e31b801cf0bbf0808a"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="namespace_restart.html#a7d1e75e9da82d7e31b801cf0bbf0808a">Restart::load_restart</a> (const std::string &amp;filename, std::vector&lt; <a class="el" href="struct_block.html">Block</a> &gt; &amp;blocks, const <a class="el" href="struct_parameters.html">Parameters</a> &amp;p)</td></tr>
+<tr class="memdesc:a7d1e75e9da82d7e31b801cf0bbf0808a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Load a pre-existing multi-block VTS restart dataset into the active solver blocks.  <br /></td></tr>
 </table>
 <a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>Load conserved variables from a previous VTS output file. </p>
+<div class="textblock"><p>Serialization utilities for checkpoint-based simulation restarts. </p>
+<p>Provides interfaces to load previously saved multi-block solution configurations from VTK StructuredGrid files, restoring exact double-precision fields for density, momentum, and energy. </p>
 </div></div><!-- contents -->
 </div><!-- doc-content -->
 <div id="page-nav" class="page-nav-panel">

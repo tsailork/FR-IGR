@@ -13,9 +13,10 @@ var searchData=
   ['get_5fneigh_5fstate_5fy_10',['get_neigh_state_y',['../class_solver.html#a09fd68470bff71377becf36b6ead1c6b',1,'Solver']]],
   ['get_5fparabola_5fsdf_11',['get_parabola_sdf',['../namespace_immersed_boundary.html#a08694a4986d857953e941c4b04a26e40',1,'ImmersedBoundary']]],
   ['get_5fquad_5fsdf_12',['get_quad_sdf',['../namespace_immersed_boundary.html#af718a4a31f425036821f093cc10ec01b',1,'ImmersedBoundary']]],
-  ['get_5fsbm_5fface_13',['get_sbm_face',['../namespace_immersed_boundary.html#a81e78f4f2f8dce33856d3f29f5c4bfeb',1,'ImmersedBoundary']]],
-  ['get_5fsbm_5fhash_14',['get_sbm_hash',['../namespace_immersed_boundary.html#ac760bf2b14bc99f1cfab9003bc673516',1,'ImmersedBoundary']]],
-  ['grad_5fux_15',['grad_Ux',['../struct_block.html#aa265285caaf3735afb0e00c71d20ae8c',1,'Block']]],
-  ['grad_5fuy_16',['grad_Uy',['../struct_block.html#ab0195b320f7bc5b4dd64cdbccf19e047',1,'Block']]],
-  ['gradient_2ecpp_17',['gradient.cpp',['../gradient_8cpp.html',1,'']]]
+  ['get_5fsbm_5fdiagnostics_13',['get_sbm_diagnostics',['../namespace_immersed_boundary.html#ac21babb545c74e73b2ab556ddb0c9b9f',1,'ImmersedBoundary']]],
+  ['get_5fsbm_5fface_14',['get_sbm_face',['../namespace_immersed_boundary.html#a81e78f4f2f8dce33856d3f29f5c4bfeb',1,'ImmersedBoundary']]],
+  ['get_5fsbm_5fhash_15',['get_sbm_hash',['../namespace_immersed_boundary.html#ac760bf2b14bc99f1cfab9003bc673516',1,'ImmersedBoundary']]],
+  ['grad_5fux_16',['grad_Ux',['../struct_block.html#aa265285caaf3735afb0e00c71d20ae8c',1,'Block']]],
+  ['grad_5fuy_17',['grad_Uy',['../struct_block.html#ab0195b320f7bc5b4dd64cdbccf19e047',1,'Block']]],
+  ['gradient_2ecpp_18',['gradient.cpp',['../gradient_8cpp.html',1,'']]]
 ];

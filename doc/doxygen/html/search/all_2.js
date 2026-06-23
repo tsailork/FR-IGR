@@ -16,5 +16,6 @@ var searchData=
   ['compute_5fsbm_5fstate_13',['compute_sbm_state',['../namespace_immersed_boundary.html#a8c2ed0d378bc9e0156119f9bd3dd8ae7',1,'ImmersedBoundary']]],
   ['compute_5fsensor_5fsource_14',['compute_sensor_source',['../class_solver.html#a85e74f82666e73b45739a294c436f26d',1,'Solver']]],
   ['current_5flimiter_5fstats_15',['current_limiter_stats',['../class_solver.html#a34019a5b7855bdc665d081a26207319f',1,'Solver']]],
-  ['current_5ftime_16',['current_time',['../class_solver.html#a3dd7ebf891bd7363b37d50df24cfe433',1,'Solver']]]
+  ['current_5fsbm_5fdiags_16',['current_sbm_diags',['../namespace_immersed_boundary.html#a357f33e545f03268c9fab8bab7e92089',1,'ImmersedBoundary']]],
+  ['current_5ftime_17',['current_time',['../class_solver.html#a3dd7ebf891bd7363b37d50df24cfe433',1,'Solver']]]
 ];

@@ -122,13 +122,15 @@ document.addEventListener('DOMContentLoaded',() => { initNavTree('namespace_imme
 <tr class="heading"><td colspan="2"><h2 id="header-nested-classes" class="groupheader"><a id="nested-classes" name="nested-classes"></a>
 Classes</h2></td></tr>
 <tr class="memitem:DonorPoint" id="r_DonorPoint"><td class="memItemLeft">struct &#160;</td><td class="memItemRight"><a class="el" href="struct_immersed_boundary_1_1_donor_point.html">DonorPoint</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Represents a sampled point inside the background fluid grid for 1D ray reconstruction.  <a href="struct_immersed_boundary_1_1_donor_point.html#details">More...</a><br /></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Represents a sampled interpolation node inside the background fluid grid for 1D SBM ray reconstruction.  <a href="struct_immersed_boundary_1_1_donor_point.html#details">More...</a><br /></td></tr>
 <tr class="memitem:ParabolaShape" id="r_ParabolaShape"><td class="memItemLeft">struct &#160;</td><td class="memItemRight"><a class="el" href="struct_immersed_boundary_1_1_parabola_shape.html">ParabolaShape</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Represents a dynamic line or parabola solid boundary.  <a href="struct_immersed_boundary_1_1_parabola_shape.html#details">More...</a><br /></td></tr>
 <tr class="memitem:QuadShape" id="r_QuadShape"><td class="memItemLeft">struct &#160;</td><td class="memItemRight"><a class="el" href="struct_immersed_boundary_1_1_quad_shape.html">QuadShape</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Represents a convex quadrilateral solid boundary.  <a href="struct_immersed_boundary_1_1_quad_shape.html#details">More...</a><br /></td></tr>
+<tr class="memitem:SBMDiagnostics" id="r_SBMDiagnostics"><td class="memItemLeft">struct &#160;</td><td class="memItemRight"><a class="el" href="struct_immersed_boundary_1_1_s_b_m_diagnostics.html">SBMDiagnostics</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Diagnostic counters and parameters to assess SBM extrapolation quality.  <a href="struct_immersed_boundary_1_1_s_b_m_diagnostics.html#details">More...</a><br /></td></tr>
 <tr class="memitem:SurrogateFluxPoint" id="r_SurrogateFluxPoint"><td class="memItemLeft">struct &#160;</td><td class="memItemRight"><a class="el" href="struct_immersed_boundary_1_1_surrogate_flux_point.html">SurrogateFluxPoint</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Represents a single flux integration point on a surrogate interface face.  <a href="struct_immersed_boundary_1_1_surrogate_flux_point.html#details">More...</a><br /></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Represents a single flux integration node located on a surrogate interface face.  <a href="struct_immersed_boundary_1_1_surrogate_flux_point.html#details">More...</a><br /></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-func-members" class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
@@ -144,19 +146,26 @@ Functions</h2></td></tr>
 <tr class="memdesc:af62bc6ef9fb1d42b0408bd121270c236"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the raw signed distance function (phi) for a NACA 4-digit airfoil.  <br /></td></tr>
 <tr class="memitem:a822f7c52c2d045b7e7eb05a6690bda35" id="r_a822f7c52c2d045b7e7eb05a6690bda35"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a822f7c52c2d045b7e7eb05a6690bda35">compute_naca_mask</a> (double x, double y, double x_le, double y_le, double chord, const std::string &amp;naca_code, double aoa_deg, bool sharp, double smooth_width, double dx, double dy)</td></tr>
 <tr class="memdesc:a822f7c52c2d045b7e7eb05a6690bda35"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the mask value chi (solid indicator) for a NACA 4-digit airfoil.  <br /></td></tr>
+<tr class="memitem:a6ddbe105b567a6786559a64852eacc80" id="r_a6ddbe105b567a6786559a64852eacc80"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#a6ddbe105b567a6786559a64852eacc80">reset_sbm_diagnostics</a> ()</td></tr>
+<tr class="memdesc:a6ddbe105b567a6786559a64852eacc80"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reset the active SBM diagnostics structure.  <br /></td></tr>
+<tr class="memitem:ac21babb545c74e73b2ab556ddb0c9b9f" id="r_ac21babb545c74e73b2ab556ddb0c9b9f"><td class="memItemLeft"><a class="el" href="struct_immersed_boundary_1_1_s_b_m_diagnostics.html">SBMDiagnostics</a>&#160;</td><td class="memItemRight"><a class="el" href="#ac21babb545c74e73b2ab556ddb0c9b9f">get_sbm_diagnostics</a> ()</td></tr>
+<tr class="memdesc:ac21babb545c74e73b2ab556ddb0c9b9f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve a copy of the current SBM diagnostics.  <br /></td></tr>
 <tr class="memitem:ac760bf2b14bc99f1cfab9003bc673516" id="r_ac760bf2b14bc99f1cfab9003bc673516"><td class="memItemLeft">uint64_t&#160;</td><td class="memItemRight"><a class="el" href="#ac760bf2b14bc99f1cfab9003bc673516">get_sbm_hash</a> (int b_id, int ey, int ex, int face, int node)</td></tr>
 <tr class="memitem:af700d3cc51edcf89c395c47c8ee1f720" id="r_af700d3cc51edcf89c395c47c8ee1f720"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#af700d3cc51edcf89c395c47c8ee1f720">compute_lagrange_weights</a> (int P, double xi_eval, const std::vector&lt; double &gt; &amp;nodes, std::vector&lt; double &gt; &amp;weights)</td></tr>
 <tr class="memitem:a14762f1b73a225fef97f558de2c2898d" id="r_a14762f1b73a225fef97f558de2c2898d"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#a14762f1b73a225fef97f558de2c2898d">initialize_sbm_geometry</a> (<a class="el" href="class_solver.html">Solver</a> &amp;solver)</td></tr>
 <tr class="memdesc:a14762f1b73a225fef97f558de2c2898d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Detects shifted faces, constructs 1D rays, and computes surrogate boundary metadata. Outputs initial geometric diagnostics.  <br /></td></tr>
 <tr class="memitem:a81e78f4f2f8dce33856d3f29f5c4bfeb" id="r_a81e78f4f2f8dce33856d3f29f5c4bfeb"><td class="memItemLeft">const <a class="el" href="struct_immersed_boundary_1_1_surrogate_flux_point.html">SurrogateFluxPoint</a> *&#160;</td><td class="memItemRight"><a class="el" href="#a81e78f4f2f8dce33856d3f29f5c4bfeb">get_sbm_face</a> (int b_id, int ey, int ex, int face, int node)</td></tr>
-<tr class="memdesc:a81e78f4f2f8dce33856d3f29f5c4bfeb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve a <a class="el" href="struct_immersed_boundary_1_1_surrogate_flux_point.html" title="Represents a single flux integration point on a surrogate interface face.">SurrogateFluxPoint</a> if it exists for the given face and node.  <br /></td></tr>
+<tr class="memdesc:a81e78f4f2f8dce33856d3f29f5c4bfeb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve a <a class="el" href="struct_immersed_boundary_1_1_surrogate_flux_point.html" title="Represents a single flux integration node located on a surrogate interface face.">SurrogateFluxPoint</a> if it exists for the given face and node.  <br /></td></tr>
 <tr class="memitem:a8c2ed0d378bc9e0156119f9bd3dd8ae7" id="r_a8c2ed0d378bc9e0156119f9bd3dd8ae7"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#a8c2ed0d378bc9e0156119f9bd3dd8ae7">compute_sbm_state</a> (const <a class="el" href="class_solver.html">Solver</a> &amp;solver, const <a class="el" href="struct_immersed_boundary_1_1_surrogate_flux_point.html">SurrogateFluxPoint</a> *sfp, double u_sb[4])</td></tr>
 <tr class="memdesc:a8c2ed0d378bc9e0156119f9bd3dd8ae7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the shifted boundary state u_sb for the given surrogate point.  <br /></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-var-members" class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
 <tr class="memitem:ad50c2243453f27d54b776be5cfaeda60" id="r_ad50c2243453f27d54b776be5cfaeda60"><td class="memItemLeft">std::vector&lt; <a class="el" href="struct_immersed_boundary_1_1_surrogate_flux_point.html">SurrogateFluxPoint</a> &gt;&#160;</td><td class="memItemRight"><a class="el" href="#ad50c2243453f27d54b776be5cfaeda60">sbm_registry</a></td></tr>
+<tr class="memdesc:ad50c2243453f27d54b776be5cfaeda60"><td class="mdescLeft">&#160;</td><td class="mdescRight">Active registry containing all registered surrogate boundary points.  <br /></td></tr>
 <tr class="memitem:a83eb068a9933290602e1f98d149042f9" id="r_a83eb068a9933290602e1f98d149042f9"><td class="memItemLeft">std::unordered_map&lt; uint64_t, const <a class="el" href="struct_immersed_boundary_1_1_surrogate_flux_point.html">SurrogateFluxPoint</a> * &gt;&#160;</td><td class="memItemRight"><a class="el" href="#a83eb068a9933290602e1f98d149042f9">sbm_lookup</a></td></tr>
+<tr class="memitem:a357f33e545f03268c9fab8bab7e92089" id="r_a357f33e545f03268c9fab8bab7e92089"><td class="memItemLeft"><a class="el" href="struct_immersed_boundary_1_1_s_b_m_diagnostics.html">SBMDiagnostics</a>&#160;</td><td class="memItemRight"><a class="el" href="#a357f33e545f03268c9fab8bab7e92089">current_sbm_diags</a></td></tr>
+<tr class="memdesc:a357f33e545f03268c9fab8bab7e92089"><td class="mdescLeft">&#160;</td><td class="mdescRight">Global SBM diagnostic tracking instance.  <br /></td></tr>
 </table>
 <a name="doc-func-members" id="doc-func-members"></a><h2 id="header-doc-func-members" class="groupheader">Function Documentation</h2>
 <a id="acbdd9b9d3094063a9dfaf3d3434a1fbe" name="acbdd9b9d3094063a9dfaf3d3434a1fbe"></a>
@@ -410,6 +419,15 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Computes the shifted boundary state u_sb for the given surrogate point. </p>
+<p>Interpolates fluid states from donor points and extrapolates them to the surrogate boundary, applying the physical boundary conditions (e.g. wall slip/no-slip) and positivity limits.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">solver</td><td>Reference to the solver instance. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">sfp</td><td>Pointer to the surrogate flux point descriptor. </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">u_sb</td><td>Array containing the calculated boundary state conservative variables <picture><source srcset="form_77_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$[\rho, \rho u, \rho v, E]$" src="form_77.png"/></picture>. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -632,6 +650,26 @@ Variables</h2></td></tr>
 
 </div>
 </div>
+<a id="ac21babb545c74e73b2ab556ddb0c9b9f" name="ac21babb545c74e73b2ab556ddb0c9b9f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac21babb545c74e73b2ab556ddb0c9b9f">&#9670;&#160;</a></span>get_sbm_diagnostics()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="struct_immersed_boundary_1_1_s_b_m_diagnostics.html">SBMDiagnostics</a> ImmersedBoundary::get_sbm_diagnostics </td>
+          <td>(</td>
+          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Retrieve a copy of the current SBM diagnostics. </p>
+<dl class="section return"><dt>Returns</dt><dd>Copy of the active <a class="el" href="struct_immersed_boundary_1_1_s_b_m_diagnostics.html" title="Diagnostic counters and parameters to assess SBM extrapolation quality.">SBMDiagnostics</a> tracker. </dd></dl>
+
+</div>
+</div>
 <a id="a81e78f4f2f8dce33856d3f29f5c4bfeb" name="a81e78f4f2f8dce33856d3f29f5c4bfeb"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a81e78f4f2f8dce33856d3f29f5c4bfeb">&#9670;&#160;</a></span>get_sbm_face()</h2>
 
@@ -666,8 +704,18 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Retrieve a <a class="el" href="struct_immersed_boundary_1_1_surrogate_flux_point.html" title="Represents a single flux integration point on a surrogate interface face.">SurrogateFluxPoint</a> if it exists for the given face and node. </p>
-<dl class="section return"><dt>Returns</dt><dd>Pointer to <a class="el" href="struct_immersed_boundary_1_1_surrogate_flux_point.html" title="Represents a single flux integration point on a surrogate interface face.">SurrogateFluxPoint</a>, or nullptr if not a shifted face. </dd></dl>
+<p>Retrieve a <a class="el" href="struct_immersed_boundary_1_1_surrogate_flux_point.html" title="Represents a single flux integration node located on a surrogate interface face.">SurrogateFluxPoint</a> if it exists for the given face and node. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">b_id</td><td><a class="el" href="struct_block.html" title="Represents an individual computational block in the multi-block domain.">Block</a> ID of the target face. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">ey</td><td>Element Y index of the target face. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">ex</td><td>Element X index of the target face. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">face</td><td>Face direction index (0 to 3). </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">node</td><td>Nodal index along the face (0 to P). </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>Pointer to <a class="el" href="struct_immersed_boundary_1_1_surrogate_flux_point.html" title="Represents a single flux integration node located on a surrogate interface face.">SurrogateFluxPoint</a>, or nullptr if not a shifted face. </dd></dl>
 
 </div>
 </div>
@@ -733,14 +781,50 @@ Variables</h2></td></tr>
 <p>Detects shifted faces, constructs 1D rays, and computes surrogate boundary metadata. Outputs initial geometric diagnostics. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">solver</td><td>Reference to the main solver instance </td></tr>
+    <tr><td class="paramdir">[in,out]</td><td class="paramname">solver</td><td>Reference to the main solver instance </td></tr>
   </table>
   </dd>
 </dl>
 
 </div>
 </div>
+<a id="a6ddbe105b567a6786559a64852eacc80" name="a6ddbe105b567a6786559a64852eacc80"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6ddbe105b567a6786559a64852eacc80">&#9670;&#160;</a></span>reset_sbm_diagnostics()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void ImmersedBoundary::reset_sbm_diagnostics </td>
+          <td>(</td>
+          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Reset the active SBM diagnostics structure. </p>
+<p>Wipes cumulative counters but preserves maximum historic scaling ratios to avoid losing peak data. </p>
+
+</div>
+</div>
 <a name="doc-var-members" id="doc-var-members"></a><h2 id="header-doc-var-members" class="groupheader">Variable Documentation</h2>
+<a id="a357f33e545f03268c9fab8bab7e92089" name="a357f33e545f03268c9fab8bab7e92089"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a357f33e545f03268c9fab8bab7e92089">&#9670;&#160;</a></span>current_sbm_diags</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="struct_immersed_boundary_1_1_s_b_m_diagnostics.html">SBMDiagnostics</a> ImmersedBoundary::current_sbm_diags</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Global SBM diagnostic tracking instance. </p>
+
+</div>
+</div>
 <a id="a83eb068a9933290602e1f98d149042f9" name="a83eb068a9933290602e1f98d149042f9"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a83eb068a9933290602e1f98d149042f9">&#9670;&#160;</a></span>sbm_lookup</h2>
 
@@ -766,6 +850,8 @@ Variables</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Active registry containing all registered surrogate boundary points. </p>
 
 </div>
 </div>

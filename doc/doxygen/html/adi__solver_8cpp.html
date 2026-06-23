@@ -132,9 +132,9 @@ Functions</h2></td></tr>
 <a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Thomas algorithm and symmetrized ADI passes for the elliptic IGR solver. </p>
 <p>Implements the Alternating Direction Implicit (ADI) method to solve the Helmholtz-like entropic pressure smoothing equations: </p><p class="formulaDsp">
-<picture><source srcset="form_77_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ \left( I - \epsilon \nabla \cdot \left(\frac{1}{\rho} \nabla \right) \right) \Sigma = S \&zwj;]" src="form_77.png"/></picture>
+<picture><source srcset="form_80_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ \left( I - \epsilon \nabla \cdot \left(\frac{1}{\rho} \nabla \right) \right) \Sigma = S \&zwj;]" src="form_80.png"/></picture>
 </p>
-<p> Splitting this 2D operator into 1D directional passes allows solving each line as an independent tridiagonal system in <picture><source srcset="form_78_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$O(N)$" src="form_78.png"/></picture> time using the Thomas algorithm. Double-pass averaging (X-&gt;Y and Y-&gt;X) is employed to preserve diagonal symmetry.</p>
+<p> Splitting this 2D operator into 1D directional passes allows solving each line as an independent tridiagonal system in <picture><source srcset="form_81_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$O(N)$" src="form_81.png"/></picture> time using the Thomas algorithm. Double-pass averaging (X-&gt;Y and Y-&gt;X) is employed to preserve diagonal symmetry.</p>
 <dl class="section see"><dt>See also</dt><dd><a class="el" href="class_solver.html#af0907b56b45eee26ffb9f570b4254c3b" title="Perform a single directional ADI Helmholtz pass.">Solver::solve_adi_pass</a> </dd>
 <dd>
 <a class="el" href="class_solver.html#a3c465da5c3686e7e8a4c576779ddf32e" title="Smooth the entropic pressure using the active IGR (Elliptic ADI or Parabolic BR2).">Solver::compute_entropic_pressure</a> </dd></dl>
@@ -174,9 +174,9 @@ Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Solve a tridiagonal system of linear equations using the Thomas algorithm. </p>
-<p>Solve a tridiagonal system A x_{i-1} + B x_i + C x_{i+1} = D_i.</p>
+<p>Solve a tridiagonal system of linear equations using the Thomas algorithm (TDMA).</p>
 <p>Solves a system of the form: </p><p class="formulaDsp">
-<picture><source srcset="form_79_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ a_i x_{i-1} + b_i x_i + c_i x_{i+1} = d_i \&zwj;]" src="form_79.png"/></picture>
+<picture><source srcset="form_82_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ a_i x_{i-1} + b_i x_i + c_i x_{i+1} = d_i \&zwj;]" src="form_82.png"/></picture>
 </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
@@ -189,7 +189,20 @@ Functions</h2></td></tr>
   </dd>
 </dl>
 <dl class="section see"><dt>See also</dt><dd><a class="el" href="class_solver.html#af0907b56b45eee26ffb9f570b4254c3b" title="Perform a single directional ADI Helmholtz pass.">Solver::solve_adi_pass</a></dd></dl>
-<p>Solve a tridiagonal system of linear equations using the Thomas algorithm. </p>
+<p>Solve a tridiagonal system of linear equations using the Thomas algorithm.</p>
+<p>Solves a tridiagonal system of the form: </p><p class="formulaDsp">
+<picture><source srcset="form_82_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ a_i x_{i-1} + b_i x_i + c_i x_{i+1} = d_i \&zwj;]" src="form_82.png"/></picture>
+</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">a</td><td>Lower diagonal coefficients (size N, index 0 is ignored). </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">b</td><td>Main diagonal coefficients (size N). </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">c</td><td>Upper diagonal coefficients (size N, index N-1 is ignored). </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">d</td><td>Right-hand side values (size N). </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">x</td><td>Output solution vector (size N). </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>

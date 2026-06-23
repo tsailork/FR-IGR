@@ -118,6 +118,9 @@ document.addEventListener('DOMContentLoaded',() => { initNavTree('sbm__geometry_
   <div class="headertitle"><div class="title">sbm_geometry.hpp File Reference</div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Geometry definitions and ray-casting utilities for the Shifted Boundary Method (SBM).  
+<a href="#details">More...</a></p>
 <div class="textblock"><code>#include &lt;vector&gt;</code><br />
 </div>
 <p><a href="sbm__geometry_8hpp_source.html">Go to the source code of this file.</a></p>
@@ -125,9 +128,11 @@ document.addEventListener('DOMContentLoaded',() => { initNavTree('sbm__geometry_
 <tr class="heading"><td colspan="2"><h2 id="header-nested-classes" class="groupheader"><a id="nested-classes" name="nested-classes"></a>
 Classes</h2></td></tr>
 <tr class="memitem:ImmersedBoundary_3A_3ADonorPoint" id="r_ImmersedBoundary_3A_3ADonorPoint"><td class="memItemLeft">struct &#160;</td><td class="memItemRight"><a class="el" href="struct_immersed_boundary_1_1_donor_point.html">ImmersedBoundary::DonorPoint</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Represents a sampled point inside the background fluid grid for 1D ray reconstruction.  <a href="struct_immersed_boundary_1_1_donor_point.html#details">More...</a><br /></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Represents a sampled interpolation node inside the background fluid grid for 1D SBM ray reconstruction.  <a href="struct_immersed_boundary_1_1_donor_point.html#details">More...</a><br /></td></tr>
 <tr class="memitem:ImmersedBoundary_3A_3ASurrogateFluxPoint" id="r_ImmersedBoundary_3A_3ASurrogateFluxPoint"><td class="memItemLeft">struct &#160;</td><td class="memItemRight"><a class="el" href="struct_immersed_boundary_1_1_surrogate_flux_point.html">ImmersedBoundary::SurrogateFluxPoint</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Represents a single flux integration point on a surrogate interface face.  <a href="struct_immersed_boundary_1_1_surrogate_flux_point.html#details">More...</a><br /></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Represents a single flux integration node located on a surrogate interface face.  <a href="struct_immersed_boundary_1_1_surrogate_flux_point.html#details">More...</a><br /></td></tr>
+<tr class="memitem:ImmersedBoundary_3A_3ASBMDiagnostics" id="r_ImmersedBoundary_3A_3ASBMDiagnostics"><td class="memItemLeft">struct &#160;</td><td class="memItemRight"><a class="el" href="struct_immersed_boundary_1_1_s_b_m_diagnostics.html">ImmersedBoundary::SBMDiagnostics</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Diagnostic counters and parameters to assess SBM extrapolation quality.  <a href="struct_immersed_boundary_1_1_s_b_m_diagnostics.html#details">More...</a><br /></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-namespaces" class="groupheader"><a id="namespaces" name="namespaces"></a>
 Namespaces</h2></td></tr>
@@ -135,14 +140,24 @@ Namespaces</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-func-members" class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
+<tr class="memitem:a6ddbe105b567a6786559a64852eacc80" id="r_a6ddbe105b567a6786559a64852eacc80"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="namespace_immersed_boundary.html#a6ddbe105b567a6786559a64852eacc80">ImmersedBoundary::reset_sbm_diagnostics</a> ()</td></tr>
+<tr class="memdesc:a6ddbe105b567a6786559a64852eacc80"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reset the active SBM diagnostics structure.  <br /></td></tr>
+<tr class="memitem:ac21babb545c74e73b2ab556ddb0c9b9f" id="r_ac21babb545c74e73b2ab556ddb0c9b9f"><td class="memItemLeft"><a class="el" href="struct_immersed_boundary_1_1_s_b_m_diagnostics.html">SBMDiagnostics</a>&#160;</td><td class="memItemRight"><a class="el" href="namespace_immersed_boundary.html#ac21babb545c74e73b2ab556ddb0c9b9f">ImmersedBoundary::get_sbm_diagnostics</a> ()</td></tr>
+<tr class="memdesc:ac21babb545c74e73b2ab556ddb0c9b9f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve a copy of the current SBM diagnostics.  <br /></td></tr>
 <tr class="memitem:a14762f1b73a225fef97f558de2c2898d" id="r_a14762f1b73a225fef97f558de2c2898d"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="namespace_immersed_boundary.html#a14762f1b73a225fef97f558de2c2898d">ImmersedBoundary::initialize_sbm_geometry</a> (<a class="el" href="class_solver.html">Solver</a> &amp;solver)</td></tr>
 <tr class="memdesc:a14762f1b73a225fef97f558de2c2898d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Detects shifted faces, constructs 1D rays, and computes surrogate boundary metadata. Outputs initial geometric diagnostics.  <br /></td></tr>
 <tr class="memitem:a81e78f4f2f8dce33856d3f29f5c4bfeb" id="r_a81e78f4f2f8dce33856d3f29f5c4bfeb"><td class="memItemLeft">const <a class="el" href="struct_immersed_boundary_1_1_surrogate_flux_point.html">SurrogateFluxPoint</a> *&#160;</td><td class="memItemRight"><a class="el" href="namespace_immersed_boundary.html#a81e78f4f2f8dce33856d3f29f5c4bfeb">ImmersedBoundary::get_sbm_face</a> (int b_id, int ey, int ex, int face, int node)</td></tr>
-<tr class="memdesc:a81e78f4f2f8dce33856d3f29f5c4bfeb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve a <a class="el" href="struct_immersed_boundary_1_1_surrogate_flux_point.html" title="Represents a single flux integration point on a surrogate interface face.">SurrogateFluxPoint</a> if it exists for the given face and node.  <br /></td></tr>
+<tr class="memdesc:a81e78f4f2f8dce33856d3f29f5c4bfeb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve a <a class="el" href="struct_immersed_boundary_1_1_surrogate_flux_point.html" title="Represents a single flux integration node located on a surrogate interface face.">SurrogateFluxPoint</a> if it exists for the given face and node.  <br /></td></tr>
 <tr class="memitem:a8c2ed0d378bc9e0156119f9bd3dd8ae7" id="r_a8c2ed0d378bc9e0156119f9bd3dd8ae7"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="namespace_immersed_boundary.html#a8c2ed0d378bc9e0156119f9bd3dd8ae7">ImmersedBoundary::compute_sbm_state</a> (const <a class="el" href="class_solver.html">Solver</a> &amp;solver, const <a class="el" href="struct_immersed_boundary_1_1_surrogate_flux_point.html">SurrogateFluxPoint</a> *sfp, double u_sb[4])</td></tr>
 <tr class="memdesc:a8c2ed0d378bc9e0156119f9bd3dd8ae7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the shifted boundary state u_sb for the given surrogate point.  <br /></td></tr>
 </table>
-</div><!-- contents -->
+<a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Geometry definitions and ray-casting utilities for the Shifted Boundary Method (SBM). </p>
+<p>Defines structures for donor point stencils, surrogate boundary faces, and geometrical diagnostics. Orchestrates the construction of 1D normal rays and Lagrange extrapolation coefficients to support high-order boundary conditions on surrogate Cartesian faces.</p>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="namespace_immersed_boundary.html#a14762f1b73a225fef97f558de2c2898d" title="Detects shifted faces, constructs 1D rays, and computes surrogate boundary metadata....">ImmersedBoundary::initialize_sbm_geometry</a> </dd>
+<dd>
+<a class="el" href="namespace_immersed_boundary.html#a8c2ed0d378bc9e0156119f9bd3dd8ae7" title="Computes the shifted boundary state u_sb for the given surrogate point.">ImmersedBoundary::compute_sbm_state</a> </dd></dl>
+</div></div><!-- contents -->
 </div><!-- doc-content -->
 <div id="page-nav" class="page-nav-panel">
 <div id="page-nav-resize-handle"></div>

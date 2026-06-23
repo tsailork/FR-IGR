@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.17.0"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>FR-IGR: Restart Namespace Reference</title>
+<title>FR-IGR: ImmersedBoundary::SBMDiagnostics Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="codefolding.js"></script>
 <script type="text/javascript" src="clipboard.js"></script>
@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
   </div>
 </div>
 <script type="text/javascript">
-document.addEventListener('DOMContentLoaded',() => { initNavTree('namespace_restart.html','',''); });
+document.addEventListener('DOMContentLoaded',() => { initNavTree('struct_immersed_boundary_1_1_s_b_m_diagnostics.html','','struct_immersed_boundary_1_1_s_b_m_diagnostics-members'); });
 </script>
 <div id="container">
 <div id="doc-content">
@@ -115,59 +115,97 @@ document.addEventListener('DOMContentLoaded',() => { initNavTree('namespace_rest
 </div>
 
 <div class="header">
-  <div class="headertitle"><div class="title">Restart Namespace Reference</div></div>
+  <div class="headertitle"><div class="title">ImmersedBoundary::SBMDiagnostics Struct Reference</div></div>
 </div><!--header-->
 <div class="contents">
 
-<p>Contains routines for loading saved checkpoint states to resume simulations.  
-<a href="#details">More...</a></p>
+<p>Diagnostic counters and parameters to assess SBM extrapolation quality.  
+ <a href="#details">More...</a></p>
+
+<p><code>#include &lt;<a class="el" href="sbm__geometry_8hpp_source.html">sbm_geometry.hpp</a>&gt;</code></p>
 <table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 id="header-func-members" class="groupheader"><a id="func-members" name="func-members"></a>
-Functions</h2></td></tr>
-<tr class="memitem:a7d1e75e9da82d7e31b801cf0bbf0808a" id="r_a7d1e75e9da82d7e31b801cf0bbf0808a"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#a7d1e75e9da82d7e31b801cf0bbf0808a">load_restart</a> (const std::string &amp;filename, std::vector&lt; <a class="el" href="struct_block.html">Block</a> &gt; &amp;blocks, const <a class="el" href="struct_parameters.html">Parameters</a> &amp;p)</td></tr>
-<tr class="memdesc:a7d1e75e9da82d7e31b801cf0bbf0808a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Load a pre-existing multi-block VTS restart dataset into the active solver blocks.  <br /></td></tr>
+<tr class="heading"><td colspan="2"><h2 id="header-pub-attribs" class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
+Public Attributes</h2></td></tr>
+<tr class="memitem:a68d0802b5fbe790b74203acdc76e114b" id="r_a68d0802b5fbe790b74203acdc76e114b"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a68d0802b5fbe790b74203acdc76e114b">max_lebesgue</a> = 0.0</td></tr>
+<tr class="memdesc:a68d0802b5fbe790b74203acdc76e114b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Maximum Lebesgue constant (sum of absolute Lagrange weights) across all rays.  <br /></td></tr>
+<tr class="memitem:af382b4dfb715bfaf1f01eb619bd640e2" id="r_af382b4dfb715bfaf1f01eb619bd640e2"><td class="memItemLeft">int&#160;</td><td class="memItemRight"><a class="el" href="#af382b4dfb715bfaf1f01eb619bd640e2">limiter_count</a> = 0</td></tr>
+<tr class="memdesc:af382b4dfb715bfaf1f01eb619bd640e2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cumulative count of positivity limiter triggers on extrapolated SBM boundary states.  <br /></td></tr>
+<tr class="memitem:a837f74acbf1d584feec226eb114dda17" id="r_a837f74acbf1d584feec226eb114dda17"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a837f74acbf1d584feec226eb114dda17">max_dist_ratio</a> = 0.0</td></tr>
+<tr class="memdesc:a837f74acbf1d584feec226eb114dda17"><td class="mdescLeft">&#160;</td><td class="mdescRight">Maximum ratio of distance D to the donor offset L.  <br /></td></tr>
+<tr class="memitem:a24077c2d0e0a108aafc405af4ec24e91" id="r_a24077c2d0e0a108aafc405af4ec24e91"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a24077c2d0e0a108aafc405af4ec24e91">max_d_dl_ratio</a> = 0.0</td></tr>
+<tr class="memdesc:a24077c2d0e0a108aafc405af4ec24e91"><td class="mdescLeft">&#160;</td><td class="mdescRight">Maximum ratio of distance D to the donor interval length dL.  <br /></td></tr>
 </table>
 <a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>Contains routines for loading saved checkpoint states to resume simulations. </p>
-</div><a name="doc-func-members" id="doc-func-members"></a><h2 id="header-doc-func-members" class="groupheader">Function Documentation</h2>
-<a id="a7d1e75e9da82d7e31b801cf0bbf0808a" name="a7d1e75e9da82d7e31b801cf0bbf0808a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7d1e75e9da82d7e31b801cf0bbf0808a">&#9670;&#160;</a></span>load_restart()</h2>
+<div class="textblock"><p>Diagnostic counters and parameters to assess SBM extrapolation quality. </p>
+<p>Used to track the Lebesgue constant (interpolation stability), the number of positivity limiters triggered, and geometric ratios to detect elements with poor layout. </p>
+</div><a name="doc-variable-members" id="doc-variable-members"></a><h2 id="header-doc-variable-members" class="groupheader">Member Data Documentation</h2>
+<a id="af382b4dfb715bfaf1f01eb619bd640e2" name="af382b4dfb715bfaf1f01eb619bd640e2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af382b4dfb715bfaf1f01eb619bd640e2">&#9670;&#160;</a></span>limiter_count</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">bool Restart::load_restart </td>
-          <td>(</td>
-          <td class="paramtype">const std::string &amp;</td>          <td class="paramname"><span class="paramname"><em>filename</em></span>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">std::vector&lt; <a class="el" href="struct_block.html">Block</a> &gt; &amp;</td>          <td class="paramname"><span class="paramname"><em>blocks</em></span>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const <a class="el" href="struct_parameters.html">Parameters</a> &amp;</td>          <td class="paramname"><span class="paramname"><em>p</em></span>&#160;)</td>
+          <td class="memname">int ImmersedBoundary::SBMDiagnostics::limiter_count = 0</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p>Load a pre-existing multi-block VTS restart dataset into the active solver blocks. </p>
-<p>Parses the specified XML-based checkpoint file, matches block configurations, and populates the conserved state fields. Also restores corresponding parameter records.</p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramdir">[in]</td><td class="paramname">filename</td><td>Path to the restart snapshot file (e.g. "pv_outputs/solution_restart_0.vtm"). </td></tr>
-    <tr><td class="paramdir">[in,out]</td><td class="paramname">blocks</td><td>Vector of computational blocks to populate. </td></tr>
-    <tr><td class="paramdir">[in]</td><td class="paramname">p</td><td>Global simulation parameters reference database. </td></tr>
-  </table>
-  </dd>
-</dl>
-<dl class="section return"><dt>Returns</dt><dd>True if restart completes successfully, false if an error is encountered. </dd></dl>
+<p>Cumulative count of positivity limiter triggers on extrapolated SBM boundary states. </p>
 
 </div>
 </div>
+<a id="a24077c2d0e0a108aafc405af4ec24e91" name="a24077c2d0e0a108aafc405af4ec24e91"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a24077c2d0e0a108aafc405af4ec24e91">&#9670;&#160;</a></span>max_d_dl_ratio</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double ImmersedBoundary::SBMDiagnostics::max_d_dl_ratio = 0.0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Maximum ratio of distance D to the donor interval length dL. </p>
+
+</div>
+</div>
+<a id="a837f74acbf1d584feec226eb114dda17" name="a837f74acbf1d584feec226eb114dda17"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a837f74acbf1d584feec226eb114dda17">&#9670;&#160;</a></span>max_dist_ratio</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double ImmersedBoundary::SBMDiagnostics::max_dist_ratio = 0.0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Maximum ratio of distance D to the donor offset L. </p>
+
+</div>
+</div>
+<a id="a68d0802b5fbe790b74203acdc76e114b" name="a68d0802b5fbe790b74203acdc76e114b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a68d0802b5fbe790b74203acdc76e114b">&#9670;&#160;</a></span>max_lebesgue</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double ImmersedBoundary::SBMDiagnostics::max_lebesgue = 0.0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Maximum Lebesgue constant (sum of absolute Lagrange weights) across all rays. </p>
+
+</div>
+</div>
+<hr/>The documentation for this struct was generated from the following file:<ul>
+<li>src/ib/<a class="el" href="sbm__geometry_8hpp_source.html">sbm_geometry.hpp</a></li>
+</ul>
 </div><!-- contents -->
 </div><!-- doc-content -->
 <div id="page-nav" class="page-nav-panel">
@@ -181,7 +219,7 @@ Functions</h2></td></tr>
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="navelem"><a href="namespace_restart.html">Restart</a></li>
+    <li class="navelem"><a href="namespace_immersed_boundary.html">ImmersedBoundary</a></li><li class="navelem"><a href="struct_immersed_boundary_1_1_s_b_m_diagnostics.html">SBMDiagnostics</a></li>
     <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.17.0 </li>
   </ul>
 </div>

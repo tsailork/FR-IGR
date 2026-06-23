@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded',() => { initNavTree('adi__solver_8h
 </div><!--header-->
 <div class="contents">
 
-<p>Thomas algorithm and ADI pass declarations.  
+<p>Declarations for the Thomas algorithm tridiagonal linear solver.  
 <a href="#details">More...</a></p>
 <div class="textblock"><code>#include &lt;vector&gt;</code><br />
 </div>
@@ -128,10 +128,10 @@ document.addEventListener('DOMContentLoaded',() => { initNavTree('adi__solver_8h
 <tr class="heading"><td colspan="2"><h2 id="header-func-members" class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
 <tr class="memitem:a8099a6d513786658caaf2abdfb4bd24f" id="r_a8099a6d513786658caaf2abdfb4bd24f"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#a8099a6d513786658caaf2abdfb4bd24f">solve_tridiagonal</a> (const std::vector&lt; double &gt; &amp;a, const std::vector&lt; double &gt; &amp;b, const std::vector&lt; double &gt; &amp;c, const std::vector&lt; double &gt; &amp;d, std::vector&lt; double &gt; &amp;x)</td></tr>
-<tr class="memdesc:a8099a6d513786658caaf2abdfb4bd24f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Solve a tridiagonal system A x_{i-1} + B x_i + C x_{i+1} = D_i.  <br /></td></tr>
+<tr class="memdesc:a8099a6d513786658caaf2abdfb4bd24f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Solve a tridiagonal system of linear equations using the Thomas algorithm (TDMA).  <br /></td></tr>
 </table>
 <a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>Thomas algorithm and ADI pass declarations. </p>
+<div class="textblock"><p>Declarations for the Thomas algorithm tridiagonal linear solver. </p>
 </div><a name="doc-func-members" id="doc-func-members"></a><h2 id="header-doc-func-members" class="groupheader">Function Documentation</h2>
 <a id="a8099a6d513786658caaf2abdfb4bd24f" name="a8099a6d513786658caaf2abdfb4bd24f"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a8099a6d513786658caaf2abdfb4bd24f">&#9670;&#160;</a></span>solve_tridiagonal()</h2>
@@ -167,11 +167,24 @@ Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Solve a tridiagonal system A x_{i-1} + B x_i + C x_{i+1} = D_i. </p>
+<p>Solve a tridiagonal system of linear equations using the Thomas algorithm (TDMA). </p>
 <p>Solve a tridiagonal system of linear equations using the Thomas algorithm.</p>
-<p>Solve a tridiagonal system A x_{i-1} + B x_i + C x_{i+1} = D_i.</p>
+<p>Solves a tridiagonal system of the form: </p><p class="formulaDsp">
+<picture><source srcset="form_82_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ a_i x_{i-1} + b_i x_i + c_i x_{i+1} = d_i \&zwj;]" src="form_82.png"/></picture>
+</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">a</td><td>Lower diagonal coefficients (size N, index 0 is ignored). </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">b</td><td>Main diagonal coefficients (size N). </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">c</td><td>Upper diagonal coefficients (size N, index N-1 is ignored). </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">d</td><td>Right-hand side values (size N). </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">x</td><td>Output solution vector (size N).</td></tr>
+  </table>
+  </dd>
+</dl>
+<p>Solve a tridiagonal system of linear equations using the Thomas algorithm (TDMA).</p>
 <p>Solves a system of the form: </p><p class="formulaDsp">
-<picture><source srcset="form_79_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ a_i x_{i-1} + b_i x_i + c_i x_{i+1} = d_i \&zwj;]" src="form_79.png"/></picture>
+<picture><source srcset="form_82_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ a_i x_{i-1} + b_i x_i + c_i x_{i+1} = d_i \&zwj;]" src="form_82.png"/></picture>
 </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">

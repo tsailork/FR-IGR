@@ -1,3 +1,8 @@
+/**
+ * @file sbm_geometry.cpp
+ * @brief Implementations of shifted boundary face detection, 1D normal ray stencils, and state extrapolations.
+ */
+
 #include "sbm_geometry.hpp"
 #include "../core/solver.hpp"
 #include <iostream>

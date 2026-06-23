@@ -46,6 +46,15 @@
                 This formulation achieves extreme computational efficiency and mathematically rigorous spatial convergence up to degree P3.
             </p>
 
+            <h2>Multi-Block Grids & Connectivity Validation</h2>
+            <p>
+                To model multi-dimensional topologies while retaining the high computational efficiency of Cartesian tensor products, the solver segments the domain into structured, multi-block grid configurations (defined in <code>domain.grid</code>). At startup, the solver performs a strict geometric and topological validation pass to guarantee mesh integrity:
+            </p>
+            <ul>
+                <li><strong>Symmetric 1-to-1 Mapping:</strong> Ensures block-neighbor interfaces are mutually symmetric (e.g., if Block A declares Block B as its right neighbor, Block B must reciprocate by declaring Block A as its left neighbor).</li>
+                <li><strong>Metric and Resolution Matching:</strong> Verifies that shared boundary lengths match and element counts align perfectly along block interfaces to ensure zero-aliasing and strict conservation.</li>
+            </ul>
+
             <h2>System Architecture</h2>
             <p>
                 Written natively in modern C++17, the application architecture is highly modular. The simulation state is continuously packed into flattened, 1D contiguous array structures, providing exceptional data locality and mitigating cache misses. 
@@ -63,91 +72,151 @@
         <div id="architecture" class="tab-pane">
             <h1>Mathematical Architecture</h1>
             
-            <h2>Spatial Discretization: Flux Reconstruction</h2>
+            <h2>High-Order Numerics: Flux Reconstruction</h2>
             <p>
-                The core of the solver evaluates spatial gradients by projecting physical states onto orthogonal Gauss-Legendre quadrature points. 
-                Discontinuous interfacial fluxes are reconciled via approximate Riemann solvers, strictly implementing Rusanov and Local Lax-Friedrichs (LLF) upwinding schemes. 
-                The divergence of the flux is then reconstructed using high-order Radau correction polynomials, guaranteeing conservation across element boundaries.
+                The solver utilizes the <strong>Flux Reconstruction (FR)</strong> approach (specifically the FR-DG variant) for high-order spatial discretization. The physical state is represented within each element by a tensor product of 1D Lagrange polynomials defined on Gauss-Legendre quadrature nodes. This formulation yields spectral-like resolution and exceptionally low numerical dissipation, making it highly efficient for capturing complex, smooth wave features on structured grids.
             </p>
-
-            <h2>Immersed Boundary Methods</h2>
+            <h3>Pitfalls of High-Order Methods</h3>
             <p>
-                Traditional Cartesian solvers struggle with complex geometric boundaries. To elegantly bypass the need for body-fitted unstructured meshes, the solver supports native Immersed Boundary (IB) formulations to mask solid objects directly within the Cartesian field.
+                Despite their accuracy, high-order polynomial bases suffer from several major numerical pitfalls:
             </p>
             <ul>
-                <li><strong>Shifted Boundary Method (SBM):</strong> Instead of modifying the governing equations, SBM explicitly computes boundary conditions at surrogate Cartesian interfaces by applying high-order Taylor-series expansions mapped from the true physical boundary.</li>
-                <li><strong>Volume Penalty Method (VPM):</strong> Utilizes an internal source-term penalization mask to aggressively enforce zero-velocity states inside defined solid regions, mathematically treating the solid as a highly porous medium.</li>
+                <li><strong>Gibbs Phenomenon:</strong> Near sharp discontinuities (shocks, contacts), high-order polynomials exhibit severe oscillatory behavior. This causes localized under- and overshoots.</li>
+                <li><strong>Positivity Failures:</strong> Oscillations near strong shocks can easily drive density (\(\rho\)) or pressure (\(p\)) to negative values. Because the Euler equations are only hyperbolic for physical states (\(\rho > 0, p > 0\)), any negativity instantly destroys the mathematical system, causing solver crashes (NaNs).</li>
+                <li><strong>Stiff Timestep Limits:</strong> The maximum stable timestep (\(\Delta t\)) scales inversely with the spectral radius of the spatial operator. As the polynomial degree \(P\) increases, the CFL constraint tightens dramatically: \(\Delta t \propto \frac{h}{2P + 1}\), requiring very small steps for high-order runs.</li>
             </ul>
 
             <h2>Numerical Limiters</h2>
             <p>
-                High-order discretizations are mathematically susceptible to Gibbs phenomenon oscillations near sharp gradients or under-resolved flow features. 
-                To prevent unphysical states from generating floating-point exceptions (NaNs), the solver integrates robust limiters:
+                To control high-order oscillations and ensure thermodynamic admissibility without destroying accuracy in smooth regions, the solver employs a multi-tiered limiting scheme:
             </p>
             <ul>
-                <li><strong>Positivity Preservation:</strong> A Zhang-Shu bounds-preserving limiter iteratively scales the polynomial coefficients around the element average to ensure density (<code>&rho; > 0</code>) and pressure (<code>p > 0</code>) remain strictly positive.</li>
-                <li><strong>Entropy Limiters:</strong> Enforces minimum-preservation on the specific thermodynamic entropy, preventing non-physical expansion shocks.</li>
+                <li><strong>Zhang-Shu Positivity Limiter:</strong> A bounds-preserving limiter that scales the high-order polynomial coefficients toward the cell-averaged state. The cell average is guaranteed to remain positive if a positive numerical scheme (such as LLF/Rusanov) is used. For each element, a scaling parameter \(\theta \in [0, 1]\) is computed:
+                    <pre><code>U_limited = \theta * U_local + (1 - \theta) * U_average</code></pre>
+                    The parameter \(\theta\) is chosen via bisection to be the maximum value such that density and pressure remain strictly above a safety floor (\(\epsilon_{\text{pos}} \approx 10^{-10}\)) at all internal solution nodes and face-extrapolated checking points. This preserves conservation while enforcing admissibility.
+                </li>
+                <li><strong>Thermodynamic Entropy Limiter:</strong> Enforces minimum-preservation on the specific thermodynamic entropy \(s = p / \rho^\gamma\). Scaling toward the cell average occurs if the local entropy at any quadrature point falls below the minimum entropy of its neighbors. This prevents the formation of non-physical expansion shocks, ensuring compliance with the Second Law of Thermodynamics.</li>
             </ul>
+
+            <h2>Dynamic CFL Stability</h2>
+            <p>
+                To maintain stability while maximizing performance, the solver dynamically computes the timestep \(\Delta t\) at the start of each step. The local acoustic wave speed is evaluated as \(\lambda_{\max} = |u| + c\) (where \(c = \sqrt{\gamma p / \rho}\) is the speed of sound). The global timestep is then constrained by:
+            </p>
+            <p style="text-align: center; margin: 15px 0;">
+                $$\Delta t = 0.5 \cdot \text{CFL} \cdot \frac{\min(\Delta x, \Delta y)}{(2P+1) \cdot \max(\lambda_{\max})}$$
+            </p>
+            <p>
+                Here, the factor of \(0.5\) is a 2D Cartesian safety coefficient, and the \((2P+1)\) term accounts for the tighter stable stability limit of higher-order polynomial bases.
+            </p>
+
+            <h2>Sigmoid Initial Smoothing</h2>
+            <p>
+                Discontinuous initial conditions (e.g., shock tubes, quadrant-based Riemann problems, or blast waves) trigger immediate, violent Gibbs oscillations in high-order FR representations, leading to instant solver failure. To stabilize the initial step, the solver applies a <strong>Sigmoid Smoothing</strong> filter to the initial state across discontinuities:
+            </p>
+            <p style="text-align: center; margin: 15px 0;">
+                $$f_{\text{smooth}}(x) = \frac{1}{1 + e^{-(x - x_0)/\delta}}$$
+            </p>
+            <p>
+                The smoothing width \(\delta\) is typically scaled to \(2.0 \cdot \min(\Delta x, \Delta y)\). This mitigates starting transients while preserving a sharp, physically representative profile.
+            </p>
 
             <h2>Isotropic Gradient Regularization (IGR)</h2>
             <p>
-                In flows containing exceptionally strong discontinuities, localized limiters alone may fail to suppress instability. 
-                To handle these scenarios, the solver introduces Isotropic Gradient Regularization—acting as an intelligent artificial viscosity mechanism (Entropic Pressure). 
-                The viscosity field is computed by evaluating a Helmholtz-like smoothing equation, which diffuses localized shock-sensor data throughout the computational domain without degrading accuracy in smooth regions.
+                Isotropic Gradient Regularization acts as a sub-grid scale artificial viscosity mechanism (Entropic Pressure) to smooth out under-resolved gradients. Viscosity is computed by evaluating a Helmholtz-type smoothing equation:
             </p>
-            <p>The solver provides two distinct PDE pathways to solve the IGR field:</p>
+            <p style="text-align: center; margin: 15px 0;">
+                $$\left( I - \epsilon \nabla \cdot \left( \frac{1}{\rho} \nabla \right) \right) \Sigma = S$$
+            </p>
+            <p>Where \(S\) is the raw shock sensor source term, \(\Sigma\) is the smoothed entropic pressure field, and \(\epsilon \propto h^2\) is the diffusion coefficient. The solver provides two pathways to evaluate this equation:</p>
             <ul>
-                <li><strong>Elliptic IGR:</strong> Solves the steady-state Helmholtz equation implicitly at every time step using a Symmetrized Alternating Direction Implicit (ADI) matrix solver. The ADI approach is computationally expensive but provides instantaneous, infinite-speed propagation of shock viscosity. The symmetrized dual-pass (XY and YX) eliminates inherent directional bias.</li>
-                <li><strong>Parabolic IGR:</strong> Treats the viscosity field as a transient variable, evolving it explicitly alongside the physical flow state using an internal forward-Euler sub-stepping routine. This method leverages BR2 viscous flux discretization to stabilize the parabolic diffusion gradients.</li>
+                <li><strong>Parabolic IGR (Default & Practical):</strong> Treats the entropic pressure as a transient variable, evolving it explicitly alongside the physical state: \(\partial \Sigma / \partial t = (\Sigma_{\text{eq}} - \Sigma) / \tau\). The diffusion term is discretized using the Bassi-Rebay 2 (BR2) viscous flux formulation and advanced using a forward-Euler sub-stepping routine. This is computationally efficient and fits naturally into explicit solver loops.</li>
+                <li><strong>Elliptic IGR (Minor & Expensive):</strong> Solves the steady-state Helmholtz equation implicitly at each step using a Symmetrized Alternating Direction Implicit (ADI) matrix solver. The ADI method executes both an \(XY\) and a \(YX\) directional pass and averages the fields: \(\Sigma = 0.5(\Sigma_{XY} + \Sigma_{YX})\) to eliminate directional bias. While mathematically clean, the implicit solve is computationally expensive and generally too slow for practical applications.</li>
             </ul>
+
+            <h3>Pressure-Bounded Source Capping</h3>
+            <p>
+                In simulations with extreme shocks (e.g., blast waves reflecting off walls), the raw sensor term \(S\) can spike, injecting excessive artificial viscosity that unphysically depletes local internal energy and causes solver crashes. To prevent this, the solver applies a **Pressure-Bounded Cap** directly to the shock sensor source term:
+            </p>
+            <p style="text-align: center; margin: 15px 0;">
+                $$S = \min(S_{\text{raw}}, C \cdot p)$$
+            </p>
+            <p>
+                Where \(p\) is the local thermodynamic pressure, and \(C\) is a tuning coefficient (typically \(1.0\)). Capping the <em>source</em> term rather than the final viscosity field \(\Sigma\) is mathematically elegant: it allows the Helmholtz operator to naturally diffuse the bounded viscosity ahead of the shock wave, providing the necessary pre-conditioning for numerical stability.
+            </p>
         </div>
 
-        <!-- Configuration Tab -->
+        <!-- Immersed Boundary Methods Tab -->
         <div id="ib-methods" class="tab-pane">
             <h1>Immersed Boundary Methods</h1>
             <p>
-                In standard body-fitted meshes, boundaries conform precisely to the geometry of the solid. While highly accurate, generating these meshes for complex or moving geometries is computationally expensive and difficult. 
-                FR-IGR utilizes <strong>Immersed Boundary (IB) Methods</strong> to circumvent this by overlaying solids onto a simple Cartesian grid.
+                To avoid the high computational cost and grid-generation complexity of body-fitted unstructured meshes for complex geometries (cylinders, airfoils), FR-IGR implements two distinct Cartesian-mesh <strong>Immersed Boundary (IB)</strong> formulations. These overlay the solid geometry directly onto the Cartesian grid via a level-set Signed Distance Function (\(\phi(x,y)\)).
             </p>
+            
+            <div style="display: flex; gap: 20px; justify-content: center; margin: 20px 0; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 300px; max-width: 450px; text-align: center;">
+                    <img src="assets/vpm_diagram.svg" alt="VPM Conceptual Diagram" style="width: 100%; border: 1px solid #334155; border-radius: 6px; background: #1e293b; padding: 5px;">
+                    <p style="color: #64748b; font-size: 0.9em; margin-top: 5px;"><strong>Volume Penalization Method (VPM)</strong></p>
+                </div>
+                <div style="flex: 1; min-width: 300px; max-width: 450px; text-align: center;">
+                    <img src="assets/sbm_diagram.svg" alt="SBM Conceptual Diagram" style="width: 100%; border: 1px solid #334155; border-radius: 6px; background: #1e293b; padding: 5px;">
+                    <p style="color: #64748b; font-size: 0.9em; margin-top: 5px;"><strong>Shifted Boundary Method (SBM)</strong></p>
+                </div>
+            </div>
 
             <h2>1. Volume Penalization Method (VPM)</h2>
-            <div style="text-align: center; margin: 20px 0;">
-                <img src="assets/vpm_diagram.svg" alt="VPM Conceptual Diagram" style="max-width: 600px; width: 100%; border: 1px solid #e0e0e0; border-radius: 4px;">
-            </div>
             <p>
-                The Volume Penalization Method models the solid geometry as a highly porous medium. Instead of explicitly tracking the boundary, it modifies the governing Navier-Stokes momentum and energy equations by adding a penalization source term \( S \):
+                The Volume Penalization Method models the solid geometry as a highly porous medium. The governing momentum and energy equations are modified by adding a stiff penalization source term \(S_p\):
             </p>
-            <pre><code>S = -( \chi / \eta ) * ( u - u_s )</code></pre>
+            <p style="text-align: center; margin: 15px 0;">
+                $$S_p = -\frac{\chi}{\eta} (u - u_s)$$
+            </p>
             <p>Where:</p>
             <ul>
-                <li><strong>\(\chi\) (Mask Function)</strong>: 1 inside the solid, 0 in the fluid.</li>
-                <li><strong>\(\eta\) (Porosity)</strong>: A very small positive penalty parameter (e.g., \(10^{-4}\)). As \(\eta \to 0\), the term aggressively forces the local fluid velocity \(u\) to match the solid velocity \(u_s\).</li>
+                <li><strong>\(\chi(x, y)\) (Solid Mask Function):</strong> Evaluated using the Signed Distance Function \(\phi\). \(\chi = 1\) inside the solid (\(\phi < 0\)) and \(\chi = 0\) in the fluid. To prevent stair-stepping, a smoothed Heaviside interface can be used, regularizing the boundary over a width of \(\approx 1.5 \Delta x\).</li>
+                <li><strong>\(\eta\) (Permeability / Porosity):</strong> A tiny positive penalty parameter (typically \(10^{-7}\)). As \(\eta \to 0\), the local fluid velocity \(u\) is aggressively forced to match the solid wall velocity \(u_s\).</li>
             </ul>
+            
+            <h3>Analytical Integration (Stiffness Mitigation)</h3>
             <p>
-                <strong>Implementation:</strong> Because the penalization term is extremely stiff (causing standard explicit time integration to become violently unstable), FR-IGR utilizes an <em>analytical/exact</em> integration of the penalty source term over the Runge-Kutta time steps. 
-                This allows the solver to strictly enforce the zero-velocity boundary condition inside the mask without requiring impossibly small time steps.
+                Because the penalization source term is extremely stiff, standard explicit time integration (e.g., Runge-Kutta stages) requires a timestep restricted by \(\Delta t < \eta\), making the simulation impossibly slow. To bypass this, FR-IGR solves the penalization term **analytically** over each Runge-Kutta stage. The velocity update is integrated as:
+            </p>
+            <p style="text-align: center; margin: 15px 0;">
+                $$u^{k+1} = u^k \cdot e^{-\chi \Delta t / \eta} + u_s \left( 1 - e^{-\chi \Delta t / \eta} \right)$$
+            </p>
+            <p>
+                This exact analytical update guarantees absolute stability and strictly enforces the solid velocity boundary condition inside the mask without imposing any timestep penalty on the overall CFL limit.
             </p>
 
+            <h3>Caveats and Limitations of VPM</h3>
+            <ul>
+                <li><strong>Diffuse Interface:</strong> Smoothing the mask function \(\chi\) smears the solid boundary across cell lines. This creates a diffuse interface, which is poorly suited for computing localized surface diagnostics like skin friction or wall pressure distributions.</li>
+                <li><strong>First-Order Local Accuracy:</strong> Regardless of the polynomial degree \(P\) of the background mesh, the spatial accuracy drops locally to \(\mathcal{O}(h^1)\) in the vicinity of the penalized boundary.</li>
+                <li><strong>Parameter Sensitivity:</strong> Selecting \(\eta\) requires a trade-off. Too large a value allows fluid to physically penetrate the solid, while too small a value can introduce round-off errors and numerical stiffness in multi-physics couplings.</li>
+            </ul>
+
             <h2>2. Shifted Boundary Method (SBM)</h2>
-            <div style="text-align: center; margin: 20px 0;">
-                <img src="assets/sbm_diagram.svg" alt="SBM Conceptual Diagram" style="max-width: 600px; width: 100%; border: 1px solid #e0e0e0; border-radius: 4px;">
-            </div>
             <p>
-                While VPM is robust, it results in a diffuse boundary representation and reduced accuracy near the wall. The Shifted Boundary Method (SBM) preserves high-order spatial accuracy by applying a strict boundary condition at a <em>surrogate boundary</em> (\(\~{\Gamma}\))—composed of the faces of the Cartesian cells immediately adjacent to the physical boundary (\(\Gamma\)).
+                The Shifted Boundary Method preserves the high-order spatial accuracy of the Flux Reconstruction method. Instead of penalizing the domain, SBM shifts the physical boundary condition from the true surface (\(\Gamma\)) to a nearby **surrogate boundary** (\(\tilde{\Gamma}\))—composed of the faces of the Cartesian cells immediately adjacent to the physical interface.
             </p>
+            
+            <h3>Mathematical Operations and Ray Extrapolation</h3>
             <p>
-                <strong>Mathematical Formulation:</strong><br>
-                For every face on the surrogate boundary, a normal vector is cast towards the true physical boundary to find the physical boundary point, \(D\). 
-                The vector is then extended outward into the fluid domain to define a 1D interpolation stencil consisting of <em>donor points</em>. 
-                Using a 1D Lagrangian polynomial, the known physical boundary state at \(D\) is extrapolated back to the surrogate face using Taylor-series expansion principles.
-            </p>
-            <p>
-                <strong>Implementation & Stability:</strong>
+                For every quadrature node on the surrogate boundary, a 1D normal ray is cast along the level-set gradient (\(\nabla \phi\)) toward the true physical boundary to identify the boundary point \(D\). The ray is then extended outward into the fluid domain to construct a 1D interpolation stencil consisting of \(P+1\) <strong>donor points</strong>:
             </p>
             <ul>
-                <li><strong>Donor Interval Scaling (\(dL\)):</strong> High-order polynomials suffer from Runge's phenomenon if evaluation nodes are poorly spaced. To maintain a stable <em>Lebesgue constant</em> (amplification factor), the donor interval \(dL\) must scale linearly with the physical distance. The robust formula used is <code>dL = IB_DL_SCALE * h * alpha * sqrt(2.0)</code>.</li>
-                <li><strong>Positivity Preserving Limiter:</strong> Due to Gibbs phenomenon, the high-order extrapolated state at the surrogate boundary can occasionally produce unphysical negative densities or pressures. The solver enforces strict positivity constraints (<code>POS_LIMITER_EPS</code>) on the extrapolated boundary state to maintain absolute thermodynamic stability.</li>
-                <li><strong>Colombo Constraint 3.c:</strong> To handle ultra-thin geometries (e.g., trailing edges of airfoils), the solver provides an optional <code>ENABLE_IB_3C</code> toggle to prevent the surrogate flags of opposing thin faces from overwriting each other in the Cartesian cells.</li>
+                <li><strong>Lagrange Extrapolation:</strong> Evaluates the high-order 2D solution polynomial at the coordinates of the fluid donor points. Using these values along with the prescribed boundary condition at \(D\), a 1D Lagrange polynomial is constructed along the ray and extrapolated back to the surrogate face node to yield the surrogate state \(u_{\text{sb}}\).</li>
+                <li><strong>Donor Interval Scaling:</strong> To control the Lebesgue constant (interpolation amplification factor) and prevent Runge's phenomenon (wild polynomial oscillations during extrapolation), the donor stencil interval is scaled dynamically:
+                    <pre><code>dL = IB_DL_SCALE * h * sqrt(2.0)</code></pre>
+                    This keeps the donor nodes well-spaced relative to the boundary distance \(D\).
+                </li>
+                <li><strong>Positivity Limiter on SBM Faces:</strong> High-order extrapolation near strong gradients can occasionally produce unphysical negative densities or pressures. The solver enforces strict positivity constraints on the extrapolated boundary state, clamping negative states to a safety floor (<code>POS_LIMITER_EPS</code>) and incrementing the diagnostic counters.</li>
+            </ul>
+
+            <h3>Caveats and Limitations of SBM</h3>
+            <ul>
+                <li><strong>Runge's Phenomenon:</strong> Extrapolating polynomials of degree \(P \ge 2\) from closely spaced donor points to the surrogate face is mathematically ill-conditioned. If the geometric configuration is poor, the SBM state can fluctuate wildly, leading to numerical instabilities.</li>
+                <li><strong>Lebesgue Constant Sensitivity:</strong> If donor points lie in cells with high gradients or near other boundaries, small errors in the donor states are heavily amplified by the Lagrange weights, creating spurious oscillations.</li>
+                <li><strong>Thin Geometries and Overlapping Flags (Constraint 3.c):</strong> In thin geometries (e.g., trailing edges of airfoils or thin plates), surrogate boundary cells from opposing faces can overlap. If unmanaged, surrogate face flags will overwrite each other. The solver provides **Colombo Constraint 3.c** to automatically disable conflicting flags in thin cells. However, this must be disabled for solid airfoils to prevent "holes" in the solid boundary definition.</li>
             </ul>
         </div>
 
