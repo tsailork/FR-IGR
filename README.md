@@ -2,6 +2,8 @@
 
 FR-IGR is a high-order numerical solver for the 2D Euler equations using the **Flux Reconstruction (FR)** method on Cartesian multiblock grids. It features **Isotropic Gradient Regularization (IGR)** for robust shock capturing and is parallelized using OpenMP.
 
+This project has also been an exploration of AI-LLM assisted code generation. LLM-based coding tools have been used extinsively in the creation of this codebase.
+
 ## Features
 - **High-Order Accuracy**: Supports arbitrary polynomial degrees (P=1, P=2, P=3, etc.) using Radau-based correction functions.
 - **Multiblock Support**: Supports complex domain topologies with automated 1-to-1 face connectivity validation.
@@ -21,6 +23,7 @@ FR-IGR is a high-order numerical solver for the 2D Euler equations using the **F
 - [GEMINI.md](GEMINI.md): Detailed technical history, architecture notes, and feature descriptions.
 - [dependencies.txt](dependencies.txt): Software and library requirements.
 - [inputs_example.txt](inputs_example.txt): Comprehensive guide to all simulation parameters.
+- (.html) [High level overview](doc/index.html) of the methods used in this code.
+- (.html) [Doxygen](doc/doxygen/html/index.html) documentation pages. 
 
 ---
-*Developed as a research sketch to explore IGR in the context of FR-DG methods.*
