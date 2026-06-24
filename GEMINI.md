@@ -129,6 +129,32 @@ To improve the stability of high-order IGR at strong shocks:
 - **Interactive Terminal Takeover:** Implements the `edit_inputs_dat` function to suspend the raw input terminal mode, clear the screen, launch the system's `$EDITOR` (e.g. `vim` or `nano`) in-place, and wait for the user to edit `inputs.dat`.
 - **Dynamic Parameter Reloading:** Upon editor termination, the TUI re-enters non-blocking cbreak mode, re-parses the new configuration parameters from `inputs.dat` to update live variables, and triggers a full dashboard redraw.
 
+### 5. Portable Case Management & Interactive Web GUI
+- **Portable Case Management:** Created portable running directory structures (e.g. `cases/default_case/`) containing local inputs/outputs (`inputs.dat`, `domain.grid`, `pv_outputs/`, `csv_outputs/`, `out.log`) using relative paths.
+- **Project Executable Resolution:** Implemented absolute-path resolving runner scripts (`run_case.sh` / `run_case.bat`) inside case directories to build and run the solver centrally.
+- **Lightweight Python Web Server:** Added `gui.py` backend server executing the compiled C++ solver under WSL/Linux, parsing VTK `.vts`, `.vtu`, and `.vtm` datasets to serve grid coordinates and scalar fields as JSON.
+- **Interactive Web Interface:** Designed `gui/` frontend with an HTML5 `<canvas>` rendering block element lines, color-coded boundaries, and solid objects (cylinder, NACA airfoil profiles with angle of attack).
+- **GUI Control & Plotting:** Implemented two-way configuration bindings, visual boundary condition editor, point probe click-to-place tool, and live console logging alongside Canvas-drawn residual/probe charts and 2D flow field contours.
+
+### 6. Unstructured Grid (.vtu) Plotting & Tricontourf
+- **Immersed Boundary Support:** The solver blanks out points and cells inside solid boundaries when utilizing immersed boundary methods (SBM/VPM), resulting in unstructured grids. The visualizer parses `.vtu` (UnstructuredGrid) files from `plot.pvd` rather than structured `.vts` files.
+- **Tricontourf Integration:** Integrated Matplotlib's `ax.tricontourf` to correctly render 2D flow field contours on unstructured meshes, preserving accurate boundary shapes without grid-reshaping failures.
+- **PVD Priority Alignments:** Configured both GUI and TUI systems to check `plot.pvd` before `solution.pvd`, ensuring that visualizer playback monitors the active plot output.
+
+### 7. Double-Ended Visualizer Caching
+- **Server-Side Cache (`CONTOUR_CACHE`):** Implemented an in-memory Python dictionary cache in `gui.py` keyed by `(var_name, vtm_name, mtime)`. If a VTM file is unchanged, the server returns the cached PNG bytes in under 0.2ms, representing a 5,900x rendering speedup.
+- **Browser HTTP Caching:** Modified `/api/history` to expose modification times (`mtime`) for each timestep. The contour generator sets long-term cache-control headers (`Cache-Control: public, max-age=31536000`) when `mtime` is present, enabling instant browser-side loading.
+
+### 8. Sequential Client-Side Preloading
+- **Sequential Queue:** Added a non-blocking sequential background loading queue in Javascript (`gui/app.js`) that downloads contour images for all timesteps of the active variable when history loads or when variables are switched.
+- **Buttery Smooth Playback:** By loading images ahead of time into the browser cache, drag and playback operations on the timeline slider occur instantly and seamlessly without network latency.
+- **Smart Timeline Polling:** Integrates with the status polling loop to dynamically append new checkpoints as the solver runs, while preserving the user's active manual playback selection.
+
+### 9. Conditionally Exposed GUI Controls & Refined Restart
+- **Method-Specific Panels:** conditionally shows/hides SBM-specific (Shifted Boundary Method) diagnostics and parameters or VPM-specific (Volume Penalization Method) penalization parameters.
+- **Dynamic Polygon Tables:** Exposes coordinate tables for dynamic piecewise multi-polygons when `IB_SHAPE = MULTI`.
+- **Refined Clean Restart:** Modified clean restarts to only wipe transient case outputs (`pv_outputs/*`, `csv_outputs/*`, `out.log`, `STOP`, `residuals.dat`) instead of running `make clean`, accelerating restart compilation and startup.
+
 ## Documentation Maintenance (Agent Hook)
 Whenever tasked with "updating the documentation" for a new feature or change, you **MUST** ensure all the following locations are kept perfectly synchronized with the codebase:
 

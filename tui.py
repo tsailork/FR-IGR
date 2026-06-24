@@ -310,7 +310,7 @@ def main():
         env = os.environ.copy()
         env["TUI_ACTIVE"] = "1"
         
-        cmd = ["./run.sh"]
+        cmd = ["./run_case.sh"] if os.path.exists("./run_case.sh") else ["./run.sh"]
         if clean:
             cmd.append("-clean")
             
@@ -572,7 +572,7 @@ def main():
                         state["recent_logs"].append("Resetting restart configuration in inputs.dat for clean run.")
                         update_restart_in_inputs_dat("", 0.0)
                         
-                        state["recent_logs"].append("Running clean compilation and starting fresh...")
+                        state["recent_logs"].append("Cleaning simulation output files and starting fresh...")
                         curr_inputs = parse_inputs_dat()
                         enable_sbm_diags = (curr_inputs.get("ENABLE_SBM_DIAGNOSTICS", "false").lower() == "true") and \
                                            (curr_inputs.get("IB_METHOD", "").upper() == "SBM")

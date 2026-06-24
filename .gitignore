@@ -21,4 +21,4 @@ test_regression
 test_unit
 __pycache__/
 scratch/
-uut.log
+out.log

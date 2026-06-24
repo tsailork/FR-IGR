@@ -22,8 +22,10 @@ if [ "$TUI_ACTIVE" = "1" ]; then
 
     echo "Building FR-IGR Solver..."
     if [ "$CLEAN" = true ]; then
-        echo "Running make cleanall..."
-        make cleanall
+        echo "Cleaning simulation output files..."
+        rm -rf pv_outputs/*
+        rm -rf csv_outputs/*
+        rm -f out.log STOP residuals.dat
     fi
     make -j12 all
 
@@ -35,8 +37,10 @@ else
 
     echo "Building FR-IGR Solver..."
     if [ "$CLEAN" = true ]; then
-        echo "Running make cleanall..."
-        make cleanall
+        echo "Cleaning simulation output files..."
+        rm -rf pv_outputs/*
+        rm -rf csv_outputs/*
+        rm -f out.log STOP residuals.dat
     fi
     make -j12 all
 

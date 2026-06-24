@@ -222,37 +222,76 @@
 
         <!-- Configuration Tab -->
         <div id="configuration" class="tab-pane">
-            <h1>Configuration & Gridding</h1>
+            <h1>Configuration & Case Management</h1>
             <p>
                 The solver is initialized dynamically at runtime without recompilation by reading two plaintext configuration files: 
                 <code>inputs.dat</code> (parameterizing physics and numerics) and <code>domain.grid</code> (defining spatial topology).
             </p>
 
-            <h2>Running the Simulation</h2>
+            <h2>1. Remote Case Management Setup</h2>
             <p>
-                The solver execution is orchestrated via the <code>run.sh</code> wrapper script. The solver supports two distinct runtime output interfaces:
+                The project organizes simulations into self-contained <strong>Case Directories</strong> (e.g., <code>cases/default_case/</code>). 
+                Each case directory is completely portable and contains its own local configurations and output directories:
             </p>
             <ul>
-                <li><strong>Interactive TUI Dashboard (Default):</strong> Running <code>./run.sh</code> automatically compiles the code and launches a terminal user interface (TUI) monitor (<code>tui.py</code>). This interface displays real-time solver steps, progress, wave speeds/CFL diagnostics, SBM extrapolation boundary checks, and active warning feeds. It exposes interactive controls:
-                    <ul>
-                        <li><code>[S]</code> (Stop): Stop the solver execution cleanly, flushing all diagnostic datasets and writing the final state.</li>
-                        <li><code>[R]</code> (Restart): Gracefully shut down the active run, parse the latest written checkpoint file and simulation time from <code>pv_outputs/solution.pvd</code> and automatically update the <code>RESTART_FILE</code> and <code>RESTART_TIME</code> fields in <code>inputs.dat</code>, then compile and resume the simulation from the checkpoint (or from $t=0.0$ if no checkpoints exist), clearing previous warning/diagnostic panels.</li>
-                        <li><code>[C]</code> (Clean Restart): Gracefully shut down, reset <code>RESTART_FILE</code> and <code>RESTART_TIME</code> in <code>inputs.dat</code> to empty/0.0 values, execute a clean build (calling <code>make cleanall</code> to wipe all previous build files and simulation outputs), and start the simulation fresh from scratch ($t=0.0$), clearing the warning/diagnostic fields.</li>
-                        <li><code>[E]</code> (Edit): Suspend raw terminal mode and launch an in-place editor (using the <code>$EDITOR</code> environment variable, falling back to <code>vim</code> then <code>nano</code>) to modify the configuration file (<code>inputs.dat</code>) directly, automatically reloading the configuration changes upon exit.</li>
-                        <li><code>[K]</code> (Kill): Send a SIGKILL signal to forcibly terminate the solver processes if unresponsive.</li>
-                        <li><code>[Q]</code> (Quit): Exit the TUI monitor, offering to stop the running solver process or detach and keep it running in the background.</li>
-                    </ul>
-                </li>
-                <li><strong>Headless Mode (Standard Redirection):</strong> Running <code>./run.sh -headless</code> bypasses the dashboard and executes the solver headlessly. Standard output and standard error streams are redirected to <code>out.log</code> without buffer delays (enabling monitoring via tools like <code>tail -f out.log</code>).</li>
-                <li><strong>TUI Monitor Attachment:</strong> Running <code>./run.sh -attach</code> (or <code>python3 tui.py --attach</code>) launches the TUI in monitor-only mode. It automatically finds an independently running <code>fr_solver</code> process, attaches to it, reads the history of <code>out.log</code>, and provides live monitoring and control capabilities without spawning duplicate instances.</li>
+                <li><code>inputs.dat</code>: Simulation control parameters using relative paths for checkpoints (e.g., <code>RESTART_FILE = pv_outputs/sol_b0_5.vts</code>).</li>
+                <li><code>domain.grid</code>: Grid layout, block dimensions, and boundary condition assignments.</li>
+                <li><code>pv_outputs/</code>: Output directory for VTK plot snapshots (<code>plot_*.vtm</code>, <code>plot_b0_*.vtu</code>) and solution checkpoints (<code>sol_*.vtm</code>, <code>sol_b0_*.vts</code>).</li>
+                <li><code>csv_outputs/</code>: CSV diagnostics files for residuals (<code>residuals.csv</code>) and spatial probes (<code>probe.csv</code>).</li>
+                <li><code>out.log</code>: Real-time simulation stdout and stderr redirection.</li>
             </ul>
-            
-            <h3>Headless Shutdown Trigger</h3>
             <p>
-                When running headlessly, execution can be cleanly interrupted at any time by creating a file named <code>STOP</code> in the simulation directory. The solver detects this trigger, deletes the <code>STOP</code> file, writes the final state checkpoint files, and exits gracefully with code 0.
+                <strong>Central Execution Runners:</strong> Each case folder includes an absolute-path resolving script (<code>run_case.sh</code> / <code>run_case.bat</code>) that compiles the central solver source code under the project root and runs the binary within the context of the case folder.
+            </p>
+            <p>
+                <strong>Refined Clean Restart:</strong> Standard restarts compile the binaries if needed, but a clean restart (or clean run) wipes only transient output files (such as <code>pv_outputs/*</code>, <code>csv_outputs/*</code>, <code>out.log</code>, and <code>STOP</code>) without calling <code>make clean</code> on binary object files, saving build compilation overheads.
             </p>
 
-            <h2>Parameter Configuration (inputs.dat)</h2>
+            <h2>2. Interactive Terminal User Interface (TUI)</h2>
+            <p>
+                Running <code>./run_case.sh</code> (or `run_case.bat`) without arguments compiles the solver and launches the interactive dashboard (<code>tui.py</code>) in cbreak non-blocking keyboard mode. It features a multi-zone layout monitoring:
+            </p>
+            <ul>
+                <li><strong>Simulation Progress:</strong> Timestep, current physical time, dynamic time step size (\(\Delta t\)), and CFL-restricted wave speeds.</li>
+                <li><strong>Immersed Boundary (SBM) Diagnostics:</strong> Maximum extrapolation distance warning monitors, Lebesgue condition indicators, and positive boundary state limits.</li>
+                <li><strong>Warning Feed:</strong> Real-time alerts (e.g., negative states, boundary extrapolation violations, or diagnostics overflows).</li>
+            </ul>
+            <h3>Interactive Controls</h3>
+            <ul>
+                <li><code>S</code> (Stop): Signal a graceful simulation shutdown. The TUI creates a <code>STOP</code> trigger file, which the solver detects to cleanly output a final checkpoint and exit.</li>
+                <li><code>K</code> (Kill): Forces immediate solver process termination.</li>
+                <li><code>R</code> (Restart): Scans `pv_outputs/plot.pvd` (or fallback `solution.pvd`) to detect the latest written checkpoint timestep and physical time, automatically updates `RESTART_FILE` and `RESTART_TIME` in `inputs.dat`, and resumes execution.</li>
+                <li><code>C</code> (Clean Restart): Clears the restart fields from `inputs.dat`, deletes transient outputs, and launches a fresh simulation run from \(t=0.0\).</li>
+                <li><code>E</code> (Edit): In-place configuration editor. Clears the screen and opens `inputs.dat` in your system editor (e.g., <code>vim</code> or <code>nano</code>). Reloads parameters automatically upon editor termination.</li>
+                <li><code>Q</code> (Quit): Closes the dashboard interface.</li>
+            </ul>
+            <h3>TUI Attachment Mode</h3>
+            <p>
+                If the solver is running in headless mode, you can attach the dashboard monitor at any time by executing <code>./run_case.sh -attach</code> (or <code>python3 tui.py --attach</code>). This attaches the TUI to the existing solver process, reads the command logs from <code>out.log</code>, and provides full dashboard monitoring and controls.
+            </p>
+
+            <h2>3. Interactive Web GUI Dashboard</h2>
+            <p>
+                Executing <code>python3 gui.py [case_directory]</code> spins up a lightweight HTTP server on <strong>port 8080</strong>, providing a comprehensive, responsive web application for grid configuration, run management, and real-time visualization.
+            </p>
+            
+            <h3>Core Features</h3>
+            <ul>
+                <li><strong>Interactive Grid Canvas:</strong> Dynamically renders block gridding, coordinates, boundary condition colors, and immersed boundary masks (circles, NACA airfoils). Edge clicks open boundary condition selectors, and double-clicks allow in-place block resizing.</li>
+                <li><strong>Unstructured Grid Tricontour Plots:</strong> In simulations with solid boundaries (immersed boundaries), elements inside solid walls are blanked out, converting the mesh into an unstructured grid. The GUI reads <code>.vtu</code> (UnstructuredGrid) files from <code>plot.pvd</code> and renders smooth 2D flow fields using Matplotlib's <code>ax.tricontourf</code>.</li>
+                <li><strong>Double-Ended Caching System:</strong> 
+                    <ul>
+                        <li><em>Server-side Memory Cache:</em> Caches generated PNG images in Python, keyed by variable, VTM filename, and modification timestamp (<code>mtime</code>), serving subsequent frame loads in under 0.2 milliseconds.</li>
+                        <li><em>Browser Cache:</em> Attaches the <code>mtime</code> query parameter to image URLs and returns <code>Cache-Control: public, max-age=31536000</code> headers, allowing instant loading from the browser's HTTP cache.</li>
+                    </ul>
+                </li>
+                <li><strong>Sequential Client-Side Preloading:</strong> When a user loads playback history or switches variables, the browser launches a sequential background preloader that caches all timeline images, ensuring completely lag-free playback and timeline slider dragging.</li>
+                <li><strong>Dynamic IB Parameter Panels:</strong> Conditionally shows/hides SBM-specific diagnostics or VPM-specific parameters based on the active <code>IB_METHOD</code>. Exposes coordinate forms for dynamic piecewise polygons when <code>IB_SHAPE = MULTI</code>.</li>
+                <li><strong>Point Probe Placer:</strong> Enables clicking directly on the grid visualizer canvas to automatically place point probes and record local history plots (density, pressure, etc.).</li>
+                <li><strong>Strict Configuration Validator:</strong> Prior to saving, the validation engine checks adjacent block element sizes, metric bounds, and boundary condition symmetry to prevent solver gridding failures.</li>
+            </ul>
+
+            <h2>4. Plaintext Parameter Configuration (inputs.dat)</h2>
             <p>
                 <code>inputs.dat</code> is parsed using a standard INI-format syntax. It exposes comprehensive control over the simulation environment. Users can reference the comprehensively documented <code>inputs_example.txt</code> file in the root directory for a full template of available configurations and default parameters. Key sections include:
             </p>
@@ -264,7 +303,7 @@
                 <li><strong>[ImmersedBoundary]:</strong> Constructs dynamic or static geometries using <code>IB_SHAPE</code>. Supports standard circular cylinders, 4-digit NACA airfoils, and highly customized piecewise multi-polygon boundaries evaluated through a dynamic timeline (<code>IB_Q_TIME_MAP</code>).</li>
             </ul>
 
-            <h2>Domain Gridding (domain.grid)</h2>
+            <h2>5. Domain Gridding (domain.grid)</h2>
             <p>
                 Spatial discretization is defined using a block-structured Cartesian approach. The <code>domain.grid</code> file establishes individual, contiguous blocks and declares the mapping connections between their faces.
             </p>
