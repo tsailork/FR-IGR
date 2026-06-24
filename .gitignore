@@ -20,4 +20,5 @@ fr_solver
 test_regression
 test_unit
 __pycache__/
-out.log
+scratch/
+uut.log
