@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FR-IGR Case Setup GUI</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Navigation Header -->
+        <header class="app-header">
+            <div class="logo">
+                <span class="neon-text">FR-IGR</span> <span class="subtitle">Solver Dashboard</span>
+            </div>
+            <div class="case-info">
+                <span>Active Case Dir: <strong id="active-case-dir">...</strong></span>
+            </div>
+            <div class="system-status">
+                <span class="status-indicator idle" id="status-badge">Checking Status...</span>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="workspace">
+            <!-- Left Panel: Grid Visualization & Flow Fields -->
+            <section class="visualizer-panel">
+                <div class="panel-header">
+                    <h2>Domain Grid & Boundaries</h2>
+                    <div class="visualizer-controls">
+                        <button id="btn-add-block" class="action-btn-sm">+ Add Block</button>
+                        <button id="btn-probe-mode" class="action-btn-sm">Add Probe</button>
+                        <select id="select-visualizer-mode" class="select-sm">
+                            <option value="grid">Grid & Boundaries</option>
+                            <option value="contour_rho">Contour: Density (rho)</option>
+                            <option value="contour_press">Contour: Pressure</option>
+                            <option value="contour_mach">Contour: Mach Number</option>
+                            <option value="contour_sigma">Contour: Sigma (IGR)</option>
+                            <option value="contour_phi">Contour: IB Mask (phi)</option>
+                        </select>
+                        <button id="btn-contour-gear" class="action-btn-sm" style="display:none; padding: 2px 6px;">⚙️</button>
+                        <button id="btn-contour-reload" class="action-btn-sm" style="display:none; padding: 2px 6px;" title="Reload plots and clear cache">🔄 Reload</button>
+                        <label style="font-size: 0.75rem; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;">
+                            <input type="checkbox" id="chk-show-labels" checked> Labels & Origin
+                        </label>
+                    </div>
+                </div>
+                <div class="canvas-container" style="position: relative;">
+                    <div id="contour-loading-overlay" class="contour-loading-overlay" style="display: none;">
+                        <span class="spinner-icon"></span>
+                        <span id="contour-loading-text">Processing...</span>
+                    </div>
+                    <canvas id="grid-canvas"></canvas>
+                    <img id="contour-image-view" style="display:none; width:100%; height:100%; object-fit: contain; background: #0c0f1d; border-radius: 4px;" />
+                    <div class="legend" id="grid-legend">
+                        <span class="legend-item"><span class="color-box wall"></span>Wall</span>
+                        <span class="legend-item"><span class="color-box inflow"></span>Inflow</span>
+                        <span class="legend-item"><span class="color-box outflow"></span>Outflow</span>
+                        <span class="legend-item"><span class="color-box characteristic"></span>Characteristic</span>
+                        <span class="legend-item"><span class="color-box connection"></span>Connection</span>
+                        <span class="legend-item"><span class="color-box ib"></span>Immersed Boundary</span>
+                    </div>
+                    <div class="tooltip" id="canvas-tooltip">Tooltip info</div>
+                </div>
+                <!-- Timeline Playback Controls -->
+                <div class="playback-controls" id="playback-panel" style="display:none; margin-top: 10px;">
+                    <button id="btn-play-pause" class="action-btn-sm">▶ Play</button>
+                    <button id="btn-step-prev" class="action-btn-sm">⏮</button>
+                    <button id="btn-step-next" class="action-btn-sm">⏭</button>
+                    <input type="range" id="playback-slider" min="0" max="0" value="0" style="flex: 1; margin: 0 10px; cursor: pointer;">
+                    <span id="playback-time-label" style="font-size: 0.8rem; font-family: monospace; color: var(--text-secondary); min-width: 80px; text-align: right;">t = 0.000</span>
+                </div>
+            </section>
+
+            <!-- Right Panel: Configurations & Parameter Editors -->
+            <section class="editor-panel">
+                <div class="panel-header">
+                    <h2>Simulation Settings</h2>
+                    <div class="editor-actions">
+                        <button id="btn-save-config" class="primary-btn">Save Changes</button>
+                    </div>
+                </div>
+                
+                <div class="config-tabs-header">
+                    <button class="tab-btn active" data-tab="physics">Physics</button>
+                    <button class="tab-btn" data-tab="solver">Solver</button>
+                    <button class="tab-btn" data-tab="ns">Navier-Stokes</button>
+                    <button class="tab-btn" data-tab="regularization">IGR</button>
+                    <button class="tab-btn" data-tab="stabilization">Limits</button>
+                    <button class="tab-btn" data-tab="ib">Immersed Bdry</button>
+                    <button class="tab-btn" data-tab="io">I/O</button>
+                    <button class="tab-btn" data-tab="probes">Probes</button>
+                </div>
+
+                <div class="config-tabs-content">
+                    <!-- Physics Tab -->
+                    <div class="tab-pane active" id="tab-physics">
+                        <div class="form-group">
+                            <label for="phy-gamma">GAMMA (Ratio of Specific Heats)</label>
+                            <input type="number" id="phy-gamma" step="0.01" value="1.4">
+                        </div>
+                        <div class="form-group">
+                            <label for="phy-ic-type">Initial Condition Type</label>
+                            <select id="phy-ic-type">
+                                <option value="FREESTREAM">FREESTREAM</option>
+                                <option value="RIEMANN_2D_C3">RIEMANN_2D_C3</option>
+                                <option value="BLAST">BLAST</option>
+                                <option value="SINE_WAVE">SINE_WAVE</option>
+                                <option value="UNIFORM">UNIFORM</option>
+                            </select>
+                        </div>
+                        <fieldset>
+                            <legend>Freestream Reference Values</legend>
+                            <div class="form-row">
+                                <div class="form-group half">
+                                    <label for="phy-rho-inf">RHO_INF</label>
+                                    <input type="number" id="phy-rho-inf" step="0.1" value="1.0">
+                                </div>
+                                <div class="form-group half">
+                                    <label for="phy-p-inf">P_INF</label>
+                                    <input type="number" id="phy-p-inf" step="0.1" value="1.0">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group half">
+                                    <label for="phy-u-inf">U_INF</label>
+                                    <input type="number" id="phy-u-inf" step="0.1" value="0.0">
+                                </div>
+                                <div class="form-group half">
+                                    <label for="phy-v-inf">V_INF</label>
+                                    <input type="number" id="phy-v-inf" step="0.1" value="0.0">
+                                </div>
+                            </div>
+                        </fieldset>
+                    </div>
+
+                    <!-- Solver Tab -->
+                    <div class="tab-pane" id="tab-solver">
+                        <div class="form-group">
+                            <label for="sol-p-deg">P_DEG (Polynomial Degree)</label>
+                            <select id="sol-p-deg">
+                                <option value="0">0 (Finite Volume-like)</option>
+                                <option value="1">1 (Linear)</option>
+                                <option value="2">2 (Quadratic)</option>
+                                <option value="3">3 (Cubic)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="sol-cfl">CFL Number</label>
+                            <input type="number" id="sol-cfl" step="0.05" value="0.5">
+                        </div>
+                        <div class="form-group">
+                            <label for="sol-t-final">T_FINAL (Simulation Time)</label>
+                            <input type="number" id="sol-t-final" step="0.05" value="0.3">
+                        </div>
+                        <div class="form-group">
+                            <label for="sol-num-threads">OpenMP Thread Count</label>
+                            <input type="number" id="sol-num-threads" step="1" min="1" value="4">
+                        </div>
+                    </div>
+
+                    <!-- Navier-Stokes Tab -->
+                    <div class="tab-pane" id="tab-ns">
+                        <div class="form-group checkbox-group">
+                            <input type="checkbox" id="ns-enable">
+                            <label for="ns-enable">Enable Navier-Stokes (Viscous Fluxes)</label>
+                        </div>
+                        <div class="form-group">
+                            <label for="ns-re">RE (Reynolds Number)</label>
+                            <input type="number" id="ns-re" step="10" value="1000.0">
+                        </div>
+                        <div class="form-group">
+                            <label for="ns-pr">PR (Prandtl Number)</label>
+                            <input type="number" id="ns-pr" step="0.01" value="0.72">
+                        </div>
+                        <div class="form-group">
+                            <label for="ns-mach-ref">Reference Mach Number</label>
+                            <input type="number" id="ns-mach-ref" step="0.05" value="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label for="ns-br2-eta">BR2 Stability Parameter (eta)</label>
+                            <input type="number" id="ns-br2-eta" step="0.1" value="1.0">
+                        </div>
+                    </div>
+
+                    <!-- IGR Tab -->
+                    <div class="tab-pane" id="tab-regularization">
+                        <div class="form-group checkbox-group">
+                            <input type="checkbox" id="igr-enable">
+                            <label for="igr-enable">Enable Isotropic Gradient Regularization (IGR)</label>
+                        </div>
+                        <div class="form-group">
+                            <label for="igr-alpha">ALPHA_SCALE (Viscosity Magnitude)</label>
+                            <input type="number" id="igr-alpha" step="0.1" value="0.5">
+                        </div>
+                        <div class="form-group">
+                            <label for="igr-grad-type">IGR Gradient Formulation</label>
+                            <select id="igr-grad-type">
+                                <option value="LOCAL">LOCAL (Interior stencil)</option>
+                                <option value="CORRECTED">CORRECTED (BR2 interface correction)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="igr-type">Solver Equation Mode</label>
+                            <select id="igr-type">
+                                <option value="ELLIPTIC">ELLIPTIC (Thomas ADI smooth)</option>
+                                <option value="PARABOLIC">PARABOLIC (Explicit sub-step wave)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="igr-tau-r">IGR_TAU_R (Relaxation time)</label>
+                            <input type="number" id="igr-tau-r" step="0.01" value="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label for="igr-sub-iters">IGR_SUB_ITERS (Parabolic steps)</label>
+                            <input type="number" id="igr-sub-iters" min="1" step="1" value="1">
+                        </div>
+                    </div>
+
+                    <!-- Limiters Tab -->
+                    <div class="tab-pane" id="tab-stabilization">
+                        <div class="form-group checkbox-group">
+                            <input type="checkbox" id="lim-pos-enable">
+                            <label for="lim-pos-enable">Enable Zhang-Shu Positivity Limiter</label>
+                        </div>
+                        <div class="form-group">
+                            <label for="lim-pos-eps">Positivity Cutoff Threshold (eps)</label>
+                            <input type="number" id="lim-pos-eps" step="1e-12" value="1e-10">
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <input type="checkbox" id="lim-entropy-enable">
+                            <label for="lim-entropy-enable">Enable High-Order Entropy Limiter</label>
+                        </div>
+                    </div>
+
+                    <!-- Immersed Boundary Tab -->
+                    <div class="tab-pane" id="tab-ib">
+                        <div class="form-group checkbox-group">
+                            <input type="checkbox" id="ib-enable">
+                            <label for="ib-enable">Enable Immersed Boundary Method</label>
+                        </div>
+                        <div class="form-group">
+                            <label for="ib-method">IB Scheme</label>
+                            <select id="ib-method">
+                                <option value="SBM">SBM (Shifted Boundary Method)</option>
+                                <option value="VPM_ANALYTICAL">VPM_ANALYTICAL (Volume Penalization)</option>
+                                <option value="VPM_EXPLICIT">VPM_EXPLICIT</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="ib-shape">Solid Obstacle Geometry</label>
+                            <select id="ib-shape">
+                                <option value="CIRCLE">CIRCLE (Cylinder)</option>
+                                <option value="NACA">NACA Airfoil</option>
+                                <option value="MULTI">MULTI (Quads & Curves)</option>
+                            </select>
+                        </div>
+                        
+                        <!-- SBM Specific Options -->
+                        <fieldset id="field-sbm-opts">
+                            <legend>SBM (Shifted Boundary) Options</legend>
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" id="ib-sbm-diag">
+                                <label for="ib-sbm-diag">Enable SBM Diagnostics (sbm_diagnostics.csv)</label>
+                            </div>
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" id="ib-enable-3c">
+                                <label for="ib-enable-3c">Enable Colombo Constraint 3.c (SBM face overlaps)</label>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group half">
+                                    <label for="ib-dl-scale">IB_DL_SCALE (Donor Interval Scale)</label>
+                                    <input type="number" id="ib-dl-scale" step="0.1" value="1.0">
+                                </div>
+                                <div class="form-group half">
+                                    <label for="ib-l-scale">IB_L_SCALE (Donor Offset Scale)</label>
+                                    <input type="number" id="ib-l-scale" step="0.1" value="1.0">
+                                </div>
+                            </div>
+                        </fieldset>
+
+                        <!-- VPM Specific Options -->
+                        <fieldset id="field-vpm-opts" style="display:none;">
+                            <legend>VPM (Volume Penalization) Options</legend>
+                            <div class="form-group">
+                                <label for="ib-pen-eta">IB_PENALIZATION_ETA (Permeability)</label>
+                                <input type="number" id="ib-pen-eta" step="1e-8" value="1e-7">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group half">
+                                    <label for="ib-vel-x">IB_VELOCITY_X</label>
+                                    <input type="number" id="ib-vel-x" step="0.1" value="0.0">
+                                </div>
+                                <div class="form-group half">
+                                    <label for="ib-vel-y">IB_VELOCITY_Y</label>
+                                    <input type="number" id="ib-vel-y" step="0.1" value="0.0">
+                                </div>
+                            </div>
+                        </fieldset>
+
+                        <div class="form-group checkbox-group">
+                            <input type="checkbox" id="ib-sharp">
+                            <label for="ib-sharp">Use Sharp Mask (SBM Diagnostic Grid)</label>
+                        </div>
+                        <div class="form-group">
+                            <label for="ib-smooth-width">Regularized Heaviside half-width (dx units)</label>
+                            <input type="number" id="ib-smooth-width" step="0.1" value="1.5">
+                        </div>
+                        <fieldset id="field-circle-opts">
+                            <legend>Cylinder Parameters</legend>
+                            <div class="form-row">
+                                <div class="form-group third">
+                                    <label for="ib-center-x">Center X</label>
+                                    <input type="number" id="ib-center-x" step="0.05" value="0.0">
+                                </div>
+                                <div class="form-group third">
+                                    <label for="ib-center-y">Center Y</label>
+                                    <input type="number" id="ib-center-y" step="0.05" value="0.0">
+                                </div>
+                                <div class="form-group third">
+                                    <label for="ib-radius">Radius (R)</label>
+                                    <input type="number" id="ib-radius" step="0.01" min="0.001" value="0.5">
+                                </div>
+                            </div>
+                        </fieldset>
+                        <fieldset id="field-naca-opts" style="display:none;">
+                            <legend>NACA Airfoil Parameters</legend>
+                            <div class="form-row">
+                                <div class="form-group third">
+                                    <label for="ib-naca-code">NACA Code</label>
+                                    <input type="text" id="ib-naca-code" maxlength="4" value="0012">
+                                </div>
+                                <div class="form-group third">
+                                    <label for="ib-aoa">AOA (deg)</label>
+                                    <input type="number" id="ib-aoa" step="0.5" value="0.0">
+                                </div>
+                                <div class="form-group third">
+                                    <label for="ib-chord">Chord Length</label>
+                                    <input type="number" id="ib-chord" step="0.05" value="1.0">
+                                </div>
+                            </div>
+                        </fieldset>
+                        <fieldset id="field-multi-opts" style="display:none;">
+                            <legend>MULTI Geometry Options</legend>
+                            <div class="form-group">
+                                <label for="ib-q-time-map">IB_Q_TIME_MAP (Piecewise linear t_0:q_0 t_1:q_1 ...)</label>
+                                <input type="text" id="ib-q-time-map" value="0.0:0.0">
+                            </div>
+                            
+                            <div class="multi-section" style="margin-top: 10px;">
+                                <div class="probes-header">
+                                    <h4>Quadrilaterals</h4>
+                                    <button type="button" id="btn-add-quad" class="action-btn-sm">+ Add Quad</button>
+                                </div>
+                                <div id="multi-quads-list">
+                                    <!-- Dynamic list of quads -->
+                                </div>
+                            </div>
+
+                            <div class="multi-section" style="margin-top: 15px;">
+                                <div class="probes-header">
+                                    <h4>Curves / Polys</h4>
+                                    <button type="button" id="btn-add-poly" class="action-btn-sm">+ Add Curve</button>
+                                </div>
+                                <div id="multi-polys-list" class="probes-table-container">
+                                    <table class="probes-table" style="font-size: 0.75rem;">
+                                        <thead>
+                                            <tr>
+                                                <th>Dir</th>
+                                                <th>Coeffs q=0 (a,b,c)</th>
+                                                <th>Coeffs q=1 (a,b,c)</th>
+                                                <th>Side</th>
+                                                <th>Act</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="multi-polys-body">
+                                            <!-- Dynamic curves list -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </fieldset>
+                        <fieldset>
+                            <legend>Boundary Values & Penalization</legend>
+                            <div class="form-group">
+                                <label for="ib-thermal">Solid Thermal Condition</label>
+                                <select id="ib-thermal">
+                                    <option value="ADIABATIC">ADIABATIC (Zero normal gradient)</option>
+                                    <option value="ISOTHERMAL">ISOTHERMAL (Enforced Temp)</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="group-ib-temp">
+                                <label for="ib-temperature">Target Temperature</label>
+                                <input type="number" id="ib-temperature" step="0.1" value="1.0">
+                            </div>
+                        </fieldset>
+                    </div>
+
+                    <!-- I/O Tab -->
+                    <div class="tab-pane" id="tab-io">
+                        <div class="form-group">
+                            <label for="io-output-interval">OUTPUT_INTERVAL (Full snap .vtm)</label>
+                            <input type="number" id="io-output-interval" step="0.005" value="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label for="io-restart-interval">RESTART_INTERVAL (State checkpoint)</label>
+                            <input type="number" id="io-restart-interval" step="0.01" value="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label for="io-restart-file">RESTART_FILE (Path to resume from)</label>
+                            <input type="text" id="io-restart-file" value="">
+                        </div>
+                        <div class="form-group">
+                            <label for="io-restart-time">RESTART_TIME (Corresponding physical time)</label>
+                            <input type="number" id="io-restart-time" step="0.01" value="0.0">
+                        </div>
+                    </div>
+
+                    <!-- Probes Tab -->
+                    <div class="tab-pane" id="tab-probes">
+                        <div class="probes-header">
+                            <h3>Point Probes</h3>
+                            <button id="btn-add-probe-form" class="action-btn-sm">+ Add Custom</button>
+                        </div>
+                        <div class="probes-table-container">
+                            <table class="probes-table" id="probes-list-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>X Coord</th>
+                                        <th>Y Coord</th>
+                                        <th>Variable</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="probes-list-body">
+                                    <!-- Dynamic content -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Bottom Panel: Execution Log & Plots -->
+        <footer class="bottom-panel">
+            <div class="bottom-tabs-header">
+                <button class="bottom-tab-btn active" data-btab="terminal">Execution Terminal</button>
+                <button class="bottom-tab-btn" data-btab="residuals">Residual History</button>
+                <button class="bottom-tab-btn" data-btab="probes">Probes History</button>
+                <div class="simulation-actions">
+                    <button id="btn-run" class="run-btn">Run Solver</button>
+                    <button id="btn-restart" class="restart-btn">Restart</button>
+                    <button id="btn-clean" class="clean-btn">Clean Restart</button>
+                    <button id="btn-clean-only" class="clean-only-btn">Clean Outputs</button>
+                    <button id="btn-stop" class="stop-btn disabled" disabled>Stop Simulation</button>
+                </div>
+            </div>
+            <div class="bottom-tabs-content">
+                <!-- Live Console Logger -->
+                <div class="bottom-tab-pane active" id="btab-terminal">
+                    <pre class="terminal-view" id="terminal-log">Idle. Make changes to configurations, save, and click "Run Solver" to start the simulation.</pre>
+                </div>
+                <!-- Residual Plotter -->
+                <div class="bottom-tab-pane" id="btab-residuals">
+                    <canvas id="residuals-chart"></canvas>
+                </div>
+                <!-- Probes Plotter -->
+                <div class="bottom-tab-pane" id="btab-probes">
+                    <canvas id="probes-chart"></canvas>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Modals and Popups -->
+    <!-- Edit Block Modal -->
+    <div class="modal" id="modal-edit-block">
+        <div class="modal-content">
+            <h3 id="eb-modal-title">Edit Block Settings</h3>
+            <div class="form-group">
+                <label for="eb-nx">Number of Elements in X (N_ELEM_X)</label>
+                <input type="number" id="eb-nx" min="1" step="1">
+            </div>
+            <div class="form-group">
+                <label for="eb-ny">Number of Elements in Y (N_ELEM_Y)</label>
+                <input type="number" id="eb-ny" min="1" step="1">
+            </div>
+            <div class="form-row">
+                <div class="form-group half">
+                    <label for="eb-xmin">X_MIN</label>
+                    <input type="number" id="eb-xmin" step="0.1">
+                </div>
+                <div class="form-group half">
+                    <label for="eb-xmax">X_MAX</label>
+                    <input type="number" id="eb-xmax" step="0.1">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group half">
+                    <label for="eb-ymin">Y_MIN</label>
+                    <input type="number" id="eb-ymin" step="0.1">
+                </div>
+                <div class="form-group half">
+                    <label for="eb-ymax">Y_MAX</label>
+                    <input type="number" id="eb-ymax" step="0.1">
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button id="btn-eb-save" class="primary-btn">Save</button>
+                <button id="btn-eb-delete" class="cancel-btn" style="background-color: #e04e4e; color: white; display: none;">Delete</button>
+                <button id="btn-eb-cancel" class="cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Boundary Condition Modal -->
+    <div class="modal" id="modal-edit-bc">
+        <div class="modal-content">
+            <h3>Edit Boundary Condition</h3>
+            <p id="bc-title-desc">Block 0 Face Left</p>
+            <div class="form-group">
+                <label for="bc-type-select">Boundary Condition Type</label>
+                <select id="bc-type-select">
+                    <option value="TRANSMISSIVE">TRANSMISSIVE (Outflow Copy)</option>
+                    <option value="WALL">WALL (Slip Reflective)</option>
+                    <option value="WALL_NOSLIP">WALL_NOSLIP (Viscous Adiabatic)</option>
+                    <option value="INFLOW_SUPERSONIC">INFLOW_SUPERSONIC (rho:u:v:p)</option>
+                    <option value="CHARACTERISTIC">CHARACTERISTIC (Riemann Invariant Reference)</option>
+                    <option value="STATIC_PRESSURE">STATIC_PRESSURE (Backpressure P)</option>
+                    <option value="BLOCK_CONNECT">CONNECT TO ANOTHER BLOCK</option>
+                </select>
+            </div>
+            
+            <div id="bc-opts-state" class="form-group" style="display:none;">
+                <label for="bc-state-input">State Configuration (format: rho:u:v:p or Pt or value)</label>
+                <input type="text" id="bc-state-input" value="1.0:5.0:0.0:0.75">
+            </div>
+
+            <div id="bc-opts-connect" class="form-group" style="display:none;">
+                <div class="form-row">
+                    <div class="form-group half">
+                        <label for="bc-connect-block">Target Block ID</label>
+                        <input type="number" id="bc-connect-block" min="0" step="1" value="0">
+                    </div>
+                    <div class="form-group half">
+                        <label for="bc-connect-face">Target Face</label>
+                        <select id="bc-connect-face">
+                            <option value="L">Left (L)</option>
+                            <option value="R">Right (R)</option>
+                            <option value="B">Bottom (B)</option>
+                            <option value="T">Top (T)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-buttons">
+                <button id="btn-bc-save" class="primary-btn">Save</button>
+                <button id="btn-bc-cancel" class="cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contour Options Modal -->
+    <div class="modal" id="modal-contour-settings">
+        <div class="modal-content" style="width: 320px;">
+            <h3>Contour Settings</h3>
+            <div class="form-group">
+                <label for="contour-cmap">Colormap</label>
+                <select id="contour-cmap">
+                    <option value="viridis">Viridis (Default)</option>
+                    <option value="jet">Jet (Rainbow)</option>
+                    <option value="plasma">Plasma</option>
+                    <option value="coolwarm">Cool-Warm</option>
+                    <option value="rainbow">Rainbow</option>
+                    <option value="gray">Grayscale</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="contour-levels">Levels (Color Bands)</label>
+                <input type="number" id="contour-levels" min="5" max="200" step="5" value="50">
+            </div>
+            <div class="form-group">
+                <label>Value Range</label>
+                <div class="checkbox-group" style="margin-top: 5px;">
+                    <input type="checkbox" id="contour-range-auto" checked>
+                    <label for="contour-range-auto">Auto-scale bounds</label>
+                </div>
+            </div>
+            <div class="form-row" id="contour-manual-range-group" style="display:none;">
+                <div class="form-group half">
+                    <label for="contour-vmin">Min Value (vmin)</label>
+                    <input type="number" id="contour-vmin" step="any" value="0.0">
+                </div>
+                <div class="form-group half">
+                    <label for="contour-vmax">Max Value (vmax)</label>
+                    <input type="number" id="contour-vmax" step="any" value="1.0">
+                </div>
+            </div>
+            <div class="form-group checkbox-group">
+                <input type="checkbox" id="contour-show-grid">
+                <label for="contour-show-grid">Show mesh grid overlay</label>
+            </div>
+            <div class="modal-buttons">
+                <button id="btn-contour-save" class="primary-btn">Apply & Save</button>
+                <button id="btn-contour-cancel" class="cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Validation Error Popup -->
+    <div class="validation-toast" id="validation-toast">
+        <span class="close-toast" onclick="document.getElementById('validation-toast').classList.remove('show')">&times;</span>
+        <h4 id="toast-title">Configuration Error</h4>
+        <p id="validation-message">An error was detected during grid analysis.</p>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

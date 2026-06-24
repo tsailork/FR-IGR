@@ -1,0 +1,1020 @@
+=== ERROR 2026-06-23 21:36:13 ===
+Request: GET /api/contour_image?var=press&vtm=plot_3.vtm&mtime=1782264971.5775847
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=press&vtm=plot_3.vtm&mtime=1782264971.5775847: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:36:32 ===
+Request: GET /api/contour_image?var=press&vtm=plot_8.vtm&mtime=1782264989.1557066
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=press&vtm=plot_8.vtm&mtime=1782264989.1557066: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:36:32 ===
+Request: GET /api/contour_image?var=press&vtm=plot_8.vtm&mtime=1782264989.1557066
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=press&vtm=plot_8.vtm&mtime=1782264989.1557066: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:36:34 ===
+Request: GET /api/contour_image?var=press&vtm=plot_9.vtm&mtime=1782264991.8522215
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=press&vtm=plot_9.vtm&mtime=1782264991.8522215: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:36:35 ===
+Request: GET /api/contour_image?var=press&vtm=plot_9.vtm&mtime=1782264991.8522215
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=press&vtm=plot_9.vtm&mtime=1782264991.8522215: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:36:36 ===
+Request: GET /api/contour_image?var=press&vtm=plot_9.vtm&mtime=1782264991.8522215
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=press&vtm=plot_9.vtm&mtime=1782264991.8522215: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:36:37 ===
+Request: GET /api/contour_image?var=press&vtm=plot_10.vtm&mtime=1782264996.1966183
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=press&vtm=plot_10.vtm&mtime=1782264996.1966183: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:36:38 ===
+Request: GET /api/contour_image?var=press&vtm=plot_10.vtm&mtime=1782264996.1966183
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=press&vtm=plot_10.vtm&mtime=1782264996.1966183: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:36:39 ===
+Request: GET /api/contour_image?var=press&vtm=plot_10.vtm&mtime=1782264996.1966183
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=press&vtm=plot_10.vtm&mtime=1782264996.1966183: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:36:40 ===
+Request: GET /api/contour_image?var=press&vtm=plot_11.vtm&mtime=1782264998.8922727
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=press&vtm=plot_11.vtm&mtime=1782264998.8922727: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:37:26 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_13.vtm&mtime=1782265042.8457568
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_13.vtm&mtime=1782265042.8457568: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:37:27 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_13.vtm&mtime=1782265042.8457568
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_13.vtm&mtime=1782265042.8457568: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:37:28 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_13.vtm&mtime=1782265042.8457568
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_13.vtm&mtime=1782265042.8457568: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:37:28 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_12.vtm&mtime=1782265042.8457568
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_12.vtm&mtime=1782265042.8457568: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:37:29 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_11.vtm&mtime=1782265042.8457568
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_11.vtm&mtime=1782265042.8457568: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:37:30 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_10.vtm&mtime=1782265042.8457568
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_10.vtm&mtime=1782265042.8457568: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:37:32 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_9.vtm&mtime=1782265042.8457568
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_9.vtm&mtime=1782265042.8457568: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:37:33 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_8.vtm&mtime=1782265042.8457568
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_8.vtm&mtime=1782265042.8457568: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:37:34 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_6.vtm&mtime=1782265042.8457568
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_6.vtm&mtime=1782265042.8457568: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:37:35 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_5.vtm&mtime=1782265042.8457568
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_5.vtm&mtime=1782265042.8457568: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:37:37 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_7.vtm&mtime=1782265042.8457568
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_7.vtm&mtime=1782265042.8457568: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:37:38 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_4.vtm&mtime=1782265042.8457568
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_4.vtm&mtime=1782265042.8457568: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:37:38 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_3.vtm&mtime=1782265042.8457568
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_3.vtm&mtime=1782265042.8457568: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:37:39 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_2.vtm&mtime=1782265042.8457568
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_2.vtm&mtime=1782265042.8457568: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:37:52 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_22.vtm&mtime=1782265042.8457568
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_22.vtm&mtime=1782265042.8457568: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:37:53 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_23.vtm&mtime=1782265042.8457568
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_23.vtm&mtime=1782265042.8457568: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:37:54 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_24.vtm&mtime=1782265045.852002
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_24.vtm&mtime=1782265045.852002: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:37:55 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_24.vtm&mtime=1782265045.852002
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_24.vtm&mtime=1782265045.852002: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:37:56 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_25.vtm&mtime=1782265048.5101514
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_25.vtm&mtime=1782265048.5101514: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:37:57 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_27.vtm&mtime=1782265055.2982152
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_27.vtm&mtime=1782265055.2982152: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:37:58 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_30.vtm&mtime=1782265065.7640474
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_30.vtm&mtime=1782265065.7640474: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:37:59 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_28.vtm&mtime=1782265059.200143
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_28.vtm&mtime=1782265059.200143: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:00 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_26.vtm&mtime=1782265052.5490224
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_26.vtm&mtime=1782265052.5490224: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:01 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_31.vtm&mtime=1782265068.5583217
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_31.vtm&mtime=1782265068.5583217: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:03 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_29.vtm&mtime=1782265061.9875484
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_29.vtm&mtime=1782265061.9875484: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:17 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_32.vtm&mtime=1782265072.5372283
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_32.vtm&mtime=1782265072.5372283: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:18 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_33.vtm&mtime=1782265075.093618
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_33.vtm&mtime=1782265075.093618: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:19 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_34.vtm&mtime=1782265079.1682262
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_34.vtm&mtime=1782265079.1682262: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:21 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_35.vtm&mtime=1782265081.9185326
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_35.vtm&mtime=1782265081.9185326: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:21 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_36.vtm&mtime=1782265085.8773785
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_36.vtm&mtime=1782265085.8773785: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:23 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_37.vtm&mtime=1782265088.6721985
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_37.vtm&mtime=1782265088.6721985: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:24 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_38.vtm&mtime=1782265092.6576855
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_38.vtm&mtime=1782265092.6576855: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:24 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_36.vtm&mtime=1782265085.8773785
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_36.vtm&mtime=1782265085.8773785: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:24 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_35.vtm&mtime=1782265081.9185326
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_35.vtm&mtime=1782265081.9185326: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:24 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_33.vtm&mtime=1782265075.093618
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_33.vtm&mtime=1782265075.093618: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:24 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_38.vtm&mtime=1782265092.6576855
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_38.vtm&mtime=1782265092.6576855: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:25 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_39.vtm&mtime=1782265095.3267558
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_39.vtm&mtime=1782265095.3267558: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:25 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_34.vtm&mtime=1782265079.1682262
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_34.vtm&mtime=1782265079.1682262: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:25 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_35.vtm&mtime=1782265081.9185326
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_35.vtm&mtime=1782265081.9185326: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:26 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_35.vtm&mtime=1782265081.9185326
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_35.vtm&mtime=1782265081.9185326: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:26 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_35.vtm&mtime=1782265081.9185326
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_35.vtm&mtime=1782265081.9185326: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:26 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_36.vtm&mtime=1782265085.8773785
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_36.vtm&mtime=1782265085.8773785: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:26 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_36.vtm&mtime=1782265085.8773785
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_36.vtm&mtime=1782265085.8773785: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:26 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_36.vtm&mtime=1782265085.8773785
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_36.vtm&mtime=1782265085.8773785: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:26 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_36.vtm&mtime=1782265085.8773785
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_36.vtm&mtime=1782265085.8773785: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:26 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_37.vtm&mtime=1782265088.6721985
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_37.vtm&mtime=1782265088.6721985: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:26 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_37.vtm&mtime=1782265088.6721985
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_37.vtm&mtime=1782265088.6721985: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:27 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_38.vtm&mtime=1782265092.6576855
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_38.vtm&mtime=1782265092.6576855: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:28 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_40.vtm&mtime=1782265099.3473034
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_40.vtm&mtime=1782265099.3473034: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:29 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_41.vtm&mtime=1782265102.2167244
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_41.vtm&mtime=1782265102.2167244: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:30 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_42.vtm&mtime=1782265106.2325253
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_42.vtm&mtime=1782265106.2325253: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:38 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_43.vtm&mtime=1782265108.907715
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_43.vtm&mtime=1782265108.907715: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:38 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_43.vtm&mtime=1782265108.907715
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_43.vtm&mtime=1782265108.907715: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:39 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_44.vtm&mtime=1782265112.7835672
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_44.vtm&mtime=1782265112.7835672: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:38:39 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_43.vtm&mtime=1782265108.907715
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_43.vtm&mtime=1782265108.907715: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:39:02 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_0.vtm&mtime=1782265142.6127563
+Error: HTTP 404: Contour data not found or plot failed
+=========================
+
+=== ERROR 2026-06-23 21:39:09 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_1.vtm&mtime=1782265148.8155458
+Error: HTTP 404: Contour data not found or plot failed
+=========================
+
+=== ERROR 2026-06-23 21:39:17 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_2.vtm&mtime=1782265156.2756016
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=mach&vtm=plot_2.vtm&mtime=1782265156.2756016: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+
+=== ERROR 2026-06-23 21:39:22 ===
+Request: GET /api/contour_image?var=mach&vtm=plot_3.vtm&mtime=1782265161.4488525
+Error: HTTP 404: Contour data not found or plot failed
+=========================
+
+=== ERROR 2026-06-23 21:39:59 ===
+Request: GET /api/contour_image?var=grid&vtm=plot_7.vtm&mtime=1782265042.8457568
+Error: HTTP 500: Internal Server Error in GET /api/contour_image?var=grid&vtm=plot_7.vtm&mtime=1782265042.8457568: [Errno 32] Broken pipe
+Traceback:
+Traceback (most recent call last):
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 679, in do_GET
+    self._do_GET()
+  File "/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR/gui.py", line 865, in _do_GET
+    self.wfile.write(png_data)
+  File "/usr/lib/python3.10/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+
+=========================
+

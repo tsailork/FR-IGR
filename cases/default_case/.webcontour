@@ -1,0 +1,26 @@
+{
+    "rho": {
+        "cmap": "jet",
+        "levels": 50,
+        "range_mode": "auto",
+        "vmin": 0,
+        "vmax": 1,
+        "show_grid": false
+    },
+    "mach": {
+        "cmap": "plasma",
+        "levels": 50,
+        "range_mode": "manual",
+        "vmin": 0,
+        "vmax": 1.5,
+        "show_grid": false
+    },
+    "press": {
+        "cmap": "jet",
+        "levels": 50,
+        "range_mode": "manual",
+        "vmin": 0,
+        "vmax": 1.2,
+        "show_grid": false
+    }
+}
