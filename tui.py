@@ -156,34 +156,66 @@ def find_latest_checkpoint_from_pvd():
     return latest_file, latest_time
 
 def update_restart_in_inputs_dat(restart_file, restart_time):
+    """In-place updates RESTART_FILE and RESTART_TIME parameters inside inputs.dat under [IO] section."""
     if not os.path.exists("inputs.dat"):
         return False
     
     try:
-        lines = []
+        with open("inputs.dat", "r") as f:
+            lines = f.readlines()
+            
+        new_lines = []
+        current_section = None
         file_updated = False
         time_updated = False
         
-        with open("inputs.dat", "r") as f:
-            for line in f:
-                # Keep comments and whitespace intact, check prefix
-                stripped = line.strip()
-                if stripped.startswith("RESTART_FILE"):
-                    lines.append(f"RESTART_FILE = {restart_file}\n")
-                    file_updated = True
-                elif stripped.startswith("RESTART_TIME"):
-                    lines.append(f"RESTART_TIME = {restart_time}\n")
-                    time_updated = True
-                else:
-                    lines.append(line)
+        # Scan and update or filter existing keys
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith("[") and stripped.endswith("]"):
+                current_section = stripped[1:-1].strip()
+                
+            if current_section == "IO":
+                if "=" in stripped:
+                    key = stripped.split("=")[0].strip()
+                    if key == "RESTART_FILE":
+                        new_lines.append(f"RESTART_FILE = {restart_file}\n")
+                        file_updated = True
+                        continue
+                    elif key == "RESTART_TIME":
+                        new_lines.append(f"RESTART_TIME = {restart_time}\n")
+                        time_updated = True
+                        continue
+            
+            # Remove any stray restart variables outside of [IO] to prevent parsing bugs
+            if "=" in stripped:
+                key = stripped.split("=")[0].strip()
+                if key in ["RESTART_FILE", "RESTART_TIME"] and current_section != "IO":
+                    continue
                     
-        if not file_updated:
-            lines.append(f"RESTART_FILE = {restart_file}\n")
-        if not time_updated:
-            lines.append(f"RESTART_TIME = {restart_time}\n")
+            new_lines.append(line)
+            
+        # If any variables were missing from [IO], inject them into it
+        if not file_updated or not time_updated:
+            final_lines = []
+            current_section = None
+            inserted = False
+            for line in new_lines:
+                final_lines.append(line)
+                stripped = line.strip()
+                if stripped.startswith("[") and stripped.endswith("]"):
+                    current_section = stripped[1:-1].strip()
+                
+                if current_section == "IO" and not inserted:
+                    if not file_updated:
+                        final_lines.append(f"RESTART_FILE = {restart_file}\n")
+                    if not time_updated:
+                        final_lines.append(f"RESTART_TIME = {restart_time}\n")
+                    inserted = True
+            new_lines = final_lines
             
         with open("inputs.dat", "w") as f:
-            f.writelines(lines)
+            f.writelines(new_lines)
         return True
     except Exception:
         return False
