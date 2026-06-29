@@ -454,9 +454,17 @@ void compute_sbm_state(const Solver& solver, const SurrogateFluxPoint* sfp, doub
     // Evaluate the 2D solution polynomial at a donor point (dp.xi, dp.eta) using
     // the background element's solution DOFs.
     auto evaluate_solution = [&](const DonorPoint& dp, double u_out[4]) {
-        const Block& b = solver.blocks[dp.b_id];
         const int P = solver.p.P_DEG;
         const int N = solver.p.N_PTS;
+        const Block* b_ptr = nullptr;
+        for (const auto& bk : solver.blocks) {
+            if (bk.id == dp.b_id) { b_ptr = &bk; break; }
+        }
+        if (!b_ptr) throw std::runtime_error("Block not found for donor point");
+        double x_phys = b_ptr->x_min + dp.ex * b_ptr->dx + 0.5 * (dp.xi + 1.0) * b_ptr->dx;
+        double y_phys = b_ptr->y_min + dp.ey * b_ptr->dy + 0.5 * (dp.eta + 1.0) * b_ptr->dy;
+        const Cell* cell = solver.find_leaf_cell(dp.b_id, x_phys, y_phys);
+        if (!cell) throw std::runtime_error("Leaf cell not found for donor point");
         std::vector<double> L_xi(N), L_eta(N);
         compute_lagrange_weights(P, dp.xi, solver.basis.z, L_xi);
         compute_lagrange_weights(P, dp.eta, solver.basis.z, L_eta);
@@ -466,7 +474,7 @@ void compute_sbm_state(const Solver& solver, const SurrogateFluxPoint* sfp, doub
             for (int ix = 0; ix < N; ++ix) {
                 double w = L_xi[ix] * L_eta[iy];
                 for (int v = 0; v < 4; ++v)
-                    u_out[v] += b.U(v, dp.ey, dp.ex, iy, ix) * w;
+                    u_out[v] += cell->get_U(v, iy, ix, N) * w;
             }
     };
     

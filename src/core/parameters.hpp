@@ -89,6 +89,8 @@ struct Parameters {
     double PR           = 0.72;       ///< Prandtl number for viscous thermal transport.
     double MACH_REF     = 0.1;        ///< Reference Mach number for non-dimensionalization.
     double NS_BR2_ETA   = 1.0;        ///< Penalty parameter for viscous BR2 fluxes.
+    bool   ENABLE_SUTHERLAND = false; ///< Enable temperature-dependent viscosity via Sutherland's Law.
+    double SUTH_C       = 0.404;      ///< Non-dimensional Sutherland constant Sc = S_suth / T_ref.
 
     // -------------------------------------------------------------------------
     // IGR (Isotropic Gradient Regularisation)
@@ -100,6 +102,11 @@ struct Parameters {
     double IGR_TAU_R          = 0.1;         ///< Relaxation timescale factor for Parabolic IGR.
     double IGR_BR2_ETA        = 1.0;         ///< BR2 penalty coefficient for Parabolic IGR.
     int    IGR_SUB_ITERS      = 1;           ///< Forward-Euler sub-iterations per flow step under Parabolic IGR.
+    bool   USE_DUCROS_SWITCH  = false;       ///< Enable Ducros switch to zero out artificial viscosity in shear layers.
+    bool   USE_PRESSURE_SENSOR = false;      ///< Use local pressure-jump sensor instead of density-gradient.
+    bool   USE_MOMENTUM_DIV   = false;       ///< Use divergence of momentum for shock sensor.
+    bool   USE_PRESSURE_SOURCE_CAP = true;   ///< Cap the sensor source term by local pressure.
+    double SOURCE_CAP_COEFF   = 1.0;         ///< Tuning coefficient C for pressure-bounded source capping.
 
     // -------------------------------------------------------------------------
     // Time Stepping & I/O
@@ -113,6 +120,8 @@ struct Parameters {
     double RESIDUAL_INTERVAL = 0.001; ///< Output time interval for tracking global residual norms.
     double PROBE_INTERVAL    = 0.001; ///< Output time interval for recording diagnostic point probe histories.
     double PRINT_INTERVAL    = 0.01;  ///< Terminal console logging frequency.
+    bool   ENABLE_MULTIRATE  = false; ///< Enable time-accurate multirate sub-cycling.
+    int    MAX_MULTIRATE_LEVEL = 3;   ///< Maximum power-of-two level for multirate sub-cycling.
 
     // -------------------------------------------------------------------------
     // Stabilisation Limiters
@@ -141,6 +150,7 @@ struct Parameters {
     double      IB_VELOCITY_Y       = 0.0;        ///< Immersed solid velocity along Y.
     std::string IB_THERMAL_TYPE     = "ADIABATIC"; ///< IB thermal boundary type ("ADIABATIC" or "ISOTHERMAL").
     double      IB_TEMPERATURE      = 1.0;        ///< Solid wall temperature target for isothermal.
+    double      IB_CHORD            = 1.0;        ///< Reference chord length for Lift/Drag force coefficients.
     bool        IB_SHARP            = false;      ///< Use sharp solid mask (true) or smoothed Heaviside mask (false).
     double      IB_SMOOTH_WIDTH     = 1.5;        ///< Smooth interface thickness factor (in units of grid spacing).
     std::vector<ImmersedBoundary::QuadShape> ib_quads; ///< User-defined static/dynamic quadrilaterals.
@@ -149,6 +159,26 @@ struct Parameters {
     bool ib_is_dynamic = false; ///< True if any geometry is moving / dynamic.
     double evaluate_ib_q(double t) const; ///< Evaluates dynamic time parameter q(t) by interpolating time map.
 
+
+    // -------------------------------------------------------------------------
+    // Tree Decomposition (AMR)
+    // -------------------------------------------------------------------------
+    struct RefinementZone {
+        std::string shape = "";
+        double center_x = 0.0;
+        double center_y = 0.0;
+        double radius = 0.0;
+        double width = 0.0;
+        double height = 0.0;
+        std::string naca_code = "0012";
+        double aoa = 0.0;
+        int target_level = 0;
+        std::vector<double> poly_x;
+        std::vector<double> poly_y;
+    };
+    int WALL_REFINEMENT_LEVEL = 0;    ///< Target refinement level for wall cells.
+    int WALL_REFINEMENT_CELLS = 0;    ///< Number of cell layers to refine from the wall.
+    std::vector<RefinementZone> refinement_zones; ///< Geometry refinement zones.
 
     // -------------------------------------------------------------------------
     // Restart

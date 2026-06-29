@@ -143,6 +143,89 @@
             <p>
                 Where \(p\) is the local thermodynamic pressure, and \(C\) is a tuning coefficient (typically \(1.0\)). Capping the <em>source</em> term rather than the final viscosity field \(\Sigma\) is mathematically elegant: it allows the Helmholtz operator to naturally diffuse the bounded viscosity ahead of the shock wave, providing the necessary pre-conditioning for numerical stability.
             </p>
+
+            <h2>2D Compressible Navier-Stokes Equations & BR2 Discretization</h2>
+            <p>
+                For viscous simulations, the solver models the 2D compressible Navier-Stokes equations:
+            </p>
+            <p style="text-align: center; margin: 15px 0;">
+                $$\frac{\partial U}{\partial t} + \frac{\partial (F_i - F_v)}{\partial x} + \frac{\partial (G_i - G_v)}{\partial y} = 0$$
+            </p>
+            <p>
+                Where \(U = [\rho, \rho u, \rho v, E]^T\) is the conservative state, \(F_i, G_i\) are the inviscid Euler fluxes, and \(F_v, G_v\) are the viscous fluxes. The viscous fluxes are defined by:
+            </p>
+            <p style="text-align: center; margin: 15px 0;">
+                $$F_v = \begin{bmatrix} 0 \\ \tau_{xx} \\ \tau_{xy} \\ u\tau_{xx} + v\tau_{xy} - q_x \end{bmatrix}, \quad G_v = \begin{bmatrix} 0 \\ \tau_{yx} \\ \tau_{yy} \\ u\tau_{yx} + v\tau_{yy} - q_y \end{bmatrix}$$
+            </p>
+            <p>
+                The viscous stress tensor components and heat flux are computed using:
+            </p>
+            <p style="text-align: center; margin: 15px 0;">
+                $$\tau_{xx} = \mu \left( \frac{4}{3} \frac{\partial u}{\partial x} - \frac{2}{3} \frac{\partial v}{\partial y} \right), \quad \tau_{yy} = \mu \left( \frac{4}{3} \frac{\partial v}{\partial y} - \frac{2}{3} \frac{\partial u}{\partial x} \right), \quad \tau_{xy} = \tau_{yx} = \mu \left( \frac{\partial u}{\partial y} + \frac{\partial v}{\partial x} \right)$$
+            </p>
+            <p style="text-align: center; margin: 15px 0;">
+                $$q_x = -\kappa \frac{\partial T}{\partial x}, \quad q_y = -\kappa \frac{\partial T}{\partial y}$$
+            </p>
+            
+            <h3>Bassi-Rebay 2 (BR2) Formulation</h3>
+            <p>
+                Discretizing second-order viscous operators in the Flux Reconstruction framework is performed via the <strong>Bassi-Rebay 2 (BR2)</strong> scheme. This two-phase method proceeds as follows:
+            </p>
+            <ol>
+                <li><strong>Gradient Computation:</strong> Compute local gradients \(\nabla U\) at solution points, adding local correction terms at cell interfaces to account for discontinuous state jumps across element boundaries.</li>
+                <li><strong>Flux Divergence:</strong> Evaluate the viscous fluxes \(F_v, G_v\) at solution points using these gradients. At element interfaces, common interface viscous fluxes are evaluated by averaging the left and right states and applying a penalty parameter:
+                    <p style="text-align: center; margin: 15px 0;">
+                        $$F_{v, \text{comm}} = \{F_v\} + \eta_{\text{BR2}} \frac{\mu_{\text{face}}}{h} [U]$$
+                    </p>
+                    Where \(\eta_{\text{BR2}}\) is the penalty coefficient (user-input <code>NS_BR2_ETA</code>), \(h\) is the physical grid spacing, and \([U] = U_{\text{right}} - U_{\text{left}}\) is the state jump.
+                </li>
+            </ol>
+
+            <h3>Sutherland's Law for Temperature-Dependent Viscosity</h3>
+            <p>
+                When temperature-dependent viscosity is enabled (user-input <code>ENABLE_SUTHERLAND = true</code>), the local dynamic viscosity \(\mu(T)\) at each solution node/interface is dynamically computed from the local non-dimensional temperature \(T = p / \rho\):
+            </p>
+            <p style="text-align: center; margin: 15px 0;">
+                $$\mu(T) = \mu_{\text{ref}} \cdot T^{1.5} \frac{1 + S_c}{T + S_c}$$
+            </p>
+            <p>
+                Where \(\mu_{\text{ref}} = 1/\text{Re}\), and \(S_c\) is the non-dimensional Sutherland constant (user-input <code>SUTH_C</code>, default \(0.404\)). The local thermal conductivity is updated as:
+            </p>
+            <p style="text-align: center; margin: 15px 0;">
+                $$\kappa(T) = \frac{\gamma \mu(T)}{(\gamma - 1) \text{Pr}}$$
+            </p>
+            <p>
+                For face penalty evaluations, the face-averaged viscosity \(\mu_{\text{face}}\) is computed using the average of the left and right extrapolated states: \(\mu_{\text{face}} = 0.5(\mu(T_{\text{left}}) + \mu(T_{\text{right}}))\).
+            </p>
+            <p>
+                <strong>Parameters Origin:</strong> Reynolds number (\(\text{Re}\), <code>RE</code>), Prandtl number (\(\text{Pr}\), <code>PR</code>), reference Mach number (\(\text{Mach}_{\text{ref}}\), <code>MACH_REF</code>), BR2 penalty (\(\eta_{\text{BR2}}\), <code>NS_BR2_ETA</code>), Sutherland toggle (<code>ENABLE_SUTHERLAND</code>), and constant (<code>SUTH_C</code>) are all **user-specified parameters** parsed from the <code>[NavierStokes]</code> block in <code>inputs.dat</code>.
+            </p>
+
+            <h2>Time-Accurate Multirate Sub-cycling</h2>
+            <p>
+                In high-order simulations on non-uniform or multi-block grids, the global time step is restricted by the smallest cell size in the domain due to the CFL condition. Traditional explicit solvers update every cell using this globally minimum time step, resulting in high computational waste in coarse-grid regions. To mitigate this, FR-IGR implements <strong>Time-Accurate Multirate Sub-cycling</strong>:
+            </p>
+            <ul>
+                <li><strong>Local Time Step Evaluation:</strong> The solver computes a local stable time step \(\Delta t_{\text{elem}}\) for each individual element based on local wave speeds and cell dimensions.</li>
+                <li><strong>Power-of-Two Level Binning:</strong> Elements are classified into temporal levels based on the ratio of their local step size to the global minimum step size \(\Delta t\):
+                    <p style="text-align: center; margin: 10px 0;">
+                        $$m = \text{clamp}\left( \left\lfloor \log_2 \left( \frac{\Delta t_{\text{elem}}}{\Delta t} \right) \right\rfloor, 0, M \right)$$
+                    </p>
+                    Where \(M\) is the maximum level limit (defined by <code>MAX_MULTIRATE_LEVEL</code>). The local time step for the element is then set to \(2^m \Delta t\).
+                </li>
+                <li><strong>Active vs. Inactive Elements:</strong> An element is marked active if the current time matches its scheduled update: \(\text{time}_{\text{curr}} + \Delta t \ge \text{time}_{\text{elem}} + \Delta t_{\text{elem}}\).
+                    <ul>
+                        <li><em>Active Elements:</em> Advanced at each Runge-Kutta stage using the standard SSP-RK3 update formulas.</li>
+                        <li><em>Inactive Elements:</em> Retain their state at the start of the step, acting as steady boundary states for active neighbors, but accumulate spatial derivatives (\(RHS\)) using RK integration weights:
+                            <p style="text-align: center; margin: 10px 0;">
+                                $$U_{\text{accum}} \leftarrow U_{\text{accum}} + w_k \cdot \Delta t \cdot RHS^k$$
+                            </p>
+                            Where \(w_k = \{ \frac{1}{6}, \frac{1}{6}, \frac{2}{3} \}\) for stages 1, 2, and 3.
+                        </li>
+                    </ul>
+                </li>
+                <li><strong>Synchronization:</strong> At the completion of the full time step, active elements add the accumulated flux contributions (\(U \leftarrow U + U_{\text{accum}}\)), clear the accumulator buffer, and increment their internal clocks, restoring strict conservation.</li>
+            </ul>
         </div>
 
         <!-- Immersed Boundary Methods Tab -->
@@ -193,6 +276,39 @@
                 <li><strong>First-Order Local Accuracy:</strong> Regardless of the polynomial degree \(P\) of the background mesh, the spatial accuracy drops locally to \(\mathcal{O}(h^1)\) in the vicinity of the penalized boundary.</li>
                 <li><strong>Parameter Sensitivity:</strong> Selecting \(\eta\) requires a trade-off. Too large a value allows fluid to physically penetrate the solid, while too small a value can introduce round-off errors and numerical stiffness in multi-physics couplings.</li>
             </ul>
+
+            <h3>Aerodynamic Force Integration</h3>
+            <p>
+                In the Volume Penalization Method, the solid body acts on the fluid via a feedback force density. The aerodynamic drag and lift forces exerted on the solid geometry are obtained by integrating this penalization force over the volume of the solid domain. The local force density components are:
+            </p>
+            <p style="text-align: center; margin: 15px 0;">
+                $$f_x = \frac{\chi}{\eta} \left( \rho u - \rho u_s \right), \quad f_y = \frac{\chi}{\eta} \left( \rho v - \rho v_s \right)$$
+            </p>
+            <p>
+                Where \(\rho u, \rho v\) are the fluid momentum components, \(u_s, v_s\) are the target solid boundary velocities (defined by <code>IB_VELOCITY_X</code> and <code>IB_VELOCITY_Y</code>), \(\chi\) is the solid mask function, and \(\eta\) is the permeability parameter (<code>IB_PENALIZATION_ETA</code>).
+            </p>
+            <p>
+                The total aerodynamic forces are computed by integrating these densities over all computational blocks using high-order Gauss-Legendre quadrature:
+            </p>
+            <p style="text-align: center; margin: 15px 0;">
+                $$F_{\text{drag}} = \sum_{e} \iint f_x \, J \, d\xi d\eta \approx \sum_{e} \sum_{iy} \sum_{ix} f_x(x_i, y_j) \cdot w_{ix} w_{iy} \left( \frac{\Delta x \Delta y}{4} \right)$$
+            </p>
+            <p style="text-align: center; margin: 15px 0;">
+                $$F_{\text{lift}} = \sum_{e} \iint f_y \, J \, d\xi d\eta \approx \sum_{e} \sum_{iy} \sum_{ix} f_y(x_i, y_j) \cdot w_{ix} w_{iy} \left( \frac{\Delta x \Delta y}{4} \right)$$
+            </p>
+            <p>
+                The dimensionless aerodynamic coefficients are then evaluated:
+            </p>
+            <p style="text-align: center; margin: 15px 0;">
+                $$C_d = \frac{F_{\text{drag}}}{q_\infty \cdot c}, \quad C_l = \frac{F_{\text{lift}}}{q_\infty \cdot c}$$
+            </p>
+            <p>
+                Where \(q_\infty = \frac{1}{2} \rho_\infty (u_\infty^2 + v_\infty^2)\) is the freestream dynamic pressure (derived from <code>RHO_INF</code>, <code>U_INF</code>, and <code>V_INF</code>), and \(c\) is the reference chord length (defined by <code>IB_CHORD</code>).
+            </p>
+            <p>
+                <strong>forces.csv Output:</strong> When <code>ENABLE_IB</code> is active and <code>IB_METHOD</code> is set to a VPM variant, the forces are calculated and written to <code>csv_outputs/forces.csv</code> at every <code>RESIDUAL_INTERVAL</code>. The output file uses the following layout:
+            </p>
+            <pre><code>Time, DragForce, LiftForce, Cd, Cl</code></pre>
 
             <h2>2. Shifted Boundary Method (SBM)</h2>
             <p>
@@ -367,7 +483,7 @@ make test-regression</code></pre>
         <div id="testing-coverage" class="tab-pane">
             <h1>Test Coverage</h1>
             <p>
-                The suite comprises 45 isolated test files (27 unit tests and 18 regression tests), validating numerical behavior across thousands of assertions per execution pass.
+                The suite comprises 25 isolated test files (12 unit tests and 13 regression tests) containing 48 distinct test cases, validating numerical behavior across thousands of assertions per execution pass.
             </p>
 
             <h2>Unit Test Coverage</h2>
@@ -386,9 +502,14 @@ make test-regression</code></pre>
                         <td>Exactness of Radau correction endpoints, Gauss-Legendre quadrature weights, and differentiation matrix exactness.</td>
                     </tr>
                     <tr>
-                        <td>Data Structures</td>
-                        <td><code>test_state.cpp</code></td>
-                        <td>1D flat-array indexing, initialization boundaries, and zero-aliasing verification.</td>
+                        <td>Boundary Conditions</td>
+                        <td><code>test_boundary.cpp</code></td>
+                        <td>Boundary Condition ghost state calculation, slip/wall conditions, and static pressure conditions.</td>
+                    </tr>
+                    <tr>
+                        <td>Diagnostics & Probes</td>
+                        <td><code>test_diagnostics.cpp</code></td>
+                        <td>Probe locator, probe interpolation (for all 8 variables: Density, XMomentum, YMomentum, Energy, Pressure, Temperature, Mach, Sigma), and L2 residuals.</td>
                     </tr>
                     <tr>
                         <td>Inviscid Fluxes</td>
@@ -396,19 +517,44 @@ make test-regression</code></pre>
                         <td>X/Y sweep directionality, symmetry of fluxes, and integration of the IGR specific viscosity terms.</td>
                     </tr>
                     <tr>
+                        <td>Immersed Boundary Geometry</td>
+                        <td><code>test_ib_geometry.cpp</code></td>
+                        <td>SDF computations for Circles, NACA profiles, Quadrilaterals, Parabolas; sharp/smooth mask indicators; and SBM normal ray/stencil calculations.</td>
+                    </tr>
+                    <tr>
+                        <td>Initial Conditions</td>
+                        <td><code>test_initial_conditions.cpp</code></td>
+                        <td>Initial state application for specific standard tests like Riemann 2D Configuration 3, Sod shock tube, Couette flow, etc.</td>
+                    </tr>
+                    <tr>
+                        <td>Numerical Limiters</td>
+                        <td><code>test_limiters.cpp</code></td>
+                        <td>Zhang-Shu positivity limiter and Thermodynamic Entropy limiter state preservation and bounds recovery.</td>
+                    </tr>
+                    <tr>
+                        <td>Parameter Parser</td>
+                        <td><code>test_parameters.cpp</code></td>
+                        <td>Default config parameter validation, INI format loading, domain grid parsing, and boundary condition alias mapping (e.g. WALL_SLIP).</td>
+                    </tr>
+                    <tr>
                         <td>Riemann Solvers</td>
                         <td><code>test_riemann.cpp</code></td>
-                        <td>Upwinding behavior, Sod shock tube exactness limits, and maximum wave speed estimates.</td>
+                        <td>Upwinding behavior, Sod shock tube exactness limits, symmetry, and directionality for the Rusanov (LLF) Riemann solver.</td>
+                    </tr>
+                    <tr>
+                        <td>Shock Sensor</td>
+                        <td><code>test_sensor.cpp</code></td>
+                        <td>IGR Shock Sensor evaluation, pressure jump detection, and sensor positivity verification.</td>
+                    </tr>
+                    <tr>
+                        <td>Data Structures</td>
+                        <td><code>test_state.cpp</code></td>
+                        <td>1D flat-array indexing, block state allocations, initialization boundaries, and zero-aliasing verification.</td>
                     </tr>
                     <tr>
                         <td>Linear Solvers</td>
                         <td><code>test_thomas.cpp</code></td>
-                        <td>Tridiagonal Matrix Algorithm correctness against large identically-banded systems.</td>
-                    </tr>
-                    <tr>
-                        <td>Geometry Constraints</td>
-                        <td><code>test_ib_geometry.cpp</code></td>
-                        <td>Signed Distance Field (SDF) approximations, gradient norms, and temporal mappings for dynamic masks.</td>
+                        <td>Thomas algorithm tridiagonal matrix solver correctness against diagonal dominance, identity, and large systems.</td>
                     </tr>
                 </tbody>
             </table>
@@ -424,29 +570,69 @@ make test-regression</code></pre>
                 </thead>
                 <tbody>
                     <tr>
-                        <td>Spatial Convergence</td>
-                        <td><code>test_spatial_convergence.cpp</code></td>
-                        <td>Computes L2 error norms across refined meshes to assert rigorous theoretical spatial accuracy limits for P1 and P2 elements.</td>
-                    </tr>
-                    <tr>
-                        <td>Temporal Convergence</td>
-                        <td><code>test_rk3_convergence.cpp</code></td>
-                        <td>Verifies global error reduction scaling matches exactly O(dt^3) for the SSP-RK3 integrator.</td>
+                        <td>Boundary Integration</td>
+                        <td><code>test_boundary_integration.cpp</code></td>
+                        <td>Integrative boundary condition checks for Characteristic and Wall boundaries under active flow fields.</td>
                     </tr>
                     <tr>
                         <td>Global Conservation</td>
                         <td><code>test_conservation.cpp</code></td>
-                        <td>Integrates a high-pressure blast expansion to ensure total mass and total energy invariant preservation up to machine precision.</td>
+                        <td>Integrates high-pressure blast expansions and periodic sine waves to verify conservation of total mass and energy.</td>
                     </tr>
                     <tr>
-                        <td>Physics Pathways</td>
+                        <td>Diagnostics Integration</td>
+                        <td><code>test_diagnostics_integration.cpp</code></td>
+                        <td>End-to-end integration of the diagnostics monitoring system during runtime time-stepping loops.</td>
+                    </tr>
+                    <tr>
+                        <td>Freestream Preservation</td>
+                        <td><code>test_freestream_preservation.cpp</code></td>
+                        <td>Verifies machine-precision preservation of inviscid (Euler) and viscous (Navier-Stokes) freestream states.</td>
+                    </tr>
+                    <tr>
+                        <td>Implicit Regularization</td>
                         <td><code>test_igr_elliptic.cpp</code></td>
-                        <td>Verifies ADI solver convergence and artificial viscosity distribution stability natively inside the main execution loop.</td>
+                        <td>Regression check for the Elliptic IGR ADI solver pathway and entropic pressure calculations.</td>
                     </tr>
                     <tr>
-                        <td>Viscous Pathways</td>
+                        <td>Explicit Regularization</td>
+                        <td><code>test_igr_parabolic.cpp</code></td>
+                        <td>Regression check for the Parabolic IGR BR2 viscosity diffusion solver pathway.</td>
+                    </tr>
+                    <tr>
+                        <td>Immersed Boundaries</td>
+                        <td><code>test_immersed_boundary.cpp</code></td>
+                        <td>Regression checks validating flow around cylinders using the Volume Penalty Method (VPM) and Shifted Boundary Method (SBM).</td>
+                    </tr>
+                    <tr>
+                        <td>Input/Output (I/O)</td>
+                        <td><code>test_io.cpp</code></td>
+                        <td>VTK multiblock file writer output and restart round-trip file loading state matching.</td>
+                    </tr>
+                    <tr>
+                        <td>Domain Connectivity</td>
+                        <td><code>test_multiblock.cpp</code></td>
+                        <td>Checks 2x1 multiblock grid connectivity and interface boundary synchronization.</td>
+                    </tr>
+                    <tr>
+                        <td>Viscous Flow Equations</td>
                         <td><code>test_navier_stokes.cpp</code></td>
-                        <td>Validates BR2 viscous flux discretization using freestream and Couette flow constraints.</td>
+                        <td>End-to-end regression validation of the viscous Navier-Stokes solver using Couette and viscous freestream cases.</td>
+                    </tr>
+                    <tr>
+                        <td>Temporal Convergence</td>
+                        <td><code>test_rk3_convergence.cpp</code></td>
+                        <td>Verifies global error reduction scaling matches exactly O(dt^3) for the SSP-RK3 temporal integrator.</td>
+                    </tr>
+                    <tr>
+                        <td>Spatial Convergence</td>
+                        <td><code>test_spatial_convergence.cpp</code></td>
+                        <td>Computes spatial L2 error convergence rates across refined meshes to assert theoretical FR-DG accuracy limits.</td>
+                    </tr>
+                    <tr>
+                        <td>Integrator Stability</td>
+                        <td><code>test_stability.cpp</code></td>
+                        <td>Ensures time-stepping stability under dynamic CFL calculation configurations.</td>
                     </tr>
                 </tbody>
             </table>

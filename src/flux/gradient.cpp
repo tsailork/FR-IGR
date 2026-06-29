@@ -1,11 +1,7 @@
-/// @file gradient.cpp
-/// @brief BR2 Phase 1 — compute gradients of conservative variables ∇U.
-///
-/// Computes dU/dx and dU/dy at every solution point using FR reconstruction
-/// with central (average) interface fluxes.  Results are stored in the per-block
-/// grad_Ux and grad_Uy buffers, indexed as [var * n_dofs + flat_idx].
-///
-/// OpenMP: parallelised over ey (X-gradient) and ex (Y-gradient).
+/**
+ * @file gradient.cpp
+ * @brief BR2 Phase 1 — compute gradients of conservative variables ∇U cell-locally.
+ */
 
 #include "../core/solver.hpp"
 #include "../ib/sbm_geometry.hpp"
@@ -14,129 +10,399 @@
 #endif
 
 void Solver::compute_gradients() {
-    for (auto& b : blocks) {
-        const int n_dofs = b.nx * b.ny * p.N_PTS * p.N_PTS;
+    // =========================================================================
+    // X-gradient pass: dU/dx
+    // =========================================================================
 
-        // =====================================================================
-        // X-gradient pass: dU/dx for all 4 conservative variables
-        // =====================================================================
-        #pragma omp for schedule(static)
-        for (int ey = 0; ey < b.ny; ++ey) {
-            for (int iy = 0; iy < p.N_PTS; ++iy) {
-                for (int ex = 0; ex < b.nx; ++ex) {
+    // Pass 1: Local & Conforming Pass (highly optimized, vectorizable)
+    #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < cells.size(); ++i) {
+        Cell* c = cells[i];
+        for (int iy = 0; iy < p.N_PTS; ++iy) {
+            double UL_face[4] = {}, UR_face[4] = {};
+            for (int k = 0; k < p.N_PTS; ++k) {
+                for (int v = 0; v < 4; ++v) {
+                    UL_face[v] += c->get_U(v, iy, k, p.N_PTS) * basis.l_L[k];
+                    UR_face[v] += c->get_U(v, iy, k, p.N_PTS) * basis.l_R[k];
+                }
+            }
 
-                    // Extrapolate U to left/right faces
-                    double UL_face[4] = {}, UR_face[4] = {};
+            double jump_L[4] = {}, jump_R[4] = {};
+
+            // Left Face (0) conforming/SFP/boundary
+            const ImmersedBoundary::SurrogateFluxPoint* sfp_L = ImmersedBoundary::get_sbm_face(c->block_id, c->ey, c->ex, 0, iy);
+            if (sfp_L) {
+                double U_neigh_L[4];
+                ImmersedBoundary::compute_sbm_state(*this, sfp_L, U_neigh_L);
+                for (int v = 0; v < 4; ++v) jump_L[v] = 0.5 * (U_neigh_L[v] - UL_face[v]);
+            } else if (c->neighbors[0] && c->neighbors[0]->level == c->level) {
+                Cell* nc = c->neighbors[0];
+                char nface = c->neighbor_faces[0];
+                const double* weights = (nface == 'L') ? basis.l_L.data() : basis.l_R.data();
+                double U_neigh_L[4] = {};
+                for (int k = 0; k < p.N_PTS; ++k) {
+                    for (int v = 0; v < 4; ++v)
+                        U_neigh_L[v] += nc->get_U(v, iy, k, p.N_PTS) * weights[k];
+                }
+                for (int v = 0; v < 4; ++v) jump_L[v] = 0.5 * (U_neigh_L[v] - UL_face[v]);
+            } else if (c->is_boundary[0]) {
+                double U_neigh_L[4], sig_dummy;
+                get_neigh_state_cell(*c, iy, false, UL_face, 0.0, U_neigh_L, sig_dummy, 0);
+                for (int v = 0; v < 4; ++v) jump_L[v] = 0.5 * (U_neigh_L[v] - UL_face[v]);
+            }
+
+            // Right Face (1) conforming/SFP/boundary
+            const ImmersedBoundary::SurrogateFluxPoint* sfp_R = ImmersedBoundary::get_sbm_face(c->block_id, c->ey, c->ex, 1, iy);
+            if (sfp_R) {
+                double U_neigh_R[4];
+                ImmersedBoundary::compute_sbm_state(*this, sfp_R, U_neigh_R);
+                for (int v = 0; v < 4; ++v) jump_R[v] = 0.5 * (U_neigh_R[v] - UR_face[v]);
+            } else if (c->neighbors[1] && c->neighbors[1]->level == c->level) {
+                Cell* nc = c->neighbors[1];
+                char nface = c->neighbor_faces[1];
+                const double* weights = (nface == 'L') ? basis.l_L.data() : basis.l_R.data();
+                double U_neigh_R[4] = {};
+                for (int k = 0; k < p.N_PTS; ++k) {
+                    for (int v = 0; v < 4; ++v)
+                        U_neigh_R[v] += nc->get_U(v, iy, k, p.N_PTS) * weights[k];
+                }
+                for (int v = 0; v < 4; ++v) jump_R[v] = 0.5 * (U_neigh_R[v] - UR_face[v]);
+            } else if (c->is_boundary[1]) {
+                double U_neigh_R[4], sig_dummy;
+                get_neigh_state_cell(*c, iy, true, UR_face, 0.0, U_neigh_R, sig_dummy, 0);
+                for (int v = 0; v < 4; ++v) jump_R[v] = 0.5 * (U_neigh_R[v] - UR_face[v]);
+            }
+
+            for (int ix = 0; ix < p.N_PTS; ++ix) {
+                for (int v = 0; v < 4; ++v) {
+                    double dU_dx_loc = 0.0;
                     for (int k = 0; k < p.N_PTS; ++k)
-                        for (int v = 0; v < 4; ++v) {
-                            UL_face[v] += b.U(v, ey, ex, iy, k) * basis.l_L[k];
-                            UR_face[v] += b.U(v, ey, ex, iy, k) * basis.l_R[k];
-                        }
+                        dU_dx_loc += basis.D[ix][k] * c->get_U(v, iy, k, p.N_PTS);
 
-                    // Get neighbour face states
-                    double U_neigh_L[4], U_neigh_R[4];
-                    double sig_dummy;
-                    
-                    const ImmersedBoundary::SurrogateFluxPoint* sfp_L = ImmersedBoundary::get_sbm_face(b.id, ey, ex, 0, iy);
-                    if (sfp_L) {
-                        ImmersedBoundary::compute_sbm_state(*this, sfp_L, U_neigh_L);
-                    } else {
-                        get_neigh_state_x(b, ey, ex, iy, false,
-                                          UL_face, 0.0, U_neigh_L, sig_dummy);
-                    }
-                    
-                    const ImmersedBoundary::SurrogateFluxPoint* sfp_R = ImmersedBoundary::get_sbm_face(b.id, ey, ex, 1, iy);
-                    if (sfp_R) {
-                        ImmersedBoundary::compute_sbm_state(*this, sfp_R, U_neigh_R);
-                    } else {
-                        get_neigh_state_x(b, ey, ex, iy, true,
-                                          UR_face, 0.0, U_neigh_R, sig_dummy);
-                    }
+                    int flat = iy * p.N_PTS + ix;
+                    c->grad_Ux[v * p.N_PTS * p.N_PTS + flat] = 
+                        (dU_dx_loc
+                         + jump_L[v] * basis.dgl[ix]
+                         + jump_R[v] * basis.dgr[ix])
+                        * (2.0 / c->dx);
+                }
+            }
+        }
+    }
 
-                    // Central interface state: U_hat = 0.5*(U_int + U_neigh)
-                    double UL_hat[4], UR_hat[4];
+    // Pass 2: Non-Conforming Restriction Pass (sparse, only active near hanging nodes)
+    #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < cells.size(); ++i) {
+        Cell* c = cells[i];
+
+        // Left Face (0) non-conforming coarser neighbor
+        if (c->neighbors[0] && c->neighbors[0]->level < c->level) {
+            Cell* nc = c->neighbors[0];
+            char nface = c->neighbor_faces[0];
+            int child_idx = c->ey & 1;
+            const auto& P = (child_idx == 0) ? basis.P1 : basis.P2;
+            const auto& R = (child_idx == 0) ? basis.R1 : basis.R2;
+            const double* dg_nc = (nface == 'L') ? basis.dgl.data() : basis.dgr.data();
+
+            for (int iy = 0; iy < p.N_PTS; ++iy) {
+                double UL_face[4] = {};
+                for (int k = 0; k < p.N_PTS; ++k) {
                     for (int v = 0; v < 4; ++v) {
-                        UL_hat[v] = 0.5 * (UL_face[v] + U_neigh_L[v]);
-                        UR_hat[v] = 0.5 * (UR_face[v] + U_neigh_R[v]);
+                        UL_face[v] += c->get_U(v, iy, k, p.N_PTS) * basis.l_L[k];
                     }
+                }
 
-                    // FR gradient reconstruction at each solution point
-                    for (int ix = 0; ix < p.N_PTS; ++ix) {
+                double U_coarse_face[4][MAX_PTS] = {};
+                const double* weights = (nface == 'L') ? basis.l_L.data() : basis.l_R.data();
+                for (int ky = 0; ky < p.N_PTS; ++ky) {
+                    for (int kx = 0; kx < p.N_PTS; ++kx) {
                         for (int v = 0; v < 4; ++v) {
-                            double dU_dx_loc = 0.0;
-                            for (int k = 0; k < p.N_PTS; ++k)
-                                dU_dx_loc += basis.D[ix][k] * b.U(v, ey, ex, iy, k);
+                            U_coarse_face[v][ky] += nc->get_U(v, ky, kx, p.N_PTS) * weights[kx];
+                        }
+                    }
+                }
 
-                            double dU_dx = (dU_dx_loc
-                                + (UL_hat[v] - UL_face[v]) * basis.dgl[ix]
-                                + (UR_hat[v] - UR_face[v]) * basis.dgr[ix])
-                                * (2.0 / b.dx);
+                double U_neigh_L[4] = {};
+                for (int ky = 0; ky < p.N_PTS; ++ky) {
+                    for (int v = 0; v < 4; ++v) {
+                        U_neigh_L[v] += P[ky][iy] * U_coarse_face[v][ky];
+                    }
+                }
 
-                            int flat = b.get_flat_idx(ey, ex, iy, ix, p.N_PTS);
-                            b.grad_Ux[v * n_dofs + flat] = dU_dx;
+                double jump_L[4] = {};
+                for (int v = 0; v < 4; ++v) {
+                    jump_L[v] = 0.5 * (U_neigh_L[v] - UL_face[v]);
+                    for (int ix = 0; ix < p.N_PTS; ++ix) {
+                        int flat = iy * p.N_PTS + ix;
+                        #pragma omp atomic
+                        c->grad_Ux[v * p.N_PTS * p.N_PTS + flat] += jump_L[v] * basis.dgl[ix] * (2.0 / c->dx);
+                    }
+                }
+
+                // Restrict jump and subtract from coarse cell nc Right face
+                for (int ky = 0; ky < p.N_PTS; ++ky) {
+                    double factor = R[iy][ky];
+                    for (int kx = 0; kx < p.N_PTS; ++kx) {
+                        for (int v = 0; v < 4; ++v) {
+                            #pragma omp atomic
+                            nc->grad_Ux[v * p.N_PTS * p.N_PTS + ky * p.N_PTS + kx] -= factor * jump_L[v] * dg_nc[kx] * (2.0 / nc->dx);
                         }
                     }
                 }
             }
         }
 
-        // =====================================================================
-        // Y-gradient pass: dU/dy for all 4 conservative variables
-        // =====================================================================
-        #pragma omp for schedule(static)
-        for (int ex = 0; ex < b.nx; ++ex) {
-            for (int ix = 0; ix < p.N_PTS; ++ix) {
-                for (int ey = 0; ey < b.ny; ++ey) {
+        // Right Face (1) non-conforming coarser neighbor
+        if (c->neighbors[1] && c->neighbors[1]->level < c->level) {
+            Cell* nc = c->neighbors[1];
+            char nface = c->neighbor_faces[1];
+            int child_idx = c->ey & 1;
+            const auto& P = (child_idx == 0) ? basis.P1 : basis.P2;
+            const auto& R = (child_idx == 0) ? basis.R1 : basis.R2;
+            const double* dg_nc = (nface == 'L') ? basis.dgl.data() : basis.dgr.data();
 
-                    // Extrapolate U to bottom/top faces
-                    double UB_face[4] = {}, UT_face[4] = {};
-                    for (int k = 0; k < p.N_PTS; ++k)
-                        for (int v = 0; v < 4; ++v) {
-                            UB_face[v] += b.U(v, ey, ex, k, ix) * basis.l_L[k];
-                            UT_face[v] += b.U(v, ey, ex, k, ix) * basis.l_R[k];
-                        }
-
-                    // Get neighbour face states
-                    double U_neigh_B[4], U_neigh_T[4];
-                    double sig_dummy;
-                    
-                    const ImmersedBoundary::SurrogateFluxPoint* sfp_B = ImmersedBoundary::get_sbm_face(b.id, ey, ex, 2, ix);
-                    if (sfp_B) {
-                        ImmersedBoundary::compute_sbm_state(*this, sfp_B, U_neigh_B);
-                    } else {
-                        get_neigh_state_y(b, ey, ex, ix, false,
-                                          UB_face, 0.0, U_neigh_B, sig_dummy);
-                    }
-                    
-                    const ImmersedBoundary::SurrogateFluxPoint* sfp_T = ImmersedBoundary::get_sbm_face(b.id, ey, ex, 3, ix);
-                    if (sfp_T) {
-                        ImmersedBoundary::compute_sbm_state(*this, sfp_T, U_neigh_T);
-                    } else {
-                        get_neigh_state_y(b, ey, ex, ix, true,
-                                          UT_face, 0.0, U_neigh_T, sig_dummy);
-                    }
-
-                    // Central interface state
-                    double UB_hat[4], UT_hat[4];
+            for (int iy = 0; iy < p.N_PTS; ++iy) {
+                double UR_face[4] = {};
+                for (int k = 0; k < p.N_PTS; ++k) {
                     for (int v = 0; v < 4; ++v) {
-                        UB_hat[v] = 0.5 * (UB_face[v] + U_neigh_B[v]);
-                        UT_hat[v] = 0.5 * (UT_face[v] + U_neigh_T[v]);
+                        UR_face[v] += c->get_U(v, iy, k, p.N_PTS) * basis.l_R[k];
                     }
+                }
 
-                    // FR gradient reconstruction at each solution point
-                    for (int iy = 0; iy < p.N_PTS; ++iy) {
+                double U_coarse_face[4][MAX_PTS] = {};
+                const double* weights = (nface == 'L') ? basis.l_L.data() : basis.l_R.data();
+                for (int ky = 0; ky < p.N_PTS; ++ky) {
+                    for (int kx = 0; kx < p.N_PTS; ++kx) {
                         for (int v = 0; v < 4; ++v) {
-                            double dU_dy_loc = 0.0;
-                            for (int k = 0; k < p.N_PTS; ++k)
-                                dU_dy_loc += basis.D[iy][k] * b.U(v, ey, ex, k, ix);
+                            U_coarse_face[v][ky] += nc->get_U(v, ky, kx, p.N_PTS) * weights[kx];
+                        }
+                    }
+                }
 
-                            double dU_dy = (dU_dy_loc
-                                + (UB_hat[v] - UB_face[v]) * basis.dgl[iy]
-                                + (UT_hat[v] - UT_face[v]) * basis.dgr[iy])
-                                * (2.0 / b.dy);
+                double U_neigh_R[4] = {};
+                for (int ky = 0; ky < p.N_PTS; ++ky) {
+                    for (int v = 0; v < 4; ++v) {
+                        U_neigh_R[v] += P[ky][iy] * U_coarse_face[v][ky];
+                    }
+                }
 
-                            int flat = b.get_flat_idx(ey, ex, iy, ix, p.N_PTS);
-                            b.grad_Uy[v * n_dofs + flat] = dU_dy;
+                double jump_R[4] = {};
+                for (int v = 0; v < 4; ++v) {
+                    jump_R[v] = 0.5 * (U_neigh_R[v] - UR_face[v]);
+                    for (int ix = 0; ix < p.N_PTS; ++ix) {
+                        int flat = iy * p.N_PTS + ix;
+                        #pragma omp atomic
+                        c->grad_Ux[v * p.N_PTS * p.N_PTS + flat] += jump_R[v] * basis.dgr[ix] * (2.0 / c->dx);
+                    }
+                }
+
+                // Restrict jump and subtract from coarse cell nc Left face
+                for (int ky = 0; ky < p.N_PTS; ++ky) {
+                    double factor = R[iy][ky];
+                    for (int kx = 0; kx < p.N_PTS; ++kx) {
+                        for (int v = 0; v < 4; ++v) {
+                            #pragma omp atomic
+                            nc->grad_Ux[v * p.N_PTS * p.N_PTS + ky * p.N_PTS + kx] -= factor * jump_R[v] * dg_nc[kx] * (2.0 / nc->dx);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // =========================================================================
+    // Y-gradient pass: dU/dy
+    // =========================================================================
+
+    // Pass 1: Local & Conforming Pass (highly optimized, vectorizable)
+    #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < cells.size(); ++i) {
+        Cell* c = cells[i];
+        for (int ix = 0; ix < p.N_PTS; ++ix) {
+            double UB_face[4] = {}, UT_face[4] = {};
+            for (int k = 0; k < p.N_PTS; ++k) {
+                for (int v = 0; v < 4; ++v) {
+                    UB_face[v] += c->get_U(v, k, ix, p.N_PTS) * basis.l_L[k];
+                    UT_face[v] += c->get_U(v, k, ix, p.N_PTS) * basis.l_R[k];
+                }
+            }
+
+            double jump_B[4] = {}, jump_T[4] = {};
+
+            // Bottom Face (2) conforming/SFP/boundary
+            const ImmersedBoundary::SurrogateFluxPoint* sfp_B = ImmersedBoundary::get_sbm_face(c->block_id, c->ey, c->ex, 2, ix);
+            if (sfp_B) {
+                double U_neigh_B[4];
+                ImmersedBoundary::compute_sbm_state(*this, sfp_B, U_neigh_B);
+                for (int v = 0; v < 4; ++v) jump_B[v] = 0.5 * (U_neigh_B[v] - UB_face[v]);
+            } else if (c->neighbors[2] && c->neighbors[2]->level == c->level) {
+                Cell* nc = c->neighbors[2];
+                char nface = c->neighbor_faces[2];
+                const double* weights = (nface == 'B') ? basis.l_L.data() : basis.l_R.data();
+                double U_neigh_B[4] = {};
+                for (int k = 0; k < p.N_PTS; ++k) {
+                    for (int v = 0; v < 4; ++v)
+                        U_neigh_B[v] += nc->get_U(v, k, ix, p.N_PTS) * weights[k];
+                }
+                for (int v = 0; v < 4; ++v) jump_B[v] = 0.5 * (U_neigh_B[v] - UB_face[v]);
+            } else if (c->is_boundary[2]) {
+                double U_neigh_B[4], sig_dummy;
+                get_neigh_state_cell(*c, ix, false, UB_face, 0.0, U_neigh_B, sig_dummy, 1);
+                for (int v = 0; v < 4; ++v) jump_B[v] = 0.5 * (U_neigh_B[v] - UB_face[v]);
+            }
+
+            // Top Face (3) conforming/SFP/boundary
+            const ImmersedBoundary::SurrogateFluxPoint* sfp_T = ImmersedBoundary::get_sbm_face(c->block_id, c->ey, c->ex, 3, ix);
+            if (sfp_T) {
+                double U_neigh_T[4];
+                ImmersedBoundary::compute_sbm_state(*this, sfp_T, U_neigh_T);
+                for (int v = 0; v < 4; ++v) jump_T[v] = 0.5 * (U_neigh_T[v] - UT_face[v]);
+            } else if (c->neighbors[3] && c->neighbors[3]->level == c->level) {
+                Cell* nc = c->neighbors[3];
+                char nface = c->neighbor_faces[3];
+                const double* weights = (nface == 'B') ? basis.l_L.data() : basis.l_R.data();
+                double U_neigh_T[4] = {};
+                for (int k = 0; k < p.N_PTS; ++k) {
+                    for (int v = 0; v < 4; ++v)
+                        U_neigh_T[v] += nc->get_U(v, k, ix, p.N_PTS) * weights[k];
+                }
+                for (int v = 0; v < 4; ++v) jump_T[v] = 0.5 * (U_neigh_T[v] - UT_face[v]);
+            } else if (c->is_boundary[3]) {
+                double U_neigh_T[4], sig_dummy;
+                get_neigh_state_cell(*c, ix, true, UT_face, 0.0, U_neigh_T, sig_dummy, 1);
+                for (int v = 0; v < 4; ++v) jump_T[v] = 0.5 * (U_neigh_T[v] - UT_face[v]);
+            }
+
+            for (int iy = 0; iy < p.N_PTS; ++iy) {
+                for (int v = 0; v < 4; ++v) {
+                    double dU_dy_loc = 0.0;
+                    for (int k = 0; k < p.N_PTS; ++k)
+                        dU_dy_loc += basis.D[iy][k] * c->get_U(v, k, ix, p.N_PTS);
+
+                    int flat = iy * p.N_PTS + ix;
+                    c->grad_Uy[v * p.N_PTS * p.N_PTS + flat] = 
+                        (dU_dy_loc
+                         + jump_B[v] * basis.dgl[iy]
+                         + jump_T[v] * basis.dgr[iy])
+                        * (2.0 / c->dy);
+                }
+            }
+        }
+    }
+
+    // Pass 2: Non-Conforming Restriction Pass (sparse, only active near hanging nodes)
+    #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < cells.size(); ++i) {
+        Cell* c = cells[i];
+
+        // Bottom Face (2) non-conforming coarser neighbor
+        if (c->neighbors[2] && c->neighbors[2]->level < c->level) {
+            Cell* nc = c->neighbors[2];
+            char nface = c->neighbor_faces[2];
+            int child_idx = c->ex & 1;
+            const auto& P = (child_idx == 0) ? basis.P1 : basis.P2;
+            const auto& R = (child_idx == 0) ? basis.R1 : basis.R2;
+            const double* dg_nc = (nface == 'B') ? basis.dgl.data() : basis.dgr.data();
+
+            for (int ix = 0; ix < p.N_PTS; ++ix) {
+                double UB_face[4] = {};
+                for (int k = 0; k < p.N_PTS; ++k) {
+                    for (int v = 0; v < 4; ++v) {
+                        UB_face[v] += c->get_U(v, k, ix, p.N_PTS) * basis.l_L[k];
+                    }
+                }
+
+                double U_coarse_face[4][MAX_PTS] = {};
+                const double* weights = (nface == 'B') ? basis.l_L.data() : basis.l_R.data();
+                for (int kx = 0; kx < p.N_PTS; ++kx) {
+                    for (int ky = 0; ky < p.N_PTS; ++ky) {
+                        for (int v = 0; v < 4; ++v) {
+                            U_coarse_face[v][kx] += nc->get_U(v, ky, kx, p.N_PTS) * weights[ky];
+                        }
+                    }
+                }
+
+                double U_neigh_B[4] = {};
+                for (int kx = 0; kx < p.N_PTS; ++kx) {
+                    for (int v = 0; v < 4; ++v) {
+                        U_neigh_B[v] += P[kx][ix] * U_coarse_face[v][kx];
+                    }
+                }
+
+                double jump_B[4] = {};
+                for (int v = 0; v < 4; ++v) {
+                    jump_B[v] = 0.5 * (U_neigh_B[v] - UB_face[v]);
+                    for (int iy = 0; iy < p.N_PTS; ++iy) {
+                        int flat = iy * p.N_PTS + ix;
+                        #pragma omp atomic
+                        c->grad_Uy[v * p.N_PTS * p.N_PTS + flat] += jump_B[v] * basis.dgl[iy] * (2.0 / c->dy);
+                    }
+                }
+
+                // Restrict jump and subtract from coarse cell nc Top face
+                for (int kx = 0; kx < p.N_PTS; ++kx) {
+                    double factor = R[ix][kx];
+                    for (int ky = 0; ky < p.N_PTS; ++ky) {
+                        for (int v = 0; v < 4; ++v) {
+                            #pragma omp atomic
+                            nc->grad_Uy[v * p.N_PTS * p.N_PTS + ky * p.N_PTS + kx] -= factor * jump_B[v] * dg_nc[ky] * (2.0 / nc->dy);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Top Face (3) non-conforming coarser neighbor
+        if (c->neighbors[3] && c->neighbors[3]->level < c->level) {
+            Cell* nc = c->neighbors[3];
+            char nface = c->neighbor_faces[3];
+            int child_idx = c->ex & 1;
+            const auto& P = (child_idx == 0) ? basis.P1 : basis.P2;
+            const auto& R = (child_idx == 0) ? basis.R1 : basis.R2;
+            const double* dg_nc = (nface == 'B') ? basis.dgl.data() : basis.dgr.data();
+
+            for (int ix = 0; ix < p.N_PTS; ++ix) {
+                double UT_face[4] = {};
+                for (int k = 0; k < p.N_PTS; ++k) {
+                    for (int v = 0; v < 4; ++v) {
+                        UT_face[v] += c->get_U(v, k, ix, p.N_PTS) * basis.l_R[k];
+                    }
+                }
+
+                double U_coarse_face[4][MAX_PTS] = {};
+                const double* weights = (nface == 'B') ? basis.l_L.data() : basis.l_R.data();
+                for (int kx = 0; kx < p.N_PTS; ++kx) {
+                    for (int ky = 0; ky < p.N_PTS; ++ky) {
+                        for (int v = 0; v < 4; ++v) {
+                            U_coarse_face[v][kx] += nc->get_U(v, ky, kx, p.N_PTS) * weights[ky];
+                        }
+                    }
+                }
+
+                double U_neigh_T[4] = {};
+                for (int kx = 0; kx < p.N_PTS; ++kx) {
+                    for (int v = 0; v < 4; ++v) {
+                        U_neigh_T[v] += P[kx][ix] * U_coarse_face[v][kx];
+                    }
+                }
+
+                double jump_T[4] = {};
+                for (int v = 0; v < 4; ++v) {
+                    jump_T[v] = 0.5 * (U_neigh_T[v] - UT_face[v]);
+                    for (int iy = 0; iy < p.N_PTS; ++iy) {
+                        int flat = iy * p.N_PTS + ix;
+                        #pragma omp atomic
+                        c->grad_Uy[v * p.N_PTS * p.N_PTS + flat] += jump_T[v] * basis.dgr[iy] * (2.0 / c->dy);
+                    }
+                }
+
+                // Restrict jump and subtract from coarse cell nc Bottom face
+                for (int kx = 0; kx < p.N_PTS; ++kx) {
+                    double factor = R[ix][kx];
+                    for (int ky = 0; ky < p.N_PTS; ++ky) {
+                        for (int v = 0; v < 4; ++v) {
+                            #pragma omp atomic
+                            nc->grad_Uy[v * p.N_PTS * p.N_PTS + ky * p.N_PTS + kx] -= factor * jump_T[v] * dg_nc[ky] * (2.0 / nc->dy);
                         }
                     }
                 }

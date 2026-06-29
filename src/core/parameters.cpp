@@ -187,6 +187,8 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("CFL"))       CFL      = std::stod(kv["CFL"]);
         if (kv.count("T_FINAL"))   T_FINAL  = std::stod(kv["T_FINAL"]);
         if (kv.count("NUM_THREADS")) NUM_THREADS = std::stoi(kv["NUM_THREADS"]);
+        if (kv.count("ENABLE_MULTIRATE")) ENABLE_MULTIRATE = (kv["ENABLE_MULTIRATE"] == "true" || kv["ENABLE_MULTIRATE"] == "1");
+        if (kv.count("MAX_MULTIRATE_LEVEL")) MAX_MULTIRATE_LEVEL = std::stoi(kv["MAX_MULTIRATE_LEVEL"]);
     }
 
     // --- [Regularization] ---
@@ -199,6 +201,11 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("IGR_TAU_R"))         IGR_TAU_R         = std::stod(kv["IGR_TAU_R"]);
         if (kv.count("IGR_BR2_ETA"))       IGR_BR2_ETA       = std::stod(kv["IGR_BR2_ETA"]);
         if (kv.count("IGR_SUB_ITERS"))     IGR_SUB_ITERS     = std::stoi(kv["IGR_SUB_ITERS"]);
+        if (kv.count("USE_DUCROS_SWITCH")) USE_DUCROS_SWITCH = (kv["USE_DUCROS_SWITCH"] == "true" || kv["USE_DUCROS_SWITCH"] == "1");
+        if (kv.count("USE_PRESSURE_SENSOR")) USE_PRESSURE_SENSOR = (kv["USE_PRESSURE_SENSOR"] == "true" || kv["USE_PRESSURE_SENSOR"] == "1");
+        if (kv.count("USE_MOMENTUM_DIV"))  USE_MOMENTUM_DIV  = (kv["USE_MOMENTUM_DIV"] == "true" || kv["USE_MOMENTUM_DIV"] == "1");
+        if (kv.count("USE_PRESSURE_SOURCE_CAP")) USE_PRESSURE_SOURCE_CAP = (kv["USE_PRESSURE_SOURCE_CAP"] == "true" || kv["USE_PRESSURE_SOURCE_CAP"] == "1");
+        if (kv.count("SOURCE_CAP_COEFF"))  SOURCE_CAP_COEFF  = std::stod(kv["SOURCE_CAP_COEFF"]);
     }
 
     // --- [Stabilization] ---
@@ -217,6 +224,8 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("PR"))           PR           = std::stod(kv["PR"]);
         if (kv.count("MACH_REF"))     MACH_REF     = std::stod(kv["MACH_REF"]);
         if (kv.count("NS_BR2_ETA"))   NS_BR2_ETA   = std::stod(kv["NS_BR2_ETA"]);
+        if (kv.count("ENABLE_SUTHERLAND")) ENABLE_SUTHERLAND = (kv["ENABLE_SUTHERLAND"] == "true" || kv["ENABLE_SUTHERLAND"] == "1");
+        if (kv.count("SUTH_C"))       SUTH_C       = std::stod(kv["SUTH_C"]);
     }
 
     // --- [IO] ---
@@ -233,6 +242,42 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("PRINT_INTERVAL"))    PRINT_INTERVAL    = std::stod(kv["PRINT_INTERVAL"]);
         if (kv.count("RESTART_FILE"))      RESTART_FILE      = kv["RESTART_FILE"];
         if (kv.count("RESTART_TIME"))      RESTART_TIME      = std::stod(kv["RESTART_TIME"]);
+    }
+
+    // --- [TreeDecomposition] ---
+    if (ini.count("TreeDecomposition")) {
+        auto& kv = ini["TreeDecomposition"];
+        if (kv.count("WALL_REFINEMENT_LEVEL")) WALL_REFINEMENT_LEVEL = std::stoi(kv["WALL_REFINEMENT_LEVEL"]);
+        if (kv.count("WALL_REFINEMENT_CELLS")) WALL_REFINEMENT_CELLS = std::stoi(kv["WALL_REFINEMENT_CELLS"]);
+
+        int num_zones = 0;
+        if (kv.count("NUM_REFINEMENT_ZONES")) num_zones = std::stoi(kv["NUM_REFINEMENT_ZONES"]);
+        refinement_zones.clear();
+        for (int i = 0; i < num_zones; ++i) {
+            RefinementZone zone;
+            std::string prefix = "ZONE_" + std::to_string(i) + "_";
+            if (kv.count(prefix + "SHAPE")) zone.shape = kv[prefix + "SHAPE"];
+            if (kv.count(prefix + "CENTER_X")) zone.center_x = std::stod(kv[prefix + "CENTER_X"]);
+            if (kv.count(prefix + "CENTER_Y")) zone.center_y = std::stod(kv[prefix + "CENTER_Y"]);
+            if (kv.count(prefix + "RADIUS")) zone.radius = std::stod(kv[prefix + "RADIUS"]);
+            if (kv.count(prefix + "WIDTH")) zone.width = std::stod(kv[prefix + "WIDTH"]);
+            if (kv.count(prefix + "HEIGHT")) zone.height = std::stod(kv[prefix + "HEIGHT"]);
+            if (kv.count(prefix + "NACA_CODE")) zone.naca_code = kv[prefix + "NACA_CODE"];
+            if (kv.count(prefix + "AOA")) zone.aoa = std::stod(kv[prefix + "AOA"]);
+            if (kv.count(prefix + "LEVEL")) zone.target_level = std::stoi(kv[prefix + "LEVEL"]);
+
+            if (kv.count(prefix + "POLY_X")) {
+                std::stringstream ss(kv[prefix + "POLY_X"]);
+                double val;
+                while (ss >> val) zone.poly_x.push_back(val);
+            }
+            if (kv.count(prefix + "POLY_Y")) {
+                std::stringstream ss(kv[prefix + "POLY_Y"]);
+                double val;
+                while (ss >> val) zone.poly_y.push_back(val);
+            }
+            refinement_zones.push_back(zone);
+        }
     }
 
     // --- [ImmersedBoundary] ---
@@ -255,6 +300,7 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("IB_VELOCITY_Y"))       IB_VELOCITY_Y       = std::stod(kv["IB_VELOCITY_Y"]);
         if (kv.count("IB_THERMAL_TYPE"))     IB_THERMAL_TYPE     = kv["IB_THERMAL_TYPE"];
         if (kv.count("IB_TEMPERATURE"))      IB_TEMPERATURE      = std::stod(kv["IB_TEMPERATURE"]);
+        if (kv.count("IB_CHORD"))            IB_CHORD            = std::stod(kv["IB_CHORD"]);
         if (kv.count("IB_SHARP"))            IB_SHARP            = (kv["IB_SHARP"] == "true" || kv["IB_SHARP"] == "1");
         if (kv.count("IB_SMOOTH_WIDTH"))     IB_SMOOTH_WIDTH     = std::stod(kv["IB_SMOOTH_WIDTH"]);
 

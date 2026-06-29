@@ -92,6 +92,18 @@ struct Basis {
     std::vector<double> dgl;   ///< Left Radau correction derivative \f$ g'_L \f$.
     std::vector<double> dgr;   ///< Right Radau correction derivative \f$ g'_R \f$.
 
+    // Quadtree prolongation and restriction matrices
+    std::vector<double> bary_w;                 ///< Barycentric weights for Lagrange interpolation.
+    std::vector<std::vector<double>> P1;        ///< Prolongation matrix for child cell 1 (coarse face to bottom/left fine face).
+    std::vector<std::vector<double>> P2;        ///< Prolongation matrix for child cell 2 (coarse face to top/right fine face).
+    std::vector<std::vector<double>> R1;        ///< Conservative L2 restriction matrix for child cell 1.
+    std::vector<std::vector<double>> R2;        ///< Conservative L2 restriction matrix for child cell 2.
+
+    /**
+     * @brief Nodal Lagrange polynomial evaluation using barycentric weights.
+     */
+    double interpolate_lagrange(int j, double x) const;
+
     /**
      * @brief Construct the basis operators for a given polynomial degree.
      * 

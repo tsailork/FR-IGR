@@ -18,7 +18,7 @@ TEST_UNIT_TARGET = bin/test_unit
 TEST_REGR_TARGET = bin/test_regression
 
 # Source Files
-CORE_SRC = src/core/parameters.cpp src/core/basis.cpp src/core/solver.cpp
+CORE_SRC = src/core/parameters.cpp src/core/basis.cpp src/core/solver.cpp src/core/geometry.cpp
 FLUX_SRC = src/flux/euler_flux.cpp src/flux/sweep_x.cpp src/flux/sweep_y.cpp \
            src/flux/gradient.cpp src/flux/viscous_sweep_x.cpp src/flux/viscous_sweep_y.cpp
 IGR_SRC  = src/igr/sensor.cpp src/igr/adi_solver.cpp src/igr/parabolic.cpp src/igr/entropic_pressure.cpp

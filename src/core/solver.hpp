@@ -15,6 +15,7 @@
 #include "basis.hpp"
 #include "parameters.hpp"
 #include "state.hpp"
+#include "cell.hpp"
 #include "../ib/ib.hpp"
 #include "../boundary/boundary.hpp"
 #include <atomic>
@@ -27,34 +28,6 @@
  * @brief Maximum polynomial degree supported by static buffers (P = 3 -> 4 solution points).
  */
 constexpr int MAX_PTS = 4;
-
-/**
- * @struct NeighborInfo
- * @brief Connectivity and boundary configuration metadata for a block interface.
- *
- * Tracks whether a face connects to another computational block or maps to a physical
- * boundary condition (e.g. wall, characteristic boundary, supersonic inlet/outlet).
- */
-struct NeighborInfo {
-    int id = -1;                      ///< Neighbor block ID. Set to -1 if periodic boundary or physical wall.
-    char face = ' ';                  ///< Target neighbor face being contacted ('L', 'R', 'B', 'T').
-    bool is_wall = false;             ///< Slip wall boundary condition indicator.
-    bool is_supersonic_inflow = false;  ///< Supersonic inflow boundary condition indicator.
-    bool is_supersonic_outflow = false; ///< Supersonic outflow boundary condition indicator.
-    bool is_characteristic = false;   ///< Characteristic Riemann invariant-based boundary indicator.
-    bool is_total_pressure_comp = false; ///< Compressible total pressure boundary condition.
-    bool is_total_pressure_incomp = false; ///< Incompressible total pressure boundary condition.
-    bool is_static_pressure = false;   ///< Static pressure boundary condition.
-    double ref_rho = 1.0;             ///< Reference density imposed at the boundary.
-    double ref_u = 0.0;               ///< Reference X-velocity imposed at the boundary.
-    double ref_v = 0.0;               ///< Reference Y-velocity imposed at the boundary.
-    double ref_p = 1.0;               ///< Reference pressure imposed at the boundary.
-    bool is_noslip_wall = false;      ///< Viscous no-slip wall boundary condition indicator.
-    bool is_moving_wall = false;      ///< Viscous moving no-slip wall boundary condition indicator.
-    double wall_velocity = 0.0;       ///< Tangential velocity of the moving wall (positive = rightward/upward).
-    bool is_isothermal = false;       ///< Isothermal wall indicator (fixed temperature).
-    double wall_temperature = 1.0;    ///< Prescribed temperature value for isothermal walls.
-};
 
 /**
  * @struct Block
@@ -96,6 +69,12 @@ struct Block {
     std::vector<double> ib_mask;      ///< Cached Immersed Boundary solid fraction mask (chi).
     std::vector<bool>   solid_mask;   ///< Per-element flag: true if element is FULLY inside the IB solid (all faces inside).
 
+    // Multirate parameters
+    std::vector<double> element_time; ///< Local physical time of each element [ny * nx].
+    std::vector<double> element_dt;   ///< Local timestep size of each element [ny * nx].
+    std::vector<char>   element_active; ///< Active flag for the current step [ny * nx].
+    State U_accum;                    ///< Accumulated state updates [N_VARS * ny * nx * N_PTS * N_PTS].
+
     /**
      * @brief Construct and allocate all workspace arrays for a given block topology.
      *
@@ -107,7 +86,8 @@ struct Block {
           x_min(config.X_MIN), y_min(config.Y_MIN),
           bc_l(config.BC_L), bc_r(config.BC_R), bc_b(config.BC_B), bc_t(config.BC_T),
           U(config.N_ELEM_X, config.N_ELEM_Y, npts),
-          RHS(config.N_ELEM_X, config.N_ELEM_Y, npts) 
+          RHS(config.N_ELEM_X, config.N_ELEM_Y, npts),
+          U_accum(config.N_ELEM_X, config.N_ELEM_Y, npts) 
     {
         dx = (config.X_MAX - config.X_MIN) / nx;
         dy = (config.Y_MAX - config.Y_MIN) / ny;
@@ -123,6 +103,9 @@ struct Block {
         grad_Ux.resize(N_VARS * n_dofs, 0.0);
         grad_Uy.resize(N_VARS * n_dofs, 0.0);
         ib_mask.resize(n_dofs, 0.0);
+        element_time.resize(nx * ny, 0.0);
+        element_dt.resize(nx * ny, 0.0);
+        element_active.resize(nx * ny, true);
     }
 
     /**
@@ -161,12 +144,76 @@ public:
     Limiters::LimiterStats current_limiter_stats; ///< Thread-safe collector for current step's limiter activity.
     mutable std::atomic<int> sbm_nonphysical_count{0}; ///< Counter for nonphysical state evaluations on SBM faces.
 
+    // Cell-level solver storage (decoupled from blocks)
+    std::vector<Cell*> cells;
+    std::vector<std::vector<std::vector<Cell*>>> block_cells;
+
     /**
      * @brief Construct the solver engine and initialize block layouts.
      *
      * @param params Configuration dataset
      */
     explicit Solver(const Parameters& params);
+
+    /**
+     * @brief Destructor to safely clean up Cell pointers.
+     */
+    ~Solver();
+
+    /**
+     * @brief Allocate Cells and populate their spatial metrics and coordinates.
+     */
+    void initialize_cells();
+
+    /**
+     * @brief Compute the level-padded Morton ID for a cell.
+     */
+    uint64_t get_morton_id(int block_id, int level, uint32_t ex, uint32_t ey) const;
+
+    /**
+     * @brief Check if a cell is an ancestor of a target key.
+     */
+    bool is_ancestor(uint64_t ancestor_id, uint64_t key_id) const;
+
+    /**
+     * @brief Enforce 2:1 refinement ratio.
+     */
+    void enforce_21_ratio();
+
+    /**
+     * @brief Build neighbor connectivity pointers between Cells.
+     */
+    void setup_cell_connectivity();
+
+    /**
+     * @brief Split a parent cell into 4 child cells.
+     */
+    void split_cell(Cell* parent, std::vector<Cell*>& new_cells);
+
+    /**
+     * @brief Merge 4 sibling cells back into 1 parent cell.
+     */
+    void merge_cells(const std::vector<Cell*>& siblings, Cell*& parent);
+
+    /**
+     * @brief Modify tree (splits/merges) based on target level requests.
+     */
+    void update_tree(const std::vector<int>& target_levels);
+
+    /**
+     * @brief Flag and trigger refinement/coarsening based on walls and manual zones.
+     */
+    void flag_refinement_coarsening();
+
+    /**
+     * @brief Find the active leaf cell containing a physical point in a block.
+     */
+    Cell* find_leaf_cell(int block_id, double x, double y) const;
+
+    /**
+     * @brief Synchronize initial states from Blocks to Cells.
+     */
+    void sync_blocks_to_cells();
 
     /**
      * @brief Fetch neighbor cell or physical ghost state across X-interfaces.
@@ -221,6 +268,28 @@ public:
      */
     void get_flux_pointwise(const Block& b, int ey, int ex, int iy, int ix,
                             double* F, double* G, double sigma) const;
+
+    /**
+     * @brief Fetch neighbor cell or physical ghost state for a Cell.
+     *
+     * @param[in] c The current Cell to evaluate
+     * @param[in] node_idx Solution point index along the face
+     * @param[in] is_right_or_top True to check Right/Top, false for Left/Bottom
+     * @param[in] face_state Local reconstructed state on the interface face
+     * @param[in] sig_face Local entropic pressure on the interface face
+     * @param[out] neigh_state Returned neighboring/ghost state conserved variables
+     * @param[out] sig_neigh Returned neighboring/ghost state entropic pressure
+     * @param[in] dir Sweep direction: 0 = X, 1 = Y
+     */
+    void get_neigh_state_cell(const Cell& c, int node_idx, bool is_right_or_top,
+                             const double* face_state, double sig_face,
+                             double* neigh_state, double& sig_neigh, int dir) const;
+
+    /**
+     * @brief Evaluate point-wise inviscid Euler fluxes at a cell's solution node.
+     */
+    void get_flux_pointwise_cell(const Cell& c, int iy, int ix,
+                                 double* F, double* G, double sigma) const;
 
     /**
      * @brief Solve the Riemann interface numerical flux problem.
@@ -322,6 +391,11 @@ public:
      * @param dt Timestep size \f$ \Delta t \f$.
      */
     void step_rk3(double dt);
+
+    /**
+     * @brief Computes local stable timesteps for each individual element.
+     */
+    void compute_local_dt();
 
     // -------------------------------------------------------------------------
     // Immersed Boundary Method (VPM)

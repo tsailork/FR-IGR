@@ -51,9 +51,9 @@ TEST_CASE("Parameters - domain.grid single/multiblock and BC strings") {
 TEST_CASE("Parameters - Load inputs.dat") {
     std::ofstream out("test_inputs.dat");
     out << "[Physics]\nGAMMA = 1.3\n";
-    out << "[Solver]\nCFL = 0.8\n";
-    out << "[Regularization]\nENABLE_IGR = true\nIGR_TYPE = PARABOLIC\n";
-    out << "[ImmersedBoundary]\nIB_L_SCALE = 0.75\nIB_DL_SCALE = 1.5\n";
+    out << "[Solver]\nCFL = 0.8\nENABLE_MULTIRATE = true\nMAX_MULTIRATE_LEVEL = 4\n";
+    out << "[Regularization]\nENABLE_IGR = true\nIGR_TYPE = PARABOLIC\nUSE_DUCROS_SWITCH = true\nUSE_PRESSURE_SENSOR = true\nUSE_MOMENTUM_DIV = true\nUSE_PRESSURE_SOURCE_CAP = false\nSOURCE_CAP_COEFF = 2.5\n";
+    out << "[ImmersedBoundary]\nIB_L_SCALE = 0.75\nIB_DL_SCALE = 1.5\nIB_CHORD = 3.2\n";
     out.close();
 
     Parameters p;
@@ -61,10 +61,18 @@ TEST_CASE("Parameters - Load inputs.dat") {
     
     CHECK(p.GAMMA == doctest::Approx(1.3));
     CHECK(p.CFL == doctest::Approx(0.8));
+    CHECK(p.ENABLE_MULTIRATE == true);
+    CHECK(p.MAX_MULTIRATE_LEVEL == 4);
     CHECK(p.ENABLE_IGR == true);
     CHECK(p.IGR_TYPE == "PARABOLIC");
+    CHECK(p.USE_DUCROS_SWITCH == true);
+    CHECK(p.USE_PRESSURE_SENSOR == true);
+    CHECK(p.USE_MOMENTUM_DIV == true);
+    CHECK(p.USE_PRESSURE_SOURCE_CAP == false);
+    CHECK(p.SOURCE_CAP_COEFF == doctest::Approx(2.5));
     CHECK(p.IB_L_SCALE == doctest::Approx(0.75));
     CHECK(p.IB_DL_SCALE == doctest::Approx(1.5));
+    CHECK(p.IB_CHORD == doctest::Approx(3.2));
     
     std::remove("test_inputs.dat");
 }
@@ -83,9 +91,23 @@ TEST_CASE("Parameters - WALL_SLIP alias test") {
 
     Solver solver(p);
     
-    REQUIRE(solver.blocks.size() == 1);
-    CHECK(solver.blocks[0].ni_l.is_wall == true);
-    CHECK(solver.blocks[0].ni_r.is_wall == true);
+    REQUIRE(solver.cells.size() > 0);
+
+    // Find cells on the left domain boundary and verify WALL_SLIP → is_wall
+    bool found_left_wall = false;
+    bool found_right_wall = false;
+    for (const auto* cell : solver.cells) {
+        if (cell->is_boundary[0]) {  // Left face is a domain boundary
+            CHECK(cell->boundary_info[0].is_wall == true);
+            found_left_wall = true;
+        }
+        if (cell->is_boundary[1]) {  // Right face is a domain boundary
+            CHECK(cell->boundary_info[1].is_wall == true);
+            found_right_wall = true;
+        }
+    }
+    CHECK(found_left_wall);
+    CHECK(found_right_wall);
 
     std::remove("test_domain_wall_slip.grid");
 }

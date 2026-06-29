@@ -102,4 +102,5 @@ void IC::apply(Solver& solver) {
             }
         }
     }
+    solver.sync_blocks_to_cells();
 }

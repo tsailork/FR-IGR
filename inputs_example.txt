@@ -27,6 +27,12 @@ T_FINAL = 0.3
 # NUM_THREADS: Number of OpenMP threads to use
 NUM_THREADS = 4
 
+# ENABLE_MULTIRATE: Enable time-accurate multirate sub-cycling.
+ENABLE_MULTIRATE = false
+
+# MAX_MULTIRATE_LEVEL: Max power-of-two level for multirate sub-cycling.
+MAX_MULTIRATE_LEVEL = 3
+
 [NavierStokes]
 ENABLE_NS = true
 RE = 100.0
@@ -56,6 +62,21 @@ IGR_BR2_ETA = 1.0
 
 # IGR_SUB_ITERS: Number of parabolic sub-iterations per flow step.
 IGR_SUB_ITERS = 1
+
+# USE_DUCROS_SWITCH: Enable Ducros switch to scale down and suppress artificial viscosity in shear layers (vortical regions).
+USE_DUCROS_SWITCH = false
+
+# USE_PRESSURE_SENSOR: Use pressure-jump shock sensor instead of default density-gradient sensor.
+USE_PRESSURE_SENSOR = false
+
+# USE_MOMENTUM_DIV: Use momentum divergence for the compression check instead of velocity divergence.
+USE_MOMENTUM_DIV = false
+
+# USE_PRESSURE_SOURCE_CAP: Cap shock sensor source by local pressure (S <= SOURCE_CAP_COEFF * P) to stabilize strong shocks.
+USE_PRESSURE_SOURCE_CAP = true
+
+# SOURCE_CAP_COEFF: Tuning coefficient for pressure-bounded source capping.
+SOURCE_CAP_COEFF = 1.0
 
 [Stabilization]
 # ENABLE_POS_LIMITER: Zhang-Shu density and pressure positivity limiter.
@@ -109,6 +130,9 @@ IB_CENTER_X = 2.0
 IB_CENTER_Y = 1.0
 IB_RADIUS = 0.25
 
+# IB_CHORD: Reference chord length for Lift/Drag force coefficients (typically matches airfoil chord IB_RADIUS/length).
+IB_CHORD = 1.0
+
 # --- MULTI Shape Options (Used if IB_SHAPE = MULTI) ---
 # IB_Q_TIME_MAP: Piecewise-linear checkpoints for time parameter q(t) (format: t_0:q_0 t_1:q_1 ...).
 # Useful for prescribing moving/morphing geometries. Default is 0.0:0.0.
@@ -139,6 +163,28 @@ IB_SHARP = true
 # IB_SMOOTH_WIDTH: Half-width thickness of the smoothed Heaviside boundary interface 
 # (measured in units of grid spacing dx, dy). Typically 1.0 to 2.0.
 IB_SMOOTH_WIDTH = 1.5
+
+# --- Tree Decomposition (Quadtree Adaptive Mesh Refinement) ---
+[TreeDecomposition]
+# Target refinement level for cells touching a wall boundary. Set to 0 to disable near-wall refinement.
+WALL_REFINEMENT_LEVEL = 2
+
+# Number of cell layers from the wall boundary to apply the WALL_REFINEMENT_LEVEL.
+WALL_REFINEMENT_CELLS = 3
+
+# Number of manual refinement zones defined.
+NUM_REFINEMENT_ZONES = 1
+
+# Shape of the manual zone: CIRCLE, NACA, BOX, or POLYGON
+ZONE_0_SHAPE = CIRCLE
+
+# Geometry dimensions and center coordinates of the manual refinement zone
+ZONE_0_CENTER_X = 0.5
+ZONE_0_CENTER_Y = 0.5
+ZONE_0_RADIUS = 0.25
+
+# Target refinement level for this zone
+ZONE_0_LEVEL = 2
 
 [IO]
 # OUTPUT_INTERVAL: Time interval between full, continuous VTK plotting snapshots (plot_*.vtm).

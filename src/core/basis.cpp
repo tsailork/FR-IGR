@@ -67,22 +67,22 @@ Basis::Basis(int P_DEG) {
     D.resize(N, std::vector<double>(N));
 
     // 2. Barycentric weights
-    std::vector<double> bary(N);
+    bary_w.resize(N);
     for (int j = 0; j < N; ++j) {
         double prod = 1.0;
         for (int k = 0; k < N; ++k)
             if (j != k) prod *= (z[j] - z[k]);
-        bary[j] = 1.0 / prod;
+        bary_w[j] = 1.0 / prod;
     }
 
     // 3. Basis values at faces, derivative matrix, Radau corrections
     for (int i = 0; i < N; ++i) {
-        l_L[i] = lagrange_poly(i, -1.0, z, bary);
-        l_R[i] = lagrange_poly(i,  1.0, z, bary);
+        l_L[i] = lagrange_poly(i, -1.0, z, bary_w);
+        l_R[i] = lagrange_poly(i,  1.0, z, bary_w);
 
         for (int j = 0; j < N; ++j) {
             if (i != j)
-                D[i][j] = (bary[j] / bary[i]) / (z[i] - z[j]);
+                D[i][j] = (bary_w[j] / bary_w[i]) / (z[i] - z[j]);
             else {
                 double s = 0.0;
                 for (int k = 0; k < N; ++k)
@@ -97,4 +97,38 @@ Basis::Basis(int P_DEG) {
         dgl[i] = (sign * 0.5) * (dL_P - dL_Pp1);
         dgr[i] = 0.5  * (dL_P + dL_Pp1);
     }
+
+    // 4. Precompute prolongation and restriction matrices
+    P1.resize(N, std::vector<double>(N));
+    P2.resize(N, std::vector<double>(N));
+    R1.resize(N, std::vector<double>(N));
+    R2.resize(N, std::vector<double>(N));
+
+    for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < N; ++j) {
+            // Child 1 face coordinate xi = (z_j - 1.0) / 2.0
+            P1[i][j] = interpolate_lagrange(i, (z[j] - 1.0) / 2.0);
+            // Child 2 face coordinate xi = (z_j + 1.0) / 2.0
+            P2[i][j] = interpolate_lagrange(i, (z[j] + 1.0) / 2.0);
+        }
+    }
+
+    for (int j = 0; j < N; ++j) {
+        for (int i = 0; i < N; ++i) {
+            // R_ji = P_ij * w_j / (2.0 * w_i)
+            R1[j][i] = P1[i][j] * w[j] / (2.0 * w[i]);
+            R2[j][i] = P2[i][j] * w[j] / (2.0 * w[i]);
+        }
+    }
+}
+
+double Basis::interpolate_lagrange(int j, double x) const {
+    int N = static_cast<int>(z.size());
+    for (int k = 0; k < N; ++k) {
+        if (std::abs(x - z[k]) < 1e-12) return (k == j) ? 1.0 : 0.0;
+    }
+    double term_j = bary_w[j] / (x - z[j]);
+    double sum_all = 0.0;
+    for (int k = 0; k < N; ++k) sum_all += bary_w[k] / (x - z[k]);
+    return term_j / sum_all;
 }

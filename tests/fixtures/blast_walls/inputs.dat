@@ -11,4 +11,5 @@ ENABLE_NS = false
 [Regularization]
 ENABLE_IGR = true
 ALPHA_SCALE = 1.0
-IGR_TYPE = ELLIPTIC
+IGR_TYPE = PARABOLIC
+

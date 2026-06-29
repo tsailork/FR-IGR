@@ -1,15 +1,7 @@
 #!/bin/bash
 set -e
 
-# Hardcoded absolute Windows path of the project directory
-WINDOWS_PROJECT_DIR="C:/Users/tskoepli/Documents/GitHub/FR-IGR"
-
-# Convert to WSL/Linux path
-if command -v wslpath >/dev/null 2>&1; then
-    PROJECT_DIR="$(wslpath "$WINDOWS_PROJECT_DIR")"
-else
-    PROJECT_DIR="$WINDOWS_PROJECT_DIR"
-fi
+PROJECT_DIR="/home/tsk/Documents/GitHub/FR-IGR/"
 
 # Determine active running directory (the case directory)
 CASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

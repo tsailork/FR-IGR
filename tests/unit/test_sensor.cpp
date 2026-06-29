@@ -17,30 +17,29 @@ TEST_CASE("IGR Shock Sensor") {
     p.blocks.push_back(bc);
 
     Solver solver(p);
+    const int npts = p.N_PTS;
 
     SUBCASE("Uniform field zero sensor") {
-        for (int ey = 0; ey < solver.blocks[0].ny; ++ey) {
-            for (int ex = 0; ex < solver.blocks[0].nx; ++ex) {
-                for (int iy = 0; iy < p.N_PTS; ++iy) {
-                    for (int ix = 0; ix < p.N_PTS; ++ix) {
-                        solver.blocks[0].U(0, ey, ex, iy, ix) = 1.0;
-                        solver.blocks[0].U(1, ey, ex, iy, ix) = 1.0;
-                        solver.blocks[0].U(2, ey, ex, iy, ix) = 0.0;
-                        solver.blocks[0].U(3, ey, ex, iy, ix) = 100000.0 / 0.4 + 0.5 * 1.0;
-                    }
+        for (size_t ci = 0; ci < solver.cells.size(); ++ci) {
+            Cell* cell = solver.cells[ci];
+            for (int iy = 0; iy < npts; ++iy) {
+                for (int ix = 0; ix < npts; ++ix) {
+                    cell->U[0*npts*npts + iy*npts + ix] = 1.0;
+                    cell->U[1*npts*npts + iy*npts + ix] = 1.0;
+                    cell->U[2*npts*npts + iy*npts + ix] = 0.0;
+                    cell->U[3*npts*npts + iy*npts + ix] = 100000.0 / 0.4 + 0.5 * 1.0;
                 }
             }
         }
         
         solver.compute_sensor_source();
         
-        for (int ey = 0; ey < solver.blocks[0].ny; ++ey) {
-            for (int ex = 0; ex < solver.blocks[0].nx; ++ex) {
-                for (int iy = 0; iy < p.N_PTS; ++iy) {
-                    for (int ix = 0; ix < p.N_PTS; ++ix) {
-                        double S = solver.blocks[0].S_buf[solver.blocks[0].get_flat_idx(ey, ex, iy, ix, p.N_PTS)];
-                        CHECK(S == doctest::Approx(0.0));
-                    }
+        for (size_t ci = 0; ci < solver.cells.size(); ++ci) {
+            Cell* cell = solver.cells[ci];
+            for (int iy = 0; iy < npts; ++iy) {
+                for (int ix = 0; ix < npts; ++ix) {
+                    double S = cell->S_buf[iy*npts + ix];
+                    CHECK(S == doctest::Approx(0.0));
                 }
             }
         }
@@ -48,18 +47,17 @@ TEST_CASE("IGR Shock Sensor") {
 
     SUBCASE("Pressure jump non-zero / Sensor positivity") {
         // Create a shock-like profile
-        for (int ey = 0; ey < solver.blocks[0].ny; ++ey) {
-            for (int ex = 0; ex < solver.blocks[0].nx; ++ex) {
-                for (int iy = 0; iy < p.N_PTS; ++iy) {
-                    for (int ix = 0; ix < p.N_PTS; ++ix) {
-                        double x = ex * solver.blocks[0].dx + (ix + 0.5) * (solver.blocks[0].dx / p.N_PTS); // Approx point
-                        double u = (x < 0.5) ? 1.0 : 0.5; // Compressive shock
-                        solver.blocks[0].U(0, ey, ex, iy, ix) = 1.0;
-                        solver.blocks[0].U(1, ey, ex, iy, ix) = 1.0 * u;
-                        solver.blocks[0].U(2, ey, ex, iy, ix) = 0.0;
-                        double p_val = (x < 0.5) ? 200000.0 : 100000.0;
-                        solver.blocks[0].U(3, ey, ex, iy, ix) = p_val / 0.4 + 0.5 * u * u;
-                    }
+        for (size_t ci = 0; ci < solver.cells.size(); ++ci) {
+            Cell* cell = solver.cells[ci];
+            for (int iy = 0; iy < npts; ++iy) {
+                for (int ix = 0; ix < npts; ++ix) {
+                    double x = cell->x_min + (0.5 + ix) * (cell->dx / npts); // Approx point
+                    double u = (x < 0.5) ? 1.0 : 0.5; // Compressive shock
+                    cell->U[0*npts*npts + iy*npts + ix] = 1.0;
+                    cell->U[1*npts*npts + iy*npts + ix] = 1.0 * u;
+                    cell->U[2*npts*npts + iy*npts + ix] = 0.0;
+                    double p_val = (x < 0.5) ? 200000.0 : 100000.0;
+                    cell->U[3*npts*npts + iy*npts + ix] = p_val / 0.4 + 0.5 * u * u;
                 }
             }
         }
@@ -67,15 +65,14 @@ TEST_CASE("IGR Shock Sensor") {
         solver.compute_sensor_source();
         
         bool has_positive_sensor = false;
-        for (int ey = 0; ey < solver.blocks[0].ny; ++ey) {
-            for (int ex = 0; ex < solver.blocks[0].nx; ++ex) {
-                for (int iy = 0; iy < p.N_PTS; ++iy) {
-                    for (int ix = 0; ix < p.N_PTS; ++ix) {
-                        double S = solver.blocks[0].S_buf[solver.blocks[0].get_flat_idx(ey, ex, iy, ix, p.N_PTS)];
-                        CHECK(S >= 0.0); // Sensor positivity
-                        if (S > 0.0) {
-                            has_positive_sensor = true;
-                        }
+        for (size_t ci = 0; ci < solver.cells.size(); ++ci) {
+            Cell* cell = solver.cells[ci];
+            for (int iy = 0; iy < npts; ++iy) {
+                for (int ix = 0; ix < npts; ++ix) {
+                    double S = cell->S_buf[iy*npts + ix];
+                    CHECK(S >= 0.0); // Sensor positivity
+                    if (S > 0.0) {
+                        has_positive_sensor = true;
                     }
                 }
             }

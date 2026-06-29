@@ -19,7 +19,12 @@ TEST_CASE("Temporal convergence - RK3") {
             solver.step_rk3(step_dt);
             current_time += step_dt;
         }
-        return solver.blocks[0].U.data;
+        // Collect all cell U data into a single flat vector
+        std::vector<double> state;
+        for (const Cell* c : solver.cells) {
+            state.insert(state.end(), c->U.begin(), c->U.end());
+        }
+        return state;
     };
 
     double dt1 = 0.002;

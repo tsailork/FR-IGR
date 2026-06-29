@@ -155,6 +155,21 @@ To improve the stability of high-order IGR at strong shocks:
 - **Dynamic Polygon Tables:** Exposes coordinate tables for dynamic piecewise multi-polygons when `IB_SHAPE = MULTI`.
 - **Refined Clean Restart:** Modified clean restarts to only wipe transient case outputs (`pv_outputs/*`, `csv_outputs/*`, `out.log`, `STOP`, `residuals.dat`) instead of running `make clean`, accelerating restart compilation and startup.
 
+
+## Technical Refinements & Enhancements (July 2026)
+
+### 1. Decoupled Geometry Engine
+- Decoupled `Polygon`, `Circle`, and `Naca` shapes into a modular geometry engine (`src/core/geometry.hpp/cpp`).
+- Implemented ray-casting point containment, Liang-Barsky line clipping segment intersection, and general AABB-polygon intersection algorithms.
+
+### 2. Breadth-First Near-Wall Layer Tracking
+- Implemented a Breadth-First Search (BFS) starting from slip/no-slip/moving/isothermal wall boundary cells to track near-wall distance in terms of grid cell layers rather than expensive Euclidean distance, controlling wall refinement via `WALL_REFINEMENT_LEVEL` and `WALL_REFINEMENT_CELLS`.
+
+### 3. State-Conservative Tree Decomposition
+- Implemented cell splitting (`split_cell`) and merging (`merge_cells`) tree operations.
+- Prolongs variables and regularization fields to children using 2D tensor-product Lagrange interpolation (`P1`/`P2`), and restricts children back to parent via strictly conservative $L_2$ projections (`R1`/`R2`).
+- Resolves leaf cells containing physical points dynamically using `find_leaf_cell` rather than conforming 2D lookups.
+
 ## Documentation Maintenance (Agent Hook)
 Whenever tasked with "updating the documentation" for a new feature or change, you **MUST** ensure all the following locations are kept perfectly synchronized with the codebase:
 

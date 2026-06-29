@@ -108,7 +108,7 @@ TEST_SUITE("IB Geometry") {
         REQUIRE(!ImmersedBoundary::sbm_registry.empty());
         
         for (const auto& sfp : ImmersedBoundary::sbm_registry) {
-            double h = std::max(solver.blocks[0].dx, solver.blocks[0].dy); // grid spacing
+            double h = std::max(solver.cells[0]->dx, solver.cells[0]->dy); // grid spacing
             double alpha = 1.0 + sfp.D / h;
             // Verify formula: L = D + IB_L_SCALE * alpha * sqrt(2.0) * h
             double expected_L = sfp.D + 0.5 * alpha * std::sqrt(2.0) * h;

@@ -27,9 +27,10 @@ TEST_CASE("Freestream preservation - Euler") {
         run_sim(solver, p.T_FINAL);
         assert_no_nan(solver);
         double max_dev = 0.0;
-        for (const auto& b : solver.blocks) {
-            for (int i = 0; i < b.U.n_dofs_per_var; ++i) {
-                max_dev = std::max(max_dev, std::abs(b.U.data[i] - 1.0));
+        int npts = solver.p.N_PTS;
+        for (const Cell* c : solver.cells) {
+            for (int i = 0; i < npts * npts; ++i) {
+                max_dev = std::max(max_dev, std::abs(c->U[i] - 1.0));
             }
         }
         CHECK(max_dev < 1e-12);
@@ -51,9 +52,10 @@ TEST_CASE("Freestream preservation - NS") {
         run_sim(solver, p.T_FINAL);
         assert_no_nan(solver);
         double max_dev = 0.0;
-        for (const auto& b : solver.blocks) {
-            for (int i = 0; i < b.U.n_dofs_per_var; ++i) {
-                max_dev = std::max(max_dev, std::abs(b.U.data[i] - 1.0));
+        int npts = solver.p.N_PTS;
+        for (const Cell* c : solver.cells) {
+            for (int i = 0; i < npts * npts; ++i) {
+                max_dev = std::max(max_dev, std::abs(c->U[i] - 1.0));
             }
         }
         CHECK(max_dev < 1e-11);

@@ -11,20 +11,17 @@
 inline double compute_l2_error(const Solver& solver) {
     double l2 = 0.0;
     double vol = 0.0;
-    for (const auto& b : solver.blocks) {
-        for (int ey = 0; ey < b.ny; ++ey) {
-            for (int ex = 0; ex < b.nx; ++ex) {
-                for (int iy = 0; iy < solver.p.N_PTS; ++iy) {
-                    for (int ix = 0; ix < solver.p.N_PTS; ++ix) {
-                        double x = b.x_min + (ex + 0.5 * (1 + solver.basis.z[ix])) * b.dx;
-                        double u_exact = 1.0;
-                        double exact_rho = 1.0 + 0.2 * std::sin(2.0 * M_PI * (x - u_exact * solver.p.T_FINAL));
-                        double weight = solver.basis.w[ix] * solver.basis.w[iy] * b.dx * b.dy / 4.0;
-                        double rho = b.U(0, ey, ex, iy, ix);
-                        l2 += std::pow(rho - exact_rho, 2) * weight;
-                        vol += weight;
-                    }
-                }
+    int npts = solver.p.N_PTS;
+    for (const Cell* c : solver.cells) {
+        for (int iy = 0; iy < npts; ++iy) {
+            for (int ix = 0; ix < npts; ++ix) {
+                double x = c->x_min + (0.5 * (1 + solver.basis.z[ix])) * c->dx;
+                double u_exact = 1.0;
+                double exact_rho = 1.0 + 0.2 * std::sin(2.0 * M_PI * (x - u_exact * solver.p.T_FINAL));
+                double weight = solver.basis.w[ix] * solver.basis.w[iy] * c->dx * c->dy / 4.0;
+                double rho = c->get_U(0, iy, ix, npts);
+                l2 += std::pow(rho - exact_rho, 2) * weight;
+                vol += weight;
             }
         }
     }

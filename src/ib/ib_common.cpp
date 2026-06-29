@@ -285,21 +285,20 @@ double get_parabola_sdf(double px, double py, const ParabolaShape& poly, double 
  *
  * @param time Current simulation time
  */
+
+
 void Solver::update_ib_mask_field(double time) {
     if (!p.ENABLE_IB) return;
 
-    for (auto &b : blocks) {
-        #pragma omp parallel for collapse(2) schedule(static)
-        for (int ey = 0; ey < b.ny; ++ey) {
-            for (int ex = 0; ex < b.nx; ++ex) {
-                for (int iy = 0; iy < p.N_PTS; ++iy) {
-                    for (int ix = 0; ix < p.N_PTS; ++ix) {
-                        double x = b.x_min + (ex + 0.5 * (1.0 + basis.z[ix])) * b.dx;
-                        double y = b.y_min + (ey + 0.5 * (1.0 + basis.z[iy])) * b.dy;
-                        int idx = b.get_flat_idx(ey, ex, iy, ix, p.N_PTS);
-                        b.ib_mask[idx] = get_ib_mask_at_time(x, y, time, b.dx, b.dy);
-                    }
-                }
+    #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < cells.size(); ++i) {
+        Cell* c = cells[i];
+        for (int iy = 0; iy < p.N_PTS; ++iy) {
+            for (int ix = 0; ix < p.N_PTS; ++ix) {
+                double x = c->x_min + 0.5 * (1.0 + basis.z[ix]) * c->dx;
+                double y = c->y_min + 0.5 * (1.0 + basis.z[iy]) * c->dy;
+                int idx = iy * p.N_PTS + ix;
+                c->ib_mask[idx] = get_ib_mask_at_time(x, y, time, c->dx, c->dy);
             }
         }
     }

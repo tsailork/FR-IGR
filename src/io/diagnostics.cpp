@@ -1,16 +1,18 @@
 /**
  * @file diagnostics.cpp
- * @brief Implementation of diagnostic tracking and performance logging.
- *
- * Calculates the \f$L_2\f$ norm of the solution right-hand side (RHS) across all blocks 
- * using OpenMP reductions, and extracts sub-element scalar values for point probes 
- * using high-order polynomial interpolation.
+ * @brief Implementation of diagnostic tracking and performance logging on decoupled cells.
  */
 
 #include "diagnostics.hpp"
+#include "../core/solver.hpp"
 #include <iomanip>
 #include <iostream>
 #include <filesystem>
+#include <cmath>
+
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 Diagnostics::Diagnostics(const Parameters& p, const Solver& solver, double startTime) 
     : params(p), sim_start_time(startTime) {
@@ -31,8 +33,21 @@ Diagnostics::Diagnostics(const Parameters& p, const Solver& solver, double start
     } else {
         res_file.open("csv_outputs/residuals.csv");
         if (res_file.is_open()) {
-            res_file << "# FR-IGR Residual Tracker (Multiblock)\n";
+            res_file << "# FR-IGR Residual Tracker\n";
             res_file << "Time, L2_rho, L2_rhou, L2_rhov, L2_E\n";
+        }
+    }
+
+    // Initialize Forces File (Append if restarting)
+    if (params.ENABLE_IB && (params.IB_METHOD == "VPM" || params.IB_METHOD == "VPM_ANALYTICAL" || params.IB_METHOD == "VPM_EXPLICIT")) {
+        if (startTime > 0) {
+            force_file.open("csv_outputs/forces.csv", std::ios::app);
+        } else {
+            force_file.open("csv_outputs/forces.csv");
+            if (force_file.is_open()) {
+                force_file << "# VPM Aerodynamic Forces\n";
+                force_file << "Time, DragForce, LiftForce, Cd, Cl\n";
+            }
         }
     }
 
@@ -52,32 +67,27 @@ Diagnostics::Diagnostics(const Parameters& p, const Solver& solver, double start
             }
         }
         
-        // Always rebuild locators (independent of file mode)
+        // Find hosting Cell and build 1D Lagrange interpolants
         for (const auto& probe_def : p.probes) {
             ProbeLocator loc;
             loc.def = &probe_def;
-            loc.block_id = -1;
+            loc.cell_ptr = nullptr;
 
-            for (const auto& b : solver.blocks) {
-                double x_max = b.x_min + b.nx * b.dx;
-                double y_max = b.y_min + b.ny * b.dy;
-                if (loc.def->x >= b.x_min && loc.def->x <= x_max &&
-                    loc.def->y >= b.y_min && loc.def->y <= y_max) {
-                    loc.block_id = b.id;
+            for (Cell* c : solver.cells) {
+                double x_max = c->x_min + c->dx;
+                double y_max = c->y_min + c->dy;
+                if (loc.def->x >= c->x_min && loc.def->x <= x_max &&
+                    loc.def->y >= c->y_min && loc.def->y <= y_max) {
+                    loc.cell_ptr = c;
                     
-                    double ex_frac = (loc.def->x - b.x_min) / b.dx;
-                    double ey_frac = (loc.def->y - b.y_min) / b.dy;
-                    loc.ex = std::clamp(static_cast<int>(ex_frac), 0, b.nx - 1);
-                    loc.ey = std::clamp(static_cast<int>(ey_frac), 0, b.ny - 1);
+                    double xc = c->x_min + 0.5 * c->dx;
+                    double yc = c->y_min + 0.5 * c->dy;
+                    double xi  = (loc.def->x - xc) / (0.5 * c->dx);
+                    double eta = (loc.def->y - yc) / (0.5 * c->dy);
 
-                    double xc = b.x_min + (loc.ex + 0.5) * b.dx;
-                    double yc = b.y_min + (loc.ey + 0.5) * b.dy;
-                    double xi  = (loc.def->x - xc) / (0.5 * b.dx);
-                    double eta = (loc.def->y - yc) / (0.5 * b.dy);
-
+                    loc.L_xi.assign(p.N_PTS, 1.0);
+                    loc.L_eta.assign(p.N_PTS, 1.0);
                     for (int j = 0; j < p.N_PTS; ++j) {
-                        loc.L_xi[j] = 1.0;
-                        loc.L_eta[j] = 1.0;
                         for (int k = 0; k < p.N_PTS; ++k) {
                             if (j != k) {
                                 loc.L_xi[j]  *= (xi  - solver.basis.z[k]) / (solver.basis.z[j] - solver.basis.z[k]);
@@ -89,8 +99,11 @@ Diagnostics::Diagnostics(const Parameters& p, const Solver& solver, double start
                 }
             }
             
-            if (loc.block_id != -1) locators.push_back(loc);
-            else std::cerr << "[DIAG] Warning: Probe at (" << loc.def->x << "," << loc.def->y << ") outside domain.\n";
+            if (loc.cell_ptr != nullptr) {
+                locators.push_back(loc);
+            } else {
+                std::cerr << "[DIAG] Warning: Probe at (" << loc.def->x << "," << loc.def->y << ") outside domain.\n";
+            }
         }
     }
 }
@@ -98,26 +111,26 @@ Diagnostics::Diagnostics(const Parameters& p, const Solver& solver, double start
 Diagnostics::~Diagnostics() {
     if (res_file.is_open()) res_file.close();
     if (probe_file.is_open()) probe_file.close();
+    if (force_file.is_open()) force_file.close();
 }
 
 double Diagnostics::evaluate_probe(const Solver& solver, const ProbeLocator& loc) const {
-    const Block* target_block = nullptr;
-    for (const auto& b : solver.blocks) if (b.id == loc.block_id) { target_block = &b; break; }
-    if (!target_block) return 0.0;
+    const Cell* c = loc.cell_ptr;
+    if (!c) return 0.0;
 
-    double u_int[4] = {0,0,0,0};
-    double sig_int = 0;
+    double u_int[4] = {0.0, 0.0, 0.0, 0.0};
+    double sig_int = 0.0;
 
     for (int iy = 0; iy < params.N_PTS; ++iy) {
         for (int ix = 0; ix < params.N_PTS; ++ix) {
             double w = loc.L_eta[iy] * loc.L_xi[ix];
-            u_int[0] += w * target_block->U(0, loc.ey, loc.ex, iy, ix);
-            u_int[1] += w * target_block->U(1, loc.ey, loc.ex, iy, ix);
-            u_int[2] += w * target_block->U(2, loc.ey, loc.ex, iy, ix);
-            u_int[3] += w * target_block->U(3, loc.ey, loc.ex, iy, ix);
+            u_int[0] += w * c->get_U(0, iy, ix, params.N_PTS);
+            u_int[1] += w * c->get_U(1, iy, ix, params.N_PTS);
+            u_int[2] += w * c->get_U(2, iy, ix, params.N_PTS);
+            u_int[3] += w * c->get_U(3, iy, ix, params.N_PTS);
             
             if (params.ENABLE_IGR) {
-                sig_int += w * target_block->sigma_field[target_block->get_flat_idx(loc.ey, loc.ex, iy, ix, params.N_PTS)];
+                sig_int += w * c->sigma_field[iy * params.N_PTS + ix];
             }
         }
     }
@@ -127,7 +140,11 @@ double Diagnostics::evaluate_probe(const Solver& solver, const ProbeLocator& loc
     double p = (params.GAMMA - 1.0) * (u_int[3] - 0.5 * rho * (u*u + v*v));
 
     if (loc.def->variable == "Density") return rho;
+    if (loc.def->variable == "XMomentum") return u_int[1];
+    if (loc.def->variable == "YMomentum") return u_int[2];
+    if (loc.def->variable == "Energy") return u_int[3];
     if (loc.def->variable == "Pressure") return p;
+    if (loc.def->variable == "Temperature") return p / rho;
     if (loc.def->variable == "Mach") return std::sqrt(u*u + v*v) / std::sqrt(params.GAMMA * std::abs(p) / rho);
     if (loc.def->variable == "Sigma") return sig_int;
     return 0.0;
@@ -138,32 +155,86 @@ void Diagnostics::update(const Solver& solver, double t, int step) {
     std::vector<double> res(4, 0.0);
     
     if (need_residual) {
-        double l2_rho = 0, l2_rhou = 0, l2_rhov = 0, l2_E = 0;
-        long long total_pts = 0;
+        double l2_rho = 0.0, l2_rhou = 0.0, l2_rhov = 0.0, l2_E = 0.0;
+        long long total_pts = solver.cells.size() * params.N_PTS * params.N_PTS;
 
-        for (const auto& b : solver.blocks) {
-            int npts_block = b.nx * b.ny * params.N_PTS * params.N_PTS;
-            total_pts += npts_block;
-            
-            #pragma omp parallel for reduction(+:l2_rho, l2_rhou, l2_rhov, l2_E)
-            for (int i = 0; i < npts_block; ++i) {
-                l2_rho  += b.RHS.data[0 * npts_block + i] * b.RHS.data[0 * npts_block + i];
-                l2_rhou += b.RHS.data[1 * npts_block + i] * b.RHS.data[1 * npts_block + i];
-                l2_rhov += b.RHS.data[2 * npts_block + i] * b.RHS.data[2 * npts_block + i];
-                l2_E    += b.RHS.data[3 * npts_block + i] * b.RHS.data[3 * npts_block + i];
+        #pragma omp parallel for reduction(+:l2_rho, l2_rhou, l2_rhov, l2_E)
+        for (size_t i = 0; i < solver.cells.size(); ++i) {
+            Cell* c = solver.cells[i];
+            int npts2 = params.N_PTS * params.N_PTS;
+            for (int k = 0; k < npts2; ++k) {
+                l2_rho  += c->RHS[0 * npts2 + k] * c->RHS[0 * npts2 + k];
+                l2_rhou += c->RHS[1 * npts2 + k] * c->RHS[1 * npts2 + k];
+                l2_rhov += c->RHS[2 * npts2 + k] * c->RHS[2 * npts2 + k];
+                l2_E    += c->RHS[3 * npts2 + k] * c->RHS[3 * npts2 + k];
             }
         }
         
-        res[0] = std::sqrt(l2_rho / total_pts);
-        res[1] = std::sqrt(l2_rhou / total_pts);
-        res[2] = std::sqrt(l2_rhov / total_pts);
-        res[3] = std::sqrt(l2_E / total_pts);
+        if (total_pts > 0) {
+            res[0] = std::sqrt(l2_rho / total_pts);
+            res[1] = std::sqrt(l2_rhou / total_pts);
+            res[2] = std::sqrt(l2_rhov / total_pts);
+            res[3] = std::sqrt(l2_E / total_pts);
+        }
     }
 
     if (t >= next_residual_output && res_file.is_open()) {
         res_file << std::scientific << std::setprecision(6) << t << ", "
                  << res[0] << ", " << res[1] << ", " << res[2] << ", " << res[3] << "\n";
         res_file.flush();
+        
+        // VPM Aerodynamic Forces evaluation and logging
+        if (params.ENABLE_IB && (params.IB_METHOD == "VPM" || params.IB_METHOD == "VPM_ANALYTICAL" || params.IB_METHOD == "VPM_EXPLICIT") && force_file.is_open()) {
+            double drag_force = 0.0;
+            double lift_force = 0.0;
+            double eta = params.IB_PENALIZATION_ETA;
+            
+            if (eta > 1e-15) {
+                #pragma omp parallel for reduction(+:drag_force, lift_force)
+                for (size_t i = 0; i < solver.cells.size(); ++i) {
+                    Cell* c = solver.cells[i];
+                    double weight_factor = c->dx * c->dy / 4.0;
+                    for (int iy = 0; iy < params.N_PTS; ++iy) {
+                        for (int ix = 0; ix < params.N_PTS; ++ix) {
+                            int idx = iy * params.N_PTS + ix;
+                            double chi = c->ib_mask[idx];
+                            if (chi <= 0.0) continue;
+                            
+                            double rho  = c->get_U(0, iy, ix, params.N_PTS);
+                            double rhou = c->get_U(1, iy, ix, params.N_PTS);
+                            double rhov = c->get_U(2, iy, ix, params.N_PTS);
+                            
+                            double target_rhou = rho * params.IB_VELOCITY_X;
+                            double target_rhov = rho * params.IB_VELOCITY_Y;
+                            
+                            double fx = (chi / eta) * (rhou - target_rhou);
+                            double fy = (chi / eta) * (rhov - target_rhov);
+                            
+                            double w = solver.basis.w[ix] * solver.basis.w[iy] * weight_factor;
+                            drag_force += fx * w;
+                            lift_force += fy * w;
+                        }
+                    }
+                }
+            }
+            
+            double rho_inf = params.RHO_INF;
+            double u_inf = params.U_INF;
+            double v_inf = params.V_INF;
+            double q_inf = 0.5 * rho_inf * (u_inf * u_inf + v_inf * v_inf);
+            double chord = params.IB_CHORD;
+            
+            double cd = 0.0, cl = 0.0;
+            if (std::abs(q_inf) > 1e-12 && std::abs(chord) > 1e-12) {
+                cd = drag_force / (q_inf * chord);
+                cl = lift_force / (q_inf * chord);
+            }
+            
+            force_file << std::scientific << std::setprecision(6) << t << ", "
+                       << drag_force << ", " << lift_force << ", " << cd << ", " << cl << "\n";
+            force_file.flush();
+        }
+        
         next_residual_output += params.RESIDUAL_INTERVAL;
     }
 

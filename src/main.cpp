@@ -70,7 +70,7 @@ int main() {
     if (!params.RESTART_FILE.empty()) {
         std::cout << "Restarting from: " << params.RESTART_FILE << "\n";
         writer.load_existing_pvd();
-        if (!Restart::load_restart(params.RESTART_FILE, solver.blocks, params)) {
+        if (!Restart::load_restart(params.RESTART_FILE, solver)) {
             std::cerr << "[FATAL] Restart failed. Aborting.\n";
             return 1;
         }
@@ -86,8 +86,8 @@ int main() {
         // Initialize Sigma field for Parabolic mode
         if (params.ENABLE_IGR && params.IGR_TYPE == "PARABOLIC") {
             solver.compute_sensor_source();
-            for (auto& b : solver.blocks) {
-                b.sigma_field = b.S_buf;
+            for (Cell* c : solver.cells) {
+                c->sigma_field = c->S_buf;
             }
         }
         

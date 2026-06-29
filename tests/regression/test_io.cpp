@@ -26,20 +26,19 @@ TEST_CASE("IO - VTK Output and Restart Round-Trip") {
     VTKWriter writer;
     writer.write_checkpoint(solver1, 0, t_saved);
     
+
     // Create a new solver and load the restart file
     Solver solver2(p);
-    Restart::load_restart("pv_outputs/sol_0.vtm", solver2.blocks, p);
+    Restart::load_restart("pv_outputs/sol_0.vtu", solver2);
     
-    // Check if time and data match
-    // Time isn't saved in the block data natively in this format, just verify blocks match
-    
-    for (size_t b = 0; b < solver1.blocks.size(); ++b) {
-        for (size_t i = 0; i < solver1.blocks[b].U.data.size(); ++i) {
-            CHECK(solver2.blocks[b].U.data[i] == doctest::Approx(solver1.blocks[b].U.data[i]));
+    // Check if cell states match
+    for (size_t c = 0; c < solver1.cells.size(); ++c) {
+        for (size_t i = 0; i < solver1.cells[c]->U.size(); ++i) {
+            CHECK(solver2.cells[c]->U[i] == doctest::Approx(solver1.cells[c]->U[i]));
         }
     }
     
     // Write VTK output
-    CHECK(std::filesystem::exists("pv_outputs/sol_0.vtm"));
+    CHECK(std::filesystem::exists("pv_outputs/sol_0.vtu"));
     std::filesystem::current_path(old_path);
 }

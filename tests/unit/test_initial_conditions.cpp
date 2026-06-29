@@ -8,6 +8,7 @@ TEST_CASE("Initial Conditions Application") {
     Parameters p;
     p.GAMMA = 1.4;
     p.N_PTS = 1;
+    int npts = p.N_PTS;
     
     BlockConfig bc;
     bc.id = 0; bc.N_ELEM_X = 2; bc.N_ELEM_Y = 2;
@@ -20,11 +21,14 @@ TEST_CASE("Initial Conditions Application") {
         Solver solver(p);
         IC::apply(solver);
         
+        REQUIRE(solver.cells.size() >= 1);
+        Cell* cell = solver.cells[0];
+        
         double E_expected = 1.0 / 0.4;
-        CHECK(solver.blocks[0].U(0, 0, 0, 0, 0) == doctest::Approx(1.0));
-        CHECK(solver.blocks[0].U(1, 0, 0, 0, 0) == doctest::Approx(0.0));
-        CHECK(solver.blocks[0].U(2, 0, 0, 0, 0) == doctest::Approx(0.0));
-        CHECK(solver.blocks[0].U(3, 0, 0, 0, 0) == doctest::Approx(E_expected));
+        CHECK(cell->U[0 * npts * npts + 0 * npts + 0] == doctest::Approx(1.0));
+        CHECK(cell->U[1 * npts * npts + 0 * npts + 0] == doctest::Approx(0.0));
+        CHECK(cell->U[2 * npts * npts + 0 * npts + 0] == doctest::Approx(0.0));
+        CHECK(cell->U[3 * npts * npts + 0 * npts + 0] == doctest::Approx(E_expected));
     }
 
     SUBCASE("FREESTREAM") {
@@ -37,13 +41,16 @@ TEST_CASE("Initial Conditions Application") {
         Solver solver(p);
         IC::apply(solver);
         
+        REQUIRE(solver.cells.size() >= 1);
+        Cell* cell = solver.cells[0];
+        
         double u2 = p.U_INF * p.U_INF + p.V_INF * p.V_INF;
         double E_expected = p.P_INF / 0.4 + 0.5 * p.RHO_INF * u2;
         
-        CHECK(solver.blocks[0].U(0, 0, 0, 0, 0) == doctest::Approx(1.2));
-        CHECK(solver.blocks[0].U(1, 0, 0, 0, 0) == doctest::Approx(1.2 * 0.5));
-        CHECK(solver.blocks[0].U(2, 0, 0, 0, 0) == doctest::Approx(1.2 * -0.5));
-        CHECK(solver.blocks[0].U(3, 0, 0, 0, 0) == doctest::Approx(E_expected));
+        CHECK(cell->U[0 * npts * npts + 0 * npts + 0] == doctest::Approx(1.2));
+        CHECK(cell->U[1 * npts * npts + 0 * npts + 0] == doctest::Approx(1.2 * 0.5));
+        CHECK(cell->U[2 * npts * npts + 0 * npts + 0] == doctest::Approx(1.2 * -0.5));
+        CHECK(cell->U[3 * npts * npts + 0 * npts + 0] == doctest::Approx(E_expected));
     }
 
     SUBCASE("SINE_WAVE") {
@@ -51,14 +58,17 @@ TEST_CASE("Initial Conditions Application") {
         Solver solver(p);
         IC::apply(solver);
         
+        REQUIRE(solver.cells.size() >= 1);
+        Cell* cell = solver.cells[0];
+        
         // Element (0,0) center point x = 0.25 (since N_ELEM=2, width=0.5, dx=0.5 -> center=0.25)
         double rho_expected = 1.0 + 0.2 * std::sin(2.0 * M_PI * 0.25);
         double E_expected = 1.0 / 0.4 + 0.5 * rho_expected * 1.0;
         
-        CHECK(solver.blocks[0].U(0, 0, 0, 0, 0) == doctest::Approx(rho_expected));
-        CHECK(solver.blocks[0].U(1, 0, 0, 0, 0) == doctest::Approx(rho_expected * 1.0));
-        CHECK(solver.blocks[0].U(2, 0, 0, 0, 0) == doctest::Approx(0.0));
-        CHECK(solver.blocks[0].U(3, 0, 0, 0, 0) == doctest::Approx(E_expected));
+        CHECK(cell->U[0 * npts * npts + 0 * npts + 0] == doctest::Approx(rho_expected));
+        CHECK(cell->U[1 * npts * npts + 0 * npts + 0] == doctest::Approx(rho_expected * 1.0));
+        CHECK(cell->U[2 * npts * npts + 0 * npts + 0] == doctest::Approx(0.0));
+        CHECK(cell->U[3 * npts * npts + 0 * npts + 0] == doctest::Approx(E_expected));
     }
 
     SUBCASE("BLAST") {
@@ -66,11 +76,14 @@ TEST_CASE("Initial Conditions Application") {
         Solver solver(p);
         IC::apply(solver);
         
-        CHECK(solver.blocks[0].U(0, 0, 0, 0, 0) == doctest::Approx(1.0));
-        CHECK(solver.blocks[0].U(1, 0, 0, 0, 0) == doctest::Approx(0.0));
-        CHECK(solver.blocks[0].U(2, 0, 0, 0, 0) == doctest::Approx(0.0));
+        REQUIRE(solver.cells.size() >= 1);
+        Cell* cell = solver.cells[0];
+        
+        CHECK(cell->U[0 * npts * npts + 0 * npts + 0] == doctest::Approx(1.0));
+        CHECK(cell->U[1 * npts * npts + 0 * npts + 0] == doctest::Approx(0.0));
+        CHECK(cell->U[2 * npts * npts + 0 * npts + 0] == doctest::Approx(0.0));
         // Pressure is varying, we just check that Energy > 0
-        CHECK(solver.blocks[0].U(3, 0, 0, 0, 0) > 0.0);
+        CHECK(cell->U[3 * npts * npts + 0 * npts + 0] > 0.0);
     }
     
     SUBCASE("LID_DRIVEN_CAVITY") {
@@ -80,11 +93,14 @@ TEST_CASE("Initial Conditions Application") {
         Solver solver(p);
         IC::apply(solver);
         
+        REQUIRE(solver.cells.size() >= 1);
+        Cell* cell = solver.cells[0];
+        
         double E_expected = 1.0 / 0.4;
-        CHECK(solver.blocks[0].U(0, 0, 0, 0, 0) == doctest::Approx(1.0));
-        CHECK(solver.blocks[0].U(1, 0, 0, 0, 0) == doctest::Approx(0.0));
-        CHECK(solver.blocks[0].U(2, 0, 0, 0, 0) == doctest::Approx(0.0));
-        CHECK(solver.blocks[0].U(3, 0, 0, 0, 0) == doctest::Approx(E_expected));
+        CHECK(cell->U[0 * npts * npts + 0 * npts + 0] == doctest::Approx(1.0));
+        CHECK(cell->U[1 * npts * npts + 0 * npts + 0] == doctest::Approx(0.0));
+        CHECK(cell->U[2 * npts * npts + 0 * npts + 0] == doctest::Approx(0.0));
+        CHECK(cell->U[3 * npts * npts + 0 * npts + 0] == doctest::Approx(E_expected));
     }
     
     SUBCASE("RIEMANN_2D_C3") {
@@ -92,14 +108,19 @@ TEST_CASE("Initial Conditions Application") {
         Solver solver(p);
         IC::apply(solver);
         
-        // Element (0,0) is in bottom left
-        // Element (0,1) is in bottom right
-        // Element (1,0) is in top left
-        // Element (1,1) is in top right
+        // Cell ordering in a 2x2 grid (ey outer, ex inner):
+        //   cells[0]: ey=0, ex=0  (bottom left)
+        //   cells[1]: ey=0, ex=1  (bottom right)
+        //   cells[2]: ey=1, ex=0  (top left)
+        //   cells[3]: ey=1, ex=1  (top right)
+        
+        REQUIRE(solver.cells.size() >= 4);
         
         // Bottom left should be near rBL = 0.138
-        CHECK(solver.blocks[0].U(0, 0, 0, 0, 0) > 0.0);
+        Cell* cell_bl = solver.cells[0];
+        CHECK(cell_bl->U[0 * npts * npts + 0 * npts + 0] > 0.0);
         // Top right should be near rTR = 1.5
-        CHECK(solver.blocks[0].U(0, 1, 1, 0, 0) > 0.0);
+        Cell* cell_tr = solver.cells[3];
+        CHECK(cell_tr->U[0 * npts * npts + 0 * npts + 0] > 0.0);
     }
 }

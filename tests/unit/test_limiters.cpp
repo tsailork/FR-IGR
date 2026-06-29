@@ -9,21 +9,29 @@ TEST_SUITE("Limiters") {
         Solver solver(p);
         Basis basis(p.P_DEG);
         
-        for(int iy=0; iy<p.N_PTS; ++iy) {
-            for(int ix=0; ix<p.N_PTS; ++ix) {
-                solver.blocks[0].U(0, 0, 0, iy, ix) = 1.0;
-                solver.blocks[0].U(1, 0, 0, iy, ix) = 0.0;
-                solver.blocks[0].U(2, 0, 0, iy, ix) = 0.0;
-                solver.blocks[0].U(3, 0, 0, iy, ix) = 2.5; 
+        // Set all cells to uniform physical state (rho=1, u=0, v=0, E=2.5)
+        for (Cell* c : solver.cells) {
+            int npts = p.N_PTS;
+            for (int iy = 0; iy < npts; ++iy) {
+                for (int ix = 0; ix < npts; ++ix) {
+                    c->U[0*npts*npts + iy*npts + ix] = 1.0;
+                    c->U[1*npts*npts + iy*npts + ix] = 0.0;
+                    c->U[2*npts*npts + iy*npts + ix] = 0.0;
+                    c->U[3*npts*npts + iy*npts + ix] = 2.5;
+                }
             }
         }
         
-        auto stats = Limiters::apply_positivity_limiter(solver.blocks[0].U, basis, p);
+        auto stats = Limiters::apply_positivity_limiter(solver.cells, basis, p);
         CHECK(stats.num_limited == 0);
         
-        for(int iy=0; iy<p.N_PTS; ++iy) {
-            for(int ix=0; ix<p.N_PTS; ++ix) {
-                CHECK(solver.blocks[0].U(0, 0, 0, iy, ix) == doctest::Approx(1.0));
+        // Verify state is unchanged
+        for (Cell* c : solver.cells) {
+            int npts = p.N_PTS;
+            for (int iy = 0; iy < npts; ++iy) {
+                for (int ix = 0; ix < npts; ++ix) {
+                    CHECK(c->U[0*npts*npts + iy*npts + ix] == doctest::Approx(1.0));
+                }
             }
         }
     }
@@ -33,24 +41,33 @@ TEST_SUITE("Limiters") {
         Solver solver(p);
         Basis basis(p.P_DEG);
         
-        for(int iy=0; iy<p.N_PTS; ++iy) {
-            for(int ix=0; ix<p.N_PTS; ++ix) {
-                solver.blocks[0].U(0, 0, 0, iy, ix) = 2.0;
-                solver.blocks[0].U(1, 0, 0, iy, ix) = 0.0;
-                solver.blocks[0].U(2, 0, 0, iy, ix) = 0.0;
-                solver.blocks[0].U(3, 0, 0, iy, ix) = 2.5;
+        int npts = p.N_PTS;
+        
+        // Set all cells to uniform physical state
+        for (Cell* c : solver.cells) {
+            for (int iy = 0; iy < npts; ++iy) {
+                for (int ix = 0; ix < npts; ++ix) {
+                    c->U[0*npts*npts + iy*npts + ix] = 2.0;
+                    c->U[1*npts*npts + iy*npts + ix] = 0.0;
+                    c->U[2*npts*npts + iy*npts + ix] = 0.0;
+                    c->U[3*npts*npts + iy*npts + ix] = 2.5;
+                }
             }
         }
 
-        solver.blocks[0].U(0, 0, 0, 0, 0) = -0.5;
-        solver.blocks[0].U(3, 0, 0, 0, 0) = 2.5;
+        // Set a negative density at one node of the first cell
+        solver.cells[0]->U[0*npts*npts + 0*npts + 0] = -0.5;
+        solver.cells[0]->U[3*npts*npts + 0*npts + 0] = 2.5;
         
-        auto stats = Limiters::apply_positivity_limiter(solver.blocks[0].U, basis, p);
+        auto stats = Limiters::apply_positivity_limiter(solver.cells, basis, p);
         CHECK(stats.num_limited > 0);
         
-        for(int iy=0; iy<p.N_PTS; ++iy) {
-            for(int ix=0; ix<p.N_PTS; ++ix) {
-                CHECK(solver.blocks[0].U(0, 0, 0, iy, ix) >= p.POS_LIMITER_EPS);
+        // Verify all densities are above threshold
+        for (Cell* c : solver.cells) {
+            for (int iy = 0; iy < npts; ++iy) {
+                for (int ix = 0; ix < npts; ++ix) {
+                    CHECK(c->U[0*npts*npts + iy*npts + ix] >= p.POS_LIMITER_EPS);
+                }
             }
         }
     }
@@ -59,17 +76,16 @@ TEST_SUITE("Limiters") {
         auto p = make_params(2, 2, 2);
         Solver solver(p);
         
-        for(auto& b : solver.blocks) {
-            for(int ey=0; ey<b.ny; ++ey) {
-                for(int ex=0; ex<b.nx; ++ex) {
-                    for(int iy=0; iy<p.N_PTS; ++iy) {
-                        for(int ix=0; ix<p.N_PTS; ++ix) {
-                            b.U(0, ey, ex, iy, ix) = 1.0;
-                            b.U(1, ey, ex, iy, ix) = 0.0;
-                            b.U(2, ey, ex, iy, ix) = 0.0;
-                            b.U(3, ey, ex, iy, ix) = 2.5; 
-                        }
-                    }
+        int npts = p.N_PTS;
+        
+        // Set all cells to uniform physical state
+        for (Cell* c : solver.cells) {
+            for (int iy = 0; iy < npts; ++iy) {
+                for (int ix = 0; ix < npts; ++ix) {
+                    c->U[0*npts*npts + iy*npts + ix] = 1.0;
+                    c->U[1*npts*npts + iy*npts + ix] = 0.0;
+                    c->U[2*npts*npts + iy*npts + ix] = 0.0;
+                    c->U[3*npts*npts + iy*npts + ix] = 2.5;
                 }
             }
         }

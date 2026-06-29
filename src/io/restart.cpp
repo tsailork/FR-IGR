@@ -1,24 +1,16 @@
 /**
  * @file restart.cpp
- * @brief Restart loader implementation for VTK datasets.
- *
- * Responsible for parsing VTK XML multiblock (.vtm) and structured grid (.vts) 
- * files, mapping the state vector values back onto the high-order Gauss-Legendre grids.
+ * @brief Restart loader implementation for VTK UnstructuredGrid (.vtu) datasets.
  */
 
 #include "restart.hpp"
+#include "../core/solver.hpp"
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <unordered_map>
 
-/**
- * @brief Scans a VTK file stream until a specific DataArray tag is found.
- * 
- * @param[in,out] file The active file stream.
- * @param[in] name The attribute name of the DataArray to locate.
- * @return `true` if found, `false` otherwise.
- */
 static bool seek_data_array(std::ifstream& file, const std::string& name) {
     std::string line;
     std::string target = "Name=\"" + name + "\"";
@@ -31,13 +23,6 @@ static bool seek_data_array(std::ifstream& file, const std::string& name) {
     return false;
 }
 
-/**
- * @brief Reads a specified number of floating-point values from an ASCII VTK DataArray.
- *
- * @param[in,out] file The active file stream.
- * @param[in] count The expected number of scalar elements.
- * @return A vector containing the parsed double-precision values.
- */
 static std::vector<double> read_values(std::ifstream& file, int count) {
     std::vector<double> vals;
     vals.reserve(count);
@@ -54,126 +39,129 @@ static std::vector<double> read_values(std::ifstream& file, int count) {
     return vals;
 }
 
-#include "../core/solver.hpp"
+bool Restart::load_restart(const std::string& filename, Solver& solver) {
+    std::string actual_filename = filename;
+    if (filename.length() >= 4 && filename.substr(filename.length() - 4) == ".vtm") {
+        actual_filename = filename.substr(0, filename.length() - 4) + ".vtu";
+        std::cout << "[RESTART] Redirecting legacy .vtm restart request to .vtu: " << actual_filename << "\n";
+    }
 
-/**
- * @brief Loads checkpoint data into a single computational Block.
- *
- * Deserializes \f$\rho\f$, \f$\rho u\f$, \f$\rho v\f$, and \f$\rho E\f$ from a .vts file 
- * and populates the `Block::U` multidimensional array.
- *
- * @param[in] filename The path to the .vts file.
- * @param[in,out] b The target Block structure to populate.
- * @param[in] p Global simulation parameters.
- * @return `true` if loading succeeded, `false` otherwise.
- */
-static bool load_single_block(const std::string& filename, Block& b, const Parameters& p) {
-    std::ifstream file(filename);
+    std::ifstream file(actual_filename);
     if (!file.is_open()) {
-        std::cerr << "[RESTART] Error: Could not open " << filename << "\n";
+        std::cerr << "[RESTART] Error: Could not open checkpoint file " << actual_filename << "\n";
         return false;
     }
 
-    int nx = b.nx * p.N_PTS;
-    int ny = b.ny * p.N_PTS;
-    int total = nx * ny;
+    const Parameters& p = solver.p;
+    int npts = p.N_PTS;
+    int npts2 = npts * npts;
 
+    int total_points = 0;
+    std::string line;
+    while (std::getline(file, line)) {
+        size_t pos = line.find("NumberOfPoints=\"");
+        if (pos != std::string::npos) {
+            pos += 16;
+            size_t end = line.find("\"", pos);
+            total_points = std::stoi(line.substr(pos, end - pos));
+            break;
+        }
+    }
+
+    if (total_points <= 0) {
+        std::cerr << "[RESTART] Error: Invalid total points " << total_points << " in checkpoint file.\n";
+        return false;
+    }
+
+    // Read MortonID array (UInt64)
+    file.clear();
+    file.seekg(0);
+    if (!seek_data_array(file, "MortonID")) {
+        std::cerr << "[RESTART] Error: DataArray 'MortonID' not found in " << actual_filename << "\n";
+        return false;
+    }
+    std::vector<uint64_t> file_morton_ids;
+    file_morton_ids.reserve(total_points);
+    while ((int)file_morton_ids.size() < total_points && std::getline(file, line)) {
+        if (line.find('<') != std::string::npos) {
+            if (line.find("</DataArray>") != std::string::npos) break;
+            continue;
+        }
+        std::istringstream iss(line);
+        uint64_t v;
+        while (iss >> v) file_morton_ids.push_back(v);
+    }
+    if ((int)file_morton_ids.size() != total_points) {
+        std::cerr << "[RESTART] Error: Expected " << total_points << " MortonID values, got " << file_morton_ids.size() << "\n";
+        return false;
+    }
+
+    // Read rho, rho_u, rho_v, rho_E
     const char* var_names[4] = {"rho", "rho_u", "rho_v", "rho_E"};
-
+    std::vector<std::vector<double>> state_vals(4);
     for (int v = 0; v < 4; ++v) {
         file.clear();
         file.seekg(0);
-
         if (!seek_data_array(file, var_names[v])) {
-            std::cerr << "[RESTART] Error: DataArray '" << var_names[v]
-                      << "' not found in " << filename << "\n";
+            std::cerr << "[RESTART] Error: DataArray '" << var_names[v] << "' not found in " << actual_filename << "\n";
             return false;
         }
-
-        std::vector<double> vals = read_values(file, total);
-        if ((int)vals.size() != total) {
-            std::cerr << "[RESTART] Error: Expected " << total
-                      << " values for " << var_names[v] << " in " << filename << ", got " << vals.size() << "\n";
+        state_vals[v] = read_values(file, total_points);
+        if ((int)state_vals[v].size() != total_points) {
+            std::cerr << "[RESTART] Error: Expected " << total_points << " values for '" << var_names[v] << "', got " << state_vals[v].size() << "\n";
             return false;
-        }
-
-        int idx = 0;
-        for (int J = 0; J < ny; ++J) {
-            int ey = J / p.N_PTS, iy = J % p.N_PTS;
-            for (int I = 0; I < nx; ++I) {
-                int ex = I / p.N_PTS, ix = I % p.N_PTS;
-                b.U(v, ey, ex, iy, ix) = vals[idx++];
-            }
         }
     }
-    return true;
-}
 
-bool Restart::load_restart(const std::string& filename, std::vector<Block>& blocks, const Parameters& p) {
-    if (blocks.empty()) return false;
-
-    bool is_vtm = (filename.length() >= 4 && filename.substr(filename.length() - 4) == ".vtm");
-
-    if (is_vtm) {
-        std::ifstream file(filename);
-        if (!file.is_open()) {
-            std::cerr << "[RESTART] Error: Could not open " << filename << "\n";
-            return false;
+    // Read Sigma if present and enabled
+    std::vector<double> sigma_vals;
+    if (p.ENABLE_IGR) {
+        file.clear();
+        file.seekg(0);
+        if (seek_data_array(file, "Sigma")) {
+            sigma_vals = read_values(file, total_points);
         }
+    }
 
-        std::string dir = "";
-        size_t slash = filename.find_last_of("/\\");
-        if (slash != std::string::npos) {
-            dir = filename.substr(0, slash + 1);
-        }
+    // Match cell states by Morton ID
+    std::unordered_map<uint64_t, Cell*> cell_map;
+    for (Cell* c : solver.cells) {
+        cell_map[c->morton_id] = c;
+    }
 
-        std::map<int, std::string> block_files;
-        std::string line;
-        while (std::getline(file, line)) {
-            if (line.find("<DataSet") != std::string::npos) {
-                size_t idx_pos = line.find("index=\"");
-                size_t file_pos = line.find("file=\"");
-                if (idx_pos != std::string::npos && file_pos != std::string::npos) {
-                    idx_pos += 7;
-                    size_t idx_end = line.find("\"", idx_pos);
-                    int idx = std::stoi(line.substr(idx_pos, idx_end - idx_pos));
+    int matched_cells = 0;
+    int total_cells_in_file = total_points / npts2;
 
-                    file_pos += 6;
-                    size_t file_end = line.find("\"", file_pos);
-                    std::string vts_file = line.substr(file_pos, file_end - file_pos);
+    for (int c_vtu = 0; c_vtu < total_cells_in_file; ++c_vtu) {
+        int point_offset = c_vtu * npts2;
+        uint64_t mid = file_morton_ids[point_offset];
 
-                    block_files[idx] = vts_file;
+        auto it = cell_map.find(mid);
+        if (it != cell_map.end()) {
+            Cell* c = it->second;
+            // Load states
+            for (int v = 0; v < 4; ++v) {
+                for (int node = 0; node < npts2; ++node) {
+                    c->U[v * npts2 + node] = state_vals[v][point_offset + node];
                 }
             }
-        }
-
-        if (block_files.size() != blocks.size()) {
-            std::cerr << "[RESTART] Error: VTM file contains " << block_files.size() 
-                      << " blocks, but grid configuration expects " << blocks.size() << " blocks.\n";
-            return false;
-        }
-
-        for (auto& b : blocks) {
-            if (block_files.find(b.id) == block_files.end()) {
-                std::cerr << "[RESTART] Error: Block ID " << b.id << " not found in VTM file.\n";
-                return false;
+            // Load Sigma if present
+            if (p.ENABLE_IGR && !sigma_vals.empty()) {
+                for (int node = 0; node < npts2; ++node) {
+                    c->sigma_field[node] = sigma_vals[point_offset + node];
+                }
             }
-            std::string full_path = dir + block_files[b.id];
-            if (!load_single_block(full_path, b, p)) {
-                return false;
-            }
-        }
-
-    } else {
-        if (blocks.size() > 1) {
-            std::cerr << "[RESTART] Error: Found " << blocks.size() << " blocks, but a single .vts file was provided for restart. Expected a .vtm file.\n";
-            return false;
-        }
-        if (!load_single_block(filename, blocks[0], p)) {
-            return false;
+            matched_cells++;
         }
     }
 
-    std::cout << "[RESTART] Loaded state from " << filename << "\n";
+    std::cout << "[RESTART] Successfully matched and loaded " << matched_cells << " / " << solver.cells.size()
+              << " cells from checkpoint file (total cells in file: " << total_cells_in_file << ")\n";
+
+    if (matched_cells != (int)solver.cells.size()) {
+        std::cerr << "[RESTART] Warning: Cell count mismatch. Solver has " << solver.cells.size()
+                  << " cells, but only " << matched_cells << " were matched and loaded from checkpoint.\n";
+    }
+
     return true;
 }
