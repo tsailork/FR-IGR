@@ -34,7 +34,27 @@
  * @param[in] bc The boundary condition string to parse.
  * @param[out] ni The NeighborInfo structure to populate.
  */
-static void parse_bc_string(const std::string& bc, NeighborInfo& ni) {
+static void parse_bc_string(const std::string& bc_in, NeighborInfo& ni) {
+    std::string bc = bc_in;
+    ni.refine = true;
+
+    // Check for refinement flag suffixes
+    std::vector<std::pair<std::string, bool>> suffixes = {
+        {":NOREFINED", false},
+        {":NOREFINEMENT", false},
+        {":NO_REFINE", false},
+        {":REFINED", true},
+        {":REFINE", true}
+    };
+    for (const auto& suffix_pair : suffixes) {
+        const std::string& suf = suffix_pair.first;
+        if (bc.size() >= suf.size() && bc.compare(bc.size() - suf.size(), suf.size(), suf) == 0) {
+            ni.refine = suffix_pair.second;
+            bc = bc.substr(0, bc.size() - suf.size());
+            break;
+        }
+    }
+
     if (bc == "WALL" || bc == "WALL_SLIP") {
         ni.is_wall = true;
     } else if (bc.rfind("INFLOW_SUPERSONIC:", 0) == 0) {
@@ -125,6 +145,9 @@ Solver::Solver(const Parameters& params)
 
     initialize_cells();
     setup_cell_connectivity();
+
+    // Apply initial refinement based on walls and manual zones
+    flag_refinement_coarsening();
 
     // Compute initial IB mask field
     if (p.ENABLE_IB) {
@@ -1078,7 +1101,7 @@ void Solver::flag_refinement_coarsening() {
             for (int f = 0; f < 4; ++f) {
                 if (c->neighbors[f] == nullptr && c->is_boundary[f]) {
                     const NeighborInfo& ni = c->boundary_info[f];
-                    if (ni.is_wall || ni.is_noslip_wall || ni.is_moving_wall || ni.is_isothermal) {
+                    if (ni.refine && (ni.is_wall || ni.is_noslip_wall || ni.is_moving_wall || ni.is_isothermal)) {
                         touches_wall = true;
                         break;
                     }
@@ -1157,6 +1180,32 @@ void Solver::flag_refinement_coarsening() {
 
             if (intersects) {
                 target_levels[i] = std::max(target_levels[i], zone.target_level);
+            }
+        }
+    }
+
+    // Coarsening optimization: If a cell (or its coarser ancestor) is entirely inside the 
+    // Immersed Boundary, override its target_level to the coarsest possible level L
+    // that is also entirely within the IB.
+    if (p.ENABLE_IB) {
+        #pragma omp parallel for schedule(static)
+        for (size_t i = 0; i < cells.size(); ++i) {
+            Cell* c = cells[i];
+            for (int L = 0; L <= c->level; ++L) {
+                int diff = c->level - L;
+                double dx_L = c->dx * (1 << diff);
+                double dy_L = c->dy * (1 << diff);
+                double xmin_L = c->x_min - (c->ex & ((1 << diff) - 1)) * c->dx;
+                double ymin_L = c->y_min - (c->ey & ((1 << diff) - 1)) * c->dy;
+                double xc_L = xmin_L + 0.5 * dx_L;
+                double yc_L = ymin_L + 0.5 * dy_L;
+                double half_diag = 0.5 * std::sqrt(dx_L * dx_L + dy_L * dy_L);
+                
+                double sdf = get_ib_sdf_at_time(xc_L, yc_L, current_time);
+                if (sdf < -half_diag) {
+                    target_levels[i] = L;
+                    break; // Found the coarsest level
+                }
             }
         }
     }

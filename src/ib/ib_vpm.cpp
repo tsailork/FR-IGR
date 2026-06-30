@@ -21,6 +21,7 @@ void Solver::apply_ib_explicit() {
             for (int ix = 0; ix < p.N_PTS; ++ix) {
                 int idx = iy * p.N_PTS + ix;
                 double chi = c->ib_mask[idx];
+                chi = std::max(0.0, chi - 0.5);
                 if (chi <= 0.0) continue;
 
                 double rho = c->get_U(0, iy, ix, p.N_PTS);
@@ -68,6 +69,7 @@ void Solver::apply_ib_analytical(double dt_stage) {
             for (int ix = 0; ix < p.N_PTS; ++ix) {
                 int idx = iy * p.N_PTS + ix;
                 double chi = c->ib_mask[idx];
+                chi = std::max(0.0, chi - 0.5);
                 if (chi <= 0.0) continue;
 
                 double rho = c->get_U(0, iy, ix, p.N_PTS);

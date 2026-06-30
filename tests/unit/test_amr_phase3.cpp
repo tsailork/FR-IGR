@@ -1,3 +1,11 @@
+/**
+ * @file test_amr_phase3.cpp
+ * @brief Unit tests for Quadtree AMR Phase 3 capabilities.
+ *
+ * Validates cell splitting and merging state conservation, automatic startup refinement,
+ * parameter parsing for manual refinement zones, and boundary-specific near-wall refinement toggle flags.
+ */
+
 #include "../doctest.h"
 #include "../../src/core/solver.hpp"
 #include "../../src/core/cell.hpp"
@@ -140,9 +148,6 @@ TEST_SUITE("Quadtree AMR Phase 3") {
 
         Solver solver(params);
 
-        // Run the refinement routine
-        solver.flag_refinement_coarsening();
-
         // Verify concentric, gap-free properties:
         // Any cell whose bounding box intersects the circle r <= 0.4 must be refined to level 2.
         // Also, due to 2:1 flag smoothing, neighbors will be at least level 1.
@@ -167,5 +172,140 @@ TEST_SUITE("Quadtree AMR Phase 3") {
         // Clean up
         std::remove("test_geom.grid");
         std::remove("test_geom.dat");
+    }
+
+    TEST_CASE("Automatic Refinement in Solver Constructor") {
+        // Create an 8x8 grid on [0, 1]x[0, 1] where left boundary is WALL
+        std::ofstream grid_out("test_auto_geom.grid");
+        grid_out << "[Block0]\nN_ELEM_X = 8\nN_ELEM_Y = 8\n";
+        grid_out << "X_MIN = 0.0\nX_MAX = 1.0\nY_MIN = 0.0\nY_MAX = 1.0\n";
+        grid_out << "BC_L = WALL\nBC_R = OUTFLOW_SUPERSONIC\n";
+        grid_out << "BC_B = OUTFLOW_SUPERSONIC\nBC_T = OUTFLOW_SUPERSONIC\n";
+        grid_out.close();
+
+        // Target: wall refinement level 2, cells = 2
+        std::ofstream inputs_out("test_auto_geom.dat");
+        inputs_out << "[Solver]\nP_DEG = 1\n";
+        inputs_out << "[TreeDecomposition]\n";
+        inputs_out << "WALL_REFINEMENT_LEVEL = 2\n";
+        inputs_out << "WALL_REFINEMENT_CELLS = 2\n";
+        inputs_out.close();
+
+        Parameters params;
+        params.load_domain("test_auto_geom.grid");
+        params.load_inputs("test_auto_geom.dat");
+
+        // Instantiating the solver should automatically execute refinement
+        Solver solver(params);
+
+        // Check if wall cells are automatically refined to level 2
+        bool has_level2_near_wall = false;
+        for (const Cell* c : solver.cells) {
+            bool touches_left_wall = (c->x_min == 0.0);
+            if (touches_left_wall) {
+                CHECK(c->level == 2);
+                has_level2_near_wall = true;
+            }
+        }
+        CHECK(has_level2_near_wall);
+
+        // Clean up
+        std::remove("test_auto_geom.grid");
+        std::remove("test_auto_geom.dat");
+    }
+
+    TEST_CASE("Fallback Zone Parameter Parsing") {
+        std::ofstream inputs_out("test_fallback.dat");
+        inputs_out << "[Solver]\nP_DEG = 1\n";
+        inputs_out << "[TreeDecomposition]\n";
+        inputs_out << "WALL_REFINEMENT_ZONES = 2\n";
+        inputs_out << "ZONE_0_SHAPE = CIRCLE\n";
+        inputs_out << "ZONE_0_CENTER_X = 0.1\n";
+        inputs_out << "ZONE_0_CENTER_Y = 0.2\n";
+        inputs_out << "ZONE_0_RADIUS = 0.3\n";
+        inputs_out << "ZONE_0_LEVEL = 2\n";
+        inputs_out << "ZONE_1_SHAPE = CIRCLE\n";
+        inputs_out << "ZONE_1_CENTER_X = 0.5\n";
+        inputs_out << "ZONE_1_CENTER_Y = 0.6\n";
+        inputs_out << "ZONE_1_RADIUS = 0.7\n";
+        inputs_out << "ZONE_1_LEVEL = 3\n";
+        inputs_out.close();
+
+        Parameters params;
+        // Use a dummy block grid just to load
+        std::ofstream grid_out("test_fallback.grid");
+        grid_out << "[Block0]\nN_ELEM_X = 1\nN_ELEM_Y = 1\n";
+        grid_out.close();
+
+        params.load_domain("test_fallback.grid");
+        params.load_inputs("test_fallback.dat");
+
+        REQUIRE(params.refinement_zones.size() == 2);
+        CHECK(params.refinement_zones[0].shape == "CIRCLE");
+        CHECK(params.refinement_zones[0].center_x == doctest::Approx(0.1));
+        CHECK(params.refinement_zones[0].center_y == doctest::Approx(0.2));
+        CHECK(params.refinement_zones[0].radius == doctest::Approx(0.3));
+        CHECK(params.refinement_zones[0].target_level == 2);
+
+        CHECK(params.refinement_zones[1].shape == "CIRCLE");
+        CHECK(params.refinement_zones[1].center_x == doctest::Approx(0.5));
+        CHECK(params.refinement_zones[1].center_y == doctest::Approx(0.6));
+        CHECK(params.refinement_zones[1].radius == doctest::Approx(0.7));
+        CHECK(params.refinement_zones[1].target_level == 3);
+
+        std::remove("test_fallback.grid");
+        std::remove("test_fallback.dat");
+    }
+
+    TEST_CASE("Wall Refinement Flag Disable Test") {
+        // Create an 8x8 grid on [0, 1]x[0, 1]
+        // Bottom is WALL:NOREFINED, Top is WALL (should refine by default)
+        std::ofstream grid_out("test_flag_geom.grid");
+        grid_out << "[Block0]\nN_ELEM_X = 8\nN_ELEM_Y = 8\n";
+        grid_out << "X_MIN = 0.0\nX_MAX = 1.0\nY_MIN = 0.0\nY_MAX = 1.0\n";
+        grid_out << "BC_L = OUTFLOW_SUPERSONIC\nBC_R = OUTFLOW_SUPERSONIC\n";
+        grid_out << "BC_B = WALL:NOREFINED\nBC_T = WALL\n";
+        grid_out.close();
+
+        // Target: wall refinement level 2, cells = 2
+        std::ofstream inputs_out("test_flag_geom.dat");
+        inputs_out << "[Solver]\nP_DEG = 1\n";
+        inputs_out << "[TreeDecomposition]\n";
+        inputs_out << "WALL_REFINEMENT_LEVEL = 2\n";
+        inputs_out << "WALL_REFINEMENT_CELLS = 2\n";
+        inputs_out.close();
+
+        Parameters params;
+        params.load_domain("test_flag_geom.grid");
+        params.load_inputs("test_flag_geom.dat");
+
+        Solver solver(params);
+
+        bool has_bottom_wall = false;
+        bool has_top_wall = false;
+
+        for (const Cell* c : solver.cells) {
+            double ymin = c->y_min;
+            double ymax = c->y_min + c->dy;
+
+            // Touch bottom boundary (y == 0.0) -> should NOT be refined (remains level 0)
+            if (ymin == 0.0) {
+                CHECK(c->level == 0);
+                has_bottom_wall = true;
+            }
+
+            // Touch top boundary (y == 1.0) -> should be refined (level 2)
+            if (ymax == 1.0) {
+                CHECK(c->level == 2);
+                has_top_wall = true;
+            }
+        }
+
+        CHECK(has_bottom_wall);
+        CHECK(has_top_wall);
+
+        // Clean up
+        std::remove("test_flag_geom.grid");
+        std::remove("test_flag_geom.dat");
     }
 }

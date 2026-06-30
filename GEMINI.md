@@ -170,6 +170,15 @@ To improve the stability of high-order IGR at strong shocks:
 - Prolongs variables and regularization fields to children using 2D tensor-product Lagrange interpolation (`P1`/`P2`), and restricts children back to parent via strictly conservative $L_2$ projections (`R1`/`R2`).
 - Resolves leaf cells containing physical points dynamically using `find_leaf_cell` rather than conforming 2D lookups.
 
+### 4. Quadtree Adaptive Mesh Refinement (AMR) & Tree Decomposition
+The solver incorporates a fully conservative, dynamically-adaptable 2D quadtree cell decomposition framework:
+- **Geometry Engine**: Features a decoupled geometry engine (`src/core/geometry.hpp/cpp`) that evaluates shapes (`Circle`, `Naca`, `Polygon`, `Box`, `Multi`) for spatial queries. It supports ray-casting point containment, Liang-Barsky segment clipping, and axis-aligned bounding box (AABB) intersection.
+- **Near-Wall Refinement**: Performs breadth-first search (BFS) starting from wall boundaries (slip, no-slip, moving, isothermal) to compute distance in terms of grid cell layers. Controls boundary-local mesh refinement level and cell-layer width via `WALL_REFINEMENT_LEVEL` and `WALL_REFINEMENT_CELLS`.
+- **Boundary-Specific Toggles**: Supports per-boundary toggle flags appended as suffixes to boundary condition strings in `domain.grid` (e.g. `:NOREFINED` or `:REFINED`) to include or exclude specific boundary faces from near-wall refinement.
+- **Manual Refinement Zones**: Supports an arbitrary number of user-defined refinement regions (`NUM_REFINEMENT_ZONES`), allowing targeted refinement to specific level using shapes (CIRCLE, BOX, NACA, or POLYGON).
+- **Conservative Interpolations**: Prolongs solutions and regularization fields to child cells via Lagrange tensor-product interpolation ($P_1/P_2$), and restricts children's fields back to parent cells using strictly conservative $L_2$ projections ($R_1/R_2$).
+- **State Evaluation & Immersed Boundary Mapping**: Evaluates initial conditions and maps immersed boundary solid mask states directly on the leaf cells, ensuring robust, out-of-bounds-safe solver operations on arbitrarily refined grids.
+
 ## Documentation Maintenance (Agent Hook)
 Whenever tasked with "updating the documentation" for a new feature or change, you **MUST** ensure all the following locations are kept perfectly synchronized with the codebase:
 

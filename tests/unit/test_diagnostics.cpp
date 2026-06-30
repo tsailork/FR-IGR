@@ -157,19 +157,20 @@ TEST_SUITE("Diagnostics") {
         CHECK(vals[0] == doctest::Approx(0.001));
         
         // Analytical check:
-        // fx = (chi / eta) * (rhou - rho * u_s) = (1.0 / 1e-3) * (0.5 - 1.0 * 0.1) = 1000 * 0.4 = 400.0
-        // fy = (chi / eta) * (rhov - rho * v_s) = (1.0 / 1e-3) * (0.2 - 1.0 * 0.0) = 1000 * 0.2 = 200.0
+        // chi_eff = max(0, chi - 0.5) = max(0, 1.0 - 0.5) = 0.5
+        // fx = (chi_eff / eta) * (rhou - rho * u_s) = (0.5 / 1e-3) * (0.5 - 1.0 * 0.1) = 500 * 0.4 = 200.0
+        // fy = (chi_eff / eta) * (rhov - rho * v_s) = (0.5 / 1e-3) * (0.2 - 1.0 * 0.0) = 500 * 0.2 = 100.0
         // We integrate over elements where ex < nx/2 (which is exactly half the elements).
         // Total integrated area is half the domain area.
         // For a 2x2 element grid from x_min=0 to x_max=1, y_min=0 to y_max=1, total area is 1.0.
         // Half the area is 0.5.
-        // Integrated DragForce = 400.0 * 0.5 = 200.0
-        // Integrated LiftForce = 200.0 * 0.5 = 100.0
-        // Cd = DragForce / (0.5 * rho_inf * U_inf^2 * chord) = 200.0 / (0.5 * 1.0 * 1.0^2 * 1.0) = 400.0
-        // Cl = LiftForce / (0.5 * rho_inf * U_inf^2 * chord) = 100.0 / (0.5 * 1.0 * 1.0^2 * 1.0) = 200.0
-        CHECK(vals[1] == doctest::Approx(200.0));
-        CHECK(vals[2] == doctest::Approx(100.0));
-        CHECK(vals[3] == doctest::Approx(400.0));
-        CHECK(vals[4] == doctest::Approx(200.0));
+        // Integrated DragForce = 200.0 * 0.5 = 100.0
+        // Integrated LiftForce = 100.0 * 0.5 = 50.0
+        // Cd = DragForce / (0.5 * rho_inf * U_inf^2 * chord) = 100.0 / (0.5 * 1.0 * 1.0^2 * 1.0) = 200.0
+        // Cl = LiftForce / (0.5 * rho_inf * U_inf^2 * chord) = 50.0 / (0.5 * 1.0 * 1.0^2 * 1.0) = 100.0
+        CHECK(vals[1] == doctest::Approx(100.0));
+        CHECK(vals[2] == doctest::Approx(50.0));
+        CHECK(vals[3] == doctest::Approx(200.0));
+        CHECK(vals[4] == doctest::Approx(100.0));
     }
 }

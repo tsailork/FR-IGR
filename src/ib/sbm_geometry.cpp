@@ -218,6 +218,35 @@ void initialize_sbm_geometry(Solver& solver) {
             }
         }
 
+        // Map solid mask and freestream override to cells
+        for (Cell* c : solver.cells) {
+            if (c->block_id != b.id) continue;
+            bool cell_fully_solid = true;
+            for (int iy = 0; iy < solver.p.N_PTS; ++iy) {
+                for (int ix = 0; ix < solver.p.N_PTS; ++ix) {
+                    double x = c->x_min + 0.5 * (1.0 + solver.basis.z[ix]) * c->dx;
+                    double y = c->y_min + 0.5 * (1.0 + solver.basis.z[iy]) * c->dy;
+                    if (solver.get_ib_sdf_at_time(x, y, 0.0) >= 0.0) {
+                        cell_fully_solid = false;
+                        break;
+                    }
+                }
+                if (!cell_fully_solid) break;
+            }
+
+            if (cell_fully_solid) {
+                c->solid_mask = true;
+                for (int iy = 0; iy < solver.p.N_PTS; ++iy) {
+                    for (int ix = 0; ix < solver.p.N_PTS; ++ix) {
+                        c->get_U(0, iy, ix, solver.p.N_PTS) = rho_f;
+                        c->get_U(1, iy, ix, solver.p.N_PTS) = 0.0;
+                        c->get_U(2, iy, ix, solver.p.N_PTS) = 0.0;
+                        c->get_U(3, iy, ix, solver.p.N_PTS) = E_f;
+                    }
+                }
+            }
+        }
+
         // Output Diagnostic File
         std::string diag_filename = "csv_outputs/sbm_diag_block" + std::to_string(b.id) + ".csv";
         std::ofstream diag(diag_filename);

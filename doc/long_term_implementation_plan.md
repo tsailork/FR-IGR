@@ -6,6 +6,13 @@ This document outlines the strategic milestones and progress of evolving the hig
 > **Core Philosophy:** By sticking to a background Cartesian mesh, we preserve the extreme computational efficiency and simplicity of the tensor-product Flux Reconstruction (FR) sweeps. Complex geometries are handled via numerical treatments (Immersed Boundary Methods) rather than unstructured body-fitted meshes.
 
 ---
+## 0 - Wishlist of smaller Features
+*  Ability to restart with a different polynomial order by projecting the solution from the old pasis to the new one
+*  Ability to restart with a different refinement pattern by projecting the solution from the old cells to the new cells
+
+
+
+---
 
 ## 1. Navier-Stokes Extension (Viscous Fluxes) [COMPLETED]
 

@@ -251,7 +251,11 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("WALL_REFINEMENT_CELLS")) WALL_REFINEMENT_CELLS = std::stoi(kv["WALL_REFINEMENT_CELLS"]);
 
         int num_zones = 0;
-        if (kv.count("NUM_REFINEMENT_ZONES")) num_zones = std::stoi(kv["NUM_REFINEMENT_ZONES"]);
+        if (kv.count("NUM_REFINEMENT_ZONES")) {
+            num_zones = std::stoi(kv["NUM_REFINEMENT_ZONES"]);
+        } else if (kv.count("WALL_REFINEMENT_ZONES")) {
+            num_zones = std::stoi(kv["WALL_REFINEMENT_ZONES"]);
+        }
         refinement_zones.clear();
         for (int i = 0; i < num_zones; ++i) {
             RefinementZone zone;

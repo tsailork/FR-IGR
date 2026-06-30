@@ -167,24 +167,60 @@ IB_SMOOTH_WIDTH = 1.5
 # --- Tree Decomposition (Quadtree Adaptive Mesh Refinement) ---
 [TreeDecomposition]
 # Target refinement level for cells touching a wall boundary. Set to 0 to disable near-wall refinement.
+# Individual boundaries in domain.grid can opt-out by appending ":NOREFINED" (e.g. WALL:NOREFINED).
 WALL_REFINEMENT_LEVEL = 2
 
 # Number of cell layers from the wall boundary to apply the WALL_REFINEMENT_LEVEL.
 WALL_REFINEMENT_CELLS = 3
 
-# Number of manual refinement zones defined.
+# Number of manual refinement zones defined. Supports "NUM_REFINEMENT_ZONES" or "WALL_REFINEMENT_ZONES".
 NUM_REFINEMENT_ZONES = 1
 
-# Shape of the manual zone: CIRCLE, NACA, BOX, or POLYGON
+# --- Refinement Zone Configuration ---
+# Each zone i (from 0 to NUM_REFINEMENT_ZONES-1) is configured using:
+#   - ZONE_i_SHAPE: Geometry shape ("CIRCLE", "NACA", "BOX", or "POLYGON")
+#   - ZONE_i_LEVEL: Target refinement level for cells overlapping this zone.
+#
+# Shape-specific parameters:
+#   For CIRCLE:
+#     - ZONE_i_CENTER_X, ZONE_i_CENTER_Y: Center coordinates.
+#     - ZONE_i_RADIUS: Circle radius.
+#
+#   For NACA:
+#     - ZONE_i_CENTER_X, ZONE_i_CENTER_Y: Leading edge coordinates.
+#     - ZONE_i_RADIUS: Chord length.
+#     - ZONE_i_NACA_CODE: 4-digit airfoil code (e.g. "0012").
+#     - ZONE_i_AOA: Angle of attack in degrees.
+#
+#   For BOX:
+#     - ZONE_i_CENTER_X, ZONE_i_CENTER_Y: Box center coordinates.
+#     - ZONE_i_WIDTH: Width (X-direction size).
+#     - ZONE_i_HEIGHT: Height (Y-direction size).
+#
+#   For POLYGON:
+#     - ZONE_i_POLY_X: Whitespace-separated X coordinates of polygon vertices.
+#     - ZONE_i_POLY_Y: Whitespace-separated Y coordinates of polygon vertices.
+#
+# Example Circle Zone:
 ZONE_0_SHAPE = CIRCLE
-
-# Geometry dimensions and center coordinates of the manual refinement zone
 ZONE_0_CENTER_X = 0.5
 ZONE_0_CENTER_Y = 0.5
 ZONE_0_RADIUS = 0.25
-
-# Target refinement level for this zone
 ZONE_0_LEVEL = 2
+
+# Example Box Zone:
+# ZONE_1_SHAPE = BOX
+# ZONE_1_CENTER_X = 1.5
+# ZONE_1_CENTER_Y = 0.5
+# ZONE_1_WIDTH = 0.4
+# ZONE_1_HEIGHT = 0.2
+# ZONE_1_LEVEL = 3
+
+# Example Polygon Zone:
+# ZONE_2_SHAPE = POLYGON
+# ZONE_2_POLY_X = 0.1 0.3 0.2
+# ZONE_2_POLY_Y = 0.1 0.1 0.3
+# ZONE_2_LEVEL = 2
 
 [IO]
 # OUTPUT_INTERVAL: Time interval between full, continuous VTK plotting snapshots (plot_*.vtm).
@@ -252,4 +288,11 @@ PROBE_3 = 0.9, 0.5, Mach
 #     Example: '2:T' means "Connect to the TOP face of Block 2".
 #     Note: For periodic boundaries, simply map opposite faces to each other 
 #     (e.g., Block 0 Left connects to Block 0 Right using '0:R').
+#
+#   Near-Wall Refinement Suffix Flags:
+#     Any physical wall boundary (WALL, WALL_NOSLIP, WALL_MOVING) can optionally 
+#     append a toggle suffix to control near-wall adaptive mesh refinement (AMR):
+#       - :NOREFINED (or :NOREFINEMENT, :NO_REFINE) - disables near-wall refinement
+#       - :REFINED (or :REFINE) - explicitly enables near-wall refinement (default)
+#     Example: "BC_B = WALL:NOREFINED" ignores the bottom boundary during near-wall AMR.
 ################################################################################

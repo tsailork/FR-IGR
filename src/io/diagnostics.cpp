@@ -198,6 +198,7 @@ void Diagnostics::update(const Solver& solver, double t, int step) {
                         for (int ix = 0; ix < params.N_PTS; ++ix) {
                             int idx = iy * params.N_PTS + ix;
                             double chi = c->ib_mask[idx];
+                            chi = std::max(0.0, chi - 0.5);
                             if (chi <= 0.0) continue;
                             
                             double rho  = c->get_U(0, iy, ix, params.N_PTS);

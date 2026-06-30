@@ -36,6 +36,7 @@ struct NeighborInfo {
     double wall_velocity = 0.0;       ///< Tangential velocity of the moving wall (positive = rightward/upward).
     bool is_isothermal = false;       ///< Isothermal wall indicator (fixed temperature).
     double wall_temperature = 1.0;    ///< Prescribed temperature value for isothermal walls.
+    bool refine = true;               ///< Indicator to include near-wall refinement for this boundary.
 };
 
 /**

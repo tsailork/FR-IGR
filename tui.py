@@ -306,6 +306,7 @@ def main():
     log_file = None
     status = "STOPPED"
     log_position = 0
+    gnuplot_procs = []
 
     def start_solver(clean=False):
         nonlocal solver_proc, log_file, status, log_position
@@ -559,7 +560,7 @@ def main():
                     ui_output.extend(make_panel("RECENT LOG FEED", log_lines))
 
                     # 6. Actions Panel
-                    action_line = f"[{CLR_BOLD}{CLR_GREEN}S{CLR_RESET}] Stop  [{CLR_BOLD}{CLR_GREEN}R{CLR_RESET}] Restart  [{CLR_BOLD}{CLR_GREEN}C{CLR_RESET}] Clean Restart  [{CLR_BOLD}{CLR_GREEN}E{CLR_RESET}] Edit  [{CLR_BOLD}{CLR_GREEN}K{CLR_RESET}] Kill  [{CLR_BOLD}{CLR_GREEN}Q{CLR_RESET}] Quit"
+                    action_line = f"[{CLR_BOLD}{CLR_GREEN}S{CLR_RESET}] Stop  [{CLR_BOLD}{CLR_GREEN}R{CLR_RESET}] Restart  [{CLR_BOLD}{CLR_GREEN}C{CLR_RESET}] Clean  [{CLR_BOLD}{CLR_GREEN}E{CLR_RESET}] Edit  [{CLR_BOLD}{CLR_GREEN}K{CLR_RESET}] Kill  [{CLR_BOLD}{CLR_GREEN}P{CLR_RESET}] Plot  [{CLR_BOLD}{CLR_GREEN}Q{CLR_RESET}] Quit"
                     ui_output.extend(make_panel("ACTIONS", [action_line]))
 
                     # Print screen at once
@@ -570,7 +571,33 @@ def main():
                 char = nbi.get_char()
                 if char:
                     c = char.upper()
-                    if c == "S":
+                    if c == "P":
+                        # Check if any plotting processes are still running
+                        any_running = False
+                        if gnuplot_procs:
+                            for p in gnuplot_procs:
+                                if p.poll() is None:
+                                    any_running = True
+                                    break
+                        if any_running:
+                            state["recent_logs"].append("Stopping live plots...")
+                            for p in gnuplot_procs:
+                                try:
+                                    p.kill()
+                                except Exception:
+                                    pass
+                            gnuplot_procs = []
+                        else:
+                            state["recent_logs"].append("Launching live plots (10s refresh)...")
+                            try:
+                                p1 = subprocess.Popen(["gnuplot", "plot_residuals.gp"])
+                                p2 = subprocess.Popen(["gnuplot", "plot_probe.gp"])
+                                p3 = subprocess.Popen(["gnuplot", "plot_forces.gp"])
+                                gnuplot_procs = [p1, p2, p3]
+                            except Exception as e:
+                                state["recent_logs"].append(f"Error launching plots: {str(e)}")
+                        last_status = "" # Force immediate redraw
+                    elif c == "S":
                         state["recent_logs"].append("Stop requested. Signaling solver...")
                         stop_solver_clean()
                         last_status = "" # Force immediate redraw
@@ -650,6 +677,12 @@ def main():
             # Ensure log file is closed
             if log_file and not log_file.closed:
                 log_file.close()
+            # Ensure gnuplot processes are killed on TUI exit
+            for p in gnuplot_procs:
+                try:
+                    p.kill()
+                except Exception:
+                    pass
 
 if __name__ == "__main__":
     main()

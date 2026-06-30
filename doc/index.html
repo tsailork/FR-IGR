@@ -417,6 +417,7 @@
                 <li><strong>[NavierStokes]:</strong> Configures physical viscosity via the Reynolds number (<code>RE</code>), Prandtl number (<code>PR</code>), and reference Mach number.</li>
                 <li><strong>[IO] & [Probes]:</strong> Granular control over output frequencies for VTK snapshot plots, exact multi-block restart checkpoints, L2 residual tracking, and explicit spatial point probes.</li>
                 <li><strong>[ImmersedBoundary]:</strong> Constructs dynamic or static geometries using <code>IB_SHAPE</code>. Supports standard circular cylinders, 4-digit NACA airfoils, and highly customized piecewise multi-polygon boundaries evaluated through a dynamic timeline (<code>IB_Q_TIME_MAP</code>).</li>
+                <li><strong>[TreeDecomposition]:</strong> Parameters for the quadtree adaptive mesh refinement (AMR) framework. Controls near-wall cell layers tracking (<code>WALL_REFINEMENT_LEVEL</code>, <code>WALL_REFINEMENT_CELLS</code>) and an arbitrary number of manual geometric refinement zones (configured using circular, box, airfoil, or polygonal shapes).</li>
             </ul>
 
             <h2>5. Domain Gridding (domain.grid)</h2>
@@ -447,6 +448,9 @@ BC_T = 0:B</code></pre>
                 <li><code>CHARACTERISTIC:rho:u:v:p</code>: Riemann-invariant non-reflecting far-field boundaries computed against the reference state.</li>
                 <li><code>TOTAL_PRESSURE_COMP:Pt</code> / <code>STATIC_PRESSURE:P</code>: Subsonic backpressure specifications.</li>
             </ul>
+            <p>
+                <strong>Near-Wall Refinement Control Suffixes:</strong> Any physical wall boundary condition (<code>WALL</code>, <code>WALL_NOSLIP</code>, or <code>WALL_MOVING</code>) can optionally append a toggle suffix flag to customize near-wall refinement on a per-boundary basis. Appending <code>:NOREFINED</code> (or <code>:NOREFINEMENT</code> / <code>:NO_REFINE</code>) will exclude the corresponding boundary from near-wall refinement layers, whereas <code>:REFINED</code> (or <code>:REFINE</code>) explicitly includes it (default behavior).
+            </p>
             <p>
                 <strong>Multiblock Connectivity:</strong> Inter-block data transfer is established using a face-mapping syntax <code>ID:FACE</code>. 
                 For example, <code>BC_R = 1:L</code> connects the right boundary of the current block to the left boundary of Block 1. 
