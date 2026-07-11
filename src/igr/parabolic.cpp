@@ -60,7 +60,8 @@ void Solver::compute_igr_parabolic_rhs() {
                     ds_dx_loc += basis.D[ix][k] * c->sigma_field[iy * p.N_PTS + k];
                 }
                 double ds_dx = (ds_dx_loc + (sigL_hat - sigL) * basis.dgl[ix] + (sigR_hat - sigR) * basis.dgr[ix]) * (2.0 / c->dx);
-                c->qx_buf[iy * p.N_PTS + ix] = ds_dx;
+                double rho = std::max(1e-12, c->get_U(0, iy, ix, p.N_PTS));
+                c->qx_buf[iy * p.N_PTS + ix] = ds_dx / rho;
             }
         }
 
@@ -107,7 +108,8 @@ void Solver::compute_igr_parabolic_rhs() {
                     ds_dy_loc += basis.D[iy][k] * c->sigma_field[k * p.N_PTS + ix];
                 }
                 double ds_dy = (ds_dy_loc + (sigB_hat - sigB) * basis.dgl[iy] + (sigT_hat - sigT) * basis.dgr[iy]) * (2.0 / c->dy);
-                c->qy_buf[iy * p.N_PTS + ix] = ds_dy;
+                double rho = std::max(1e-12, c->get_U(0, iy, ix, p.N_PTS));
+                c->qy_buf[iy * p.N_PTS + ix] = ds_dy / rho;
             }
         }
     }
@@ -128,8 +130,8 @@ void Solver::compute_igr_parabolic_rhs() {
             for (int k = 0; k < p.N_PTS; ++k) {
                 int idx = iy * p.N_PTS + k;
                 double r_k = std::max(1e-12, c->get_U(0, iy, k, p.N_PTS));
-                fL += (c->qx_buf[idx] / r_k) * basis.l_L[k];
-                fR += (c->qx_buf[idx] / r_k) * basis.l_R[k];
+                fL += c->qx_buf[idx] * basis.l_L[k];
+                fR += c->qx_buf[idx] * basis.l_R[k];
                 sigL += c->sigma_field[idx] * basis.l_L[k];
                 sigR += c->sigma_field[idx] * basis.l_R[k];
                 rhoL += r_k * basis.l_L[k];
@@ -148,7 +150,7 @@ void Solver::compute_igr_parabolic_rhs() {
                 for (int k = 0; k < p.N_PTS; ++k) {
                     int idx = iy * p.N_PTS + k;
                     double r_k = std::max(1e-12, nc->get_U(0, iy, k, p.N_PTS));
-                    f_nb += (nc->qx_buf[idx] / r_k) * w[k];
+                    f_nb += nc->qx_buf[idx] * w[k];
                     sig_nb += nc->sigma_field[idx] * w[k];
                     rho_nb += r_k * w[k];
                 }
@@ -167,7 +169,7 @@ void Solver::compute_igr_parabolic_rhs() {
                 for (int k = 0; k < p.N_PTS; ++k) {
                     int idx = iy * p.N_PTS + k;
                     double r_k = std::max(1e-12, nc->get_U(0, iy, k, p.N_PTS));
-                    f_nb += (nc->qx_buf[idx] / r_k) * w[k];
+                    f_nb += nc->qx_buf[idx] * w[k];
                     sig_nb += nc->sigma_field[idx] * w[k];
                     rho_nb += r_k * w[k];
                 }
@@ -185,8 +187,8 @@ void Solver::compute_igr_parabolic_rhs() {
             for (int k = 0; k < p.N_PTS; ++k) {
                 int idx = k * p.N_PTS + ix;
                 double r_k = std::max(1e-12, c->get_U(0, k, ix, p.N_PTS));
-                fB += (c->qy_buf[idx] / r_k) * basis.l_L[k];
-                fT += (c->qy_buf[idx] / r_k) * basis.l_R[k];
+                fB += c->qy_buf[idx] * basis.l_L[k];
+                fT += c->qy_buf[idx] * basis.l_R[k];
                 sigB += c->sigma_field[idx] * basis.l_L[k];
                 sigT += c->sigma_field[idx] * basis.l_R[k];
                 rhoB += r_k * basis.l_L[k];
@@ -205,7 +207,7 @@ void Solver::compute_igr_parabolic_rhs() {
                 for (int k = 0; k < p.N_PTS; ++k) {
                     int idx = k * p.N_PTS + ix;
                     double r_k = std::max(1e-12, nc->get_U(0, k, ix, p.N_PTS));
-                    f_nb += (nc->qy_buf[idx] / r_k) * w[k];
+                    f_nb += nc->qy_buf[idx] * w[k];
                     sig_nb += nc->sigma_field[idx] * w[k];
                     rho_nb += r_k * w[k];
                 }
@@ -224,7 +226,7 @@ void Solver::compute_igr_parabolic_rhs() {
                 for (int k = 0; k < p.N_PTS; ++k) {
                     int idx = k * p.N_PTS + ix;
                     double r_k = std::max(1e-12, nc->get_U(0, k, ix, p.N_PTS));
-                    f_nb += (nc->qy_buf[idx] / r_k) * w[k];
+                    f_nb += nc->qy_buf[idx] * w[k];
                     sig_nb += nc->sigma_field[idx] * w[k];
                     rho_nb += r_k * w[k];
                 }
@@ -241,14 +243,14 @@ void Solver::compute_igr_parabolic_rhs() {
                 double df_dx_loc = 0;
                 for (int k = 0; k < p.N_PTS; ++k) {
                     int idx = iy * p.N_PTS + k;
-                    df_dx_loc += basis.D[ix][k] * (c->qx_buf[idx] / std::max(1e-12, c->get_U(0, iy, k, p.N_PTS)));
+                    df_dx_loc += basis.D[ix][k] * c->qx_buf[idx];
                 }
                 double div_x = (df_dx_loc + (fhatL[iy] - fL_int[iy])*basis.dgl[ix] + (fhatR[iy] - fR_int[iy])*basis.dgr[ix]) * (2.0 / c->dx);
 
                 double df_dy_loc = 0;
                 for (int k = 0; k < p.N_PTS; ++k) {
                     int idx = k * p.N_PTS + ix;
-                    df_dy_loc += basis.D[iy][k] * (c->qy_buf[idx] / std::max(1e-12, c->get_U(0, k, ix, p.N_PTS)));
+                    df_dy_loc += basis.D[iy][k] * c->qy_buf[idx];
                 }
                 double div_y = (df_dy_loc + (fhatB[ix] - fB_int[ix])*basis.dgl[iy] + (fhatT[ix] - fT_int[ix])*basis.dgr[iy]) * (2.0 / c->dy);
 

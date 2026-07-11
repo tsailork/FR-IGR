@@ -61,7 +61,10 @@ IGR_TAU_R = 0.1
 IGR_BR2_ETA = 1.0
 
 # IGR_SUB_ITERS: Number of parabolic sub-iterations per flow step.
-IGR_SUB_ITERS = 1
+# If set to 0, the solver will dynamically calculate the number of sub-iterations
+# required to satisfy the stability CFL limit of the diffusive step, meaning the
+# global time step is not restricted by IGR.
+IGR_SUB_ITERS = 0
 
 # USE_DUCROS_SWITCH: Enable Ducros switch to scale down and suppress artificial viscosity in shear layers (vortical regions).
 USE_DUCROS_SWITCH = false

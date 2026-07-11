@@ -63,10 +63,13 @@ double Solver::compute_dt() const {
         double dt_cell = dt_conv;
 
         if (p.ENABLE_IGR && p.IGR_TYPE == "PARABOLIC") {
-            double alpha_safe = std::max(1e-10, p.ALPHA_SCALE);
-            double dt_diff  = 0.5 * p.IGR_TAU_R / (alpha_safe * (2 * p.P_DEG + 1) * (2 * p.P_DEG + 1));
-            double dt_relax = 0.5 * p.IGR_TAU_R;
-            dt_cell = std::min({dt_conv, dt_diff, dt_relax});
+            if (p.IGR_SUB_ITERS > 0) {
+                double alpha_safe = std::max(1e-10, p.ALPHA_SCALE);
+                double dt_diff  = 0.5 * p.IGR_TAU_R / (alpha_safe * (2 * p.P_DEG + 1) * (2 * p.P_DEG + 1));
+                double dt_relax = 0.5 * p.IGR_TAU_R;
+                double dt_limit = std::min(dt_diff, dt_relax);
+                dt_cell = std::min(dt_conv, p.IGR_SUB_ITERS * dt_limit);
+            }
         }
 
         if (p.ENABLE_NS) {

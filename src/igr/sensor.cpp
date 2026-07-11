@@ -18,6 +18,16 @@ void Solver::compute_sensor_source() {
         Cell* c = cells[i];
         const double epsilon = p.ALPHA_SCALE * (c->dx * c->dy);
 
+        double u_loc[MAX_PTS * MAX_PTS];
+        double v_loc[MAX_PTS * MAX_PTS];
+        for (int k = 0; k < p.N_PTS * p.N_PTS; ++k) {
+            int iy = k / p.N_PTS;
+            int ix = k % p.N_PTS;
+            double rho = std::max(1e-12, c->get_U(0, iy, ix, p.N_PTS));
+            u_loc[k] = c->get_U(1, iy, ix, p.N_PTS) / rho;
+            v_loc[k] = c->get_U(2, iy, ix, p.N_PTS) / rho;
+        }
+
         if (p.IGR_GRADIENT_TYPE == "CORRECTED") {
             double du_dx[MAX_PTS * MAX_PTS], dv_dx[MAX_PTS * MAX_PTS];
             double du_dy[MAX_PTS * MAX_PTS], dv_dy[MAX_PTS * MAX_PTS];
@@ -78,9 +88,9 @@ void Solver::compute_sensor_source() {
                 for (int ix = 0; ix < p.N_PTS; ++ix) {
                     double dudx_l = 0, dvdx_l = 0;
                     for (int k = 0; k < p.N_PTS; ++k) {
-                        double r_loc = std::max(1e-12, c->get_U(0, iy, k, p.N_PTS));
-                        dudx_l += basis.D[ix][k] * (c->get_U(1, iy, k, p.N_PTS) / r_loc);
-                        dvdx_l += basis.D[ix][k] * (c->get_U(2, iy, k, p.N_PTS) / r_loc);
+                        int kidx = iy * p.N_PTS + k;
+                        dudx_l += basis.D[ix][k] * u_loc[kidx];
+                        dvdx_l += basis.D[ix][k] * v_loc[kidx];
                     }
                     int idx = iy * p.N_PTS + ix;
                     du_dx[idx] = (dudx_l + (uL_int - uL_hat) * basis.dgl[ix] +
@@ -154,9 +164,9 @@ void Solver::compute_sensor_source() {
                 for (int iy = 0; iy < p.N_PTS; ++iy) {
                     double dudy_l = 0, dvdy_l = 0;
                     for (int k = 0; k < p.N_PTS; ++k) {
-                        double r_loc = std::max(1e-12, c->get_U(0, k, ix, p.N_PTS));
-                        dudy_l += basis.D[iy][k] * (c->get_U(1, k, ix, p.N_PTS) / r_loc);
-                        dvdy_l += basis.D[iy][k] * (c->get_U(2, k, ix, p.N_PTS) / r_loc);
+                        int kidx = k * p.N_PTS + ix;
+                        dudy_l += basis.D[iy][k] * u_loc[kidx];
+                        dvdy_l += basis.D[iy][k] * v_loc[kidx];
                     }
                     int idx = iy * p.N_PTS + ix;
                     du_dy[idx] = (dudy_l + (uB_int - uB_hat) * basis.dgl[iy] +
@@ -195,8 +205,8 @@ void Solver::compute_sensor_source() {
                         source_val = epsilon * val * ducros;
                         if (p.USE_PRESSURE_SOURCE_CAP) {
                             double rho = std::max(1e-12, c->get_U(0, iy, ix, p.N_PTS));
-                            double u = c->get_U(1, iy, ix, p.N_PTS) / rho;
-                            double v = c->get_U(2, iy, ix, p.N_PTS) / rho;
+                            double u = u_loc[iy * p.N_PTS + ix];
+                            double v = v_loc[iy * p.N_PTS + ix];
                             double E = c->get_U(3, iy, ix, p.N_PTS);
                             double press = std::max(1e-14, (p.GAMMA - 1.0) * (E - 0.5 * rho * (u * u + v * v)));
                             source_val = std::min(source_val, press * p.SOURCE_CAP_COEFF);
@@ -211,14 +221,14 @@ void Solver::compute_sensor_source() {
                 for (int ix = 0; ix < p.N_PTS; ++ix) {
                     double du_dx = 0, du_dy = 0, dv_dx = 0, dv_dy = 0;
                     for (int k = 0; k < p.N_PTS; ++k) {
-                        double rx = std::max(1e-12, c->get_U(0, iy, k, p.N_PTS));
-                        du_dx += basis.D[ix][k] * (c->get_U(1, iy, k, p.N_PTS) / rx) * (2.0 / c->dx);
-                        dv_dx += basis.D[ix][k] * (c->get_U(2, iy, k, p.N_PTS) / rx) * (2.0 / c->dx);
+                        int kidx = iy * p.N_PTS + k;
+                        du_dx += basis.D[ix][k] * u_loc[kidx] * (2.0 / c->dx);
+                        dv_dx += basis.D[ix][k] * v_loc[kidx] * (2.0 / c->dx);
                     }
                     for (int k = 0; k < p.N_PTS; ++k) {
-                        double ry = std::max(1e-12, c->get_U(0, k, ix, p.N_PTS));
-                        du_dy += basis.D[iy][k] * (c->get_U(1, k, ix, p.N_PTS) / ry) * (2.0 / c->dy);
-                        dv_dy += basis.D[iy][k] * (c->get_U(2, k, ix, p.N_PTS) / ry) * (2.0 / c->dy);
+                        int kidx = k * p.N_PTS + ix;
+                        du_dy += basis.D[iy][k] * u_loc[kidx] * (2.0 / c->dy);
+                        dv_dy += basis.D[iy][k] * v_loc[kidx] * (2.0 / c->dy);
                     }
                     double val = 2.0 * (du_dx * du_dx + dv_dy * dv_dy +
                                         du_dx * dv_dy + dv_dx * du_dy);
@@ -242,8 +252,8 @@ void Solver::compute_sensor_source() {
                         source_val = epsilon * val * ducros;
                         if (p.USE_PRESSURE_SOURCE_CAP) {
                             double rho = std::max(1e-12, c->get_U(0, iy, ix, p.N_PTS));
-                            double u = c->get_U(1, iy, ix, p.N_PTS) / rho;
-                            double v = c->get_U(2, iy, ix, p.N_PTS) / rho;
+                            double u = u_loc[iy * p.N_PTS + ix];
+                            double v = v_loc[iy * p.N_PTS + ix];
                             double E = c->get_U(3, iy, ix, p.N_PTS);
                             double press = std::max(1e-14, (p.GAMMA - 1.0) * (E - 0.5 * rho * (u * u + v * v)));
                             source_val = std::min(source_val, press * p.SOURCE_CAP_COEFF);

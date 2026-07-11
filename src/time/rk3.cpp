@@ -45,7 +45,19 @@ void Solver::step_rk3(double dt) {
     }
 
     const bool is_parabolic = (p.ENABLE_IGR && p.IGR_TYPE == "PARABOLIC");
-    const int n_sub = std::max(1, p.IGR_SUB_ITERS);
+    int n_sub = 1;
+    if (is_parabolic) {
+        if (p.IGR_SUB_ITERS > 0) {
+            n_sub = p.IGR_SUB_ITERS;
+        } else {
+            double alpha_safe = std::max(1e-10, p.ALPHA_SCALE);
+            double dt_diff  = 0.5 * p.IGR_TAU_R / (alpha_safe * (2 * p.P_DEG + 1) * (2 * p.P_DEG + 1));
+            double dt_relax = 0.5 * p.IGR_TAU_R;
+            double dt_limit = std::min(dt_diff, dt_relax);
+            n_sub = static_cast<int>(std::ceil(dt / dt_limit));
+            if (n_sub < 1) n_sub = 1;
+        }
+    }
     const double dt_sub = dt / n_sub;
 
     current_limiter_stats.num_limited = 0;
