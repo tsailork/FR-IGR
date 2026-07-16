@@ -72,6 +72,12 @@ struct Cell {
     std::vector<double> qx_buf;       ///< Gradient auxiliary buffer (d_x Sigma) for Parabolic BR2.
     std::vector<double> qy_buf;       ///< Gradient auxiliary buffer (d_y Sigma) for Parabolic BR2.
 
+    // Local phantom pressure fields (size: npts * npts) for PPR
+    std::vector<double> S_field;      ///< Pointwise phantom pressure S = rho * P_phan
+    std::vector<double> S_old;        ///< Saved S field at start of stage
+    std::vector<double> S_RHS;        ///< Explicit stage RHS for PPR advection
+
+
     // Local gradient fields (size: N_VARS * npts * npts)
     std::vector<double> grad_Ux;      ///< Extrapolated gradient buffer d_x U.
     std::vector<double> grad_Uy;      ///< Extrapolated gradient buffer d_y U.
@@ -114,6 +120,10 @@ struct Cell {
         S_buf.resize(n_pts, 0.0);
         qx_buf.resize(n_pts, 0.0);
         qy_buf.resize(n_pts, 0.0);
+
+        S_field.resize(n_pts, 0.0);
+        S_old.resize(n_pts, 0.0);
+        S_RHS.resize(n_pts, 0.0);
 
         grad_Ux.resize(n_dofs, 0.0);
         grad_Uy.resize(n_dofs, 0.0);

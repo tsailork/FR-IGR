@@ -38,7 +38,61 @@ void Solver::step_rk3(double dt) {
         Cell* c = cells[i];
         c->U_old = c->U;
         c->sigma_old = c->sigma_field;
+        if (p.ENABLE_PPR) {
+            c->S_old = c->S_field;
+        }
     }
+
+    auto relax_phantom_pressure = [&](double dt_stage, double alpha, double beta) {
+        if (!p.ENABLE_PPR) return;
+        #pragma omp parallel for schedule(static)
+        for (size_t i = 0; i < cells.size(); ++i) {
+            Cell* c = cells[i];
+            
+            // 1. Explicit advection update for S
+            for (size_t k = 0; k < c->S_field.size(); ++k) {
+                c->S_field[k] = alpha * c->S_old[k] + beta * (c->S_field[k] + dt * c->S_RHS[k]);
+            }
+            
+            // 2. Analytical relaxation step
+            double r_avg = 0.0, ru_avg = 0.0, rv_avg = 0.0, E_avg = 0.0;
+            for (int iy = 0; iy < p.N_PTS; ++iy) {
+                for (int ix = 0; ix < p.N_PTS; ++ix) {
+                    double w = (basis.w[iy] * 0.5) * (basis.w[ix] * 0.5);
+                    r_avg  += w * c->get_U(0, iy, ix, p.N_PTS);
+                    ru_avg += w * c->get_U(1, iy, ix, p.N_PTS);
+                    rv_avg += w * c->get_U(2, iy, ix, p.N_PTS);
+                    E_avg  += w * c->get_U(3, iy, ix, p.N_PTS);
+                }
+            }
+            double rho_avg = std::max(p.POS_LIMITER_EPS, r_avg);
+            double u_avg = ru_avg / rho_avg;
+            double v_avg = rv_avg / rho_avg;
+            double p_avg = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (E_avg - 0.5 * rho_avg * (u_avg*u_avg + v_avg*v_avg)));
+            double a_avg = std::sqrt(p.GAMMA * p_avg / rho_avg);
+            double lambda_loc = std::sqrt(u_avg*u_avg + v_avg*v_avg) + a_avg;
+            
+            double tau = p.PPR_C_TAU * std::min(c->dx, c->dy) / (lambda_loc + 1e-12);
+            double exp_factor = std::exp(-dt_stage / tau);
+            
+            for (int iy = 0; iy < p.N_PTS; ++iy) {
+                for (int ix = 0; ix < p.N_PTS; ++ix) {
+                    int k = iy * p.N_PTS + ix;
+                    double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
+                    double u = c->get_U(1, iy, ix, p.N_PTS) / rho;
+                    double v = c->get_U(2, iy, ix, p.N_PTS) / rho;
+                    double E = c->get_U(3, iy, ix, p.N_PTS);
+                    double press = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (E - 0.5 * rho * (u*u + v*v)));
+                    double S_eq = rho * press;
+                    
+                    c->S_field[k] = S_eq + (c->S_field[k] - S_eq) * exp_factor;
+                    if (c->S_field[k] < p.POS_LIMITER_EPS) {
+                        c->S_field[k] = p.POS_LIMITER_EPS;
+                    }
+                }
+            }
+        }
+    };
 
     if (p.ENABLE_IB && p.ib_is_dynamic) {
         update_ib_mask_field(current_time);
@@ -216,6 +270,8 @@ void Solver::step_rk3(double dt) {
         }
     }
 
+    relax_phantom_pressure(dt, 0.0, 1.0);
+
     if (is_parabolic)
         sub_iterate_sigma_all(0.0, 1.0);
 
@@ -257,6 +313,8 @@ void Solver::step_rk3(double dt) {
             }
         }
     }
+
+    relax_phantom_pressure(0.25 * dt, 0.75, 0.25);
 
     if (is_parabolic)
         sub_iterate_sigma_all(0.75, 0.25);
@@ -300,6 +358,8 @@ void Solver::step_rk3(double dt) {
             }
         }
     }
+
+    relax_phantom_pressure((2.0 / 3.0) * dt, 1.0 / 3.0, 2.0 / 3.0);
 
     if (is_parabolic)
         sub_iterate_sigma_all(1.0 / 3.0, 2.0 / 3.0);

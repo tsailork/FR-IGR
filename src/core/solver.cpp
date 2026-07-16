@@ -165,6 +165,9 @@ void Solver::compute_rhs() {
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
         std::fill(c->RHS.begin(), c->RHS.end(), 0.0);
+        if (p.ENABLE_PPR) {
+            std::fill(c->S_RHS.begin(), c->S_RHS.end(), 0.0);
+        }
     }
 
     compute_entropic_pressure();
@@ -188,6 +191,9 @@ void Solver::compute_rhs() {
             Cell* c = cells[i];
             if (c->solid_mask) {
                 std::fill(c->RHS.begin(), c->RHS.end(), 0.0);
+                if (p.ENABLE_PPR) {
+                    std::fill(c->S_RHS.begin(), c->S_RHS.end(), 0.0);
+                }
             }
         }
     }
@@ -689,6 +695,11 @@ void Solver::get_flux_pointwise_cell(const Cell& c, int iy, int ix,
     double v     = c.get_U(2, iy, ix, p.N_PTS) / rho;
     double E     = c.get_U(3, iy, ix, p.N_PTS);
     double press = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (E - 0.5 * rho * (u*u + v*v)));
+    if (p.ENABLE_PPR) {
+        double P_phan = c.S_field[iy * p.N_PTS + ix] / rho;
+        double P_reg  = press + p.PPR_THETA * (press - P_phan);
+        press = std::max(p.POS_LIMITER_EPS, P_reg);
+    }
 
     if (F) {
         F[0] = rho * u;

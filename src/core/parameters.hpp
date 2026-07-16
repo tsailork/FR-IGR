@@ -113,6 +113,13 @@ struct Parameters {
     double IGR_SUB_ITER_TOL         = 0.0;    ///< Convergence tolerance for IGR sub-iterations (0 = inactive, runs lock-step).
 
     // -------------------------------------------------------------------------
+    // PPR (Phantom Pressure Regularization)
+    // -------------------------------------------------------------------------
+    bool   ENABLE_PPR         = false;    ///< Toggle Phantom Pressure Regularization.
+    double PPR_THETA          = 1.0;      ///< Regularization feedback coefficient (theta).
+    double PPR_C_TAU          = 0.2;      ///< Scaling coefficient for the relaxation time (C_tau).
+
+    // -------------------------------------------------------------------------
     // Time Stepping & I/O
     // -------------------------------------------------------------------------
     double T_FINAL   = 0.3;           ///< Target end time of the simulation.

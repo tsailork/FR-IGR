@@ -98,7 +98,7 @@ void Solver::get_flux_pointwise(const Block& b, int ey, int ex, int iy, int ix,
  * @see Solver::sweep_y
  */
 void Solver::solve_riemann(const double* UL, const double* UR, double* F_comm,
-                            int dir) const
+                           int dir, double SL, double SR) const
 {
     double rhoL = std::max(p.POS_LIMITER_EPS, UL[0]);
     double uL = UL[1] / rhoL, vL = UL[2] / rhoL;
@@ -111,8 +111,26 @@ void Solver::solve_riemann(const double* UL, const double* UR, double* F_comm,
     double vnL = (dir == 0) ? uL : vL;
     double vnR = (dir == 0) ? uR : vR;
 
-    double cL = std::sqrt(p.GAMMA * pL / rhoL);
-    double cR = std::sqrt(p.GAMMA * pR / rhoR);
+    double cL, cR;
+    if (p.ENABLE_PPR) {
+        double pL_phan = SL / rhoL;
+        double pR_phan = SR / rhoR;
+        double pL_reg = pL + p.PPR_THETA * (pL - pL_phan);
+        double pR_reg = pR + p.PPR_THETA * (pR - pR_phan);
+
+        double pL_safe = std::max(pL, pL_reg);
+        double pR_safe = std::max(pR, pR_reg);
+
+        pL = std::max(p.POS_LIMITER_EPS, pL_reg);
+        pR = std::max(p.POS_LIMITER_EPS, pR_reg);
+
+        cL = std::sqrt(p.GAMMA * pL_safe / rhoL);
+        cR = std::sqrt(p.GAMMA * pR_safe / rhoR);
+    } else {
+        cL = std::sqrt(p.GAMMA * pL / rhoL);
+        cR = std::sqrt(p.GAMMA * pR / rhoR);
+    }
+
     double max_wave = std::max(std::abs(vnL) + cL, std::abs(vnR) + cR);
 
     double FL[4], FR[4];

@@ -38,6 +38,16 @@ Limiters::LimiterStats Limiters::apply_positivity_limiter(std::vector<Cell*>& ce
             E_avg = eps / gm1 + ke_avg;
         }
 
+        double S_avg = 0.0;
+        if (p.ENABLE_PPR) {
+            for (int iy = 0; iy < npts; ++iy) {
+                for (int ix = 0; ix < npts; ++ix) {
+                    double w = (basis.w[iy] * 0.5) * (basis.w[ix] * 0.5);
+                    S_avg += w * c->S_field[iy * npts + ix];
+                }
+            }
+        }
+
         // =============================================================
         // 1. Extrapolate face checking points
         // =============================================================
@@ -69,6 +79,9 @@ Limiters::LimiterStats Limiters::apply_positivity_limiter(std::vector<Cell*>& ce
                     c->get_U(1, iy, ix, npts) = theta_r*(c->get_U(1, iy, ix, npts) - ru_avg) + ru_avg;
                     c->get_U(2, iy, ix, npts) = theta_r*(c->get_U(2, iy, ix, npts) - rv_avg) + rv_avg;
                     c->get_U(3, iy, ix, npts) = theta_r*(c->get_U(3, iy, ix, npts) - E_avg)  + E_avg;
+                    if (p.ENABLE_PPR) {
+                        c->S_field[iy * npts + ix] = theta_r*(c->S_field[iy * npts + ix] - S_avg) + S_avg;
+                    }
                 }
             }
 
@@ -115,6 +128,9 @@ Limiters::LimiterStats Limiters::apply_positivity_limiter(std::vector<Cell*>& ce
                     c->get_U(1, iy, ix, npts) = theta_p*(c->get_U(1, iy, ix, npts) - ru_avg) + ru_avg;
                     c->get_U(2, iy, ix, npts) = theta_p*(c->get_U(2, iy, ix, npts) - rv_avg) + rv_avg;
                     c->get_U(3, iy, ix, npts) = theta_p*(c->get_U(3, iy, ix, npts) - E_avg)  + E_avg;
+                    if (p.ENABLE_PPR) {
+                        c->S_field[iy * npts + ix] = theta_p*(c->S_field[iy * npts + ix] - S_avg) + S_avg;
+                    }
                 }
             }
             num_limited++;

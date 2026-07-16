@@ -323,7 +323,7 @@ public:
      * @param[in] dir Direction of sweep (0 = X direction, 1 = Y direction)
      */
     void solve_riemann(const double* UL, const double* UR, double* F_comm,
-                       int dir) const;
+                       int dir, double SL = 0.0, double SR = 0.0) const;
 
     /**
      * @brief Perform Flux Reconstruction 1D inviscid sweep in the X coordinate direction.

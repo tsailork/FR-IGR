@@ -230,6 +230,36 @@ void VTKWriter::write_checkpoint(Solver& solver, int step, double time) {
         });
     }
 
+    if (p.ENABLE_PPR) {
+        write_point_array("P_phan", [&](Cell* c, int iy, int ix) {
+            double r = c->get_U(0, iy, ix, npts);
+            double S = c->S_field[iy * npts + ix];
+            return S / std::max(p.POS_LIMITER_EPS, r);
+        });
+        write_point_array("P_reg", [&](Cell* c, int iy, int ix) {
+            double r = c->get_U(0, iy, ix, npts);
+            double ru = c->get_U(1, iy, ix, npts);
+            double rv = c->get_U(2, iy, ix, npts);
+            double E = c->get_U(3, iy, ix, npts);
+            double u = ru / r, v = rv / r;
+            double press = (p.GAMMA - 1.0) * (E - 0.5 * r * (u*u + v*v));
+            double S = c->S_field[iy * npts + ix];
+            double p_phan = S / std::max(p.POS_LIMITER_EPS, r);
+            return press + p.PPR_THETA * (press - p_phan);
+        });
+        write_point_array("P_diff", [&](Cell* c, int iy, int ix) {
+            double r = c->get_U(0, iy, ix, npts);
+            double ru = c->get_U(1, iy, ix, npts);
+            double rv = c->get_U(2, iy, ix, npts);
+            double E = c->get_U(3, iy, ix, npts);
+            double u = ru / r, v = rv / r;
+            double press = (p.GAMMA - 1.0) * (E - 0.5 * r * (u*u + v*v));
+            double S = c->S_field[iy * npts + ix];
+            double p_phan = S / std::max(p.POS_LIMITER_EPS, r);
+            return press - p_phan;
+        });
+    }
+
     if (p.ENABLE_IB) {
         write_point_array("phi", [&](Cell* c, int iy, int ix) {
             double x_pt = c->x_min + 0.5 * (1.0 + solver.basis.z[ix]) * c->dx;
@@ -531,6 +561,36 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
         });
         write_array("Sigma_Source", [&](Cell* c, int iy, int ix) {
             return c->S_buf[iy * p.N_PTS + ix];
+        });
+    }
+
+    if (p.ENABLE_PPR) {
+        write_array("P_phan", [&](Cell* c, int iy, int ix) {
+            double r = c->get_U(0, iy, ix, p.N_PTS);
+            double S = c->S_field[iy * p.N_PTS + ix];
+            return S / std::max(p.POS_LIMITER_EPS, r);
+        });
+        write_array("P_reg", [&](Cell* c, int iy, int ix) {
+            double r = c->get_U(0, iy, ix, p.N_PTS);
+            double ru = c->get_U(1, iy, ix, p.N_PTS);
+            double rv = c->get_U(2, iy, ix, p.N_PTS);
+            double E = c->get_U(3, iy, ix, p.N_PTS);
+            double u = ru / r, v = rv / r;
+            double press = (p.GAMMA - 1.0) * (E - 0.5 * r * (u*u + v*v));
+            double S = c->S_field[iy * p.N_PTS + ix];
+            double p_phan = S / std::max(p.POS_LIMITER_EPS, r);
+            return press + p.PPR_THETA * (press - p_phan);
+        });
+        write_array("P_diff", [&](Cell* c, int iy, int ix) {
+            double r = c->get_U(0, iy, ix, p.N_PTS);
+            double ru = c->get_U(1, iy, ix, p.N_PTS);
+            double rv = c->get_U(2, iy, ix, p.N_PTS);
+            double E = c->get_U(3, iy, ix, p.N_PTS);
+            double u = ru / r, v = rv / r;
+            double press = (p.GAMMA - 1.0) * (E - 0.5 * r * (u*u + v*v));
+            double S = c->S_field[iy * p.N_PTS + ix];
+            double p_phan = S / std::max(p.POS_LIMITER_EPS, r);
+            return press - p_phan;
         });
     }
 

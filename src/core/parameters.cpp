@@ -212,6 +212,14 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("IGR_SUB_ITER_TOL"))         IGR_SUB_ITER_TOL         = std::stod(kv["IGR_SUB_ITER_TOL"]);
     }
 
+    // --- [PPR] ---
+    if (ini.count("PPR")) {
+        auto& kv = ini["PPR"];
+        if (kv.count("ENABLE_PPR")) ENABLE_PPR = (kv["ENABLE_PPR"] == "true" || kv["ENABLE_PPR"] == "1");
+        if (kv.count("PPR_THETA"))  PPR_THETA  = std::stod(kv["PPR_THETA"]);
+        if (kv.count("PPR_C_TAU"))  PPR_C_TAU  = std::stod(kv["PPR_C_TAU"]);
+    }
+
     // --- [Stabilization] ---
     if (ini.count("Stabilization")) {
         auto& kv = ini["Stabilization"];

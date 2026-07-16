@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phantom Pressure Regularization (PPR) - Implementation Manual</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root {
+            --primary: #0f4c81;
+            --primary-light: #e6f0fa;
+            --dark: #2c3e50;
+            --light: #f8f9fa;
+            --border: #e1e4e8;
+            --code-bg: #1e1e1e;
+            --code-text: #d4d4d4;
+            --highlight: #fff3cd;
+            --highlight-border: #ffc107;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--dark);
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background-color: #fdfdfd;
+        }
+        header {
+            text-align: center;
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+        }
+        header h1 {
+            color: var(--primary);
+            margin: 0 0 10px 0;
+            font-size: 2.5rem;
+        }
+        header p {
+            font-size: 1.1rem;
+            color: #666;
+            margin: 0;
+        }
+        h2 {
+            color: var(--primary);
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 8px;
+            margin-top: 40px;
+        }
+        h3 {
+            color: var(--dark);
+            margin-top: 25px;
+            border-left: 4px solid var(--primary);
+            padding-left: 10px;
+        }
+        p, li {
+            font-size: 1.05rem;
+            text-align: justify;
+        }
+        ul, ol {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .code-block {
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            padding: 18px;
+            border-radius: 8px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            white-space: pre;
+            line-height: 1.5;
+            margin: 20px 0;
+            border: 1px solid #333;
+        }
+        .keyword { color: #569cd6; }
+        .comment { color: #6a9955; font-style: italic; }
+        .variable { color: #9cdcfe; }
+        .number { color: #b5cea8; }
+        .string { color: #ce9178; }
+        .builtin { color: #4ec9b0; }
+        .call { color: #dcdcaa; }
+        
+        .alert {
+            background-color: var(--highlight);
+            border-left: 5px solid var(--highlight-border);
+            padding: 15px 20px;
+            margin: 25px 0;
+            border-radius: 4px;
+        }
+        .alert strong {
+            color: #856404;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            background: #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+        th, td {
+            text-align: left;
+            padding: 14px;
+            border: 1px solid var(--border);
+        }
+        th {
+            background-color: var(--primary);
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: var(--light);
+        }
+        .math-box {
+            background-color: var(--primary-light);
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid var(--primary);
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+        .badge {
+            background-color: var(--primary);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Phantom Pressure Regularization (PPR)</h1>
+        <p>A Complete Architectural & Mathematical Implementation Guide for High-Order Flux Reconstruction (FR) Solvers</p>
+    </header>
+
+    <h2>1. Complete Theoretical Summary</h2>
+    <p>
+        High-order collocated spatial discretization methods, such as <b>Flux Reconstruction (FR)</b> and <b>Discontinuous Galerkin (DG)</b>, possess minimal intrinsic numerical dissipation. While this property is highly desirable for capturing turbulent structures and acoustic waves, it renders the solver severely susceptible to <i>Gibbs oscillations</i> and explosive numerical instabilities near shocks, contact surfaces, and under-resolved steep gradients.
+    </p>
+    <p>
+        The <b>Phantom Pressure Regularization (PPR)</b> method—also categorized as a self-targeted <b>Hyperbolic Bulk Viscosity (HBV)</b> model—introduces a non-physical, passive auxiliary variable \(S = \rho P_{phan}\) that behaves as a localized physical damper. The physical governing system (3D Navier-Stokes or Euler equations) is augmented with an advection-relaxation equation for this phantom pressure state:
+    </p>
+    
+    <div class="math-box">
+        $$\frac{\partial S}{\partial t} + \nabla \cdot (S \mathbf{u}) = \frac{\rho}{\tau} (P_{phys} - P_{phan})$$
+    </div>
+    
+    <p>
+        where \(P_{phys}\) is the standard thermodynamic pressure, \(P_{phan} = S/\rho\) is the phantom pressure, \(\mathbf{u}\) is the fluid velocity vector, and \(\tau\) is a localized, non-equilibrium relaxation time scale.
+    </p>
+
+    <h3>The Physical Mechanism of Hyperbolic Bulk Viscosity</h3>
+    <p>
+        Applying a first-order Chapman-Enskog expansion to the auxiliary transport equation under the assumption of small non-equilibrium deviations (\(\tau \to 0\)) yields:
+    </p>
+    <div class="math-box">
+        $$P_{phan} \approx P_{phys} + \tau \gamma P_{phys} (\nabla \cdot \mathbf{u}) + \mathcal{O}(\tau^2)$$
+    </div>
+    <p>
+        By defining a <b>regularized pressure</b> \(P_{reg}\) as a linear extrapolation of the physical pressure away from the phantom state:
+    </p>
+    <div class="math-box">
+        $$P_{reg} = P_{phys} + \theta (P_{phys} - P_{phan})$$
+    </div>
+    <p>
+        and substituting the Chapman-Enskog expansion, we reveal:
+    </p>
+    <div class="math-box">
+        $$P_{reg} \approx P_{phys} - \underbrace{\theta \tau \gamma P_{phys}}_{\beta_{bulk}} (\nabla \cdot \mathbf{u})$$
+    </div>
+    <p>
+        This formulation is mathematically equivalent to the physical pressure modified by an artificial <b>dynamic bulk viscosity</b> \(\beta_{bulk} = \theta \tau \gamma P_{phys}\).
+    </p>
+    <ul>
+        <li><b>In Smooth Regions:</b> The relaxation rate is fast (\(\tau \to 0\)), driving \(P_{phan} \to P_{phys}\), collapsing \(P_{reg} \to P_{phys}\). No artificial dissipation is introduced, preserving high-order accuracy.</li>
+        <li><b>Across Compressive Discontinuities (Shocks):</b> The velocity divergence is highly negative (\(\nabla \cdot \mathbf{u} \ll 0\)). The finite relaxation rate \(\tau\) causes \(P_{phan}\) to lag behind, forcing \(P_{reg}\) to spike significantly above \(P_{phys}\). This localized pressure spike acts as a physical bulk viscous damper, smoothing out high-frequency Gibbs oscillations over the span of cell interfaces.</li>
+    </ul>
+
+    <h2 id="subsystem-2">2. Flux Evaluation at a Point</h2>
+    <p>
+        To implement PPR, the dimension of your solver's conserved state vector \(\mathbf{U}\) must be expanded from 5 to 6. At every solution point, flux point, and integration point within your 3D domain, the local physical fluxes must be computed using the regularized pressure \(P_{reg}\) instead of the standard thermodynamic pressure \(P_{phys}\).
+    </p>
+
+    <h3>Step-by-Step State Vector and Flux Construction</h3>
+    <p>
+        Given the augmented conserved state vector:
+    </p>
+    <div class="math-box">
+        $$\mathbf{U} = \begin{bmatrix} U_0 \\ U_1 \\ U_2 \\ U_3 \\ U_4 \\ U_5 \end{bmatrix} = \begin{bmatrix} \rho \\ \rho u \\ \rho v \\ \rho w \\ E \\ S \end{bmatrix}$$
+    </div>
+
+    <p>The pointwise regularized pressure is calculated as follows:</p>
+    <ol>
+        <li>
+            Compute the local kinetic energy and thermodynamic physical pressure \(P_{phys}\):
+            $$P_{phys} = (\gamma - 1) \left( U_4 - \frac{1}{2 U_0} \left( U_1^2 + U_2^2 + U_3^2 \right) \right)$$
+        </li>
+        <li>
+            Extract the pointwise phantom pressure \(P_{phan}\):
+            $$P_{phan} = \frac{U_5}{U_0}$$
+        </li>
+        <li>
+            Evaluate the regularized pressure \(P_{reg}\) using the scaling parameter \(\theta\):
+            $$P_{reg} = P_{phys} + \theta (P_{phys} - P_{phan})$$
+        </li>
+    </ol>
+
+    <p>The 3D inviscid physical flux tensor \(\mathbf{F}(\mathbf{U}) = [\mathbf{F}_x, \mathbf{F}_y, \mathbf{F}_z]\) is constructed using \(P_{reg}\) for the momentum and energy equations, and the advected phantom variable \(S\) in the 6th row:</p>
+    
+    <div class="math-box">
+        $$\mathbf{F}_x = \begin{bmatrix} \rho u \\ \rho u^2 + P_{reg} \\ \rho u v \\ \rho u w \\ (E + P_{reg}) u \\ S u \end{bmatrix}, \quad
+        \mathbf{F}_y = \begin{bmatrix} \rho v \\ \rho u v \\ \rho v^2 + P_{reg} \\ \rho v w \\ (E + P_{reg}) v \\ S v \end{bmatrix}, \quad
+        \mathbf{F}_z = \begin{bmatrix} \rho w \\ \rho u w \\ \rho v w \\ \rho w^2 + P_{reg} \\ (E + P_{reg}) w \\ S w \end{bmatrix}$$
+    </div>
+
+    <h2>3. General Riemann Solver Considerations</h2>
+    <p>
+        High-order FR schemes compute common interface normal fluxes \(\mathbf{F}^{comm} \cdot \mathbf{n}\) at cell boundaries using extrapolated interior (\(\mathbf{U}^-\)) and exterior (\(\mathbf{U}^+\)) states. Since the regularized pressure \(P_{reg}\) varies dynamically near shocks, the interface Riemann solver must be carefully modified to prevent numerical shock-induced instabilities.
+    </p>
+    <div style="margin: 20px 0;">
+        <a href="ppr_supplement.html" style="display: inline-block; background-color: #8a1c14; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; font-weight: bold;">
+            &rarr; View Supplement: Integrating HLLC & AUSM+ Solvers
+        </a>
+    </div>
+
+    <h3>Acoustic Wave Speed Corrections</h3>
+    <p>
+        At interfaces near strong shocks, the physical pressure can drop or fluctuate due to transient under-resolved waves, while \(P_{reg}\) exhibits a stabilizing positive spike. To prevent non-physical wave speeds or complex speed-of-sound evaluations, we define a safe upper-bound pressure state at both sides of the interface:
+    </p>
+    <div class="math-box">
+        $$\bar{P}^- = \max\left(P_{reg}^-, P_{phys}^-\right), \quad \bar{P}^+ = \max\left(P_{reg}^+, P_{phys}^+\right)$$
+    </div>
+    <p>
+        These corrected pressures are then utilized to compute the local speeds of sound:
+    </p>
+    <div class="math-box">
+        $$a^- = \sqrt{\gamma \frac{\bar{P}^-}{\rho^-}}, \quad a^+ = \sqrt{\gamma \frac{\bar{P}^+}{\rho^+}}$$
+    </div>
+    <p>
+        The maximum normal wave speed \(\lambda_{max}\) at the interface is computed as:
+    </p>
+    <div class="math-box">
+        $$\lambda_{max} = \max\left( |\mathbf{u}^- \cdot \mathbf{n}| + a^-, \, |\mathbf{u}^+ \cdot \mathbf{n}| + a^+ \right)$$
+    </div>
+
+    <h3>Rusanov (Local Lax-Friedrichs) Interface Flux</h3>
+    <p>
+        The common interface normal flux is evaluated using the augmented flux functions containing the regularized pressure:
+    </p>
+    <div class="math-box">
+        $$\mathbf{F}^{comm} \cdot \mathbf{n} = \frac{1}{2} \left( \mathbf{F}(\mathbf{U}^-) + \mathbf{F}(\mathbf{U}^+) \right) \cdot \mathbf{n} - \frac{1}{2} \lambda_{max} \left( \mathbf{U}^+ - \mathbf{U}^- \right)$$
+    </div>
+    <p>
+        The sixth variable \(S\) is naturally stabilized and upwinded at the interface by the scalar dissipation term:
+    </p>
+    <div class="math-box">
+        $$- \frac{1}{2} \lambda_{max} \left( S^+ - S^- \right)$$
+    </div>
+
+    <h2>4. Operator Splitting and Point-Wise Analytical Relaxation Method</h2>
+    <p>
+        Because the relaxation time scale \(\tau \to 0\) in smooth regions, integrating the stiff source term \(\frac{\rho}{\tau}(P_{phys} - P_{phan})\) using standard explicit Runge-Kutta stages will severely violate the CFL condition and cause instant numerical blowups. 
+    </p>
+    <p>
+        To maintain both high-order accuracy and unconditional numerical stability, we implement a **fractional-step operator splitting** method. The governing equations are split into a homogeneous hyperbolic operator and a local ODE relaxation operator:
+    </p>
+<h3>Pointwise vs. Cell-Average Calculation of the Relaxation Time \(\tau\)</h3>
+    <p>
+        The local relaxation time scale \(\tau\) determines how quickly the phantom pressure \(P_{phan}\) relaxes to the physical thermodynamic pressure \(P_{phys}\). It must be proportional to the local advective/acoustic time scale of the grid cell. It is computed as:
+    </p>
+    
+    <div class="math-box">
+        $$\tau = \frac{C_{\tau} \cdot \Delta x}{\lambda_{loc} + \epsilon}$$
+    </div>
+
+    <p>where the terms are defined as follows:</p>
+    <ul>
+        <li><b>\(C_{\tau}\):</b> A user-defined tuning coefficient (typically in the range of \(0.1 \le C_{\tau} \le 0.5\)). Smaller values make the relaxation faster (sharper shocks but less stable), while larger values broaden the shock profile.</li>
+        <li><b>\(\Delta x\):</b> The local characteristic grid spacing. For 3D unstructured meshes, this is commonly computed as the ratio of the cell volume to its maximum face area: \(\Delta x = V_e / \max(A_{face})\), or simply the minimum edge length of the element.</li>
+        <li><b>\(\lambda_{loc}\):</b> The local maximum wave speed, defined as the sum of the velocity magnitude and speed of sound:
+            $$\lambda_{loc} = \|\mathbf{u}\| + a = \sqrt{u^2 + v^2 + w^2} + \sqrt{\gamma \frac{P_{phys}}{\rho}}$$
+        </li>
+        <li><b>\(\epsilon\):</b> A small regularizing parameter (e.g., \(10^{-12}\)) to prevent division by zero in stagnant regions.</li>
+    </ul>
+
+    <div class="alert">
+        <strong>High-Order Implementation Best Practice:</strong> While it is mathematically possible to compute \(\tau\) pointwise at every single high-order solution point, it is highly recommended to compute a single <b>cell-averaged constant value \(\tau_e\) per element</b>. Allowing \(\tau\) to vary wildly within a single high-order element introduces artificial, non-physical gradients that degrade the spatial accuracy of the Flux Reconstruction scheme.
+    </div>
+
+    <h3>The Fractional-Step Integration Sequence</h3>
+    <p>
+        For each Runge-Kutta sub-stage with step size \(\Delta t_{stage}\):
+    </p>
+    <ol>
+        <li>
+            <b>Explicit Spatial Step:</b> Solve the homogeneous spatial advection step using your standard high-order FR operators:
+            $$\frac{\partial \mathbf{U}}{\partial t} + \nabla \cdot \mathbf{F}(\mathbf{U}) = 0 \quad \implies \quad \mathbf{U}^* = \mathbf{U}^n - \Delta t_{stage} \mathcal{D}_h(\mathbf{U}^n)$$
+        </li>
+        <li>
+            <b>Analytical Relaxation Step:</b> Integrate the pointwise stiff source ODE using the intermediate state \(\mathbf{U}^*\) as the starting condition:
+            $$\frac{d\mathbf{U}}{dt} = \begin{bmatrix} 0 \\ 0 \\ 0 \\ 0 \\ 0 \\ \frac{\rho}{\tau}(P_{phys} - P_{phan}) \end{bmatrix}$$
+        </li>
+    </ol>
+
+    <h3>Mathematical Derivation of the Point-Wise Update</h3>
+    <p>
+        Because the source terms for mass (\(\rho\)), momentum (\(\rho \mathbf{u}\)), and total energy (\(E\)) are exactly zero, these physical quantities remain completely constant during this local ODE relaxation step. Consequently, the local physical pressure \(P_{phys}\) remains strictly constant.
+    </p>
+    <p>
+        The ODE for the phantom state \(S = \rho P_{phan}\) simplifies to a linear, decoupled, constant-coefficient equation:
+    </p>
+    <div class="math-box">
+        $$\frac{d S}{d t} = \frac{1}{\tau} (\rho P_{phys} - S)$$
+    </div>
+    <p>
+        Integrating this ODE analytically from \(t\) to \(t + \Delta t_{stage}\) yields the exact, unconditionally stable update formula:
+    </p>
+    <div class="math-box">
+        $$S^{n+1} = \rho P_{phys} + \left(S^* - \rho P_{phys}\right) e^{-\Delta t_{stage} / \tau}$$
+    </div>
+
+    <h2>5. Boundary Conditions</h2>
+    <p>
+        Imposing strong boundary conditions (e.g., directly overwriting interface values) in high-order FR solvers causes spurious acoustic reflections that trigger solver crashes. To guarantee stability, all boundary conditions must be enforced <b>weakly</b> using specifically constructed <b>Ghost States (\(\mathbf{U}^+\))</b> in combination with the interface Riemann solver.
+    </p>
+
+    <div class="alert">
+        <strong>Implementation Rule:</strong> The phantom pressure state \(S^+\) at any physical boundary must be actively synced to the local boundary pressure. This prevents non-physical bulk-viscosity forces and numerical boundary layers from developing at the domain boundaries.
+    </div>
+
+    <h3>A. Subsonic and Supersonic Outflow Boundaries</h3>
+    <p>
+        Let \(\mathbf{U}^-\) be the interior state extrapolated to the outflow boundary interface, and \(\mathbf{n}\) be the outward-pointing unit normal.
+    </p>
+    <ul>
+        <li>
+            <b>Supersonic Outflow (\(\mathbf{u}^- \cdot \mathbf{n} \ge a^-\)):</b> 
+            All characteristics travel out of the domain. No boundary specifications are mathematically allowed. Construct the ghost state as a direct copy of the interior:
+            $$\mathbf{U}^+ = \mathbf{U}^-$$
+        </li>
+        <li>
+            <b>Subsonic Outflow (\(0 < \mathbf{u}^- \cdot \mathbf{n} < a^-\)):</b> 
+            Exactly one acoustic characteristic travels upstream into the domain. We must prescribe a target physical backpressure \(P_{out}\), while density, momentum, and phantom pressure are smoothly extrapolated from the interior.
+            $$\mathbf{U}^+ = \begin{bmatrix} \rho^- \\ (\rho u)^- \\ (\rho v)^- \\ (\rho w)^- \\ \frac{P_{out}}{\gamma - 1} + \frac{1}{2}\rho^- \|\mathbf{u}^-\|^2 \\ \rho^- P_{out} \end{bmatrix}$$
+            Setting \(S^+ = \rho^- P_{out}\) guarantees that \(P_{reg} \to P_{out}\) smoothly at the exit plane without generating artificial pressure spikes.
+        </li>
+    </ul>
+
+    <h3>B. Inflow / Dirichlet Boundaries</h3>
+    <p>
+        For a physical state with targeted inflow properties \([\rho_{\infty}, \mathbf{u}_{\infty}, P_{\infty}]^T\), construct the ghost state as:
+    </p>
+    <div class="math-box">
+        $$\mathbf{U}^+ = \begin{bmatrix} \rho_{\infty} \\ \rho_{\infty} u_{\infty} \\ \rho_{\infty} v_{\infty} \\ \rho_{\infty} w_{\infty} \\ \frac{P_{\infty}}{\gamma - 1} + \frac{1}{2}\rho_{\infty} \|\mathbf{u}_{\infty}\|^2 \\ \rho_{\infty} P_{\infty} \end{bmatrix}$$
+    </div>
+
+    <h3>C. Adiabatic Solid Walls (Slip & No-Slip)</h3>
+    <p>
+        To enforce zero-penetration at physical wall boundaries, construct a reflective ghost state. The normal velocity is negated, while density, tangential velocity, and phantom state are extrapolated symmetrically:
+    </p>
+    <div class="math-box">
+        $$\mathbf{u}^+ = \mathbf{u}^- - 2(\mathbf{u}^- \cdot \mathbf{n})\mathbf{n}$$
+    </div>
+    <div class="math-box">
+        $$\mathbf{U}^+ = \begin{bmatrix} \rho^- \\ \rho^- \mathbf{u}^+ \\ E^- \\ S^- \end{bmatrix}$$
+    </div>
+
+    <h2>6. Interactive Code & Verification Block</h2>
+    <p>
+        The following complete Python snippet implements the pointwise flux evaluation, interface Riemann solver wave speed correction, weak boundary conditions, and the point-wise analytical relaxation loop.
+    </p>
+
+    <div class="code-block"><span class="keyword">import</span> numpy <span class="keyword">as</span> np
+
+<span class="keyword">def</span> <span class="call">compute_ppr_pointwise_flux</span>(<span class="variable">U</span>, <span class="variable">theta</span>, <span class="variable">gamma</span>):
+    <span class="comment">"""
+    Evaluates the physical 3D flux vector at a specific solution point.
+    U: numpy array [rho, rhou, rhov, rhow, E, S]
+    """</span>
+    <span class="variable">rho</span> = <span class="variable">U</span>[<span class="number">0</span>]
+    <span class="variable">rhou</span>, <span class="variable">rhov</span>, <span class="variable">rhow</span> = <span class="variable">U</span>[<span class="number">1</span>], <span class="variable">U</span>[<span class="number">2</span>], <span class="variable">U</span>[<span class="number">3</span>]
+    <span class="variable">E</span> = <span class="variable">U</span>[<span class="number">4</span>]
+    <span class="variable">S</span> = <span class="variable">U</span>[<span class="number">5</span>]
+    
+    <span class="variable">u</span> = <span class="variable">rhou</span> / <span class="variable">rho</span>
+    <span class="variable">v</span> = <span class="variable">rhov</span> / <span class="variable">rho</span>
+    <span class="variable">w</span> = <span class="variable">rhow</span> / <span class="variable">rho</span>
+    <span class="variable">ke</span> = <span class="number">0.5</span> * (<span class="variable">rhou</span>*<span class="variable">u</span> + <span class="variable">rhov</span>*<span class="variable">v</span> + <span class="variable">rhow</span>*<span class="variable">w</span>)
+    
+    <span class="comment"># 1. Compute physical and phantom pressures</span>
+    <span class="variable">P_phys</span> = (<span class="variable">gamma</span> - <span class="number">1.0</span>) * (<span class="variable">E</span> - <span class="variable">ke</span>)
+    <span class="variable">P_phan</span> = <span class="variable">S</span> / <span class="variable">rho</span>
+    
+    <span class="comment"># 2. Regularized pressure formulation</span>
+    <span class="variable">P_reg</span> = <span class="variable">P_phys</span> + <span class="variable">theta</span> * (<span class="variable">P_phys</span> - <span class="variable">P_phan</span>)
+    
+    <span class="comment"># 3. Construct 3D flux components</span>
+    <span class="variable">Fx</span> = np.array([<span class="variable">rhou</span>, <span class="variable">rhou</span>*<span class="variable">u</span> + <span class="variable">P_reg</span>, <span class="variable">rhou</span>*<span class="variable">v</span>, <span class="variable">rhou</span>*<span class="variable">w</span>, (<span class="variable">E</span> + <span class="variable">P_reg</span>)*<span class="variable">u</span>, <span class="variable">S</span>*<span class="variable">u</span>])
+    <span class="variable">Fy</span> = np.array([<span class="variable">rhov</span>, <span class="variable">rhov</span>*<span class="variable">u</span>, <span class="variable">rhov</span>*<span class="variable">v</span> + <span class="variable">P_reg</span>, <span class="variable">rhov</span>*<span class="variable">w</span>, (<span class="variable">E</span> + <span class="variable">P_reg</span>)*<span class="variable">v</span>, <span class="variable">S</span>*<span class="variable">v</span>])
+    <span class="variable">Fz</span> = np.array([<span class="variable">rhow</span>, <span class="variable">rhow</span>*<span class="variable">u</span>, <span class="variable">rhow</span>*<span class="variable">v</span>, <span class="variable">rhow</span>*<span class="variable">w</span> + <span class="variable">P_reg</span>, (<span class="variable">E</span> + <span class="variable">P_reg</span>)*<span class="variable">w</span>, <span class="variable">S</span>*<span class="variable">w</span>])
+    
+    <span class="keyword">return</span> <span class="variable">Fx</span>, <span class="variable">Fy</span>, <span class="variable">Fz</span>, <span class="variable">P_phys</span>, <span class="variable">P_reg</span>
+
+
+<span class="keyword">def</span> <span class="call">compute_rusanov_flux</span>(<span class="variable">U_L</span>, <span class="variable">U_R</span>, <span class="variable">normal</span>, <span class="variable">theta</span>, <span class="variable">gamma</span>):
+    <span class="comment">"""
+    Evaluates interface Rusanov flux incorporating safe maximum wave speed limits.
+    """</span>
+    <span class="variable">Fx_L</span>, <span class="variable">Fy_L</span>, <span class="variable">Fz_L</span>, <span class="variable">Pp_L</span>, <span class="variable">Pr_L</span> = compute_ppr_pointwise_flux(<span class="variable">U_L</span>, <span class="variable">theta</span>, <span class="variable">gamma</span>)
+    <span class="variable">Fx_R</span>, <span class="variable">Fy_R</span>, <span class="variable">Fz_R</span>, <span class="variable">Pp_R</span>, <span class="variable">Pr_R</span> = compute_ppr_pointwise_flux(<span class="variable">U_R</span>, <span class="variable">theta</span>, <span class="variable">gamma</span>)
+    
+    <span class="variable">Fn_L</span> = <span class="variable">Fx_L</span>*<span class="variable">normal</span>[<span class="number">0</span>] + <span class="variable">Fy_L</span>*<span class="variable">normal</span>[<span class="number">1</span>] + <span class="variable">Fz_L</span>*<span class="variable">normal</span>[<span class="number">2</span>]
+    <span class="variable">Fn_R</span> = <span class="variable">Fx_R</span>*<span class="variable">normal</span>[<span class="number">0</span>] + <span class="variable">Fy_R</span>*<span class="variable">normal</span>[<span class="number">1</span>] + <span class="variable">Fz_R</span>*<span class="variable">normal</span>[<span class="number">2</span>]
+    
+    <span class="comment"># Safe wave speed limit using upper bound pressure</span>
+    <span class="variable">P_safe_L</span> = max(<span class="variable">Pp_L</span>, <span class="variable">Pr_L</span>)
+    <span class="variable">P_safe_R</span> = max(<span class="variable">Pp_R</span>, <span class="variable">Pr_R</span>)
+    
+    <span class="variable">a_L</span> = np.sqrt(<span class="variable">gamma</span> * <span class="variable">P_safe_L</span> / <span class="variable">U_L</span>[<span class="number">0</span>])
+    <span class="variable">a_R</span> = np.sqrt(<span class="variable">gamma</span> * <span class="variable">P_safe_R</span> / <span class="variable">U_R</span>[<span class="number">0</span>])
+    
+    <span class="variable">un_L</span> = (U_L[<span class="number">1</span>]*<span class="variable">normal</span>[<span class="number">0</span>] + <span class="variable">U_L</span>[<span class="number">2</span>]*<span class="variable">normal</span>[<span class="number">1</span>] + <span class="variable">U_L</span>[<span class="number">3</span>]*<span class="variable">normal</span>[<span class="number">2</span>]) / <span class="variable">U_L</span>[<span class="number">0</span>]
+    <span class="variable">un_R</span> = (U_R[<span class="number">1</span>]*<span class="variable">normal</span>[<span class="number">0</span>] + <span class="variable">U_R</span>[<span class="number">2</span>]*<span class="variable">normal</span>[<span class="number">1</span>] + <span class="variable">U_R</span>[<span class="number">3</span>]*<span class="variable">normal</span>[<span class="number">2</span>]) / <span class="variable">U_R</span>[<span class="number">0</span>]
+    
+    <span class="variable">lambda_max</span> = max(abs(<span class="variable">un_L</span>) + <span class="variable">a_L</span>, abs(<span class="variable">un_R</span>) + <span class="variable">a_R</span>)
+    
+    <span class="comment"># Common interface normal flux evaluation</span>
+    <span class="variable">Fn_comm</span> = <span class="number">0.5</span> * (<span class="variable">Fn_L</span> + <span class="variable">Fn_R</span>) - <span class="number">0.5</span> * <span class="variable">lambda_max</span> * (<span class="variable">U_R</span> - <span class="variable">U_L</span>)
+    <span class="keyword">return</span> <span class="variable">Fn_comm</span>
+
+
+<span class="keyword">def</span> <span class="call">apply_pointwise_relaxation</span>(<span class="variable">U_star</span>, <span class="variable">dt_stage</span>, <span class="variable">tau</span>, <span class="variable">gamma</span>):
+    <span class="comment">"""
+    Executes the exact, unconditionally stable pointwise analytical relaxation update.
+    This must be executed on all solution points after EVERY Runge-Kutta sub-stage.
+    """</span>
+    <span class="variable">rho</span> = <span class="variable">U_star</span>[<span class="number">0</span>]
+    <span class="variable">ke</span> = <span class="number">0.5</span> * (U_star[<span class="number">1</span>]**<span class="number">2</span> + <span class="variable">U_star</span>[<span class="number">2</span>]**<span class="number">2</span> + <span class="variable">U_star</span>[<span class="number">3</span>]**<span class="number">2</span>) / <span class="variable">rho</span>
+    <span class="variable">P_phys</span> = (<span class="variable">gamma</span> - <span class="number">1.0</span>) * (<span class="variable">U_star</span>[<span class="number">4</span>] - <span class="variable">ke</span>)
+    
+    <span class="variable">S_eq</span> = <span class="variable">rho</span> * <span class="variable">P_phys</span>
+    <span class="variable">exp_factor</span> = np.exp(-<span class="variable">dt_stage</span> / <span class="variable">tau</span>)
+    
+    <span class="comment"># Update passive scalar dynamically</span>
+    <span class="variable">U_star</span>[<span class="number">5</span>] = <span class="variable">S_eq</span> + (<span class="variable">U_star</span>[<span class="number">5</span>] - <span class="variable">S_eq</span>) * <span class="variable">exp_factor</span>
+    <span class="keyword">return</span> <span class="variable">U_star</span>
+    </div>
+
+</body>
+</html>

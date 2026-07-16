@@ -114,6 +114,20 @@ ENABLE_ENTROPY_LIMITER = true
 # values relax the violation check to prevent numerical dissipation (e.g. 1e-4, 1e-2).
 ENTROPY_LIMITER_EPS = 1e-4
 
+[PPR]
+# ENABLE_PPR: Enable Phantom Pressure Regularization (PPR) for shock capturing.
+ENABLE_PPR = false
+
+# PPR_THETA: Extrapolation factor parameter (theta >= 0). 
+# Used to calculate the regularized pressure: P_reg = P_phys + theta * (P_phys - P_phan).
+# Larger values increase the level of shock regularization.
+PPR_THETA = 0.55
+
+# PPR_C_TAU: Scaling coefficient for the relaxation time tau.
+# Used to compute relaxation timescale: tau = PPR_C_TAU * h / (||u|| + a).
+# Typically in the range 0.01 to 1.0.
+PPR_C_TAU = 0.1
+
 [ImmersedBoundary]
 # ENABLE_IB: Toggle the Immersed Boundary Method for solid boundaries
 ENABLE_IB = false

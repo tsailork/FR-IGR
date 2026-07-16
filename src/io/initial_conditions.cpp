@@ -94,6 +94,7 @@ void IC::apply(Solver& solver) {
                 c->get_U(1, iy, ix, npts) = rho * u;
                 c->get_U(2, iy, ix, npts) = rho * v;
                 c->get_U(3, iy, ix, npts) = press / (p.GAMMA - 1.0) + 0.5 * rho * (u * u + v * v);
+                c->S_field[iy * npts + ix] = rho * press;
             }
         }
     }

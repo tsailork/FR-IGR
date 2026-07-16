@@ -81,12 +81,24 @@ Limiters::LimiterStats Limiters::apply_entropy_limiter(Solver &solver) {
 
         // --- Apply scaling ---
         if (theta_s < 1.0) {
+            double S_avg = 0.0;
+            if (p.ENABLE_PPR) {
+                for (int iy = 0; iy < p.N_PTS; ++iy) {
+                    for (int ix = 0; ix < p.N_PTS; ++ix) {
+                        double w = (basis.w[iy] * 0.5) * (basis.w[ix] * 0.5);
+                        S_avg += w * c->S_field[iy * p.N_PTS + ix];
+                    }
+                }
+            }
             for (int iy = 0; iy < p.N_PTS; ++iy) {
                 for (int ix = 0; ix < p.N_PTS; ++ix) {
                     c->get_U(0, iy, ix, p.N_PTS) = theta_s * (c->get_U(0, iy, ix, p.N_PTS) - r_avg) + r_avg;
                     c->get_U(1, iy, ix, p.N_PTS) = theta_s * (c->get_U(1, iy, ix, p.N_PTS) - ru_avg) + ru_avg;
                     c->get_U(2, iy, ix, p.N_PTS) = theta_s * (c->get_U(2, iy, ix, p.N_PTS) - rv_avg) + rv_avg;
                     c->get_U(3, iy, ix, p.N_PTS) = theta_s * (c->get_U(3, iy, ix, p.N_PTS) - E_avg) + E_avg;
+                    if (p.ENABLE_PPR) {
+                        c->S_field[iy * p.N_PTS + ix] = theta_s * (c->S_field[iy * p.N_PTS + ix] - S_avg) + S_avg;
+                    }
                 }
             }
             num_limited++;
