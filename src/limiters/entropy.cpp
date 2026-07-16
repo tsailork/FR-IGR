@@ -38,7 +38,7 @@ Limiters::LimiterStats Limiters::apply_entropy_limiter(Solver &solver) {
         }
 
         // Lower s_floor to avoid being overly dissipative
-        s_floor -= 1.0E-4;
+        s_floor -= p.ENTROPY_LIMITER_EPS;
         if (s_floor < 1.0E-14) s_floor = 1.0E-14;
 
         // --- Cell average ---

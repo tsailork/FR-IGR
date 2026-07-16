@@ -29,13 +29,19 @@ void Solver::compute_entropic_pressure() {
         for (int iy = 0; iy < p.N_PTS; ++iy) {
             for (int ix = 0; ix < p.N_PTS; ++ix) {
                 int idx = iy * p.N_PTS + ix;
-                double rho = std::max(1e-14, c->get_U(0, iy, ix, p.N_PTS));
-                double rhou = c->get_U(1, iy, ix, p.N_PTS);
-                double rhov = c->get_U(2, iy, ix, p.N_PTS);
-                double E = c->get_U(3, iy, ix, p.N_PTS);
-                double press = (p.GAMMA - 1.0) * (E - 0.5 * (rhou * rhou + rhov * rhov) / rho);
-                if (press < 1e-14) press = 1e-14;
-                c->sigma_field[idx] = std::min(c->sigma_field[idx], press);
+                if (c->sigma_field[idx] < 0.0) {
+                    c->sigma_field[idx] = 0.0;
+                    continue;
+                }
+                if (p.USE_PRESSURE_FIELD_CAP) {
+                    double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
+                    double rhou = c->get_U(1, iy, ix, p.N_PTS);
+                    double rhov = c->get_U(2, iy, ix, p.N_PTS);
+                    double E = c->get_U(3, iy, ix, p.N_PTS);
+                    double press = (p.GAMMA - 1.0) * (E - 0.5 * (rhou * rhou + rhov * rhov) / rho);
+                    if (press < p.POS_LIMITER_EPS) press = p.POS_LIMITER_EPS;
+                    c->sigma_field[idx] = std::min(c->sigma_field[idx], press);
+                }
             }
         }
     }

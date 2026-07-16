@@ -106,7 +106,11 @@ struct Parameters {
     bool   USE_PRESSURE_SENSOR = false;      ///< Use local pressure-jump sensor instead of density-gradient.
     bool   USE_MOMENTUM_DIV   = false;       ///< Use divergence of momentum for shock sensor.
     bool   USE_PRESSURE_SOURCE_CAP = true;   ///< Cap the sensor source term by local pressure.
+    bool   USE_PRESSURE_FIELD_CAP  = true;   ///< Cap the resolved entropic pressure field by local pressure.
     double SOURCE_CAP_COEFF   = 1.0;         ///< Tuning coefficient C for pressure-bounded source capping.
+    double IGR_DIVERGENCE_THRESHOLD = 1.0e99; ///< Divergence threshold under which regularizer activates (must be compressive).
+    double IGR_SENSOR_THRESHOLD     = -9.0e99;///< Cutoff threshold for raw sensor magnitude to activate.
+    double IGR_SUB_ITER_TOL         = 0.0;    ///< Convergence tolerance for IGR sub-iterations (0 = inactive, runs lock-step).
 
     // -------------------------------------------------------------------------
     // Time Stepping & I/O
@@ -129,6 +133,7 @@ struct Parameters {
     bool   ENABLE_POS_LIMITER     = false;  ///< Toggle density/pressure positivity-preserving limiter (Zhang-Shu).
     double POS_LIMITER_EPS        = 1e-10;  ///< Physical cutoff tolerance for density and pressure floors.
     bool   ENABLE_ENTROPY_LIMITER = false;  ///< Toggle high-order specific entropy minimum preservation limiter.
+    double ENTROPY_LIMITER_EPS    = 1e-4;   ///< Offset tolerance for specific entropy limiter (relax violation check).
 
     // -------------------------------------------------------------------------
     // Immersed Boundary (IB)

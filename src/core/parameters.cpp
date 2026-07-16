@@ -205,7 +205,11 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("USE_PRESSURE_SENSOR")) USE_PRESSURE_SENSOR = (kv["USE_PRESSURE_SENSOR"] == "true" || kv["USE_PRESSURE_SENSOR"] == "1");
         if (kv.count("USE_MOMENTUM_DIV"))  USE_MOMENTUM_DIV  = (kv["USE_MOMENTUM_DIV"] == "true" || kv["USE_MOMENTUM_DIV"] == "1");
         if (kv.count("USE_PRESSURE_SOURCE_CAP")) USE_PRESSURE_SOURCE_CAP = (kv["USE_PRESSURE_SOURCE_CAP"] == "true" || kv["USE_PRESSURE_SOURCE_CAP"] == "1");
+        if (kv.count("USE_PRESSURE_FIELD_CAP"))  USE_PRESSURE_FIELD_CAP  = (kv["USE_PRESSURE_FIELD_CAP"] == "true" || kv["USE_PRESSURE_FIELD_CAP"] == "1");
         if (kv.count("SOURCE_CAP_COEFF"))  SOURCE_CAP_COEFF  = std::stod(kv["SOURCE_CAP_COEFF"]);
+        if (kv.count("IGR_DIVERGENCE_THRESHOLD")) IGR_DIVERGENCE_THRESHOLD = std::stod(kv["IGR_DIVERGENCE_THRESHOLD"]);
+        if (kv.count("IGR_SENSOR_THRESHOLD"))     IGR_SENSOR_THRESHOLD     = std::stod(kv["IGR_SENSOR_THRESHOLD"]);
+        if (kv.count("IGR_SUB_ITER_TOL"))         IGR_SUB_ITER_TOL         = std::stod(kv["IGR_SUB_ITER_TOL"]);
     }
 
     // --- [Stabilization] ---
@@ -214,6 +218,7 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("ENABLE_POS_LIMITER"))     ENABLE_POS_LIMITER     = (kv["ENABLE_POS_LIMITER"] == "true" || kv["ENABLE_POS_LIMITER"] == "1");
         if (kv.count("POS_LIMITER_EPS"))        POS_LIMITER_EPS        = std::stod(kv["POS_LIMITER_EPS"]);
         if (kv.count("ENABLE_ENTROPY_LIMITER")) ENABLE_ENTROPY_LIMITER = (kv["ENABLE_ENTROPY_LIMITER"] == "true" || kv["ENABLE_ENTROPY_LIMITER"] == "1");
+        if (kv.count("ENTROPY_LIMITER_EPS"))    ENTROPY_LIMITER_EPS    = std::stod(kv["ENTROPY_LIMITER_EPS"]);
     }
 
     // --- [NavierStokes] ---

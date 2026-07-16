@@ -86,7 +86,7 @@ TEST_CASE("Euler flux computation") {
         double UL[4] = {1.0, 1.0, 0.0, 2.5 + 0.5}; // rho, u=1, v=0, E=3.0 (p=1)
         double UR[4] = {1.0, -1.0, 0.0, 2.5 + 0.5}; // rho, u=-1, v=0, E=3.0 (p=1)
         
-        solver.solve_riemann(UL, UR, F_comm, 0, 0.0, 0.0);
+        solver.solve_riemann(UL, UR, F_comm, 0);
         
         // Exact symmetry implies mass flux should be 0 due to symmetric opposing flows
         CHECK(F_comm[0] == doctest::Approx(0.0).epsilon(1e-12));

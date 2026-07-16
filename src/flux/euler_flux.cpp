@@ -98,15 +98,15 @@ void Solver::get_flux_pointwise(const Block& b, int ey, int ex, int iy, int ix,
  * @see Solver::sweep_y
  */
 void Solver::solve_riemann(const double* UL, const double* UR, double* F_comm,
-                            int dir, double sigl, double sigr) const
+                            int dir) const
 {
-    double rhoL = std::max(1e-10, UL[0]);
+    double rhoL = std::max(p.POS_LIMITER_EPS, UL[0]);
     double uL = UL[1] / rhoL, vL = UL[2] / rhoL;
-    double pL = std::max(1e-10, (p.GAMMA - 1) * (UL[3] - 0.5 * rhoL * (uL*uL + vL*vL)));
+    double pL = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1) * (UL[3] - 0.5 * rhoL * (uL*uL + vL*vL)));
 
-    double rhoR = std::max(1e-10, UR[0]);
+    double rhoR = std::max(p.POS_LIMITER_EPS, UR[0]);
     double uR = UR[1] / rhoR, vR = UR[2] / rhoR;
-    double pR = std::max(1e-10, (p.GAMMA - 1) * (UR[3] - 0.5 * rhoR * (uR*uR + vR*vR)));
+    double pR = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1) * (UR[3] - 0.5 * rhoR * (uR*uR + vR*vR)));
 
     double vnL = (dir == 0) ? uL : vL;
     double vnR = (dir == 0) ? uR : vR;
@@ -117,15 +117,15 @@ void Solver::solve_riemann(const double* UL, const double* UR, double* F_comm,
 
     double FL[4], FR[4];
     if (dir == 0) {
-        FL[0] = rhoL*uL;  FL[1] = rhoL*uL*uL + pL + sigl;
-        FL[2] = rhoL*uL*vL;  FL[3] = (UL[3] + pL + sigl) * uL;
-        FR[0] = rhoR*uR;  FR[1] = rhoR*uR*uR + pR + sigr;
-        FR[2] = rhoR*uR*vR;  FR[3] = (UR[3] + pR + sigr) * uR;
+        FL[0] = rhoL*uL;  FL[1] = rhoL*uL*uL + pL;
+        FL[2] = rhoL*uL*vL;  FL[3] = (UL[3] + pL) * uL;
+        FR[0] = rhoR*uR;  FR[1] = rhoR*uR*uR + pR;
+        FR[2] = rhoR*uR*vR;  FR[3] = (UR[3] + pR) * uR;
     } else {
         FL[0] = rhoL*vL;  FL[1] = rhoL*vL*uL;
-        FL[2] = rhoL*vL*vL + pL + sigl;  FL[3] = (UL[3] + pL + sigl) * vL;
+        FL[2] = rhoL*vL*vL + pL;  FL[3] = (UL[3] + pL) * vL;
         FR[0] = rhoR*vR;  FR[1] = rhoR*vR*uR;
-        FR[2] = rhoR*vR*vR + pR + sigr;  FR[3] = (UR[3] + pR + sigr) * vR;
+        FR[2] = rhoR*vR*vR + pR;  FR[3] = (UR[3] + pR) * vR;
     }
 
     for (int v = 0; v < 4; ++v)

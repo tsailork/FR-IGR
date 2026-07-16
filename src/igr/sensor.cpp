@@ -8,9 +8,7 @@
 #include <omp.h>
 #endif
 
-// Thresholds for divergence and sensor magnitude filtering
-static constexpr double DIVERGENCE_THRESHOLD = 1.0e99; // Must be compressive
-static constexpr double SENSOR_THRESHOLD = -9.0e99;    // Threshold for raw sensor 'val'
+// IGR threshold settings are now dynamically queried from p.IGR_DIVERGENCE_THRESHOLD and p.IGR_SENSOR_THRESHOLD.
 
 void Solver::compute_sensor_source() {
     #pragma omp parallel for schedule(static)
@@ -23,7 +21,7 @@ void Solver::compute_sensor_source() {
         for (int k = 0; k < p.N_PTS * p.N_PTS; ++k) {
             int iy = k / p.N_PTS;
             int ix = k % p.N_PTS;
-            double rho = std::max(1e-12, c->get_U(0, iy, ix, p.N_PTS));
+            double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
             u_loc[k] = c->get_U(1, iy, ix, p.N_PTS) / rho;
             v_loc[k] = c->get_U(2, iy, ix, p.N_PTS) / rho;
         }
@@ -72,13 +70,13 @@ void Solver::compute_sensor_source() {
                     get_neigh_state_cell(*c, iy, true, UR_face, 0.0, U_neigh_R, sd, 0);
                 }
 
-                double rL = std::max(1e-12, UL_face[0]);
-                double rLn = std::max(1e-12, U_neigh_L[0]);
+                double rL = std::max(p.POS_LIMITER_EPS, UL_face[0]);
+                double rLn = std::max(p.POS_LIMITER_EPS, U_neigh_L[0]);
                 double uL_hat = 0.5 * (UL_face[1] / rL + U_neigh_L[1] / rLn);
                 double vL_hat = 0.5 * (UL_face[2] / rL + U_neigh_L[2] / rLn);
 
-                double rR = std::max(1e-12, UR_face[0]);
-                double rRn = std::max(1e-12, U_neigh_R[0]);
+                double rR = std::max(p.POS_LIMITER_EPS, UR_face[0]);
+                double rRn = std::max(p.POS_LIMITER_EPS, U_neigh_R[0]);
                 double uR_hat = 0.5 * (UR_face[1] / rR + U_neigh_R[1] / rRn);
                 double vR_hat = 0.5 * (UR_face[2] / rR + U_neigh_R[2] / rRn);
 
@@ -93,10 +91,10 @@ void Solver::compute_sensor_source() {
                         dvdx_l += basis.D[ix][k] * v_loc[kidx];
                     }
                     int idx = iy * p.N_PTS + ix;
-                    du_dx[idx] = (dudx_l + (uL_int - uL_hat) * basis.dgl[ix] +
+                    du_dx[idx] = (dudx_l + (uL_hat - uL_int) * basis.dgl[ix] +
                                   (uR_hat - uR_int) * basis.dgr[ix]) *
                                  (2.0 / c->dx);
-                    dv_dx[idx] = (dvdx_l + (vL_int - vL_hat) * basis.dgl[ix] +
+                    dv_dx[idx] = (dvdx_l + (vL_hat - vL_int) * basis.dgl[ix] +
                                   (vR_hat - vR_int) * basis.dgr[ix]) *
                                  (2.0 / c->dx);
 
@@ -148,13 +146,13 @@ void Solver::compute_sensor_source() {
                     get_neigh_state_cell(*c, ix, true, UT_face, 0.0, U_neigh_T, sd, 1);
                 }
 
-                double rB = std::max(1e-12, UB_face[0]);
-                double rBn = std::max(1e-12, U_neigh_B[0]);
+                double rB = std::max(p.POS_LIMITER_EPS, UB_face[0]);
+                double rBn = std::max(p.POS_LIMITER_EPS, U_neigh_B[0]);
                 double uB_hat = 0.5 * (UB_face[1] / rB + U_neigh_B[1] / rBn);
                 double vB_hat = 0.5 * (UB_face[2] / rB + U_neigh_B[2] / rBn);
 
-                double rT = std::max(1e-12, UT_face[0]);
-                double rTn = std::max(1e-12, U_neigh_T[0]);
+                double rT = std::max(p.POS_LIMITER_EPS, UT_face[0]);
+                double rTn = std::max(p.POS_LIMITER_EPS, U_neigh_T[0]);
                 double uT_hat = 0.5 * (UT_face[1] / rT + U_neigh_T[1] / rTn);
                 double vT_hat = 0.5 * (UT_face[2] / rT + U_neigh_T[2] / rTn);
 
@@ -169,10 +167,10 @@ void Solver::compute_sensor_source() {
                         dvdy_l += basis.D[iy][k] * v_loc[kidx];
                     }
                     int idx = iy * p.N_PTS + ix;
-                    du_dy[idx] = (dudy_l + (uB_int - uB_hat) * basis.dgl[iy] +
+                    du_dy[idx] = (dudy_l + (uB_hat - uB_int) * basis.dgl[iy] +
                                   (uT_hat - uT_int) * basis.dgr[iy]) *
                                  (2.0 / c->dy);
-                    dv_dy[idx] = (dvdy_l + (vB_int - vB_hat) * basis.dgl[iy] +
+                    dv_dy[idx] = (dvdy_l + (vB_hat - vB_int) * basis.dgl[iy] +
                                   (vT_hat - vT_int) * basis.dgr[iy]) *
                                  (2.0 / c->dy);
 
@@ -201,15 +199,30 @@ void Solver::compute_sensor_source() {
                         ducros = (div_u * div_u) / (div_u * div_u + omega * omega + 1e-30);
                     }
                     double source_val = 0.0;
-                    if (compression < DIVERGENCE_THRESHOLD && val > SENSOR_THRESHOLD) {
-                        source_val = epsilon * val * ducros;
+                    if (compression < p.IGR_DIVERGENCE_THRESHOLD && val > p.IGR_SENSOR_THRESHOLD) {
+                        double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
+                        source_val = epsilon * rho * val * ducros;
                         if (p.USE_PRESSURE_SOURCE_CAP) {
-                            double rho = std::max(1e-12, c->get_U(0, iy, ix, p.N_PTS));
                             double u = u_loc[iy * p.N_PTS + ix];
                             double v = v_loc[iy * p.N_PTS + ix];
                             double E = c->get_U(3, iy, ix, p.N_PTS);
-                            double press = std::max(1e-14, (p.GAMMA - 1.0) * (E - 0.5 * rho * (u * u + v * v)));
+                            double press = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (E - 0.5 * rho * (u * u + v * v)));
                             source_val = std::min(source_val, press * p.SOURCE_CAP_COEFF);
+                        }
+                    }
+                    if (p.ENABLE_IB) {
+                        double x = c->x_min + 0.5 * (1.0 + basis.z[ix]) * c->dx;
+                        double y = c->y_min + 0.5 * (1.0 + basis.z[iy]) * c->dy;
+                        double phi = get_ib_sdf_at_time(x, y, current_time);
+                        double h = std::max(c->dx, c->dy);
+                        double d_min = 0.5 * h;
+                        double d_max = 2.0 * h;
+                        if (phi <= d_min) {
+                            source_val = 0.0;
+                        } else if (phi < d_max) {
+                            double r = (phi - d_min) / (d_max - d_min);
+                            double M = 0.5 * (1.0 - std::cos(3.14159265358979323846 * r));
+                            source_val *= M;
                         }
                     }
                     c->S_buf[idx] = source_val;
@@ -248,15 +261,30 @@ void Solver::compute_sensor_source() {
                         ducros = (div_u * div_u) / (div_u * div_u + omega * omega + 1e-30);
                     }
                     double source_val = 0.0;
-                    if (compression < DIVERGENCE_THRESHOLD && val > SENSOR_THRESHOLD) {
-                        source_val = epsilon * val * ducros;
+                    if (compression < p.IGR_DIVERGENCE_THRESHOLD && val > p.IGR_SENSOR_THRESHOLD) {
+                        double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
+                        source_val = epsilon * rho * val * ducros;
                         if (p.USE_PRESSURE_SOURCE_CAP) {
-                            double rho = std::max(1e-12, c->get_U(0, iy, ix, p.N_PTS));
                             double u = u_loc[iy * p.N_PTS + ix];
                             double v = v_loc[iy * p.N_PTS + ix];
                             double E = c->get_U(3, iy, ix, p.N_PTS);
-                            double press = std::max(1e-14, (p.GAMMA - 1.0) * (E - 0.5 * rho * (u * u + v * v)));
+                            double press = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (E - 0.5 * rho * (u * u + v * v)));
                             source_val = std::min(source_val, press * p.SOURCE_CAP_COEFF);
+                        }
+                    }
+                    if (p.ENABLE_IB) {
+                        double x = c->x_min + 0.5 * (1.0 + basis.z[ix]) * c->dx;
+                        double y = c->y_min + 0.5 * (1.0 + basis.z[iy]) * c->dy;
+                        double phi = get_ib_sdf_at_time(x, y, current_time);
+                        double h = std::max(c->dx, c->dy);
+                        double d_min = 0.5 * h;
+                        double d_max = 2.0 * h;
+                        if (phi <= d_min) {
+                            source_val = 0.0;
+                        } else if (phi < d_max) {
+                            double r = (phi - d_min) / (d_max - d_min);
+                            double M = 0.5 * (1.0 - std::cos(3.14159265358979323846 * r));
+                            source_val *= M;
                         }
                     }
                     c->S_buf[iy * p.N_PTS + ix] = source_val;

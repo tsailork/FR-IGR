@@ -51,7 +51,7 @@ void Solver::step_rk3(double dt) {
             n_sub = p.IGR_SUB_ITERS;
         } else {
             double alpha_safe = std::max(1e-10, p.ALPHA_SCALE);
-            double dt_diff  = 0.5 * p.IGR_TAU_R / (alpha_safe * (2 * p.P_DEG + 1) * (2 * p.P_DEG + 1));
+            double dt_diff  = 0.5 * p.IGR_TAU_R / (alpha_safe * (1.0 + p.IGR_BR2_ETA) * (2 * p.P_DEG + 1) * (2 * p.P_DEG + 1));
             double dt_relax = 0.5 * p.IGR_TAU_R;
             double dt_limit = std::min(dt_diff, dt_relax);
             n_sub = static_cast<int>(std::ceil(dt / dt_limit));
@@ -78,34 +78,25 @@ void Solver::step_rk3(double dt) {
                         c->sigma_field[idx] = 0.0;
                         continue;
                     }
-                    double rho = std::max(1e-14, c->get_U(0, iy, ix, p.N_PTS));
-                    double rhou = c->get_U(1, iy, ix, p.N_PTS);
-                    double rhov = c->get_U(2, iy, ix, p.N_PTS);
-                    double E = c->get_U(3, iy, ix, p.N_PTS);
-                    double press = (p.GAMMA - 1.0) *
-                                   (E - 0.5 * (rhou * rhou + rhov * rhov) / rho);
-                    if (press < 1e-14)
-                        press = 1e-14;
+                    if (p.USE_PRESSURE_FIELD_CAP) {
+                        double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
+                        double rhou = c->get_U(1, iy, ix, p.N_PTS);
+                        double rhov = c->get_U(2, iy, ix, p.N_PTS);
+                        double E = c->get_U(3, iy, ix, p.N_PTS);
+                        double press = (p.GAMMA - 1.0) *
+                                       (E - 0.5 * (rhou * rhou + rhov * rhov) / rho);
+                        if (press < p.POS_LIMITER_EPS)
+                            press = p.POS_LIMITER_EPS;
 
-                    c->sigma_field[idx] = std::min(c->sigma_field[idx], press);
+                        c->sigma_field[idx] = std::min(c->sigma_field[idx], press);
+                    }
                 }
             }
         }
     };
 
     auto sub_iterate_sigma_all = [&](double alpha, double beta) {
-        if (n_sub == 1) {
-            #pragma omp parallel for schedule(static)
-            for (size_t i = 0; i < cells.size(); ++i) {
-                Cell* c = cells[i];
-                const size_t N_sig = c->sigma_field.size();
-                for (size_t k = 0; k < N_sig; ++k) {
-                    c->sigma_field[k] = alpha * c->sigma_old[k] +
-                                        beta * (c->sigma_field[k] + dt * c->sigma_RHS[k]);
-                }
-            }
-            clamp_sigma_all();
-        } else {
+        if (p.IGR_SUB_ITER_TOL > 0.0) {
             #pragma omp parallel for schedule(static)
             for (size_t i = 0; i < cells.size(); ++i) {
                 Cell* c = cells[i];
@@ -117,17 +108,85 @@ void Solver::step_rk3(double dt) {
             }
             clamp_sigma_all();
 
-            for (int sub = 1; sub < n_sub; ++sub) {
+            double diff = 1e20;
+            int sub = 1;
+            const int max_sub = (p.IGR_SUB_ITERS > 0) ? p.IGR_SUB_ITERS : 1000;
+
+            while (diff > p.IGR_SUB_ITER_TOL && sub < max_sub) {
                 compute_igr_parabolic_rhs();
+
+                double total_diff = 0.0;
+                long total_pts = 0;
+
+                #pragma omp parallel for reduction(+:total_diff,total_pts)
+                for (size_t i = 0; i < cells.size(); ++i) {
+                    Cell* c = cells[i];
+                    const size_t N_sig = c->sigma_field.size();
+                    total_pts += N_sig;
+                    for (size_t k = 0; k < N_sig; ++k) {
+                        double old_sig = c->sigma_field[k];
+                        double new_sig = old_sig + dt_sub * c->sigma_RHS[k];
+
+                        if (new_sig < 0.0) {
+                            new_sig = 0.0;
+                        } else {
+                            if (p.USE_PRESSURE_FIELD_CAP) {
+                                int iy = k / p.N_PTS;
+                                int ix = k % p.N_PTS;
+                                double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
+                                double rhou = c->get_U(1, iy, ix, p.N_PTS);
+                                double rhov = c->get_U(2, iy, ix, p.N_PTS);
+                                double E = c->get_U(3, iy, ix, p.N_PTS);
+                                double press = (p.GAMMA - 1.0) * (E - 0.5 * (rhou * rhou + rhov * rhov) / rho);
+                                if (press < p.POS_LIMITER_EPS) press = p.POS_LIMITER_EPS;
+                                if (new_sig > press) new_sig = press;
+                            }
+                        }
+
+                        total_diff += std::abs(new_sig - old_sig);
+                        c->sigma_field[k] = new_sig;
+                    }
+                }
+
+                diff = total_pts > 0 ? (total_diff / total_pts) : 0.0;
+                sub++;
+            }
+        } else {
+            if (n_sub == 1) {
                 #pragma omp parallel for schedule(static)
                 for (size_t i = 0; i < cells.size(); ++i) {
                     Cell* c = cells[i];
                     const size_t N_sig = c->sigma_field.size();
                     for (size_t k = 0; k < N_sig; ++k) {
-                        c->sigma_field[k] += dt_sub * c->sigma_RHS[k];
+                        c->sigma_field[k] = alpha * c->sigma_old[k] +
+                                            beta * (c->sigma_field[k] + dt * c->sigma_RHS[k]);
                     }
                 }
                 clamp_sigma_all();
+            } else {
+                #pragma omp parallel for schedule(static)
+                for (size_t i = 0; i < cells.size(); ++i) {
+                    Cell* c = cells[i];
+                    const size_t N_sig = c->sigma_field.size();
+                    for (size_t k = 0; k < N_sig; ++k) {
+                        c->sigma_field[k] = alpha * c->sigma_old[k] +
+                                            beta * (c->sigma_field[k] + dt_sub * c->sigma_RHS[k]);
+                    }
+                }
+                clamp_sigma_all();
+
+                for (int sub = 1; sub < n_sub; ++sub) {
+                    compute_igr_parabolic_rhs();
+                    #pragma omp parallel for schedule(static)
+                    for (size_t i = 0; i < cells.size(); ++i) {
+                        Cell* c = cells[i];
+                        const size_t N_sig = c->sigma_field.size();
+                        for (size_t k = 0; k < N_sig; ++k) {
+                            c->sigma_field[k] += dt_sub * c->sigma_RHS[k];
+                        }
+                    }
+                    clamp_sigma_all();
+                }
             }
         }
     };

@@ -47,13 +47,18 @@ void Solver::sweep_y() {
             double sig_neigh;
 
             // Bottom Face (2)
+            // Bottom Face (2)
             const ImmersedBoundary::SurrogateFluxPoint* sfp_B = ImmersedBoundary::get_sbm_face(c->block_id, c->ey, c->ex, 2, ix);
             if (sfp_B) {
                 double u_sb[4];
                 ImmersedBoundary::compute_sbm_state(*this, sfp_B, u_sb);
                 double Flux_B_comm[4];
-                solve_riemann(u_sb, UB_face, Flux_B_comm, 1, sig_B_face, sig_B_face);
+                solve_riemann(u_sb, UB_face, Flux_B_comm, 1);
                 for (int v = 0; v < 4; ++v) Flux_B_local[v] = Flux_B_comm[v];
+                double vn_sb = u_sb[2] / std::max(p.POS_LIMITER_EPS, u_sb[0]);
+                double vn_loc = UB_face[2] / std::max(p.POS_LIMITER_EPS, UB_face[0]);
+                Flux_B_local[2] += sig_B_face;
+                Flux_B_local[3] += 0.5 * sig_B_face * (vn_sb + vn_loc);
             } else if (c->neighbors[2] && c->neighbors[2]->level == c->level) {
                 Cell* nc = c->neighbors[2];
                 char nface = c->neighbor_faces[2];
@@ -66,15 +71,22 @@ void Solver::sweep_y() {
                     sig_neigh += nc->sigma_field[k * p.N_PTS + ix] * weights[k];
                 }
                 double Flux_B_comm[4];
-                solve_riemann(U_neigh, UB_face, Flux_B_comm, 1, sig_neigh, sig_B_face);
+                solve_riemann(U_neigh, UB_face, Flux_B_comm, 1);
                 for (int v = 0; v < 4; ++v) Flux_B_local[v] = Flux_B_comm[v];
+                double vn_neigh = U_neigh[2] / std::max(p.POS_LIMITER_EPS, U_neigh[0]);
+                double vn_loc = UB_face[2] / std::max(p.POS_LIMITER_EPS, UB_face[0]);
+                Flux_B_local[2] += 0.5 * (sig_neigh + sig_B_face);
+                Flux_B_local[3] += 0.5 * (sig_neigh * vn_neigh + sig_B_face * vn_loc);
             } else if (c->is_boundary[2]) {
                 get_neigh_state_cell(*c, ix, false,
                                      UB_face, sig_B_face, U_neigh, sig_neigh, 1);
                 double Flux_B_comm[4];
-                solve_riemann(U_neigh, UB_face, Flux_B_comm, 1,
-                              sig_neigh, sig_B_face);
+                solve_riemann(U_neigh, UB_face, Flux_B_comm, 1);
                 for (int v = 0; v < 4; ++v) Flux_B_local[v] = Flux_B_comm[v];
+                double vn_neigh = U_neigh[2] / std::max(p.POS_LIMITER_EPS, U_neigh[0]);
+                double vn_loc = UB_face[2] / std::max(p.POS_LIMITER_EPS, UB_face[0]);
+                Flux_B_local[2] += 0.5 * (sig_neigh + sig_B_face);
+                Flux_B_local[3] += 0.5 * (sig_neigh * vn_neigh + sig_B_face * vn_loc);
             }
 
             // Top Face (3)
@@ -83,8 +95,12 @@ void Solver::sweep_y() {
                 double u_sb[4];
                 ImmersedBoundary::compute_sbm_state(*this, sfp_T, u_sb);
                 double Flux_T_comm[4];
-                solve_riemann(UT_face, u_sb, Flux_T_comm, 1, sig_T_face, sig_T_face);
+                solve_riemann(UT_face, u_sb, Flux_T_comm, 1);
                 for (int v = 0; v < 4; ++v) Flux_T_local[v] = Flux_T_comm[v];
+                double vn_loc = UT_face[2] / std::max(p.POS_LIMITER_EPS, UT_face[0]);
+                double vn_sb = u_sb[2] / std::max(p.POS_LIMITER_EPS, u_sb[0]);
+                Flux_T_local[2] += sig_T_face;
+                Flux_T_local[3] += 0.5 * sig_T_face * (vn_loc + vn_sb);
             } else if (c->neighbors[3] && c->neighbors[3]->level == c->level) {
                 Cell* nc = c->neighbors[3];
                 char nface = c->neighbor_faces[3];
@@ -97,15 +113,22 @@ void Solver::sweep_y() {
                     sig_neigh += nc->sigma_field[k * p.N_PTS + ix] * weights[k];
                 }
                 double Flux_T_comm[4];
-                solve_riemann(UT_face, U_neigh, Flux_T_comm, 1, sig_T_face, sig_neigh);
+                solve_riemann(UT_face, U_neigh, Flux_T_comm, 1);
                 for (int v = 0; v < 4; ++v) Flux_T_local[v] = Flux_T_comm[v];
+                double vn_loc = UT_face[2] / std::max(p.POS_LIMITER_EPS, UT_face[0]);
+                double vn_neigh = U_neigh[2] / std::max(p.POS_LIMITER_EPS, U_neigh[0]);
+                Flux_T_local[2] += 0.5 * (sig_T_face + sig_neigh);
+                Flux_T_local[3] += 0.5 * (sig_T_face * vn_loc + sig_neigh * vn_neigh);
             } else if (c->is_boundary[3]) {
                 get_neigh_state_cell(*c, ix, true,
                                      UT_face, sig_T_face, U_neigh, sig_neigh, 1);
                 double Flux_T_comm[4];
-                solve_riemann(UT_face, U_neigh, Flux_T_comm, 1,
-                              sig_T_face, sig_neigh);
+                solve_riemann(UT_face, U_neigh, Flux_T_comm, 1);
                 for (int v = 0; v < 4; ++v) Flux_T_local[v] = Flux_T_comm[v];
+                double vn_loc = UT_face[2] / std::max(p.POS_LIMITER_EPS, UT_face[0]);
+                double vn_neigh = U_neigh[2] / std::max(p.POS_LIMITER_EPS, U_neigh[0]);
+                Flux_T_local[2] += 0.5 * (sig_T_face + sig_neigh);
+                Flux_T_local[3] += 0.5 * (sig_T_face * vn_loc + sig_neigh * vn_neigh);
             }
 
             // --- 4. Interior flux at faces ---
@@ -183,7 +206,11 @@ void Solver::sweep_y() {
                 }
 
                 double Flux_B_comm[4];
-                solve_riemann(U_neigh, UB_face, Flux_B_comm, 1, sig_neigh, sig_B_face);
+                solve_riemann(U_neigh, UB_face, Flux_B_comm, 1);
+                double vn_neigh = U_neigh[2] / std::max(p.POS_LIMITER_EPS, U_neigh[0]);
+                double vn_loc = UB_face[2] / std::max(p.POS_LIMITER_EPS, UB_face[0]);
+                Flux_B_comm[2] += 0.5 * (sig_neigh + sig_B_face);
+                Flux_B_comm[3] += 0.5 * (sig_neigh * vn_neigh + sig_B_face * vn_loc);
 
                 // Update fine cell
                 for (int iy = 0; iy < p.N_PTS; ++iy) {
@@ -248,7 +275,11 @@ void Solver::sweep_y() {
                 }
 
                 double Flux_T_comm[4];
-                solve_riemann(UT_face, U_neigh, Flux_T_comm, 1, sig_T_face, sig_neigh);
+                solve_riemann(UT_face, U_neigh, Flux_T_comm, 1);
+                double vn_loc = UT_face[2] / std::max(p.POS_LIMITER_EPS, UT_face[0]);
+                double vn_neigh = U_neigh[2] / std::max(p.POS_LIMITER_EPS, U_neigh[0]);
+                Flux_T_comm[2] += 0.5 * (sig_T_face + sig_neigh);
+                Flux_T_comm[3] += 0.5 * (sig_T_face * vn_loc + sig_neigh * vn_neigh);
 
                 // Update fine cell
                 for (int iy = 0; iy < p.N_PTS; ++iy) {

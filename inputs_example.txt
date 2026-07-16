@@ -78,8 +78,26 @@ USE_MOMENTUM_DIV = false
 # USE_PRESSURE_SOURCE_CAP: Cap shock sensor source by local pressure (S <= SOURCE_CAP_COEFF * P) to stabilize strong shocks.
 USE_PRESSURE_SOURCE_CAP = true
 
+# USE_PRESSURE_FIELD_CAP: Cap the final resolved entropic pressure field by local pressure (Sigma <= P) downstream of the source term.
+USE_PRESSURE_FIELD_CAP = true
+
 # SOURCE_CAP_COEFF: Tuning coefficient for pressure-bounded source capping.
 SOURCE_CAP_COEFF = 1.0
+
+# IGR_DIVERGENCE_THRESHOLD: Divergence threshold for shock sensor activation. 
+# Regularizer only activates when divergence < IGR_DIVERGENCE_THRESHOLD (must be compressive, e.g., 0.0 or slightly negative like -1e-3).
+# Default of 1.0e99 disables the compression filter.
+IGR_DIVERGENCE_THRESHOLD = 1.0e99
+
+# IGR_SENSOR_THRESHOLD: Minimum value of raw sensor magnitude (tr(Du^2) + tr^2(Du)) to trigger regularizer.
+# Default of -9.0e99 disables the sensor threshold filter.
+IGR_SENSOR_THRESHOLD = -9.0e99
+
+# IGR_SUB_ITER_TOL: Convergence tolerance for IGR sub-iterations.
+# If greater than 0.0, sub-iterations run dynamically until the L1 difference between iterations
+# drops below this tolerance, up to a maximum limit (IGR_SUB_ITERS or fallback 1000).
+# Default of 0.0 disables convergence checking (runs exactly IGR_SUB_ITERS).
+IGR_SUB_ITER_TOL = 0.0
 
 [Stabilization]
 # ENABLE_POS_LIMITER: Zhang-Shu density and pressure positivity limiter.
@@ -90,6 +108,11 @@ POS_LIMITER_EPS = 1e-10
 
 # ENABLE_ENTROPY_LIMITER: Prevents unphysical entropy undershoots.
 ENABLE_ENTROPY_LIMITER = true
+
+# ENTROPY_LIMITER_EPS: Minimum specific entropy violation threshold/offset.
+# Smaller values restrict the specific entropy minimum preservation more tightly, while larger
+# values relax the violation check to prevent numerical dissipation (e.g. 1e-4, 1e-2).
+ENTROPY_LIMITER_EPS = 1e-4
 
 [ImmersedBoundary]
 # ENABLE_IB: Toggle the Immersed Boundary Method for solid boundaries

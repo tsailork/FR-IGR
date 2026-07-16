@@ -60,6 +60,9 @@
                 Written natively in modern C++17, the application architecture is highly modular. The simulation state is continuously packed into flattened, 1D contiguous array structures, providing exceptional data locality and mitigating cache misses. 
                 Symmetric multidimensional flux evaluations are parallelized using OpenMP, scaling seamlessly across multi-core processor environments.
             </p>
+            <p>
+                To support localized grid resolution enhancements without sacrificing Cartesian efficiency, the architecture incorporates a static <strong>Tree Decomposition (Quadtree)</strong> topology. The global domain is decomposed into hierarchical cells stored in a flat Leaf Cell vector, allowing direct, thread-safe parallel sweeps over non-uniform cell arrangements.
+            </p>
             
             <h2>High-Level Execution Flow</h2>
             <div style="overflow-x: auto; white-space: nowrap; margin: 20px 0; padding-bottom: 10px; text-align: center;">
@@ -129,19 +132,31 @@
             </p>
             <p>Where \(S\) is the raw shock sensor source term, \(\Sigma\) is the smoothed entropic pressure field, and \(\epsilon \propto h^2\) is the diffusion coefficient. The solver provides two pathways to evaluate this equation:</p>
             <ul>
-                <li><strong>Parabolic IGR (Default & Practical):</strong> Treats the entropic pressure as a transient variable, evolving it explicitly alongside the physical state: \(\partial \Sigma / \partial t = (\Sigma_{\text{eq}} - \Sigma) / \tau\). The diffusion term is discretized using the Bassi-Rebay 2 (BR2) viscous flux formulation and advanced using a forward-Euler sub-stepping routine. This is computationally efficient and fits naturally into explicit solver loops.</li>
-                <li><strong>Elliptic IGR (Minor & Expensive):</strong> Solves the steady-state Helmholtz equation implicitly at each step using a Symmetrized Alternating Direction Implicit (ADI) matrix solver. The ADI method executes both an \(XY\) and a \(YX\) directional pass and averages the fields: \(\Sigma = 0.5(\Sigma_{XY} + \Sigma_{YX})\) to eliminate directional bias. While mathematically clean, the implicit solve is computationally expensive and generally too slow for practical applications.</li>
+                <li><strong>Parabolic IGR (Default & Practical):</strong> Treats the entropic pressure as a transient variable, evolving it explicitly alongside the physical state: \(\partial \Sigma / \partial t = (\Sigma_{\text{eq}} - \Sigma) / \tau\). The diffusion term is discretized using the Bassi-Rebay 2 (BR2) viscous flux formulation and advanced using a forward-Euler sub-stepping routine. Optimization sweeps (pre-divided gradient buffers, pre-computed velocities, and dynamic sub-iteration updates when <code>IGR_SUB_ITERS = 0</code>) accelerate the parabolic solver by 2.25x to 5.7x.</li>
+                <li><strong>Elliptic IGR (Deprecated & Incompatible):</strong> Solves the steady-state Helmholtz equation implicitly at each step using a Symmetrized Alternating Direction Implicit (ADI) matrix solver. The ADI method is <strong>deprecated</strong> for Tree Decomposition due to its mathematical incompatibility with non-conforming tree topologies and unstructured matrix boundaries.</li>
             </ul>
 
-            <h3>Pressure-Bounded Source Capping</h3>
+            <h3>Pressure-Bounded IGR Capping</h3>
             <p>
-                In simulations with extreme shocks (e.g., blast waves reflecting off walls), the raw sensor term \(S\) can spike, injecting excessive artificial viscosity that unphysically depletes local internal energy and causes solver crashes. To prevent this, the solver applies a **Pressure-Bounded Cap** directly to the shock sensor source term:
+                The solver provides two independent, complementary pressure-based caps to keep the entropic pressure field bounded in the presence of extreme shocks.
+            </p>
+            <p><strong>1. Source-Term Cap (<code>IGR_PRESSURE_CAP_C</code>).</strong>
+                The raw shock sensor term \(S\) is capped against local thermodynamic pressure <em>before</em> the Helmholtz solve:
             </p>
             <p style="text-align: center; margin: 15px 0;">
-                $$S = \min(S_{\text{raw}}, C \cdot p)$$
+                $$S = \min\!\left(S_{\text{raw}},\; C \cdot p\right)$$
             </p>
             <p>
-                Where \(p\) is the local thermodynamic pressure, and \(C\) is a tuning coefficient (typically \(1.0\)). Capping the <em>source</em> term rather than the final viscosity field \(\Sigma\) is mathematically elegant: it allows the Helmholtz operator to naturally diffuse the bounded viscosity ahead of the shock wave, providing the necessary pre-conditioning for numerical stability.
+                Where \(C\) is a user-tunable coefficient (default \(1.0\), set to \(0\) to disable). Capping the <em>source</em> rather than the final field \(\Sigma\) is mathematically elegant: the Helmholtz operator still diffuses the bounded viscosity ahead of the shock, providing natural pre-conditioning without clipping the spatial extent of the artificial viscosity region.
+            </p>
+            <p><strong>2. Field-Level Cap (<code>USE_PRESSURE_FIELD_CAP</code>).</strong>
+                A second, independent clamp enforces \(\Sigma \le p\) directly on the post-solve entropic pressure field at every sub-iteration and at the final write:
+            </p>
+            <p style="text-align: center; margin: 15px 0;">
+                $$\Sigma \leftarrow \min(\Sigma,\; p)$$
+            </p>
+            <p>
+                This hard upper bound prevents the smoothed viscosity field from ever exceeding the local pressure, which would violate thermodynamic admissibility. It can be disabled by setting <code>USE_PRESSURE_FIELD_CAP = false</code> in the <code>[Regularization]</code> block of <code>inputs.dat</code>. Disabling it is useful when resolving very strong shocks where the pressure field is locally depressed and the cap would otherwise suppress necessary artificial viscosity.
             </p>
 
             <h2>2D Compressible Navier-Stokes Equations & BR2 Discretization</h2>
@@ -225,6 +240,49 @@
                     </ul>
                 </li>
                 <li><strong>Synchronization:</strong> At the completion of the full time step, active elements add the accumulated flux contributions (\(U \leftarrow U + U_{\text{accum}}\)), clear the accumulator buffer, and increment their internal clocks, restoring strict conservation.</li>
+            </ul>
+
+            <h2>Static Tree Decomposition (Quadtree)</h2>
+            <p>
+                To resolve boundary layers and localized structures efficiently, the solver integrates a static <strong>Tree Decomposition (Quadtree)</strong> grid framework. Rather than advancing a structured 2D array, the domain is represented as a collection of Leaf Cells stored in a flat vector:
+            </p>
+            <ul>
+                <li><strong>Morton ID Key Matching:</strong> Cell neighborhood connectivity is resolved via Space-Filling Curve (SFC) Morton IDs. Neighbors are queried using a binary search (Algorithm 5 from Wang et al., 2024 JCP) on the sorted Morton IDs of leaf cells, ensuring high memory locality and preventing pointer-chasing overheads.</li>
+                <li><strong>2:1 Refinement Limit:</strong> Stencil consistency requires that neighboring cells differ by at most one refinement level (\(\Delta L \le 1\)). The grid builder enforces this limit at initialization by recursively splitting cells in a cascade.</li>
+            </ul>
+
+            <h2>Hanging-Node Projections (Prolongation & Restriction)</h2>
+            <p>
+                At non-conforming interfaces where a coarse cell meets two finer child cells, solution variables and face-reconstructed numerical fluxes are projected to preserve stability and conservation:
+            </p>
+            <ul>
+                <li><strong>Lagrange Prolongation (Interpolation):</strong> The coarse face solution states are interpolated onto the fine faces using high-order tensor-product Lagrange polynomials:
+                    \[U_{\text{fine}} = P \cdot U_{\text{coarse}}\]
+                    Where \(P\) is the prolongation matrix (derived as \(P_1\) or \(P_2\) based on the child's position relative to the interface).
+                </li>
+                <li><strong>L2-Conservative Restriction:</strong> Interface numerical fluxes (e.g., Riemann fluxes) calculated on the fine scale must be projected back to the coarse face scale without conservation leakage:
+                    \[F_{\text{coarse}} = R_1 \cdot F_{\text{fine}, 1} + R_2 \cdot F_{\text{fine}, 2}\]
+                    Where \(R_1, R_2\) are the restriction matrices satisfying strict conservative partition of unity (\(R_1 + R_2 = I\)).
+                </li>
+            </ul>
+
+            <h2>Two-Pass Viscous BR2 Projections</h2>
+            <p>
+                Discretizing second-order viscous operators in the Flux Reconstruction framework (e.g., Navier-Stokes viscous terms) across non-conforming interfaces requires a two-pass projection sequence to compute consistent derivatives and fluxes:
+            </p>
+            <ol>
+                <li><strong>Viscous Gradient Projection:</strong> In the first pass, auxiliary gradient corrections (\(\vec{r}\)) are computed on the fine faces, restricted back to the coarse cell scale, and added to the volume gradients. This prevents numerical decoupling of viscous terms.</li>
+                <li><strong>Viscous Flux Restriction:</strong> In the second pass, viscous face fluxes calculated using the extrapolated gradients on the fine faces are restricted back to the coarse face to update the coarse cell residual (\(RHS\)).</li>
+            </ol>
+
+            <h2>Decoupled Geometry Engine</h2>
+            <p>
+                The solver includes a modular <strong>Geometry Engine</strong> (declared in <code>geometry.hpp/cpp</code>) that decouples geometric definitions from the immersed boundary methods, allowing shapes to be utilized directly by the gridding and tree decomposition routines:
+            </p>
+            <ul>
+                <li><strong>Supported Shapes:</strong> Encapsulates Circle, NACA airfoils, Bounding Box, and custom Polygon geometries.</li>
+                <li><strong>Liang-Barsky Line Clipping:</strong> Evaluates intersections between Cartesian cell edges and geometry boundaries.</li>
+                <li><strong>Inclusive Bounding Box Checks:</strong> Determines if a leaf cell overlaps with a manual refinement zone using axis-aligned bounding box (AABB) intersection and ray-casting containment tests.</li>
             </ul>
         </div>
 
@@ -416,6 +474,20 @@
                 <li><strong>[Solver]:</strong> Dictates core numerics, including the element polynomial degree (<code>P_DEG</code>), Courant number (<code>CFL</code>), end simulation time (<code>T_FINAL</code>), and <code>NUM_THREADS</code>.</li>
                 <li><strong>[NavierStokes]:</strong> Configures physical viscosity via the Reynolds number (<code>RE</code>), Prandtl number (<code>PR</code>), and reference Mach number.</li>
                 <li><strong>[IO] & [Probes]:</strong> Granular control over output frequencies for VTK snapshot plots, exact multi-block restart checkpoints, L2 residual tracking, and explicit spatial point probes.</li>
+                <li><strong>[Regularization]:</strong> Governs the Isotropic Gradient Regularization (IGR) / Entropic Pressure sub-system. Key parameters include:
+                    <ul>
+                        <li><code>ENABLE_IGR</code>: Master toggle for artificial viscosity.</li>
+                        <li><code>IGR_EPSILON</code>: Helmholtz diffusion length scale (\(\epsilon \propto h^2\)).</li>
+                        <li><code>IGR_TAU</code>: Parabolic relaxation time constant.</li>
+                        <li><code>IGR_SENSOR_THRESHOLD</code> / <code>IGR_DIVERGENCE_THRESHOLD</code>: Compression-based sensor activation thresholds.</li>
+                        <li><code>IGR_PRESSURE_CAP_C</code>: Source-term pressure cap coefficient (set to <code>0</code> to disable).</li>
+                        <li><code>USE_PRESSURE_FIELD_CAP</code>: Boolean flag (default <code>true</code>) that enforces \(\Sigma \le p\) on the final viscosity field. Disable for strong-shock cases where the field-level cap would suppress necessary artificial viscosity.</li>
+                        <li><code>POS_LIMITER_EPS</code>: Floor value for density/pressure positivity checks throughout the solver.</li>
+                        <li><code>ENTROPY_LIMITER_EPS</code>: Threshold for the entropy limiter violation detector.</li>
+                        <li><code>IGR_SUB_ITERS</code>: Number of fixed sub-iterations (set to <code>0</code> for dynamic sub-stepping).</li>
+                        <li><code>IGR_SUB_ITER_TOL</code>: Convergence tolerance for dynamic sub-iteration (set to <code>0</code> to disable).</li>
+                    </ul>
+                </li>
                 <li><strong>[ImmersedBoundary]:</strong> Constructs dynamic or static geometries using <code>IB_SHAPE</code>. Supports standard circular cylinders, 4-digit NACA airfoils, and highly customized piecewise multi-polygon boundaries evaluated through a dynamic timeline (<code>IB_Q_TIME_MAP</code>).</li>
                 <li><strong>[TreeDecomposition]:</strong> Parameters for the quadtree adaptive mesh refinement (AMR) framework. Controls near-wall cell layers tracking (<code>WALL_REFINEMENT_LEVEL</code>, <code>WALL_REFINEMENT_CELLS</code>) and an arbitrary number of manual geometric refinement zones (configured using circular, box, airfoil, or polygonal shapes).</li>
             </ul>

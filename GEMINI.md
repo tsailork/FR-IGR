@@ -184,6 +184,23 @@ The solver incorporates a fully conservative, dynamically-adaptable 2D quadtree 
 - **Dynamic Sub-Iterations**: Configured the solver to dynamically calculate the number of sub-iterations ($N_{\text{sub}} = \lceil \Delta t / \Delta t_{\text{diff}} \rceil$) when `IGR_SUB_ITERS = 0`. This removes IGR stability limits from restricting the global time step `dt`, yielding up to a 5.7x overall simulation speedup.
 - **Improved CFL bounds**: Refined the CFL step bounds such that when `IGR_SUB_ITERS > 0`, the solver allows global time steps up to `IGR_SUB_ITERS * dt_diff`, optimizing steps for static sub-iterations.
 
+### 6. Mathematically Rigorous IGR Audit and Formulation Refinements
+- **Decoupled Inviscid Interface Fluxes**: Decoupled the entropic pressure $\Sigma$ from `solve_riemann`'s wave structure, resolving a thermodynamic coupling bug. $\Sigma$ is now centrally added as a face contribution in the 1D sweeps (`sweep_x.cpp`/`sweep_y.cpp`).
+- **Density-Weighted Sensor Source**: Multiplied the shock sensor source term by density `rho` in `sensor.cpp`, ensuring the steady state of the parabolic solver exactly matches the reference paper's elliptic formulation.
+- **Gradient Correction Sign Fixes**: Resolved left/bottom face correction sign bugs in `sensor.cpp` (correcting `local - common` to `common - local`).
+- **Consistent IGR Boundary Conditions**: Enforced Dirichlet boundary condition value $\Sigma_b = 0.0$ at inflow/characteristic boundaries and implemented BR2 penalty interface fluxes at Dirichlet faces in Phase 2 of `parabolic.cpp`, while keeping zero-gradient Neumann conditions at solid wall/outflow boundaries.
+- **Divergence Threshold and Sensor Parameters**: Exposed `IGR_DIVERGENCE_THRESHOLD` and `IGR_SENSOR_THRESHOLD` in `inputs.dat` and implemented a dynamic compression check filter.
+- **Limiter Floor and Stability Corrections**: Substituted hardcoded floors (`1e-12`/`1e-14`) with `p.POS_LIMITER_EPS` and scaled the explicit diffusion stability limit `dt_diff` with `(1.0 + p.IGR_BR2_ETA)`.
+
+### 7. Immersed Boundary (IB) - IGR Boundary Interaction Remediation
+- **Smooth SDF-Based Shock Sensor Masking**: Multiplied the shock sensor source term `S_buf` in `sensor.cpp` by a smooth cosine-shaped geometric mask $M(\phi)$ based on the signed distance function (SDF) of the immersed boundary, using $d_{\text{min}} = 0.5 \cdot h$ and $d_{\text{max}} = 2.0 \cdot h$. This prevents the non-physical, steep velocity gradients at the VPM/SBM boundary from triggering the shock sensor.
+- **Parabolic RHS Hard Blanking**: Zeroed out `c->sigma_RHS` at solid elements and nodes in `parabolic.cpp` (under SBM and VPM), keeping entropic pressure exactly $0.0$ inside the solid.
+- **Stability and Performance**: Halved the simulation run time for the hypersonic cylinder case by eliminating spurious wall artificial viscosity and stiffness, without any oscillations or pressure crashes.
+
+### 8. IGR Sub-Iteration Convergence Checker
+- **Convergence Checker Integration**: Introduced the `IGR_SUB_ITER_TOL` parameter to allow dynamic, tolerance-driven sub-iterations. Instead of sub-iterating a fixed lock-step count, the solver performs pseudo-time relaxation of the entropic pressure Helmholtz equation until the L1 difference norm of $\Sigma$ between iterations drops below the tolerance (or a maximum iteration budget is reached).
+- **Optimized OpenMP Reduction**: Utilized an OpenMP parallel reduction loop to perform the update, apply physical positivity/pressure cappings, and calculate the difference norm in a single pass.
+
 ## Documentation Maintenance (Agent Hook)
 Whenever tasked with "updating the documentation" for a new feature or change, you **MUST** ensure all the following locations are kept perfectly synchronized with the codebase:
 

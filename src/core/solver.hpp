@@ -176,42 +176,63 @@ public:
     bool is_ancestor(uint64_t ancestor_id, uint64_t key_id) const;
 
     /**
-     * @brief Enforce 2:1 refinement ratio.
+     * @brief Enforce a strict 2:1 refinement ratio between neighboring cells.
+     * 
+     * Propagates cascading cell splits if neighboring cells differ by more than one
+     * refinement level, preserving stencil integrity.
      */
     void enforce_21_ratio();
 
     /**
-     * @brief Build neighbor connectivity pointers between Cells.
+     * @brief Build neighbor connectivity pointers between leaf Cells.
+     * 
+     * Sorts cells by their Morton IDs and resolves neighbors (including non-conforming
+     * hanging nodes) using binary searches.
      */
     void setup_cell_connectivity();
 
     /**
      * @brief Split a parent cell into 4 child cells.
+     * 
+     * @param[in] parent Pointer to the parent cell to be split
+     * @param[out] new_cells Vector to populate with the 4 newly allocated child cells
      */
     void split_cell(Cell* parent, std::vector<Cell*>& new_cells);
 
     /**
      * @brief Merge 4 sibling cells back into 1 parent cell.
+     * 
+     * @param[in] siblings Vector containing pointers to the 4 sibling cells to merge
+     * @param[out] parent Pointer reference to receive the restored parent cell
      */
     void merge_cells(const std::vector<Cell*>& siblings, Cell*& parent);
 
     /**
      * @brief Modify tree (splits/merges) based on target level requests.
+     * 
+     * @param[in] target_levels Requested target refinement levels for all leaf cells
      */
     void update_tree(const std::vector<int>& target_levels);
 
     /**
      * @brief Flag and trigger refinement/coarsening based on walls and manual zones.
+     * 
+     * Evaluates geometric zones and wall distances to determine target cell refinement levels.
      */
     void flag_refinement_coarsening();
 
     /**
      * @brief Find the active leaf cell containing a physical point in a block.
+     * 
+     * @param[in] block_id Source block ID to search within
+     * @param[in] x Physical X coordinate of the point
+     * @param[in] y Physical Y coordinate of the point
+     * @return Pointer to the leaf Cell containing the point, or nullptr if out of bounds
      */
     Cell* find_leaf_cell(int block_id, double x, double y) const;
 
     /**
-     * @brief Synchronize initial states from Blocks to Cells.
+     * @brief Synchronize initial states and variables from Blocks to leaf Cells.
      */
     void sync_blocks_to_cells();
 
@@ -300,11 +321,9 @@ public:
      * @param[in] UR Right conserved state
      * @param[out] F_comm Reconstructed common numerical flux vector on the face interface
      * @param[in] dir Direction of sweep (0 = X direction, 1 = Y direction)
-     * @param[in] sigl Entropic pressure at left face
-     * @param[in] sigr Entropic pressure at right face
      */
     void solve_riemann(const double* UL, const double* UR, double* F_comm,
-                       int dir, double sigl, double sigr) const;
+                       int dir) const;
 
     /**
      * @brief Perform Flux Reconstruction 1D inviscid sweep in the X coordinate direction.

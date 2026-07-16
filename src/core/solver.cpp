@@ -43,6 +43,7 @@ static void parse_bc_string(const std::string& bc_in, NeighborInfo& ni) {
         {":NOREFINED", false},
         {":NOREFINEMENT", false},
         {":NO_REFINE", false},
+        {":NOREFINE", false},
         {":REFINED", true},
         {":REFINE", true}
     };
@@ -215,10 +216,13 @@ void Solver::compute_local_dt() {
         double dt_elem = dt_conv;
 
         if (p.ENABLE_IGR && p.IGR_TYPE == "PARABOLIC") {
-            double alpha_safe = std::max(1e-10, p.ALPHA_SCALE);
-            double dt_diff  = 0.5 * p.IGR_TAU_R / (alpha_safe * (2 * p.P_DEG + 1) * (2 * p.P_DEG + 1));
-            double dt_relax = 0.5 * p.IGR_TAU_R;
-            dt_elem = std::min({dt_conv, dt_elem, dt_diff, dt_relax});
+            if (p.IGR_SUB_ITERS > 0) {
+                double alpha_safe = std::max(1e-10, p.ALPHA_SCALE);
+                double dt_diff  = 0.5 * p.IGR_TAU_R / (alpha_safe * (1.0 + p.IGR_BR2_ETA) * (2 * p.P_DEG + 1) * (2 * p.P_DEG + 1));
+                double dt_relax = 0.5 * p.IGR_TAU_R;
+                double dt_limit = std::min(dt_diff, dt_relax);
+                dt_elem = std::min(dt_elem, p.IGR_SUB_ITERS * dt_limit);
+            }
         }
 
         if (p.ENABLE_NS) {
@@ -680,11 +684,11 @@ void Solver::get_neigh_state_cell(const Cell& c, int node_idx, bool is_right_or_
 void Solver::get_flux_pointwise_cell(const Cell& c, int iy, int ix,
                                      double* F, double* G, double sigma) const
 {
-    double rho   = std::max(1e-10, c.get_U(0, iy, ix, p.N_PTS));
+    double rho   = std::max(p.POS_LIMITER_EPS, c.get_U(0, iy, ix, p.N_PTS));
     double u     = c.get_U(1, iy, ix, p.N_PTS) / rho;
     double v     = c.get_U(2, iy, ix, p.N_PTS) / rho;
     double E     = c.get_U(3, iy, ix, p.N_PTS);
-    double press = std::max(1e-10, (p.GAMMA - 1.0) * (E - 0.5 * rho * (u*u + v*v)));
+    double press = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (E - 0.5 * rho * (u*u + v*v)));
 
     if (F) {
         F[0] = rho * u;

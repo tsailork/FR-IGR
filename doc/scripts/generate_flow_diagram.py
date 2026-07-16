@@ -23,11 +23,14 @@ digraph SolverFlow {
         
         load_params [label="Load Parameters\\n(Parameters)"];
         setup_solver [label="Setup Solver\\n(Solver::Solver)"];
+        init_cells [label="Cell Decomposition\\n(initialize_cells)"];
+        bfs_wall [label="BFS Wall Tracking\\n(flag_refinement_coarsening)"];
+        connectivity [label="Tree Connectivity\\n(setup_cell_connectivity)"];
         init_state [label="Initialize State\\n(IC::apply/Restart)"];
         init_igr [label="Initial IGR Setup\\n(compute_sensor)"];
         
-        { rank=same; load_params; setup_solver; init_state; init_igr; }
-        load_params -> setup_solver -> init_state -> init_igr;
+        { rank=same; load_params; setup_solver; init_cells; bfs_wall; connectivity; init_state; init_igr; }
+        load_params -> setup_solver -> init_cells -> bfs_wall -> connectivity -> init_state -> init_igr;
     }
 
     subgraph cluster_iter {

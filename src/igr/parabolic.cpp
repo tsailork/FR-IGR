@@ -38,6 +38,9 @@ void Solver::compute_igr_parabolic_rhs() {
                 }
             } else {
                 get_neigh_state_cell(*c, iy, false, dummy_face, sigL, dummy_neigh, dummy_sig_L, 0);
+                if (c->boundary_info[0].is_supersonic_inflow || c->boundary_info[0].is_characteristic) {
+                    dummy_sig_L = -sigL;
+                }
             }
 
             if (c->neighbors[1]) {
@@ -49,6 +52,9 @@ void Solver::compute_igr_parabolic_rhs() {
                 }
             } else {
                 get_neigh_state_cell(*c, iy, true, dummy_face, sigR, dummy_neigh, dummy_sig_R, 0);
+                if (c->boundary_info[1].is_supersonic_inflow || c->boundary_info[1].is_characteristic) {
+                    dummy_sig_R = -sigR;
+                }
             }
 
             double sigL_hat = 0.5 * (sigL + dummy_sig_L);
@@ -60,7 +66,7 @@ void Solver::compute_igr_parabolic_rhs() {
                     ds_dx_loc += basis.D[ix][k] * c->sigma_field[iy * p.N_PTS + k];
                 }
                 double ds_dx = (ds_dx_loc + (sigL_hat - sigL) * basis.dgl[ix] + (sigR_hat - sigR) * basis.dgr[ix]) * (2.0 / c->dx);
-                double rho = std::max(1e-12, c->get_U(0, iy, ix, p.N_PTS));
+                double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
                 c->qx_buf[iy * p.N_PTS + ix] = ds_dx / rho;
             }
         }
@@ -86,6 +92,9 @@ void Solver::compute_igr_parabolic_rhs() {
                 }
             } else {
                 get_neigh_state_cell(*c, ix, false, dummy_face, sigB, dummy_neigh, dummy_sig_B, 1);
+                if (c->boundary_info[2].is_supersonic_inflow || c->boundary_info[2].is_characteristic) {
+                    dummy_sig_B = -sigB;
+                }
             }
 
             if (c->neighbors[3]) {
@@ -97,6 +106,9 @@ void Solver::compute_igr_parabolic_rhs() {
                 }
             } else {
                 get_neigh_state_cell(*c, ix, true, dummy_face, sigT, dummy_neigh, dummy_sig_T, 1);
+                if (c->boundary_info[3].is_supersonic_inflow || c->boundary_info[3].is_characteristic) {
+                    dummy_sig_T = -sigT;
+                }
             }
 
             double sigB_hat = 0.5 * (sigB + dummy_sig_B);
@@ -108,7 +120,7 @@ void Solver::compute_igr_parabolic_rhs() {
                     ds_dy_loc += basis.D[iy][k] * c->sigma_field[k * p.N_PTS + ix];
                 }
                 double ds_dy = (ds_dy_loc + (sigB_hat - sigB) * basis.dgl[iy] + (sigT_hat - sigT) * basis.dgr[iy]) * (2.0 / c->dy);
-                double rho = std::max(1e-12, c->get_U(0, iy, ix, p.N_PTS));
+                double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
                 c->qy_buf[iy * p.N_PTS + ix] = ds_dy / rho;
             }
         }
@@ -129,7 +141,7 @@ void Solver::compute_igr_parabolic_rhs() {
             double fL = 0, fR = 0, sigL = 0, sigR = 0, rhoL = 0, rhoR = 0;
             for (int k = 0; k < p.N_PTS; ++k) {
                 int idx = iy * p.N_PTS + k;
-                double r_k = std::max(1e-12, c->get_U(0, iy, k, p.N_PTS));
+                double r_k = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, k, p.N_PTS));
                 fL += c->qx_buf[idx] * basis.l_L[k];
                 fR += c->qx_buf[idx] * basis.l_R[k];
                 sigL += c->sigma_field[idx] * basis.l_L[k];
@@ -149,15 +161,21 @@ void Solver::compute_igr_parabolic_rhs() {
                 f_nb = 0; sig_nb = 0; rho_nb = 0;
                 for (int k = 0; k < p.N_PTS; ++k) {
                     int idx = iy * p.N_PTS + k;
-                    double r_k = std::max(1e-12, nc->get_U(0, iy, k, p.N_PTS));
+                    double r_k = std::max(p.POS_LIMITER_EPS, nc->get_U(0, iy, k, p.N_PTS));
                     f_nb += nc->qx_buf[idx] * w[k];
                     sig_nb += nc->sigma_field[idx] * w[k];
                     rho_nb += r_k * w[k];
                 }
-                double eta = br2_factor * (epsilon / std::max(1e-12, 0.5*(rhoL + rho_nb))) / c->dx;
+                double eta = br2_factor * (epsilon / std::max(p.POS_LIMITER_EPS, 0.5*(rhoL + rho_nb))) / c->dx;
                 fhatL[iy] = 0.5*(f_nb + fL) + eta*(sigL - sig_nb);
             } else {
-                fhatL[iy] = 0.0; // Neumann zero-gradient BC on physical boundaries
+                const auto& ni = c->boundary_info[0];
+                if (ni.is_supersonic_inflow || ni.is_characteristic) {
+                    double eta = br2_factor * (epsilon / std::max(p.POS_LIMITER_EPS, rhoL)) / c->dx;
+                    fhatL[iy] = fL_int[iy] + eta * sigL;
+                } else {
+                    fhatL[iy] = 0.0; // Neumann zero-gradient BC on physical boundaries
+                }
             }
 
             // Right interface
@@ -168,15 +186,21 @@ void Solver::compute_igr_parabolic_rhs() {
                 f_nb = 0; sig_nb = 0; rho_nb = 0;
                 for (int k = 0; k < p.N_PTS; ++k) {
                     int idx = iy * p.N_PTS + k;
-                    double r_k = std::max(1e-12, nc->get_U(0, iy, k, p.N_PTS));
+                    double r_k = std::max(p.POS_LIMITER_EPS, nc->get_U(0, iy, k, p.N_PTS));
                     f_nb += nc->qx_buf[idx] * w[k];
                     sig_nb += nc->sigma_field[idx] * w[k];
                     rho_nb += r_k * w[k];
                 }
-                double eta = br2_factor * (epsilon / std::max(1e-12, 0.5*(rhoR + rho_nb))) / c->dx;
+                double eta = br2_factor * (epsilon / std::max(p.POS_LIMITER_EPS, 0.5*(rhoR + rho_nb))) / c->dx;
                 fhatR[iy] = 0.5*(f_nb + fR) + eta*(sig_nb - sigR);
             } else {
-                fhatR[iy] = 0.0; // Neumann zero-gradient BC on physical boundaries
+                const auto& ni = c->boundary_info[1];
+                if (ni.is_supersonic_inflow || ni.is_characteristic) {
+                    double eta = br2_factor * (epsilon / std::max(p.POS_LIMITER_EPS, rhoR)) / c->dx;
+                    fhatR[iy] = fR_int[iy] - eta * sigR;
+                } else {
+                    fhatR[iy] = 0.0; // Neumann zero-gradient BC on physical boundaries
+                }
             }
         }
 
@@ -186,7 +210,7 @@ void Solver::compute_igr_parabolic_rhs() {
             double fB = 0, fT = 0, sigB = 0, sigT = 0, rhoB = 0, rhoT = 0;
             for (int k = 0; k < p.N_PTS; ++k) {
                 int idx = k * p.N_PTS + ix;
-                double r_k = std::max(1e-12, c->get_U(0, k, ix, p.N_PTS));
+                double r_k = std::max(p.POS_LIMITER_EPS, c->get_U(0, k, ix, p.N_PTS));
                 fB += c->qy_buf[idx] * basis.l_L[k];
                 fT += c->qy_buf[idx] * basis.l_R[k];
                 sigB += c->sigma_field[idx] * basis.l_L[k];
@@ -206,15 +230,21 @@ void Solver::compute_igr_parabolic_rhs() {
                 f_nb = 0; sig_nb = 0; rho_nb = 0;
                 for (int k = 0; k < p.N_PTS; ++k) {
                     int idx = k * p.N_PTS + ix;
-                    double r_k = std::max(1e-12, nc->get_U(0, k, ix, p.N_PTS));
+                    double r_k = std::max(p.POS_LIMITER_EPS, nc->get_U(0, k, ix, p.N_PTS));
                     f_nb += nc->qy_buf[idx] * w[k];
                     sig_nb += nc->sigma_field[idx] * w[k];
                     rho_nb += r_k * w[k];
                 }
-                double eta = br2_factor * (epsilon / std::max(1e-12, 0.5*(rhoB + rho_nb))) / c->dy;
+                double eta = br2_factor * (epsilon / std::max(p.POS_LIMITER_EPS, 0.5*(rhoB + rho_nb))) / c->dy;
                 fhatB[ix] = 0.5*(f_nb + fB) + eta*(sigB - sig_nb);
             } else {
-                fhatB[ix] = 0.0;
+                const auto& ni = c->boundary_info[2];
+                if (ni.is_supersonic_inflow || ni.is_characteristic) {
+                    double eta = br2_factor * (epsilon / std::max(p.POS_LIMITER_EPS, rhoB)) / c->dy;
+                    fhatB[ix] = fB_int[ix] + eta * sigB;
+                } else {
+                    fhatB[ix] = 0.0;
+                }
             }
 
             // Top interface
@@ -225,15 +255,21 @@ void Solver::compute_igr_parabolic_rhs() {
                 f_nb = 0; sig_nb = 0; rho_nb = 0;
                 for (int k = 0; k < p.N_PTS; ++k) {
                     int idx = k * p.N_PTS + ix;
-                    double r_k = std::max(1e-12, nc->get_U(0, k, ix, p.N_PTS));
+                    double r_k = std::max(p.POS_LIMITER_EPS, nc->get_U(0, k, ix, p.N_PTS));
                     f_nb += nc->qy_buf[idx] * w[k];
                     sig_nb += nc->sigma_field[idx] * w[k];
                     rho_nb += r_k * w[k];
                 }
-                double eta = br2_factor * (epsilon / std::max(1e-12, 0.5*(rhoT + rho_nb))) / c->dy;
+                double eta = br2_factor * (epsilon / std::max(p.POS_LIMITER_EPS, 0.5*(rhoT + rho_nb))) / c->dy;
                 fhatT[ix] = 0.5*(f_nb + fT) + eta*(sig_nb - sigT);
             } else {
-                fhatT[ix] = 0.0;
+                const auto& ni = c->boundary_info[3];
+                if (ni.is_supersonic_inflow || ni.is_characteristic) {
+                    double eta = br2_factor * (epsilon / std::max(p.POS_LIMITER_EPS, rhoT)) / c->dy;
+                    fhatT[ix] = fT_int[ix] - eta * sigT;
+                } else {
+                    fhatT[ix] = 0.0;
+                }
             }
         }
 
@@ -257,8 +293,11 @@ void Solver::compute_igr_parabolic_rhs() {
                 int idx = iy * p.N_PTS + ix;
                 double S = c->S_buf[idx];
                 double sig = c->sigma_field[idx];
-                double rho = std::max(1e-12, c->get_U(0, iy, ix, p.N_PTS));
+                double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
                 c->sigma_RHS[idx] = (1.0 / p.IGR_TAU_R) * ((S - sig) + epsilon * rho * (div_x + div_y));
+                if (p.ENABLE_IB && (c->solid_mask || c->ib_mask[idx] > 0.99)) {
+                    c->sigma_RHS[idx] = 0.0;
+                }
             }
         }
     }

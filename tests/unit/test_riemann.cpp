@@ -13,7 +13,7 @@ TEST_CASE("Rusanov Riemann solver - Identical states") {
     double UR[4] = {1.0, 0.0, 0.0, 2.5};
     double F_comm[4] = {0.0, 0.0, 0.0, 0.0};
 
-    solver.solve_riemann(UL, UR, F_comm, 0, 0.0, 0.0);
+    solver.solve_riemann(UL, UR, F_comm, 0);
 
     // Flux should be F(U) = [0, p, 0, 0] = [0, 1.0, 0, 0]
     CHECK(F_comm[0] == doctest::Approx(0.0));
@@ -31,7 +31,7 @@ TEST_CASE("Rusanov Riemann solver - Sod shock tube") {
     double UR[4] = {0.125, 0.0, 0.0, 0.25};
     double F_comm[4] = {0.0, 0.0, 0.0, 0.0};
 
-    solver.solve_riemann(UL, UR, F_comm, 0, 0.0, 0.0);
+    solver.solve_riemann(UL, UR, F_comm, 0);
 
     // The interface flux should reflect numerical dissipation
     // LLF adds dissipation based on max eigenvalue
@@ -56,10 +56,10 @@ TEST_CASE("Rusanov Riemann solver - Symmetry") {
     double U2[4] = {0.5, 0.0, 0.0, 1.5};
     
     double F_comm_12[4];
-    solver.solve_riemann(U1, U2, F_comm_12, 0, 0.0, 0.0);
+    solver.solve_riemann(U1, U2, F_comm_12, 0);
 
     double F_comm_21[4];
-    solver.solve_riemann(U2, U1, F_comm_21, 0, 0.0, 0.0);
+    solver.solve_riemann(U2, U1, F_comm_21, 0);
 
     // The solver computes flux for left U1 and right U2. F = 0.5*(F1+F2) - 0.5*lambda*(U2-U1)
     CHECK(F_comm_12[0] != 0.0);
@@ -77,10 +77,16 @@ TEST_CASE("Rusanov Riemann solver - With sigma") {
     // Sigmas apply an artificial pressure gradient 
     double sigl = 0.1;
     double sigr = -0.1;
-    solver.solve_riemann(UL, UR, F_comm, 0, sigl, sigr);
+    solver.solve_riemann(UL, UR, F_comm, 0);
 
+    double un_l = UL[1] / std::max(p.POS_LIMITER_EPS, UL[0]);
+    double un_r = UR[1] / std::max(p.POS_LIMITER_EPS, UR[0]);
+    F_comm[1] += 0.5 * (sigl + sigr);
+    F_comm[3] += 0.5 * (sigl * un_l + sigr * un_r);
+ 
     // Check that flux computation completes without NaN
     CHECK(F_comm[0] == doctest::Approx(0.0));
+    CHECK(F_comm[1] == doctest::Approx(1.0));
 }
 
 TEST_CASE("Rusanov Riemann solver - Y-direction") {
@@ -93,7 +99,7 @@ TEST_CASE("Rusanov Riemann solver - Y-direction") {
     double UR[4] = {1.0, 0.0, 0.5, 2.5 + 0.5*1.0*0.25};
     double F_comm[4] = {0.0, 0.0, 0.0, 0.0};
 
-    solver.solve_riemann(UL, UR, F_comm, 1, 0.0, 0.0);
+    solver.solve_riemann(UL, UR, F_comm, 1);
 
     // Flux G(U) = [rho*v, rho*u*v, rho*v^2 + p, (E+p)*v]
     // rho*v = 0.5
