@@ -1,7 +1,6 @@
 var searchData=
 [
-  ['u_0',['U',['../struct_block.html#a42af8ada3e136a60a8dc085abaf7c4ee',1,'Block']]],
-  ['u_5finf_1',['U_INF',['../struct_parameters.html#acf1fe13d891a825351f2faf69b8c3ccb',1,'Parameters']]],
-  ['update_2',['update',['../class_diagnostics.html#a215d2e78ad7be6a0cb125174fb620c22',1,'Diagnostics']]],
-  ['update_5fib_5fmask_5ffield_3',['update_ib_mask_field',['../class_solver.html#a7fa3198999a98fbdb79d8de31437a508',1,'Solver']]]
+  ['t_5ffinal_0',['T_FINAL',['../structParameters.html#a476736baac301e7558381d10da304b2b',1,'Parameters']]],
+  ['target_5flevel_1',['target_level',['../structCell.html#a5c753ce04db6413f8b232fd898478aec',1,'Cell::target_level'],['../structParameters_1_1RefinementZone.html#a2cd6d09b33f619388650110693eba9dc',1,'Parameters::RefinementZone::target_level']]],
+  ['to_5fpolygon_2',['to_polygon',['../structGeometry_1_1Naca.html#a12cb4b85a89a8863e61a9f402ab84e0b',1,'Geometry::Naca']]]
 ];

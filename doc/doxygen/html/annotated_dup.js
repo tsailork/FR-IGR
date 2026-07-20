@@ -1,23 +1,29 @@
 var annotated_dup =
 [
-    [ "ImmersedBoundary", "namespace_immersed_boundary.html", [
-      [ "DonorPoint", "struct_immersed_boundary_1_1_donor_point.html", "struct_immersed_boundary_1_1_donor_point" ],
-      [ "ParabolaShape", "struct_immersed_boundary_1_1_parabola_shape.html", "struct_immersed_boundary_1_1_parabola_shape" ],
-      [ "QuadShape", "struct_immersed_boundary_1_1_quad_shape.html", "struct_immersed_boundary_1_1_quad_shape" ],
-      [ "SBMDiagnostics", "struct_immersed_boundary_1_1_s_b_m_diagnostics.html", "struct_immersed_boundary_1_1_s_b_m_diagnostics" ],
-      [ "SurrogateFluxPoint", "struct_immersed_boundary_1_1_surrogate_flux_point.html", "struct_immersed_boundary_1_1_surrogate_flux_point" ]
+    [ "Geometry", "namespaceGeometry.html", [
+      [ "Polygon", "structGeometry_1_1Polygon.html", "structGeometry_1_1Polygon" ],
+      [ "Circle", "structGeometry_1_1Circle.html", "structGeometry_1_1Circle" ],
+      [ "Naca", "structGeometry_1_1Naca.html", "structGeometry_1_1Naca" ]
     ] ],
-    [ "Limiters", "namespace_limiters.html", [
-      [ "LimiterStats", "struct_limiters_1_1_limiter_stats.html", "struct_limiters_1_1_limiter_stats" ]
+    [ "ImmersedBoundary", "namespaceImmersedBoundary.html", [
+      [ "QuadShape", "structImmersedBoundary_1_1QuadShape.html", "structImmersedBoundary_1_1QuadShape" ],
+      [ "ParabolaShape", "structImmersedBoundary_1_1ParabolaShape.html", "structImmersedBoundary_1_1ParabolaShape" ],
+      [ "DonorPoint", "structImmersedBoundary_1_1DonorPoint.html", "structImmersedBoundary_1_1DonorPoint" ],
+      [ "SurrogateFluxPoint", "structImmersedBoundary_1_1SurrogateFluxPoint.html", "structImmersedBoundary_1_1SurrogateFluxPoint" ],
+      [ "SBMDiagnostics", "structImmersedBoundary_1_1SBMDiagnostics.html", "structImmersedBoundary_1_1SBMDiagnostics" ]
     ] ],
-    [ "Basis", "struct_basis.html", "struct_basis" ],
-    [ "Block", "struct_block.html", "struct_block" ],
-    [ "BlockConfig", "struct_block_config.html", "struct_block_config" ],
-    [ "Diagnostics", "class_diagnostics.html", "class_diagnostics" ],
-    [ "NeighborInfo", "struct_neighbor_info.html", "struct_neighbor_info" ],
-    [ "Parameters", "struct_parameters.html", "struct_parameters" ],
-    [ "ProbeDef", "struct_probe_def.html", "struct_probe_def" ],
-    [ "Solver", "class_solver.html", "class_solver" ],
-    [ "State", "struct_state.html", "struct_state" ],
-    [ "VTKWriter", "class_v_t_k_writer.html", "class_v_t_k_writer" ]
+    [ "Limiters", "namespaceLimiters.html", [
+      [ "LimiterStats", "structLimiters_1_1LimiterStats.html", "structLimiters_1_1LimiterStats" ]
+    ] ],
+    [ "Basis", "structBasis.html", "structBasis" ],
+    [ "Block", "structBlock.html", "structBlock" ],
+    [ "BlockConfig", "structBlockConfig.html", "structBlockConfig" ],
+    [ "Cell", "structCell.html", "structCell" ],
+    [ "Diagnostics", "classDiagnostics.html", "classDiagnostics" ],
+    [ "NeighborInfo", "structNeighborInfo.html", "structNeighborInfo" ],
+    [ "Parameters", "structParameters.html", "structParameters" ],
+    [ "ProbeDef", "structProbeDef.html", "structProbeDef" ],
+    [ "Solver", "classSolver.html", "classSolver" ],
+    [ "State", "structState.html", "structState" ],
+    [ "VTKWriter", "classVTKWriter.html", "classVTKWriter" ]
 ];

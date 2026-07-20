@@ -1,6 +1,7 @@
 var parameters_8hpp =
 [
-    [ "ProbeDef", "struct_probe_def.html", "struct_probe_def" ],
-    [ "BlockConfig", "struct_block_config.html", "struct_block_config" ],
-    [ "Parameters", "struct_parameters.html", "struct_parameters" ]
+    [ "ProbeDef", "structProbeDef.html", "structProbeDef" ],
+    [ "BlockConfig", "structBlockConfig.html", "structBlockConfig" ],
+    [ "Parameters", "structParameters.html", "structParameters" ],
+    [ "Parameters::RefinementZone", "structParameters_1_1RefinementZone.html", "structParameters_1_1RefinementZone" ]
 ];

@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['vtkwriter_0',['VTKWriter',['../class_v_t_k_writer.html',1,'']]]
+  ['refinementzone_0',['RefinementZone',['../structParameters_1_1RefinementZone.html',1,'Parameters']]]
 ];

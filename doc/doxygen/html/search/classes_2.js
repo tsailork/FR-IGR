@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['limiterstats_0',['LimiterStats',['../struct_limiters_1_1_limiter_stats.html',1,'Limiters']]]
+  ['diagnostics_0',['Diagnostics',['../classDiagnostics.html',1,'']]],
+  ['donorpoint_1',['DonorPoint',['../structImmersedBoundary_1_1DonorPoint.html',1,'ImmersedBoundary']]]
 ];

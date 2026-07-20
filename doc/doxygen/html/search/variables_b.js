@@ -1,5 +1,24 @@
 var searchData=
 [
-  ['output_5fdt_0',['OUTPUT_DT',['../struct_parameters.html#a0ee5b44f97306d274ca63e5a232cf905',1,'Parameters']]],
-  ['output_5finterval_1',['OUTPUT_INTERVAL',['../struct_parameters.html#a1fc24b7f53ca3b0cb3b38672ed688a1d',1,'Parameters']]]
+  ['n_5fdofs_5fper_5fvar_0',['n_dofs_per_var',['../structState.html#af68d8d9e6c8383f62d9a7bd440d17a5c',1,'State']]],
+  ['n_5felem_5fx_1',['N_ELEM_X',['../structBlockConfig.html#a926fb592badec2a6330affff6dbc4282',1,'BlockConfig']]],
+  ['n_5felem_5fy_2',['N_ELEM_Y',['../structBlockConfig.html#a949252e4966042ca94f242e287cc8420',1,'BlockConfig']]],
+  ['n_5fpts_3',['N_PTS',['../structParameters.html#a338dc49820a25809c5c6c1befb5d7fc8',1,'Parameters']]],
+  ['n_5fvars_4',['N_VARS',['../state_8hpp.html#aa4dff249676f1d29413ea4bd03d70afc',1,'state.hpp']]],
+  ['naca_5fcode_5',['naca_code',['../structGeometry_1_1Naca.html#afb60a443aa2a9b313c35e95e73707bc3',1,'Geometry::Naca::naca_code'],['../structParameters_1_1RefinementZone.html#abc377f5a4f2662814f402fae927ae738',1,'Parameters::RefinementZone::naca_code']]],
+  ['neighbor_5ffaces_6',['neighbor_faces',['../structCell.html#a5ae253d6160496577ad99c7ea3e09a13',1,'Cell']]],
+  ['neighbors_7',['neighbors',['../structCell.html#a6b1bd368059fb126b2c73ce5099f818c',1,'Cell']]],
+  ['ni_5fb_8',['ni_b',['../structBlock.html#a4e5dd8a87b61bd76265ad11c0abe1f8c',1,'Block']]],
+  ['ni_5fl_9',['ni_l',['../structBlock.html#a033cecbd4f97cab9deedbc279ec5d846',1,'Block']]],
+  ['ni_5fr_10',['ni_r',['../structBlock.html#a8c110e855b94c3633b5dd5f2830f1f0c',1,'Block']]],
+  ['ni_5ft_11',['ni_t',['../structBlock.html#a2b4ba434f0d847162707aeaca359c4a0',1,'Block']]],
+  ['node_5fidx_12',['node_idx',['../structImmersedBoundary_1_1SurrogateFluxPoint.html#a12aaf84aa917736c96b0e88d8141e8d1',1,'ImmersedBoundary::SurrogateFluxPoint']]],
+  ['npts_13',['npts',['../structState.html#ac2717111380e33819b55fa9969b8ca71',1,'State']]],
+  ['ns_5fbr2_5feta_14',['NS_BR2_ETA',['../structParameters.html#a7a2312527a91fbcd83902c87acb847b0',1,'Parameters']]],
+  ['num_5flimited_15',['num_limited',['../structLimiters_1_1LimiterStats.html#a6de230daf24874ddd89ecf37b4d5d2a3',1,'Limiters::LimiterStats']]],
+  ['num_5fthreads_16',['NUM_THREADS',['../structParameters.html#ad55debbfc6fb0d949aa55f91b891d67a',1,'Parameters']]],
+  ['nx_17',['nx',['../structBlock.html#ab9788c2b927a982f7d831def469ccd3b',1,'Block::nx'],['../structState.html#a33194ebff813e4e8802d25ee27897f3e',1,'State::nx']]],
+  ['nx_5ftrue_18',['nx_true',['../structImmersedBoundary_1_1SurrogateFluxPoint.html#a1dac2ee251aa0fa0aed25ba69370a865',1,'ImmersedBoundary::SurrogateFluxPoint']]],
+  ['ny_19',['ny',['../structBlock.html#ac9225ce0afdb6ab0c4dd66e6b224afe4',1,'Block::ny'],['../structState.html#a05bef1ec55063989661b82aaffd02210',1,'State::ny']]],
+  ['ny_5ftrue_20',['ny_true',['../structImmersedBoundary_1_1SurrogateFluxPoint.html#a73fe56b553d3bed2a894e0237e92754c',1,'ImmersedBoundary::SurrogateFluxPoint']]]
 ];

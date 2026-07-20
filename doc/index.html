@@ -18,6 +18,7 @@
         <button class="tab-btn" onclick="openTab(event, 'architecture')">Architecture</button>
         <button class="tab-btn" onclick="openTab(event, 'ib-methods')">Immersed Boundaries</button>
         <button class="tab-btn" onclick="openTab(event, 'configuration')">Configuration & Gridding</button>
+        <button class="tab-btn" onclick="openTab(event, 'ppr')">Phantom Pressure</button>
         <button class="tab-btn" onclick="openTab(event, 'testing-structure')">Testing Structure</button>
         <button class="tab-btn" onclick="openTab(event, 'testing-coverage')">Test Coverage</button>
     </nav>
@@ -712,6 +713,254 @@ make test-regression</code></pre>
                     </tr>
                 </tbody>
             </table>
+        </div>
+
+        <!-- Phantom Pressure Regularization (PPR) Tab -->
+        <div id="ppr" class="tab-pane">
+            <h1>Phantom Pressure Regularization (PPR)</h1>
+            <p>
+                The <strong>Phantom Pressure Regularization (PPR)</strong> method — also classified as a
+                self-targeted <strong>Hyperbolic Bulk Viscosity (HBV)</strong> model — provides localized,
+                physics-consistent artificial dissipation for high-order compressible flow solvers without
+                introducing tuned free parameters or mesh-dependent viscosity coefficients.
+            </p>
+
+            <h2>1. Physical Motivation</h2>
+            <p>
+                High-order collocated discretizations such as Flux Reconstruction (FR) and Discontinuous
+                Galerkin (DG) possess minimal intrinsic numerical dissipation. While this property is
+                essential for accurately capturing turbulent structures and acoustic waves, it renders the
+                solver severely susceptible to <em>Gibbs oscillations</em> and explosive numerical instabilities
+                near shocks, contact surfaces, and under-resolved steep gradients.
+            </p>
+            <p>
+                Rather than filtering polynomial modes or adding an explicit viscous term, PPR augments
+                the Euler system with a passive auxiliary variable \(S = \rho P_{phan}\) — the
+                <strong>phantom pressure state</strong> — which acts as a localized pressure memory.
+                The governing system is extended by one advection-relaxation equation:
+            </p>
+            <p style="text-align:center; margin:20px 0;">
+                $$\frac{\partial S}{\partial t} + \nabla \cdot (S\,\mathbf{u}) = \frac{\rho}{\tau}\left(P_{\mathrm{phys}} - P_{\mathrm{phan}}\right)$$
+            </p>
+            <p>
+                where \(P_{\mathrm{phys}}\) is the standard thermodynamic pressure, \(P_{\mathrm{phan}} = S/\rho\)
+                is the phantom pressure, \(\mathbf{u}\) is the fluid velocity, and \(\tau\) is a local
+                acoustic relaxation time scale.
+            </p>
+
+            <h2>2. The Bulk Viscosity Interpretation</h2>
+            <p>
+                Applying a first-order Chapman–Enskog expansion under the assumption of small
+                non-equilibrium deviations (\(\tau \to 0\)) yields:
+            </p>
+            <p style="text-align:center; margin:20px 0;">
+                $$P_{\mathrm{phan}} \approx P_{\mathrm{phys}} + \tau\gamma P_{\mathrm{phys}}(\nabla \cdot \mathbf{u}) + \mathcal{O}(\tau^2)$$
+            </p>
+            <p>
+                A <strong>regularized pressure</strong> is defined as a linear extrapolation away from the
+                phantom state:
+            </p>
+            <p style="text-align:center; margin:20px 0;">
+                $$P_{\mathrm{reg}} = P_{\mathrm{phys}} + \theta\left(P_{\mathrm{phys}} - P_{\mathrm{phan}}\right)$$
+            </p>
+            <p>
+                Substituting the expansion reveals:
+            </p>
+            <p style="text-align:center; margin:20px 0;">
+                $$P_{\mathrm{reg}} \approx P_{\mathrm{phys}} - \underbrace{\theta\tau\gamma P_{\mathrm{phys}}}_{\beta_{\mathrm{bulk}}}(\nabla \cdot \mathbf{u})$$
+            </p>
+            <p>
+                This is mathematically equivalent to augmenting the momentum and energy equations with an
+                artificial dynamic <strong>bulk viscosity</strong>
+                \(\beta_{\mathrm{bulk}} = \theta\tau\gamma P_{\mathrm{phys}}\).
+            </p>
+            <ul>
+                <li><strong>Smooth regions:</strong> Fast relaxation (\(\tau \to 0\)) drives \(P_{\mathrm{phan}} \to P_{\mathrm{phys}}\), so \(P_{\mathrm{reg}} \to P_{\mathrm{phys}}\). No artificial dissipation is added.</li>
+                <li><strong>Shocks (\(\nabla\cdot\mathbf{u}\ll 0\)):</strong> The finite \(\tau\) causes \(P_{\mathrm{phan}}\) to lag, driving \(P_{\mathrm{reg}}\) to spike above \(P_{\mathrm{phys}}\). This localized spike acts as a bulk viscous damper, smoothing high-frequency Gibbs oscillations across cell interfaces.</li>
+            </ul>
+
+            <h2>3. Implementation in FR-IGR</h2>
+
+            <h3>State Vector</h3>
+            <p>
+                The conserved state vector is extended to five components in 2D:
+                \(\mathbf{U} = [\rho,\; \rho u,\; \rho v,\; E,\; S]^T\).
+                The S field carries the phantom pressure density \(S = \rho P_{\mathrm{phan}}\).
+            </p>
+
+            <h3>Flux Construction</h3>
+            <p>
+                At every solution and flux point, the <code>get_flux_pointwise_cell</code> function
+                evaluates \(P_{\mathrm{reg}}\) in place of \(P_{\mathrm{phys}}\) for the momentum and
+                energy rows, while the fifth flux row advects \(S\):
+            </p>
+            <p style="text-align:center; margin:20px 0;">
+                $$\mathbf{F}_x = \begin{bmatrix} \rho u \\ \rho u^2 + P_{\mathrm{reg}} \\ \rho uv \\ (E + P_{\mathrm{reg}})u \\ S u \end{bmatrix}, \quad
+                \mathbf{F}_y = \begin{bmatrix} \rho v \\ \rho uv \\ \rho v^2 + P_{\mathrm{reg}} \\ (E + P_{\mathrm{reg}})v \\ S v \end{bmatrix}$$
+            </p>
+
+            <h3>Interface LLF / Rusanov Flux</h3>
+            <p>
+                At element interfaces, acoustic wave speeds are corrected using an upper-bound safe
+                pressure \(\bar{P} = \max(P_{\mathrm{phys}}, P_{\mathrm{reg}})\) to prevent
+                non-physical complex sound speeds near shocks:
+            </p>
+            <p style="text-align:center; margin:20px 0;">
+                $$\lambda_{\max} = \max\bigl(|u_L\cdot n| + a_L^{\mathrm{safe}},\; |u_R\cdot n| + a_R^{\mathrm{safe}}\bigr)$$
+            </p>
+            <p>
+                The common flux for the \(S\) equation is upwinded by the same \(\lambda_{\max}\):
+            </p>
+            <p style="text-align:center; margin:20px 0;">
+                $$F_S^{\mathrm{comm}} = \tfrac{1}{2}\bigl(S^- u_n^- + S^+ u_n^+\bigr) - \tfrac{1}{2}\lambda_{\max}\bigl(S^+ - S^-\bigr)$$
+            </p>
+
+            <h3>Relaxation Time Scale \(\tau\)</h3>
+            <p>
+                The local time scale is computed element-wise using the acoustic wave speed
+                \(\lambda_{\mathrm{loc}} = \|\mathbf{u}\| + a\) and a user-tunable coefficient \(C_\tau\):
+            </p>
+            <p style="text-align:center; margin:20px 0;">
+                $$\tau = \frac{C_\tau \cdot \min(\Delta x, \Delta y)}{\lambda_{\mathrm{loc}} + \epsilon}$$
+            </p>
+            <p>
+                A constant cell-average value of \(\tau_e\) is used per element. Allowing pointwise
+                variation of \(\tau\) within a high-order element introduces artificial sub-element
+                pressure gradients that degrade spatial accuracy.
+            </p>
+
+            <h3>Fractional-Step Analytical Relaxation</h3>
+            <p>
+                Because \(\tau\) can be extremely small near shocks, the stiff source term
+                \(\rho(P_{\mathrm{phys}} - P_{\mathrm{phan}})/\tau\) is never integrated explicitly.
+                Instead, an operator-splitting fractional-step approach is used:
+            </p>
+            <ol>
+                <li><strong>Explicit Spatial Step:</strong> Advance all five equations using the standard FR flux divergence operator over the stage increment \(\Delta t_s\), yielding an intermediate state \(\mathbf{U}^*\).</li>
+                <li><strong>Analytical Relaxation Step:</strong> With \(\rho\) and \(P_{\mathrm{phys}}\) fixed (their source terms are zero), integrate the linear decoupled ODE for \(S\) exactly:
+                    $$S^{n+1} = \rho P_{\mathrm{phys}} + \bigl(S^* - \rho P_{\mathrm{phys}}\bigr)\, e^{-\Delta t_s/\tau}$$
+                    This update is unconditionally stable for any \(\Delta t_s / \tau\) ratio.
+                </li>
+            </ol>
+
+            <h3>Boundary Conditions</h3>
+            <p>
+                All boundary conditions are imposed weakly via ghost states in the Riemann solver.
+                The phantom variable ghost \(S^+\) is set to match the local target pressure to avoid
+                non-physical bulk viscosity forces at domain edges:
+            </p>
+            <table>
+                <thead><tr><th>Boundary Type</th><th>Ghost \(S^+\)</th><th>Rationale</th></tr></thead>
+                <tbody>
+                    <tr><td>Supersonic inflow</td><td>\(\rho_{\infty} P_{\infty}\)</td><td>All characteristics prescribed; Dirichlet on \(S\)</td></tr>
+                    <tr><td>Subsonic inflow (characteristic)</td><td>\(\rho^- P_{\infty}\)</td><td>Interior density, prescribed pressure</td></tr>
+                    <tr><td>Subsonic outflow</td><td>\(\rho^- P_{\mathrm{out}}\)</td><td>Interior density, target backpressure</td></tr>
+                    <tr><td>Supersonic outflow</td><td>\(S^-\) (copy)</td><td>No upstream information; zero-gradient Neumann</td></tr>
+                    <tr><td>Slip / no-slip wall</td><td>\(S^-\) (copy)</td><td>Zero-flux Neumann; normal velocity negated in \(U^+\)</td></tr>
+                </tbody>
+            </table>
+
+            <h2>4. Configuration Parameters</h2>
+            <table>
+                <thead><tr><th>Parameter</th><th>Default</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr><td><code>ENABLE_PPR</code></td><td><code>false</code></td><td>Master toggle for the PPR method</td></tr>
+                    <tr><td><code>PPR_THETA</code></td><td><code>1.0</code></td><td>Static regularization scale \(\theta\). Active when <code>PPR_ADAPTIVE_THETA = false</code></td></tr>
+                    <tr><td><code>PPR_C_TAU</code></td><td><code>0.2</code></td><td>Relaxation time coefficient \(C_\tau \in [0.1, 0.5]\). Controls shock thickness.</td></tr>
+                    <tr><td><code>PPR_ADV_MULT</code></td><td><code>1.0</code></td><td>Advection velocity multiplier \(\kappa\). 0 = point-relaxation only; &minus;1 = reverse advection.</td></tr>
+                    <tr><td><code>PPR_GRAD_ADV_SCALE</code></td><td><code>0.0</code></td><td>Acoustic pressure-gradient advection scale (Part A). 0 = disabled.</td></tr>
+                    <tr><td><code>PPR_GRAD_EPS</code></td><td><code>1e-6</code></td><td>Floor on \(\|\nabla P\|\) to prevent division by zero in smooth regions.</td></tr>
+                    <tr><td><code>PPR_ADAPTIVE_THETA</code></td><td><code>false</code></td><td>Enable per-element divergence-driven adaptive \(\theta\) (Part B).</td></tr>
+                    <tr><td><code>PPR_THETA_MIN</code></td><td><code>0.0</code></td><td>\(\theta\) in smooth or expanding flow (div_nd &le; 0).</td></tr>
+                    <tr><td><code>PPR_THETA_MID</code></td><td><code>1.0</code></td><td>\(\theta\) at moderate compression (div_nd = 1).</td></tr>
+                    <tr><td><code>PPR_THETA_MAX</code></td><td><code>2.0</code></td><td>\(\theta\) at strong shock saturation.</td></tr>
+                    <tr><td><code>PPR_DIV_ND_MAX</code></td><td><code>2.0</code></td><td>Non-dimensional divergence saturation threshold.</td></tr>
+                </tbody>
+            </table>
+
+            <h2>5. Active Research Directions</h2>
+            <p>
+                The following modifications are currently under active experimental investigation.
+                They address a key observed failure mode: the PPR mechanism relies on the advection
+                term to maintain a gradient between \(P_{\mathrm{phan}}\) and \(P_{\mathrm{phys}}\)
+                at the shock location. When a shock propagates <em>against</em> the fluid velocity
+                (e.g., a bow shock ahead of a blunt body in supersonic flow), the standard advection
+                term sweeps \(S\) <em>away</em> from the shock front, degrading regularization precisely
+                where it is most needed.
+            </p>
+
+            <h3>Part A — Gradient-Guided Phantom Pressure Advection</h3>
+            <p>
+                Adds an acoustic component to the advection velocity, oriented along the local
+                pressure gradient \(\nabla P\), so that \(S\) is driven <em>into</em> the high-pressure
+                post-shock region regardless of the sign of the flow velocity relative to the shock:
+            </p>
+            <p style="text-align:center; margin:20px 0;">
+                $$\mathbf{u}_{\mathrm{adv}} = \mathbf{u} + \alpha \cdot a \cdot \frac{\nabla P}{\|\nabla P\| + \epsilon}$$
+            </p>
+            <p>
+                The <strong>positive sign</strong> is critical: it pushes \(S\) toward high pressure
+                (the post-shock side), evacuating it from the low-pressure pre-shock region.
+                A negative sign would do the opposite. The scale \(\alpha =\)
+                <code>PPR_GRAD_ADV_SCALE</code> allows continuous tuning from 0 (standard advection)
+                to 1 (full acoustic-magnitude correction). The pressure gradient \(\nabla P\) is
+                computed once in the first directional sweep (x-sweep) via the FR Lagrange derivative
+                matrix and stored per cell for reuse in the y-sweep.
+            </p>
+
+            <h3>Part B — Adaptive \(\theta\) via Non-Dimensional Divergence</h3>
+            <p>
+                Rather than using a single global \(\theta\), this extension computes a
+                <strong>per-element element-average \(\theta_{\mathrm{avg}}\)</strong> that scales
+                with the local compression strength, measured by the non-dimensional velocity divergence:
+            </p>
+            <p style="text-align:center; margin:20px 0;">
+                $$\mathrm{div}^* = \frac{-\nabla\cdot\mathbf{u}\cdot h}{a\,(P+1)}$$
+            </p>
+            <p>
+                The element-average theta is then mapped piecewise-linearly across three anchor points:
+                \(\theta_{\min}\) at \(\mathrm{div}^* \le 0\) (smooth or expanding flow),
+                \(\theta_{\mathrm{mid}}\) at \(\mathrm{div}^* = 1\) (acoustic-CFL-rate compression),
+                and \(\theta_{\max}\) at saturation \(\mathrm{div}^* \ge \mathrm{div}^*_{\max}\).
+                This concentrates large regularization at strong shocks while completely eliminating
+                artificial dissipation in smooth and rarefying regions.
+            </p>
+            <p>
+                The \(\theta_{\mathrm{avg}}\) is used at <em>all</em> face flux quadrature points
+                (not just the interior solution points) so that the Riemann-solver pressure
+                regularization remains consistent with the interior state. For the dynamic CFL
+                computation, \(\theta_{\max}\) is used as a conservative upper bound on wave speed.
+            </p>
+
+            <h3>Option 3 (Not Yet Implemented) — Isotropic Spatial Diffusion</h3>
+            <p>
+                A spatial Laplacian operator \(\nu_S \nabla^2 S\) can be added to spread phantom
+                pressure isotropically in all directions, including upstream of a shock. The diffusion
+                coefficient \(\nu_S = C_\nu h \cdot \max(0, -\nabla\cdot\mathbf{u})\) is
+                active only in compressive regions. This approach is decoupled from flow direction
+                entirely and could be discretized using the existing BR2 parabolic framework in
+                <code>parabolic.cpp</code>.
+            </p>
+
+            <div style="margin-top: 48px; padding: 24px 28px; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius: 12px; border-left: 4px solid #6366f1; color: #e2e8f0;">
+                <p style="margin: 0 0 8px 0; font-size: 1.05rem; font-style: italic; color: #a5b4fc; font-weight: 600;">&#x1F9EA; Open Research Note</p>
+                <p style="margin: 0; line-height: 1.7; color: #cbd5e1;">
+                    The PPR framework is not fundamentally tied to pressure as the relaxed quantity.
+                    The advection-relaxation structure is general enough that a similar method could
+                    in principle be applied to <strong>entropy</strong>, specific internal energy,
+                    or any other thermodynamic state variable whose lag under rapid compression
+                    produces a physically meaningful damping effect. For example, a
+                    <em>Phantom Entropy Relaxation</em> formulation
+                    \(\tilde{s} = P_{\mathrm{phan}}/\rho^\gamma\) could target the specific entropy
+                    \(s = P/\rho^\gamma\), with the regularized pressure reconstructed
+                    isentropically from the lagged entropy. Whether such a formulation offers
+                    superior robustness near contact discontinuities — where pressure is continuous
+                    but entropy jumps — remains an open question worth exploring.
+                </p>
+                <div class="note">
+                    <strong>Note:</strong> It doesn't exactly have to be pressure relaxation, we may also be able to do something with entropy or something like that.
+                </div>
+            </div>
         </div>
     </main>
 
