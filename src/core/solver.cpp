@@ -757,6 +757,10 @@ void Solver::get_flux_pointwise_cell(const Cell& c, int iy, int ix,
     if (p.ENABLE_PPR) {
         double P_phan = c.S_field[iy * p.N_PTS + ix] / rho;
         double theta_cfl = (p.PPR_ADAPTIVE_THETA) ? c.theta_avg : p.PPR_THETA;
+        if (press - P_phan < 0.0) {
+            double theta_safe = (press - p.POS_LIMITER_EPS) / (P_phan - press);
+            theta_cfl = std::min(theta_cfl, std::max(0.0, theta_safe));
+        }
         double P_reg  = press + theta_cfl * (press - P_phan);
         press = std::max(p.POS_LIMITER_EPS, P_reg);
     }

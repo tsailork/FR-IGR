@@ -117,6 +117,16 @@ void Solver::solve_riemann(const double* UL, const double* UR, double* F_comm,
         double pR_phan = SR / rhoR;
         double theta_cfl_L = (p.PPR_ADAPTIVE_THETA) ? thetaL : p.PPR_THETA;
         double theta_cfl_R = (p.PPR_ADAPTIVE_THETA) ? thetaR : p.PPR_THETA;
+
+        if (pL - pL_phan < 0.0) {
+            double theta_safe = (pL - p.POS_LIMITER_EPS) / (pL_phan - pL);
+            theta_cfl_L = std::min(theta_cfl_L, std::max(0.0, theta_safe));
+        }
+        if (pR - pR_phan < 0.0) {
+            double theta_safe = (pR - p.POS_LIMITER_EPS) / (pR_phan - pR);
+            theta_cfl_R = std::min(theta_cfl_R, std::max(0.0, theta_safe));
+        }
+
         double pL_reg = pL + theta_cfl_L * (pL - pL_phan);
         double pR_reg = pR + theta_cfl_R * (pR - pR_phan);
 
