@@ -77,6 +77,12 @@ struct Cell {
     std::vector<double> S_old;        ///< Saved S field at start of stage
     std::vector<double> S_RHS;        ///< Explicit stage RHS for PPR advection
 
+    // PPR gradient advection & adaptive theta fields
+    std::vector<double> grad_px_field; ///< dP/dx at each solution point (computed in x-sweep, read in y-sweep).
+    std::vector<double> grad_py_field; ///< dP/dy at each solution point (computed in x-sweep, read in y-sweep).
+    double theta_avg = 1.0;            ///< Element-average adaptive theta (computed once per RK stage, used at face flux points).
+    double theta_max_tmp = 0.0;        ///< Temporary buffer for smoothing theta.
+
 
     // Local gradient fields (size: N_VARS * npts * npts)
     std::vector<double> grad_Ux;      ///< Extrapolated gradient buffer d_x U.
@@ -124,6 +130,10 @@ struct Cell {
         S_field.resize(n_pts, 0.0);
         S_old.resize(n_pts, 0.0);
         S_RHS.resize(n_pts, 0.0);
+
+        grad_px_field.resize(n_pts, 0.0);
+        grad_py_field.resize(n_pts, 0.0);
+        theta_avg = 1.0;
 
         grad_Ux.resize(n_dofs, 0.0);
         grad_Uy.resize(n_dofs, 0.0);

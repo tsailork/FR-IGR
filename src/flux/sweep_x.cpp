@@ -18,6 +18,31 @@ void Solver::sweep_x() {
         Cell* c = cells[i];
         for (int iy = 0; iy < p.N_PTS; ++iy) {
 
+            // Pre-compute pressure gradients for the entire cell if needed for acoustic advection
+            if (iy == 0 && p.ENABLE_PPR && p.PPR_GRAD_ADV_SCALE > 0.0) {
+                double P_buf[MAX_PTS][MAX_PTS];
+                for (int ty = 0; ty < p.N_PTS; ++ty) {
+                    for (int tx = 0; tx < p.N_PTS; ++tx) {
+                        double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, ty, tx, p.N_PTS));
+                        double u = c->get_U(1, ty, tx, p.N_PTS) / rho;
+                        double v = c->get_U(2, ty, tx, p.N_PTS) / rho;
+                        P_buf[ty][tx] = (p.GAMMA - 1.0) * (c->get_U(3, ty, tx, p.N_PTS) - 0.5 * rho * (u * u + v * v));
+                    }
+                }
+                for (int ty = 0; ty < p.N_PTS; ++ty) {
+                    for (int tx = 0; tx < p.N_PTS; ++tx) {
+                        double dP_dx = 0.0, dP_dy = 0.0;
+                        for (int k = 0; k < p.N_PTS; ++k) {
+                            dP_dx += basis.D[tx][k] * P_buf[ty][k];
+                            dP_dy += basis.D[ty][k] * P_buf[k][tx];
+                        }
+                        int idx = ty * p.N_PTS + tx;
+                        c->grad_px_field[idx] = dP_dx * (2.0 / c->dx);
+                        c->grad_py_field[idx] = dP_dy * (2.0 / c->dy);
+                    }
+                }
+            }
+
             // --- 1. Pointwise X-flux at each solution point ---
             double F_sol[MAX_PTS][4];
             double F_sol_S[MAX_PTS] = {};
@@ -27,8 +52,21 @@ void Solver::sweep_x() {
                                         c->sigma_field[iy * p.N_PTS + ix]);
                 if (p.ENABLE_PPR) {
                     double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
-                    double u = c->get_U(1, iy, ix, p.N_PTS) / rho;
-                    F_sol_S[ix] = c->S_field[iy * p.N_PTS + ix] * u;
+                    double u   = c->get_U(1, iy, ix, p.N_PTS) / rho;
+                    double v   = c->get_U(2, iy, ix, p.N_PTS) / rho;
+                    // Part A: compute full 2D pressure gradient and store for y-sweep reuse
+                    if (p.PPR_GRAD_ADV_SCALE > 0.0) {
+                        int idx = iy * p.N_PTS + ix;
+                        double dP_dx = c->grad_px_field[idx];
+                        double dP_dy = c->grad_py_field[idx];
+                        // Apply x-component of acoustic pressure-gradient correction to advection velocity
+                        double press = std::max(p.POS_LIMITER_EPS,
+                            (p.GAMMA - 1.0) * (c->get_U(3, iy, ix, p.N_PTS) - 0.5*rho*(u*u+v*v)));
+                        double a_loc = std::sqrt(p.GAMMA * press / rho);
+                        double grad_norm = std::sqrt(dP_dx*dP_dx + dP_dy*dP_dy) + p.PPR_GRAD_EPS;
+                        u += p.PPR_GRAD_ADV_SCALE * a_loc * (dP_dx / grad_norm); // +sign: push S toward high-P side
+                    }
+                    F_sol_S[ix] = c->S_field[iy * p.N_PTS + ix] * (p.PPR_ADV_MULT * u);
                 }
             }
 
@@ -68,15 +106,15 @@ void Solver::sweep_x() {
                     double rho_sb = std::max(p.POS_LIMITER_EPS, u_sb[0]);
                     double p_sb = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (u_sb[3] - 0.5 * (u_sb[1]*u_sb[1] + u_sb[2]*u_sb[2]) / rho_sb));
                     double S_sb = rho_sb * p_sb;
-                    solve_riemann(u_sb, UL_face, Flux_L_comm, 0, S_sb, S_L_face);
+                    solve_riemann(u_sb, UL_face, Flux_L_comm, 0, S_sb, S_L_face, c->theta_avg, c->theta_avg);
                     double u_sb_n = u_sb[1] / rho_sb;
                     double u_local_n = UL_face[1] / std::max(p.POS_LIMITER_EPS, UL_face[0]);
                     double c_sb = std::sqrt(p.GAMMA * p_sb / rho_sb);
                     double p_local = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1) * (UL_face[3] - 0.5 * UL_face[0] * (u_local_n*u_local_n + (UL_face[2]/UL_face[0])*(UL_face[2]/UL_face[0]))));
-                    double p_local_reg = p_local + p.PPR_THETA * (p_local - S_L_face / UL_face[0]);
+                    double p_local_reg = p_local + c->theta_avg * (p_local - S_L_face / UL_face[0]);
                     double c_local = std::sqrt(p.GAMMA * std::max(p_local, p_local_reg) / UL_face[0]);
-                    double lam = std::max(std::abs(u_sb_n) + c_sb, std::abs(u_local_n) + c_local);
-                    Flux_S_L_comm = 0.5 * (S_sb * u_sb_n + S_L_face * u_local_n) - 0.5 * lam * (S_L_face - S_sb);
+                    double lam = std::abs(p.PPR_ADV_MULT) * std::max(std::abs(u_sb_n) + c_sb, std::abs(u_local_n) + c_local);
+                    Flux_S_L_comm = 0.5 * p.PPR_ADV_MULT * (S_sb * u_sb_n + S_L_face * u_local_n) - 0.5 * lam * (S_L_face - S_sb);
                 } else {
                     solve_riemann(u_sb, UL_face, Flux_L_comm, 0);
                 }
@@ -102,17 +140,17 @@ void Solver::sweep_x() {
                 }
                 double Flux_L_comm[4];
                 if (p.ENABLE_PPR) {
-                    solve_riemann(U_neigh, UL_face, Flux_L_comm, 0, S_neigh, S_L_face);
+                    solve_riemann(U_neigh, UL_face, Flux_L_comm, 0, S_neigh, S_L_face, nc->theta_avg, c->theta_avg);
                     double u_neigh_n = U_neigh[1] / std::max(p.POS_LIMITER_EPS, U_neigh[0]);
                     double u_local_n = UL_face[1] / std::max(p.POS_LIMITER_EPS, UL_face[0]);
                     double p_neigh = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1) * (U_neigh[3] - 0.5 * U_neigh[0] * (u_neigh_n*u_neigh_n + (U_neigh[2]/U_neigh[0])*(U_neigh[2]/U_neigh[0]))));
                     double p_local = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1) * (UL_face[3] - 0.5 * UL_face[0] * (u_local_n*u_local_n + (UL_face[2]/UL_face[0])*(UL_face[2]/UL_face[0]))));
-                    double p_neigh_reg = p_neigh + p.PPR_THETA * (p_neigh - S_neigh / U_neigh[0]);
-                    double p_local_reg = p_local + p.PPR_THETA * (p_local - S_L_face / UL_face[0]);
+                    double p_neigh_reg = p_neigh + nc->theta_avg * (p_neigh - S_neigh / U_neigh[0]);
+                    double p_local_reg = p_local + c->theta_avg  * (p_local - S_L_face / UL_face[0]);
                     double c_neigh = std::sqrt(p.GAMMA * std::max(p_neigh, p_neigh_reg) / U_neigh[0]);
                     double c_local = std::sqrt(p.GAMMA * std::max(p_local, p_local_reg) / UL_face[0]);
-                    double lam = std::max(std::abs(u_neigh_n) + c_neigh, std::abs(u_local_n) + c_local);
-                    Flux_S_L_comm = 0.5 * (S_neigh * u_neigh_n + S_L_face * u_local_n) - 0.5 * lam * (S_L_face - S_neigh);
+                    double lam = std::abs(p.PPR_ADV_MULT) * std::max(std::abs(u_neigh_n) + c_neigh, std::abs(u_local_n) + c_local);
+                    Flux_S_L_comm = 0.5 * p.PPR_ADV_MULT * (S_neigh * u_neigh_n + S_L_face * u_local_n) - 0.5 * lam * (S_L_face - S_neigh);
                 } else {
                     solve_riemann(U_neigh, UL_face, Flux_L_comm, 0);
                 }
@@ -126,24 +164,32 @@ void Solver::sweep_x() {
                                      UL_face, sig_L_face, U_neigh, sig_neigh, 0);
                 double S_neigh = S_L_face;
                 if (p.ENABLE_PPR) {
+                    double p_phan_local = S_L_face / std::max(p.POS_LIMITER_EPS, UL_face[0]);
+                    double p_phan_ghost = p_phan_local;
                     const NeighborInfo& ni = c->boundary_info[0];
-                    if (ni.is_supersonic_inflow || ni.is_characteristic || ni.is_total_pressure_comp || ni.is_total_pressure_incomp || ni.is_static_pressure) {
-                        S_neigh = U_neigh[0] * ni.ref_p;
+                    if (ni.is_supersonic_inflow) {
+                        p_phan_ghost = ni.ref_p;
+                    } else if (ni.is_characteristic || ni.is_total_pressure_comp || ni.is_total_pressure_incomp || ni.is_static_pressure) {
+                        double u_ghost_n = -U_neigh[1] / std::max(p.POS_LIMITER_EPS, U_neigh[0]);
+                        if (u_ghost_n < 0.0) {
+                            p_phan_ghost = ni.ref_p;
+                        }
                     }
+                    S_neigh = U_neigh[0] * p_phan_ghost;
                 }
                 double Flux_L_comm[4];
                 if (p.ENABLE_PPR) {
-                    solve_riemann(U_neigh, UL_face, Flux_L_comm, 0, S_neigh, S_L_face);
+                    solve_riemann(U_neigh, UL_face, Flux_L_comm, 0, S_neigh, S_L_face, c->theta_avg, c->theta_avg);
                     double u_neigh_n = U_neigh[1] / std::max(p.POS_LIMITER_EPS, U_neigh[0]);
                     double u_local_n = UL_face[1] / std::max(p.POS_LIMITER_EPS, UL_face[0]);
                     double p_neigh = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1) * (U_neigh[3] - 0.5 * U_neigh[0] * (u_neigh_n*u_neigh_n + (U_neigh[2]/U_neigh[0])*(U_neigh[2]/U_neigh[0]))));
                     double p_local = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1) * (UL_face[3] - 0.5 * UL_face[0] * (u_local_n*u_local_n + (UL_face[2]/UL_face[0])*(UL_face[2]/UL_face[0]))));
-                    double p_neigh_reg = p_neigh + p.PPR_THETA * (p_neigh - S_neigh / U_neigh[0]);
-                    double p_local_reg = p_local + p.PPR_THETA * (p_local - S_L_face / UL_face[0]);
+                    double p_neigh_reg = p_neigh + c->theta_avg * (p_neigh - S_neigh / U_neigh[0]);
+                    double p_local_reg = p_local + c->theta_avg * (p_local - S_L_face / UL_face[0]);
                     double c_neigh = std::sqrt(p.GAMMA * std::max(p_neigh, p_neigh_reg) / U_neigh[0]);
                     double c_local = std::sqrt(p.GAMMA * std::max(p_local, p_local_reg) / UL_face[0]);
-                    double lam = std::max(std::abs(u_neigh_n) + c_neigh, std::abs(u_local_n) + c_local);
-                    Flux_S_L_comm = 0.5 * (S_neigh * u_neigh_n + S_L_face * u_local_n) - 0.5 * lam * (S_L_face - S_neigh);
+                    double lam = std::abs(p.PPR_ADV_MULT) * std::max(std::abs(u_neigh_n) + c_neigh, std::abs(u_local_n) + c_local);
+                    Flux_S_L_comm = 0.5 * p.PPR_ADV_MULT * (S_neigh * u_neigh_n + S_L_face * u_local_n) - 0.5 * lam * (S_L_face - S_neigh);
                 } else {
                     solve_riemann(U_neigh, UL_face, Flux_L_comm, 0);
                 }
@@ -164,15 +210,15 @@ void Solver::sweep_x() {
                     double rho_sb = std::max(p.POS_LIMITER_EPS, u_sb[0]);
                     double p_sb = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (u_sb[3] - 0.5 * (u_sb[1]*u_sb[1] + u_sb[2]*u_sb[2]) / rho_sb));
                     double S_sb = rho_sb * p_sb;
-                    solve_riemann(UR_face, u_sb, Flux_R_comm, 0, S_R_face, S_sb);
+                    solve_riemann(UR_face, u_sb, Flux_R_comm, 0, S_R_face, S_sb, c->theta_avg, c->theta_avg);
                     double u_sb_n = u_sb[1] / rho_sb;
                     double u_local_n = UR_face[1] / std::max(p.POS_LIMITER_EPS, UR_face[0]);
                     double c_sb = std::sqrt(p.GAMMA * p_sb / rho_sb);
                     double p_local = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1) * (UR_face[3] - 0.5 * UR_face[0] * (u_local_n*u_local_n + (UR_face[2]/UR_face[0])*(UR_face[2]/UR_face[0]))));
-                    double p_local_reg = p_local + p.PPR_THETA * (p_local - S_R_face / UR_face[0]);
+                    double p_local_reg = p_local + c->theta_avg * (p_local - S_R_face / UR_face[0]);
                     double c_local = std::sqrt(p.GAMMA * std::max(p_local, p_local_reg) / UR_face[0]);
-                    double lam = std::max(std::abs(u_local_n) + c_local, std::abs(u_sb_n) + c_sb);
-                    Flux_S_R_comm = 0.5 * (S_R_face * u_local_n + S_sb * u_sb_n) - 0.5 * lam * (S_sb - S_R_face);
+                    double lam = std::abs(p.PPR_ADV_MULT) * std::max(std::abs(u_local_n) + c_local, std::abs(u_sb_n) + c_sb);
+                    Flux_S_R_comm = 0.5 * p.PPR_ADV_MULT * (S_R_face * u_local_n + S_sb * u_sb_n) - 0.5 * lam * (S_sb - S_R_face);
                 } else {
                     solve_riemann(UR_face, u_sb, Flux_R_comm, 0);
                 }
@@ -198,17 +244,17 @@ void Solver::sweep_x() {
                 }
                 double Flux_R_comm[4];
                 if (p.ENABLE_PPR) {
-                    solve_riemann(UR_face, U_neigh, Flux_R_comm, 0, S_R_face, S_neigh);
+                    solve_riemann(UR_face, U_neigh, Flux_R_comm, 0, S_R_face, S_neigh, c->theta_avg, nc->theta_avg);
                     double u_neigh_n = U_neigh[1] / std::max(p.POS_LIMITER_EPS, U_neigh[0]);
                     double u_local_n = UR_face[1] / std::max(p.POS_LIMITER_EPS, UR_face[0]);
                     double p_neigh = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1) * (U_neigh[3] - 0.5 * U_neigh[0] * (u_neigh_n*u_neigh_n + (U_neigh[2]/U_neigh[0])*(U_neigh[2]/U_neigh[0]))));
                     double p_local = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1) * (UR_face[3] - 0.5 * UR_face[0] * (u_local_n*u_local_n + (UR_face[2]/UR_face[0])*(UR_face[2]/UR_face[0]))));
-                    double p_neigh_reg = p_neigh + p.PPR_THETA * (p_neigh - S_neigh / U_neigh[0]);
-                    double p_local_reg = p_local + p.PPR_THETA * (p_local - S_R_face / UR_face[0]);
+                    double p_neigh_reg = p_neigh + nc->theta_avg * (p_neigh - S_neigh / U_neigh[0]);
+                    double p_local_reg = p_local + c->theta_avg  * (p_local - S_R_face / UR_face[0]);
                     double c_neigh = std::sqrt(p.GAMMA * std::max(p_neigh, p_neigh_reg) / U_neigh[0]);
                     double c_local = std::sqrt(p.GAMMA * std::max(p_local, p_local_reg) / UR_face[0]);
-                    double lam = std::max(std::abs(u_local_n) + c_local, std::abs(u_neigh_n) + c_neigh);
-                    Flux_S_R_comm = 0.5 * (S_R_face * u_local_n + S_neigh * u_neigh_n) - 0.5 * lam * (S_neigh - S_R_face);
+                    double lam = std::abs(p.PPR_ADV_MULT) * std::max(std::abs(u_local_n) + c_local, std::abs(u_neigh_n) + c_neigh);
+                    Flux_S_R_comm = 0.5 * p.PPR_ADV_MULT * (S_R_face * u_local_n + S_neigh * u_neigh_n) - 0.5 * lam * (S_neigh - S_R_face);
                 } else {
                     solve_riemann(UR_face, U_neigh, Flux_R_comm, 0);
                 }
@@ -222,24 +268,32 @@ void Solver::sweep_x() {
                                      UR_face, sig_R_face, U_neigh, sig_neigh, 0);
                 double S_neigh = S_R_face;
                 if (p.ENABLE_PPR) {
+                    double p_phan_local = S_R_face / std::max(p.POS_LIMITER_EPS, UR_face[0]);
+                    double p_phan_ghost = p_phan_local;
                     const NeighborInfo& ni = c->boundary_info[1];
-                    if (ni.is_supersonic_inflow || ni.is_characteristic || ni.is_total_pressure_comp || ni.is_total_pressure_incomp || ni.is_static_pressure) {
-                        S_neigh = U_neigh[0] * ni.ref_p;
+                    if (ni.is_supersonic_inflow) {
+                        p_phan_ghost = ni.ref_p;
+                    } else if (ni.is_characteristic || ni.is_total_pressure_comp || ni.is_total_pressure_incomp || ni.is_static_pressure) {
+                        double u_ghost_n = U_neigh[1] / std::max(p.POS_LIMITER_EPS, U_neigh[0]);
+                        if (u_ghost_n < 0.0) {
+                            p_phan_ghost = ni.ref_p;
+                        }
                     }
+                    S_neigh = U_neigh[0] * p_phan_ghost;
                 }
                 double Flux_R_comm[4];
                 if (p.ENABLE_PPR) {
-                    solve_riemann(UR_face, U_neigh, Flux_R_comm, 0, S_R_face, S_neigh);
+                    solve_riemann(UR_face, U_neigh, Flux_R_comm, 0, S_R_face, S_neigh, c->theta_avg, c->theta_avg);
                     double u_neigh_n = U_neigh[1] / std::max(p.POS_LIMITER_EPS, U_neigh[0]);
                     double u_local_n = UR_face[1] / std::max(p.POS_LIMITER_EPS, UR_face[0]);
                     double p_neigh = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1) * (U_neigh[3] - 0.5 * U_neigh[0] * (u_neigh_n*u_neigh_n + (U_neigh[2]/U_neigh[0])*(U_neigh[2]/U_neigh[0]))));
                     double p_local = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1) * (UR_face[3] - 0.5 * UR_face[0] * (u_local_n*u_local_n + (UR_face[2]/UR_face[0])*(UR_face[2]/UR_face[0]))));
-                    double p_neigh_reg = p_neigh + p.PPR_THETA * (p_neigh - S_neigh / U_neigh[0]);
-                    double p_local_reg = p_local + p.PPR_THETA * (p_local - S_R_face / UR_face[0]);
+                    double p_neigh_reg = p_neigh + c->theta_avg * (p_neigh - S_neigh / U_neigh[0]);
+                    double p_local_reg = p_local + c->theta_avg * (p_local - S_R_face / UR_face[0]);
                     double c_neigh = std::sqrt(p.GAMMA * std::max(p_neigh, p_neigh_reg) / U_neigh[0]);
                     double c_local = std::sqrt(p.GAMMA * std::max(p_local, p_local_reg) / UR_face[0]);
-                    double lam = std::max(std::abs(u_local_n) + c_local, std::abs(u_neigh_n) + c_neigh);
-                    Flux_S_R_comm = 0.5 * (S_R_face * u_local_n + S_neigh * u_neigh_n) - 0.5 * lam * (S_neigh - S_R_face);
+                    double lam = std::abs(p.PPR_ADV_MULT) * std::max(std::abs(u_local_n) + c_local, std::abs(u_neigh_n) + c_neigh);
+                    Flux_S_R_comm = 0.5 * p.PPR_ADV_MULT * (S_R_face * u_local_n + S_neigh * u_neigh_n) - 0.5 * lam * (S_neigh - S_R_face);
                 } else {
                     solve_riemann(UR_face, U_neigh, Flux_R_comm, 0);
                 }
@@ -359,17 +413,17 @@ void Solver::sweep_x() {
                 double Flux_L_comm[4];
                 double Flux_S_L_comm = 0.0;
                 if (p.ENABLE_PPR) {
-                    solve_riemann(U_neigh, UL_face, Flux_L_comm, 0, S_neigh, S_L_face);
+                    solve_riemann(U_neigh, UL_face, Flux_L_comm, 0, S_neigh, S_L_face, nc->theta_avg, c->theta_avg);
                     double u_neigh_n = U_neigh[1] / std::max(p.POS_LIMITER_EPS, U_neigh[0]);
                     double u_local_n = UL_face[1] / std::max(p.POS_LIMITER_EPS, UL_face[0]);
                     double p_neigh = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1) * (U_neigh[3] - 0.5 * U_neigh[0] * (u_neigh_n*u_neigh_n + (U_neigh[2]/U_neigh[0])*(U_neigh[2]/U_neigh[0]))));
                     double p_local = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1) * (UL_face[3] - 0.5 * UL_face[0] * (u_local_n*u_local_n + (UL_face[2]/UL_face[0])*(UL_face[2]/UL_face[0]))));
-                    double p_neigh_reg = p_neigh + p.PPR_THETA * (p_neigh - S_neigh / U_neigh[0]);
-                    double p_local_reg = p_local + p.PPR_THETA * (p_local - S_L_face / UL_face[0]);
+                    double p_neigh_reg = p_neigh + nc->theta_avg * (p_neigh - S_neigh / U_neigh[0]);
+                    double p_local_reg = p_local + c->theta_avg  * (p_local - S_L_face / UL_face[0]);
                     double c_neigh = std::sqrt(p.GAMMA * std::max(p_neigh, p_neigh_reg) / U_neigh[0]);
                     double c_local = std::sqrt(p.GAMMA * std::max(p_local, p_local_reg) / UL_face[0]);
-                    double lam = std::max(std::abs(u_neigh_n) + c_neigh, std::abs(u_local_n) + c_local);
-                    Flux_S_L_comm = 0.5 * (S_neigh * u_neigh_n + S_L_face * u_local_n) - 0.5 * lam * (S_L_face - S_neigh);
+                    double lam = std::abs(p.PPR_ADV_MULT) * std::max(std::abs(u_neigh_n) + c_neigh, std::abs(u_local_n) + c_local);
+                    Flux_S_L_comm = 0.5 * p.PPR_ADV_MULT * (S_neigh * u_neigh_n + S_L_face * u_local_n) - 0.5 * lam * (S_L_face - S_neigh);
                 } else {
                     solve_riemann(U_neigh, UL_face, Flux_L_comm, 0);
                 }
@@ -463,17 +517,17 @@ void Solver::sweep_x() {
                 double Flux_R_comm[4];
                 double Flux_S_R_comm = 0.0;
                 if (p.ENABLE_PPR) {
-                    solve_riemann(UR_face, U_neigh, Flux_R_comm, 0, S_R_face, S_neigh);
+                    solve_riemann(UR_face, U_neigh, Flux_R_comm, 0, S_R_face, S_neigh, c->theta_avg, nc->theta_avg);
                     double u_neigh_n = U_neigh[1] / std::max(p.POS_LIMITER_EPS, U_neigh[0]);
                     double u_local_n = UR_face[1] / std::max(p.POS_LIMITER_EPS, UR_face[0]);
                     double p_neigh = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1) * (U_neigh[3] - 0.5 * U_neigh[0] * (u_neigh_n*u_neigh_n + (U_neigh[2]/U_neigh[0])*(U_neigh[2]/U_neigh[0]))));
                     double p_local = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1) * (UR_face[3] - 0.5 * UR_face[0] * (u_local_n*u_local_n + (UR_face[2]/UR_face[0])*(UR_face[2]/UR_face[0]))));
-                    double p_neigh_reg = p_neigh + p.PPR_THETA * (p_neigh - S_neigh / U_neigh[0]);
-                    double p_local_reg = p_local + p.PPR_THETA * (p_local - S_R_face / UR_face[0]);
+                    double p_neigh_reg = p_neigh + nc->theta_avg * (p_neigh - S_neigh / U_neigh[0]);
+                    double p_local_reg = p_local + c->theta_avg  * (p_local - S_R_face / UR_face[0]);
                     double c_neigh = std::sqrt(p.GAMMA * std::max(p_neigh, p_neigh_reg) / U_neigh[0]);
                     double c_local = std::sqrt(p.GAMMA * std::max(p_local, p_local_reg) / UR_face[0]);
-                    double lam = std::max(std::abs(u_local_n) + c_local, std::abs(u_neigh_n) + c_neigh);
-                    Flux_S_R_comm = 0.5 * (S_R_face * u_local_n + S_neigh * u_neigh_n) - 0.5 * lam * (S_neigh - S_R_face);
+                    double lam = std::abs(p.PPR_ADV_MULT) * std::max(std::abs(u_local_n) + c_local, std::abs(u_neigh_n) + c_neigh);
+                    Flux_S_R_comm = 0.5 * p.PPR_ADV_MULT * (S_R_face * u_local_n + S_neigh * u_neigh_n) - 0.5 * lam * (S_neigh - S_R_face);
                 } else {
                     solve_riemann(UR_face, U_neigh, Flux_R_comm, 0);
                 }

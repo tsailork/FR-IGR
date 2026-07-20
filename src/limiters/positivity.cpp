@@ -2,12 +2,93 @@
  * @file positivity.cpp
  * @brief Zhang-Shu bounds-preserving (positivity) limiter on decoupled Cells.
  */
-
 #include "positivity.hpp"
 #include "limiter_common.hpp"
 #ifdef _OPENMP
 #include <omp.h>
 #endif
+
+namespace {
+
+static int extrapolate_face_values_ppr(const Cell& c, const Basis& basis,
+                                        double face_pts[][4], double face_S[], int npts) {
+    int count = 0;
+
+    // Left face (ξ = −1): for each iy, sum over ix with l_L[ix]
+    for (int iy = 0; iy < npts; ++iy) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        face_S[count] = 0.0;
+        for (int ix = 0; ix < npts; ++ix) {
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += c.get_U(v, iy, ix, npts) * basis.l_L[ix];
+            face_S[count] += c.S_field[iy * npts + ix] * basis.l_L[ix];
+        }
+        ++count;
+    }
+    // Right face (ξ = +1): for each iy, sum over ix with l_R[ix]
+    for (int iy = 0; iy < npts; ++iy) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        face_S[count] = 0.0;
+        for (int ix = 0; ix < npts; ++ix) {
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += c.get_U(v, iy, ix, npts) * basis.l_R[ix];
+            face_S[count] += c.S_field[iy * npts + ix] * basis.l_R[ix];
+        }
+        ++count;
+    }
+    // Bottom face (η = −1): for each ix, sum over iy with l_L[iy]
+    for (int ix = 0; ix < npts; ++ix) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        face_S[count] = 0.0;
+        for (int iy = 0; iy < npts; ++iy) {
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += c.get_U(v, iy, ix, npts) * basis.l_L[iy];
+            face_S[count] += c.S_field[iy * npts + ix] * basis.l_L[iy];
+        }
+        ++count;
+    }
+    // Top face (η = +1): for each ix, sum over iy with l_R[iy]
+    for (int ix = 0; ix < npts; ++ix) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        face_S[count] = 0.0;
+        for (int iy = 0; iy < npts; ++iy) {
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += c.get_U(v, iy, ix, npts) * basis.l_R[iy];
+            face_S[count] += c.S_field[iy * npts + ix] * basis.l_R[iy];
+        }
+        ++count;
+    }
+    return count;
+}
+
+static double bisect_for_theta_ppr(
+    double r, double ru, double rv, double E, double S,
+    double r_avg, double ru_avg, double rv_avg, double E_avg, double S_avg,
+    double gamma, double theta_ppr, double target, bool is_reg, int n_iter = 30) {
+    double lo = 0.0, hi = 1.0;
+    for (int iter = 0; iter < n_iter; ++iter) {
+        double mid = 0.5 * (lo + hi);
+        double rt  = mid * r  + (1.0 - mid) * r_avg;
+        double rut = mid * ru + (1.0 - mid) * ru_avg;
+        double rvt = mid * rv + (1.0 - mid) * rv_avg;
+        double Et  = mid * E  + (1.0 - mid) * E_avg;
+        double St  = mid * S  + (1.0 - mid) * S_avg;
+        
+        double p_phys = (gamma - 1.0) * (Et - 0.5 * (rut*rut + rvt*rvt) / rt);
+        double val = 0.0;
+        if (is_reg) {
+            double p_phan = St / rt;
+            val = p_phys + theta_ppr * (p_phys - p_phan);
+        } else {
+            val = St / rt; // p_phan
+        }
+        if (val >= target) lo = mid;
+        else               hi = mid;
+    }
+    return lo * (1.0 - 1e-8);
+}
+
+} // namespace
 
 Limiters::LimiterStats Limiters::apply_positivity_limiter(std::vector<Cell*>& cells, const Basis& basis,
                                          const Parameters& p)
@@ -46,13 +127,31 @@ Limiters::LimiterStats Limiters::apply_positivity_limiter(std::vector<Cell*>& ce
                     S_avg += w * c->S_field[iy * npts + ix];
                 }
             }
+            // Clamp average S to ensure P_phan_avg >= eps
+            double p_phan_avg = S_avg / r_avg;
+            if (p_phan_avg < eps) {
+                p_phan_avg = eps;
+                S_avg = eps * r_avg;
+            }
+            // Clamp average S to ensure P_reg_avg >= eps
+            double max_p_phan_avg = ((1.0 + p.PPR_THETA) * p_avg - eps) / p.PPR_THETA;
+            if (p_phan_avg > max_p_phan_avg) {
+                p_phan_avg = max_p_phan_avg;
+                S_avg = max_p_phan_avg * r_avg;
+            }
         }
 
         // =============================================================
         // 1. Extrapolate face checking points
         // =============================================================
         double face_pts[MAX_FACE_PTS][4];
-        int n_face = extrapolate_face_values(*c, basis, face_pts, npts);
+        double face_S[MAX_FACE_PTS];
+        int n_face = 0;
+        if (p.ENABLE_PPR) {
+            n_face = extrapolate_face_values_ppr(*c, basis, face_pts, face_S, npts);
+        } else {
+            n_face = extrapolate_face_values(*c, basis, face_pts, npts);
+        }
 
         // =============================================================
         // 2. PASS 1 — Density limiting
@@ -85,39 +184,75 @@ Limiters::LimiterStats Limiters::apply_positivity_limiter(std::vector<Cell*>& ce
                 }
             }
 
-            n_face = extrapolate_face_values(*c, basis, face_pts, npts);
+            if (p.ENABLE_PPR) {
+                n_face = extrapolate_face_values_ppr(*c, basis, face_pts, face_S, npts);
+            } else {
+                n_face = extrapolate_face_values(*c, basis, face_pts, npts);
+            }
         }
 
         // =============================================================
-        // 3. PASS 2 — Pressure limiting
+        // 3. PASS 2 — Pressure & PPR limiting
         // =============================================================
         double theta_p = 1.0;
 
         for (int iy = 0; iy < npts; ++iy) {
             for (int ix = 0; ix < npts; ++ix) {
-                double press = Limiters::pressure(
-                    c->get_U(0, iy, ix, npts), c->get_U(1, iy, ix, npts),
-                    c->get_U(2, iy, ix, npts), c->get_U(3, iy, ix, npts), p.GAMMA);
+                double rho = c->get_U(0, iy, ix, npts);
+                double rhou = c->get_U(1, iy, ix, npts);
+                double rhov = c->get_U(2, iy, ix, npts);
+                double E = c->get_U(3, iy, ix, npts);
+                double press = Limiters::pressure(rho, rhou, rhov, E, p.GAMMA);
                 if (press < eps) {
                     theta_p = std::min(theta_p, bisect_for_theta(
-                        c->get_U(0, iy, ix, npts), c->get_U(1, iy, ix, npts),
-                        c->get_U(2, iy, ix, npts), c->get_U(3, iy, ix, npts),
-                        r_avg, ru_avg, rv_avg, E_avg,
+                        rho, rhou, rhov, E, r_avg, ru_avg, rv_avg, E_avg,
                         p.GAMMA, eps, true));
+                }
+
+                if (p.ENABLE_PPR) {
+                    double S = c->S_field[iy * npts + ix];
+                    double p_phan = S / rho;
+                    if (p_phan < eps) {
+                        theta_p = std::min(theta_p, bisect_for_theta_ppr(
+                            rho, rhou, rhov, E, S, r_avg, ru_avg, rv_avg, E_avg, S_avg,
+                            p.GAMMA, p.PPR_THETA, eps, false));
+                    }
+                    double p_reg = press + p.PPR_THETA * (press - p_phan);
+                    if (p_reg < eps) {
+                        theta_p = std::min(theta_p, bisect_for_theta_ppr(
+                            rho, rhou, rhov, E, S, r_avg, ru_avg, rv_avg, E_avg, S_avg,
+                            p.GAMMA, p.PPR_THETA, eps, true));
+                    }
                 }
             }
         }
 
         for (int f = 0; f < n_face; ++f) {
-            double press = Limiters::pressure(
-                face_pts[f][0], face_pts[f][1],
-                face_pts[f][2], face_pts[f][3], p.GAMMA);
+            double rho = face_pts[f][0];
+            double rhou = face_pts[f][1];
+            double rhov = face_pts[f][2];
+            double E = face_pts[f][3];
+            double press = Limiters::pressure(rho, rhou, rhov, E, p.GAMMA);
             if (press < eps) {
                 theta_p = std::min(theta_p, bisect_for_theta(
-                    face_pts[f][0], face_pts[f][1],
-                    face_pts[f][2], face_pts[f][3],
-                    r_avg, ru_avg, rv_avg, E_avg,
+                    rho, rhou, rhov, E, r_avg, ru_avg, rv_avg, E_avg,
                     p.GAMMA, eps, true));
+            }
+
+            if (p.ENABLE_PPR) {
+                double S = face_S[f];
+                double p_phan = S / rho;
+                if (p_phan < eps) {
+                    theta_p = std::min(theta_p, bisect_for_theta_ppr(
+                        rho, rhou, rhov, E, S, r_avg, ru_avg, rv_avg, E_avg, S_avg,
+                        p.GAMMA, p.PPR_THETA, eps, false));
+                }
+                double p_reg = press + p.PPR_THETA * (press - p_phan);
+                if (p_reg < eps) {
+                    theta_p = std::min(theta_p, bisect_for_theta_ppr(
+                        rho, rhou, rhov, E, S, r_avg, ru_avg, rv_avg, E_avg, S_avg,
+                        p.GAMMA, p.PPR_THETA, eps, true));
+                }
             }
         }
 

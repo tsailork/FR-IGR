@@ -323,7 +323,8 @@ public:
      * @param[in] dir Direction of sweep (0 = X direction, 1 = Y direction)
      */
     void solve_riemann(const double* UL, const double* UR, double* F_comm,
-                       int dir, double SL = 0.0, double SR = 0.0) const;
+                       int dir, double SL = 0.0, double SR = 0.0,
+                       double thetaL = 0.0, double thetaR = 0.0) const;
 
     /**
      * @brief Perform Flux Reconstruction 1D inviscid sweep in the X coordinate direction.
@@ -396,6 +397,16 @@ public:
      * @brief Accumulate all spatial discretization fluxes (inviscid and viscous) into stage RHS.
      */
     void compute_rhs();
+
+    /**
+     * @brief Compute the element-average adaptive theta for PPR and store in each cell's theta_avg.
+     *
+     * When PPR_ADAPTIVE_THETA is false, sets theta_avg = PPR_THETA for all cells (no-op fallback).
+     * When enabled, evaluates div_nd = -div(u)*h / (a*(P+1)) at each solution point and
+     * piecewise-linearly interpolates theta from (PPR_THETA_MIN, PPR_THETA_MID, PPR_THETA_MAX).
+     * Must be called once per RK stage before sweep_x() and sweep_y().
+     */
+    void compute_ppr_theta_avg();
 
     /**
      * @brief Perform one full SSP-RK3 integration step.

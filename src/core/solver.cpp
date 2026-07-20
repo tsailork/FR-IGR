@@ -159,6 +159,64 @@ Solver::Solver(const Parameters& params)
     }
 }
 
+/// Pre-compute element-average adaptive theta for PPR and store in each cell's theta_avg.
+void Solver::compute_ppr_theta_avg() {
+    if (!p.ENABLE_PPR) return;
+    #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < cells.size(); ++i) {
+        Cell* c = cells[i];
+        if (!p.PPR_ADAPTIVE_THETA) {
+            c->theta_avg = p.PPR_THETA;
+            continue;
+        }
+        double theta_max_cell = p.PPR_THETA_MIN;
+        const double dmax = std::max(1.001, p.PPR_DIV_ND_MAX);
+        
+        // Pre-compute u and v arrays to avoid O(N^3) division by rho
+        double u_buf[MAX_PTS][MAX_PTS];
+        double v_buf[MAX_PTS][MAX_PTS];
+        for (int iy = 0; iy < p.N_PTS; ++iy) {
+            for (int ix = 0; ix < p.N_PTS; ++ix) {
+                double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
+                u_buf[iy][ix] = c->get_U(1, iy, ix, p.N_PTS) / rho;
+                v_buf[iy][ix] = c->get_U(2, iy, ix, p.N_PTS) / rho;
+            }
+        }
+
+        for (int iy = 0; iy < p.N_PTS; ++iy) {
+            for (int ix = 0; ix < p.N_PTS; ++ix) {
+                // Compute div(u) via FR derivative matrix at this solution point
+                double du_dx = 0.0, dv_dy = 0.0;
+                for (int k = 0; k < p.N_PTS; ++k) {
+                    du_dx += basis.D[ix][k] * u_buf[iy][k];
+                    dv_dy += basis.D[iy][k] * v_buf[k][ix];
+                }
+                du_dx *= (2.0 / c->dx);
+                dv_dy *= (2.0 / c->dy);
+                double div_u = du_dx + dv_dy;
+
+                double rho   = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
+                double u_loc = c->get_U(1, iy, ix, p.N_PTS) / rho;
+                double v_loc = c->get_U(2, iy, ix, p.N_PTS) / rho;
+                double P_loc = std::max(p.POS_LIMITER_EPS,
+                    (p.GAMMA - 1.0) * (c->get_U(3, iy, ix, p.N_PTS) - 0.5 * rho * (u_loc*u_loc + v_loc*v_loc)));
+                double a_loc  = std::sqrt(p.GAMMA * P_loc / rho);
+                double h_loc  = std::min(c->dx, c->dy);
+                double div_nd = -div_u * h_loc / (a_loc * (p.P_DEG + 1));
+
+                // Piecewise linear interpolation across anchor points
+                double theta;
+                if      (div_nd <= 0.0)   theta = p.PPR_THETA_MIN;
+                else if (div_nd <  1.0)   theta = p.PPR_THETA_MIN + (p.PPR_THETA_MID - p.PPR_THETA_MIN) * div_nd;
+                else if (div_nd <  dmax)  theta = p.PPR_THETA_MID + (p.PPR_THETA_MAX - p.PPR_THETA_MID) * (div_nd - 1.0) / (dmax - 1.0);
+                else                      theta = p.PPR_THETA_MAX;
+                theta_max_cell = std::max(theta_max_cell, theta);
+            }
+        }
+        c->theta_avg = theta_max_cell;
+    }
+}
+
 /// Assemble the full right-hand side: IGR + inviscid sweeps + viscous fluxes.
 void Solver::compute_rhs() {
     #pragma omp parallel for schedule(static)
@@ -171,6 +229,7 @@ void Solver::compute_rhs() {
     }
 
     compute_entropic_pressure();
+    compute_ppr_theta_avg();
     sweep_x();
     sweep_y();
     if (p.ENABLE_NS) {
@@ -697,7 +756,8 @@ void Solver::get_flux_pointwise_cell(const Cell& c, int iy, int ix,
     double press = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (E - 0.5 * rho * (u*u + v*v)));
     if (p.ENABLE_PPR) {
         double P_phan = c.S_field[iy * p.N_PTS + ix] / rho;
-        double P_reg  = press + p.PPR_THETA * (press - P_phan);
+        double theta_cfl = (p.PPR_ADAPTIVE_THETA) ? c.theta_avg : p.PPR_THETA;
+        double P_reg  = press + theta_cfl * (press - P_phan);
         press = std::max(p.POS_LIMITER_EPS, P_reg);
     }
 

@@ -128,6 +128,55 @@ PPR_THETA = 0.55
 # Typically in the range 0.01 to 1.0.
 PPR_C_TAU = 0.1
 
+# PPR_ADV_MULT: Advection velocity multiplier (kappa) for phantom pressure transport.
+# Multiplies the local fluid velocity when advecting the phantom pressure: F_S = S * (kappa * u).
+#   - 1.0: Standard advection along fluid streamlines (default).
+#   - 0.0: Disables spatial advection (pure point-wise local relaxation mode).
+#   - -1.0: Reverses advection direction relative to fluid velocity.
+PPR_ADV_MULT = 1.0
+
+# --- Part A: Gradient-Guided Phantom Pressure Advection ---
+# PPR_GRAD_ADV_SCALE: Acoustic pressure-gradient advection scale (default 0.0 = off).
+# When > 0, corrects the phantom pressure advection velocity with an acoustic component
+# oriented in the direction of the local pressure gradient:
+#   u_adv = u + PPR_GRAD_ADV_SCALE * a * grad(P) / |grad(P)|
+# The +sign pushes S toward the high-pressure (post-shock) side, evacuating it from
+# the pre-shock region regardless of the sign of the flow velocity relative to the shock.
+# PPR_GRAD_ADV_SCALE = 0.0 recovers classic advection; = 1.0 adds full acoustic magnitude.
+# Values > 1.0 over-correct and may be useful experimentally.
+PPR_GRAD_ADV_SCALE = 0.0
+
+# PPR_GRAD_EPS: Regularization floor on |grad(P)| to prevent division-by-zero in
+# smooth, uniform-pressure regions. Typically kept very small (1e-6 to 1e-8).
+PPR_GRAD_EPS = 1e-6
+
+# --- Part B: Adaptive Theta via Non-Dimensional Divergence ---
+# PPR_ADAPTIVE_THETA: Enable divergence-driven adaptive theta (default false).
+#                     Overwrites PPR_THETA if true.
+# PPR_SMOOTH_THETA:   Add a second pass to the theta calculation that sets a cell's 
+#                     theta to the maximum between itself and its face neighbors (default false).
+PPR_ADAPTIVE_THETA = false
+PPR_SMOOTH_THETA = false
+
+# Non-dimensional divergence definition:
+#   div_nd = -div(u) * h / (a * (P_DEG + 1))
+# div_nd = 0: smooth/uniform flow.  div_nd = 1: compression at acoustic-CFL rate (strong shock indicator).
+
+# PPR_THETA_MIN: Theta value when div_nd <= 0 (smooth or expanding flow).
+# Use 0 to disable artificial regularization in rarefaction regions.
+PPR_THETA_MIN = 0.0
+
+# PPR_THETA_MID: Theta value at div_nd = 1.0 (moderate compression at acoustic-CFL rate).
+PPR_THETA_MID = 1.0
+
+# PPR_THETA_MAX: Theta value at div_nd >= PPR_DIV_ND_MAX (saturated strong shock).
+PPR_THETA_MAX = 2.0
+
+# PPR_DIV_ND_MAX: Non-dimensional divergence saturation threshold.
+# Above this value, theta is clamped to PPR_THETA_MAX.
+# Typical range 1.5-5.0 depending on shock strength.
+PPR_DIV_ND_MAX = 2.0
+
 [ImmersedBoundary]
 # ENABLE_IB: Toggle the Immersed Boundary Method for solid boundaries
 ENABLE_IB = false
@@ -265,6 +314,11 @@ ZONE_0_LEVEL = 2
 [IO]
 # OUTPUT_INTERVAL: Time interval between full, continuous VTK plotting snapshots (plot_*.vtm).
 OUTPUT_INTERVAL = 0.01
+
+# OUTPUT_DIV_ND: Toggle to output the non-dimensional velocity divergence field (div_nd) in the VTK files.
+# Useful for visualizing shock compression strength directly.
+# Type: bool (true/false)
+OUTPUT_DIV_ND = false
 
 # RESTART_INTERVAL: Time interval between exact, lossless restart checkpoints (sol_*.vtm).
 RESTART_INTERVAL = 0.1

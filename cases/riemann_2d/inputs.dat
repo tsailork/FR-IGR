@@ -5,7 +5,7 @@ IC_TYPE = RIEMANN_2D_C3
 [Solver]
 P_DEG = 3
 CFL = 0.4
-T_FINAL = 0.6
+T_FINAL = 0.4
 NUM_THREADS = 14
 ENABLE_MULTIRATE = false
 
@@ -19,6 +19,7 @@ ENABLE_IGR = false
 ENABLE_PPR = true
 PPR_THETA = 5.0
 PPR_C_TAU = 0.2
+PPR_ADV_MULT = 1.0
 
 [Stabilization]
 ENABLE_POS_LIMITER = true

@@ -118,6 +118,17 @@ struct Parameters {
     bool   ENABLE_PPR         = false;    ///< Toggle Phantom Pressure Regularization.
     double PPR_THETA          = 1.0;      ///< Regularization feedback coefficient (theta).
     double PPR_C_TAU          = 0.2;      ///< Scaling coefficient for the relaxation time (C_tau).
+    double PPR_ADV_MULT       = 1.0;      ///< Advection velocity multiplier (kappa) for phantom pressure advection.
+    // Part A: Gradient-guided advection
+    double PPR_GRAD_ADV_SCALE = 0.0;      ///< Acoustic pressure-gradient advection scale. 0=off, 1=full: u_adv = u + scale*a*grad(P)/|grad(P)|.
+    double PPR_GRAD_EPS       = 1e-6;     ///< Floor on ||grad P|| to prevent division-by-zero in smooth regions.
+    // Part B: Adaptive theta via non-dimensional divergence
+    bool   PPR_ADAPTIVE_THETA = false;    ///< Enable divergence-driven adaptive theta (overrides PPR_THETA when true).
+    double PPR_THETA_MIN      = 0.0;      ///< Theta at div_nd <= 0 (smooth/expanding flow).
+    double PPR_THETA_MID      = 1.0;      ///< Theta at div_nd = 1 (moderate acoustic-CFL compression).
+    double PPR_THETA_MAX      = 2.0;      ///< Theta at div_nd >= PPR_DIV_ND_MAX (saturated strong shock).
+    bool   PPR_SMOOTH_THETA   = false;    ///< Smooth theta across face neighbors.
+    double PPR_DIV_ND_MAX     = 2.0;      ///< Non-dimensional divergence saturation threshold (maps to theta_max).
 
     // -------------------------------------------------------------------------
     // Time Stepping & I/O
@@ -125,6 +136,7 @@ struct Parameters {
     double T_FINAL   = 0.3;           ///< Target end time of the simulation.
     double OUTPUT_DT = 0.01;          ///< Deprecated, maps to OUTPUT_INTERVAL.
     double OUTPUT_INTERVAL  = 0.01;   ///< Periodicity of structured grid visual output snapshots (.vts).
+    bool   OUTPUT_DIV_ND    = false;  ///< Output the non-dimensional velocity divergence (div*).
     double RESTART_INTERVAL = 0.1;    ///< Periodicity of exact binary restart checkpoints (.vts).
     
     // New parameters for diagnostics

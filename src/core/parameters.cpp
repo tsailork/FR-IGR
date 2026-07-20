@@ -215,9 +215,18 @@ void Parameters::load_inputs(const std::string& filename) {
     // --- [PPR] ---
     if (ini.count("PPR")) {
         auto& kv = ini["PPR"];
-        if (kv.count("ENABLE_PPR")) ENABLE_PPR = (kv["ENABLE_PPR"] == "true" || kv["ENABLE_PPR"] == "1");
-        if (kv.count("PPR_THETA"))  PPR_THETA  = std::stod(kv["PPR_THETA"]);
-        if (kv.count("PPR_C_TAU"))  PPR_C_TAU  = std::stod(kv["PPR_C_TAU"]);
+        if (kv.count("ENABLE_PPR"))        ENABLE_PPR        = (kv["ENABLE_PPR"] == "true" || kv["ENABLE_PPR"] == "1");
+        if (kv.count("PPR_THETA"))         PPR_THETA         = std::stod(kv["PPR_THETA"]);
+        if (kv.count("PPR_C_TAU"))         PPR_C_TAU         = std::stod(kv["PPR_C_TAU"]);
+        if (kv.count("PPR_ADV_MULT"))      PPR_ADV_MULT      = std::stod(kv["PPR_ADV_MULT"]);
+        if (kv.count("PPR_GRAD_ADV_SCALE")) PPR_GRAD_ADV_SCALE = std::stod(kv["PPR_GRAD_ADV_SCALE"]);
+        if (kv.count("PPR_GRAD_EPS"))      PPR_GRAD_EPS      = std::stod(kv["PPR_GRAD_EPS"]);
+        if (kv.count("PPR_ADAPTIVE_THETA")) PPR_ADAPTIVE_THETA = (kv["PPR_ADAPTIVE_THETA"] == "true" || kv["PPR_ADAPTIVE_THETA"] == "1");
+        if (kv.count("PPR_SMOOTH_THETA")) PPR_SMOOTH_THETA = (kv["PPR_SMOOTH_THETA"] == "true" || kv["PPR_SMOOTH_THETA"] == "1");
+        if (kv.count("PPR_THETA_MIN"))     PPR_THETA_MIN     = std::stod(kv["PPR_THETA_MIN"]);
+        if (kv.count("PPR_THETA_MID"))     PPR_THETA_MID     = std::stod(kv["PPR_THETA_MID"]);
+        if (kv.count("PPR_THETA_MAX"))     PPR_THETA_MAX     = std::stod(kv["PPR_THETA_MAX"]);
+        if (kv.count("PPR_DIV_ND_MAX"))    PPR_DIV_ND_MAX    = std::stod(kv["PPR_DIV_ND_MAX"]);
     }
 
     // --- [Stabilization] ---
@@ -249,6 +258,7 @@ void Parameters::load_inputs(const std::string& filename) {
             OUTPUT_INTERVAL = OUTPUT_DT;
         }
         if (kv.count("OUTPUT_INTERVAL"))   OUTPUT_INTERVAL  = std::stod(kv["OUTPUT_INTERVAL"]);
+        if (kv.count("OUTPUT_DIV_ND"))     OUTPUT_DIV_ND    = (kv["OUTPUT_DIV_ND"] == "true" || kv["OUTPUT_DIV_ND"] == "1");
         if (kv.count("RESTART_INTERVAL"))  RESTART_INTERVAL = std::stod(kv["RESTART_INTERVAL"]);
         if (kv.count("RESIDUAL_INTERVAL")) RESIDUAL_INTERVAL = std::stod(kv["RESIDUAL_INTERVAL"]);
         if (kv.count("PROBE_INTERVAL"))    PROBE_INTERVAL    = std::stod(kv["PROBE_INTERVAL"]);

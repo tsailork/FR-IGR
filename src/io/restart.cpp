@@ -123,6 +123,31 @@ bool Restart::load_restart(const std::string& filename, Solver& solver) {
         }
     }
 
+    // Read S_field (phantom pressure transport variable) if present and enabled.
+    // If ENABLE_PPR is true but the array is absent (old checkpoint or file saved
+    // without PPR), we fall back to re-computing S = rho * press from the loaded
+    // conserved state, which is applied per-cell in the matching loop below.
+    std::vector<double> s_field_vals;
+    bool s_field_from_file = false;
+    if (p.ENABLE_PPR) {
+        file.clear();
+        file.seekg(0);
+        if (seek_data_array(file, "S_field")) {
+            s_field_vals = read_values(file, total_points);
+            if ((int)s_field_vals.size() == total_points) {
+                s_field_from_file = true;
+            } else {
+                std::cerr << "[RESTART] Warning: 'S_field' array has unexpected size ("
+                          << s_field_vals.size() << " vs " << total_points
+                          << "); will re-compute from rho*press.\n";
+                s_field_vals.clear();
+            }
+        } else {
+            std::cout << "[RESTART] 'S_field' not found in checkpoint; "
+                         "initialising from rho*press (PPR equilibrium).\n";
+        }
+    }
+
     // Match cell states by Morton ID
     std::unordered_map<uint64_t, Cell*> cell_map;
     for (Cell* c : solver.cells) {
@@ -139,7 +164,7 @@ bool Restart::load_restart(const std::string& filename, Solver& solver) {
         auto it = cell_map.find(mid);
         if (it != cell_map.end()) {
             Cell* c = it->second;
-            // Load states
+            // Load conserved state
             for (int v = 0; v < 4; ++v) {
                 for (int node = 0; node < npts2; ++node) {
                     c->U[v * npts2 + node] = state_vals[v][point_offset + node];
@@ -151,12 +176,42 @@ bool Restart::load_restart(const std::string& filename, Solver& solver) {
                     c->sigma_field[node] = sigma_vals[point_offset + node];
                 }
             }
+            // Load or compute S_field
+            if (p.ENABLE_PPR) {
+                if (s_field_from_file) {
+                    // Restore exact tracked phantom-pressure state from checkpoint
+                    for (int node = 0; node < npts2; ++node) {
+                        c->S_field[node] = s_field_vals[point_offset + node];
+                    }
+                } else {
+                    // Fallback: initialise to local equilibrium S = rho * press
+                    // so the positivity limiter does not fire on every cell at step 1
+                    for (int iy = 0; iy < npts; ++iy) {
+                        for (int ix = 0; ix < npts; ++ix) {
+                            int node = iy * npts + ix;
+                            double rho  = c->U[0 * npts2 + node];
+                            double rhou = c->U[1 * npts2 + node];
+                            double rhov = c->U[2 * npts2 + node];
+                            double E    = c->U[3 * npts2 + node];
+                            double press = (p.GAMMA - 1.0) *
+                                (E - 0.5 * (rhou*rhou + rhov*rhov) /
+                                           std::max(p.POS_LIMITER_EPS, rho));
+                            c->S_field[node] = std::max(p.POS_LIMITER_EPS,
+                                                        rho * press);
+                        }
+                    }
+                }
+            }
             matched_cells++;
         }
     }
 
     std::cout << "[RESTART] Successfully matched and loaded " << matched_cells << " / " << solver.cells.size()
-              << " cells from checkpoint file (total cells in file: " << total_cells_in_file << ")\n";
+              << " cells from checkpoint file (total cells in file: " << total_cells_in_file << ")";
+    if (p.ENABLE_PPR) {
+        std::cout << " | S_field: " << (s_field_from_file ? "restored from file" : "re-computed (rho*press)");
+    }
+    std::cout << "\n";
 
     if (matched_cells != (int)solver.cells.size()) {
         std::cerr << "[RESTART] Warning: Cell count mismatch. Solver has " << solver.cells.size()

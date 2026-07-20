@@ -98,7 +98,7 @@ void Solver::get_flux_pointwise(const Block& b, int ey, int ex, int iy, int ix,
  * @see Solver::sweep_y
  */
 void Solver::solve_riemann(const double* UL, const double* UR, double* F_comm,
-                           int dir, double SL, double SR) const
+                           int dir, double SL, double SR, double thetaL, double thetaR) const
 {
     double rhoL = std::max(p.POS_LIMITER_EPS, UL[0]);
     double uL = UL[1] / rhoL, vL = UL[2] / rhoL;
@@ -115,8 +115,10 @@ void Solver::solve_riemann(const double* UL, const double* UR, double* F_comm,
     if (p.ENABLE_PPR) {
         double pL_phan = SL / rhoL;
         double pR_phan = SR / rhoR;
-        double pL_reg = pL + p.PPR_THETA * (pL - pL_phan);
-        double pR_reg = pR + p.PPR_THETA * (pR - pR_phan);
+        double theta_cfl_L = (p.PPR_ADAPTIVE_THETA) ? thetaL : p.PPR_THETA;
+        double theta_cfl_R = (p.PPR_ADAPTIVE_THETA) ? thetaR : p.PPR_THETA;
+        double pL_reg = pL + theta_cfl_L * (pL - pL_phan);
+        double pR_reg = pR + theta_cfl_R * (pR - pR_phan);
 
         double pL_safe = std::max(pL, pL_reg);
         double pR_safe = std::max(pR, pR_reg);

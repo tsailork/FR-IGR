@@ -221,6 +221,29 @@ void VTKWriter::write_checkpoint(Solver& solver, int step, double time) {
     write_point_array("Temperature", [&](Cell* c, int iy, int ix) { return get_prim(c, iy, ix, 3); });
     write_point_array("Mach", [&](Cell* c, int iy, int ix) { return get_prim(c, iy, ix, 4); });
 
+    if (p.OUTPUT_DIV_ND) {
+        write_point_array("div_nd", [&](Cell* c, int iy, int ix) {
+            double du_dx = 0.0, dv_dy = 0.0;
+            for (int k = 0; k < npts; ++k) {
+                double rk_x = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, k, npts));
+                du_dx += solver.basis.D[ix][k] * (c->get_U(1, iy, k, npts) / rk_x);
+                double rk_y = std::max(p.POS_LIMITER_EPS, c->get_U(0, k, ix, npts));
+                dv_dy += solver.basis.D[iy][k] * (c->get_U(2, k, ix, npts) / rk_y);
+            }
+            du_dx *= (2.0 / c->dx);
+            dv_dy *= (2.0 / c->dy);
+            double div_u = du_dx + dv_dy;
+            
+            double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, npts));
+            double u = c->get_U(1, iy, ix, npts) / rho;
+            double v = c->get_U(2, iy, ix, npts) / rho;
+            double press = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (c->get_U(3, iy, ix, npts) - 0.5 * rho * (u * u + v * v)));
+            double a_loc = std::sqrt(p.GAMMA * press / rho);
+            double h_loc = std::min(c->dx, c->dy);
+            return -div_u * h_loc / (a_loc * (p.P_DEG + 1));
+        });
+    }
+
     if (p.ENABLE_IGR) {
         write_point_array("Sigma", [&](Cell* c, int iy, int ix) {
             return c->sigma_field[iy * npts + ix];
@@ -231,6 +254,11 @@ void VTKWriter::write_checkpoint(Solver& solver, int step, double time) {
     }
 
     if (p.ENABLE_PPR) {
+        // S_field is the raw phantom-pressure state variable (S = rho * P_phan).
+        // Written first so the restart loader can recover it without reading derived fields.
+        write_point_array("S_field", [&](Cell* c, int iy, int ix) {
+            return c->S_field[iy * npts + ix];
+        });
         write_point_array("P_phan", [&](Cell* c, int iy, int ix) {
             double r = c->get_U(0, iy, ix, npts);
             double S = c->S_field[iy * npts + ix];
@@ -554,6 +582,29 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
     write_prim_array("Pressure", 2);
     write_prim_array("Temperature", 3);
     write_prim_array("Mach", 4);
+
+    if (p.OUTPUT_DIV_ND) {
+        write_array("div_nd", [&](Cell* c, int iy, int ix) {
+            double du_dx = 0.0, dv_dy = 0.0;
+            for (int k = 0; k < p.N_PTS; ++k) {
+                double rk_x = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, k, p.N_PTS));
+                du_dx += solver.basis.D[ix][k] * (c->get_U(1, iy, k, p.N_PTS) / rk_x);
+                double rk_y = std::max(p.POS_LIMITER_EPS, c->get_U(0, k, ix, p.N_PTS));
+                dv_dy += solver.basis.D[iy][k] * (c->get_U(2, k, ix, p.N_PTS) / rk_y);
+            }
+            du_dx *= (2.0 / c->dx);
+            dv_dy *= (2.0 / c->dy);
+            double div_u = du_dx + dv_dy;
+            
+            double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
+            double u = c->get_U(1, iy, ix, p.N_PTS) / rho;
+            double v = c->get_U(2, iy, ix, p.N_PTS) / rho;
+            double press = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (c->get_U(3, iy, ix, p.N_PTS) - 0.5 * rho * (u * u + v * v)));
+            double a_loc = std::sqrt(p.GAMMA * press / rho);
+            double h_loc = std::min(c->dx, c->dy);
+            return -div_u * h_loc / (a_loc * (p.P_DEG + 1));
+        });
+    }
 
     if (p.ENABLE_IGR) {
         write_array("Sigma", [&](Cell* c, int iy, int ix) {

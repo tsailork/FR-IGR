@@ -52,9 +52,21 @@ double Solver::compute_dt() const {
                 double u   = c->get_U(1, iy, ix, p.N_PTS) / rho;
                 double v   = c->get_U(2, iy, ix, p.N_PTS) / rho;
                 double press = (p.GAMMA - 1.0) * (c->get_U(3, iy, ix, p.N_PTS) - 0.5 * rho * (u * u + v * v));
-                if (press < 1e-12) press = 1e-12;
-                double sound_speed = std::sqrt(p.GAMMA * press / rho);
+                double press_safe = press;
+                if (p.ENABLE_PPR) {
+                    double theta_cfl = (p.PPR_ADAPTIVE_THETA) ? c->theta_avg : p.PPR_THETA;
+                    double p_phan = c->S_field[iy * p.N_PTS + ix] / rho;
+                    double p_reg = press + theta_cfl * (press - p_phan);
+                    press_safe = std::max(press, p_reg);
+                }
+                if (press_safe < 1e-12) press_safe = 1e-12;
+                double sound_speed = std::sqrt(p.GAMMA * press_safe / rho);
                 max_lambda = std::max({max_lambda, std::abs(u) + sound_speed, std::abs(v) + sound_speed});
+                if (p.ENABLE_PPR) {
+                    double s_wave_x = p.PPR_ADV_MULT * (std::abs(u) + p.PPR_GRAD_ADV_SCALE * sound_speed);
+                    double s_wave_y = p.PPR_ADV_MULT * (std::abs(v) + p.PPR_GRAD_ADV_SCALE * sound_speed);
+                    max_lambda = std::max({max_lambda, s_wave_x, s_wave_y});
+                }
             }
         }
 
