@@ -137,6 +137,7 @@ struct Parameters {
     double OUTPUT_DT = 0.01;          ///< Deprecated, maps to OUTPUT_INTERVAL.
     double OUTPUT_INTERVAL  = 0.01;   ///< Periodicity of structured grid visual output snapshots (.vts).
     bool   OUTPUT_DIV_ND    = false;  ///< Output the non-dimensional velocity divergence (div*).
+    bool   OUTPUT_ADAPTIVE_THETA = false;  ///< Output the element-wise adaptive PPR theta field.
     double RESTART_INTERVAL = 0.1;    ///< Periodicity of exact binary restart checkpoints (.vts).
     
     // New parameters for diagnostics

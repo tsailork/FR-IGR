@@ -16,6 +16,7 @@ void Solver::compute_igr_parabolic_rhs() {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
 
         // X-gradient (qx)
         for (int iy = 0; iy < p.N_PTS; ++iy) {
@@ -132,6 +133,7 @@ void Solver::compute_igr_parabolic_rhs() {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
         const double epsilon = p.ALPHA_SCALE * (c->dx * c->dy);
         const double br2_factor = p.IGR_BR2_ETA * (p.P_DEG + 1) * (p.P_DEG + 1);
 

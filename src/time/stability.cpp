@@ -12,8 +12,10 @@
 #include <cstdlib>
 
 void Solver::check_stability() const {
+    #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
         for (int iy = 0; iy < p.N_PTS; ++iy) {
             for (int ix = 0; ix < p.N_PTS; ++ix) {
                 double rho  = c->get_U(0, iy, ix, p.N_PTS);
@@ -22,17 +24,20 @@ void Solver::check_stability() const {
                 double E    = c->get_U(3, iy, ix, p.N_PTS);
                 double press = (p.GAMMA - 1.0) * (E - 0.5*(rhou*rhou + rhov*rhov)/rho);
                 if (std::isnan(rho) || std::isnan(press) || rho <= 0.0 || press <= 0.0) {
-                    std::cerr << std::scientific << std::setprecision(15)
-                              << "\n[STABILITY ERROR] cell_index=" << i
-                              << " morton_id=" << c->morton_id
-                              << " elem=(" << c->ex << "," << c->ey << ") block=" << c->block_id
-                              << " node=(" << ix << "," << iy << ")"
-                              << "\n  rho  = " << rho
-                              << "\n  rhou = " << rhou
-                              << "\n  rhov = " << rhov
-                              << "\n  E    = " << E
-                              << "\n  p    = " << press << "\n";
-                    exit(1);
+                    #pragma omp critical
+                    {
+                        std::cerr << std::scientific << std::setprecision(15)
+                                  << "\n[STABILITY ERROR] cell_index=" << i
+                                  << " morton_id=" << c->morton_id
+                                  << " elem=(" << c->ex << "," << c->ey << ") block=" << c->block_id
+                                  << " node=(" << ix << "," << iy << ")"
+                                  << "\n  rho  = " << rho
+                                  << "\n  rhou = " << rhou
+                                  << "\n  rhov = " << rhov
+                                  << "\n  E    = " << E
+                                  << "\n  p    = " << press << "\n";
+                        exit(1);
+                    }
                 }
             }
         }

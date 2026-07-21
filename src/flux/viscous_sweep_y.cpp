@@ -60,6 +60,7 @@ void Solver::viscous_sweep_y() {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
 
         auto get_suth_mu = [&](const double State[4]) {
             double r = std::max(1e-14, State[0]);
@@ -193,6 +194,7 @@ void Solver::viscous_sweep_y() {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
 
         auto get_suth_mu = [&](const double State[4]) {
             double r = std::max(1e-14, State[0]);

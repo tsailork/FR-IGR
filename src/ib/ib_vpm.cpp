@@ -17,6 +17,7 @@ void Solver::apply_ib_explicit() {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
         for (int iy = 0; iy < p.N_PTS; ++iy) {
             for (int ix = 0; ix < p.N_PTS; ++ix) {
                 int idx = iy * p.N_PTS + ix;
@@ -59,12 +60,14 @@ void Solver::apply_ib_explicit() {
     }
 }
 
-void Solver::apply_ib_analytical(double dt_stage) {
+void Solver::apply_ib_analytical(double dt_stage_ratio) {
     if (!p.ENABLE_IB) return;
 
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+        double dt_stage = p.ENABLE_MULTIRATE ? (dt_stage_ratio * c->element_dt) : dt_stage_ratio;
         for (int iy = 0; iy < p.N_PTS; ++iy) {
             for (int ix = 0; ix < p.N_PTS; ++ix) {
                 int idx = iy * p.N_PTS + ix;

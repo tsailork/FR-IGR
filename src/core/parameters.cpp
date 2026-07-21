@@ -98,6 +98,19 @@ void Parameters::load_domain(const std::string& filename) {
         return a.id < b.id;
     });
 
+    if (blocks.size() > 511) {
+        std::cerr << "[Error] Number of blocks (" << blocks.size() << ") exceeds the maximum supported by Morton scheme (511).\n";
+        std::exit(EXIT_FAILURE);
+    }
+
+    for (const auto& b : blocks) {
+        if (b.N_ELEM_X > 2047 || b.N_ELEM_Y > 2047) {
+            std::cerr << "[Error] Block " << b.id << " dimensions (" << b.N_ELEM_X << "x" << b.N_ELEM_Y 
+                      << ") exceed the maximum supported by Morton scheme (2047x2047).\n";
+            std::exit(EXIT_FAILURE);
+        }
+    }
+
     // Validation pass
     for (const auto& b : blocks) {
         if (b.N_ELEM_X <= 0 || b.N_ELEM_Y <= 0) {
@@ -259,6 +272,7 @@ void Parameters::load_inputs(const std::string& filename) {
         }
         if (kv.count("OUTPUT_INTERVAL"))   OUTPUT_INTERVAL  = std::stod(kv["OUTPUT_INTERVAL"]);
         if (kv.count("OUTPUT_DIV_ND"))     OUTPUT_DIV_ND    = (kv["OUTPUT_DIV_ND"] == "true" || kv["OUTPUT_DIV_ND"] == "1");
+        if (kv.count("OUTPUT_ADAPTIVE_THETA")) OUTPUT_ADAPTIVE_THETA = (kv["OUTPUT_ADAPTIVE_THETA"] == "true" || kv["OUTPUT_ADAPTIVE_THETA"] == "1");
         if (kv.count("RESTART_INTERVAL"))  RESTART_INTERVAL = std::stod(kv["RESTART_INTERVAL"]);
         if (kv.count("RESIDUAL_INTERVAL")) RESIDUAL_INTERVAL = std::stod(kv["RESIDUAL_INTERVAL"]);
         if (kv.count("PROBE_INTERVAL"))    PROBE_INTERVAL    = std::stod(kv["PROBE_INTERVAL"]);

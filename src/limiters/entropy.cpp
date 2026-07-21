@@ -18,6 +18,7 @@ Limiters::LimiterStats Limiters::apply_entropy_limiter(Solver &solver) {
     // --- 1. Pre-calculate min entropy for every cell ---
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
+        if (p.ENABLE_MULTIRATE && !cells[i]->element_active) continue;
         cells[i]->s_min_val = min_entropy_in_cell(*cells[i], p, p.N_PTS);
     }
 
@@ -28,6 +29,7 @@ Limiters::LimiterStats Limiters::apply_entropy_limiter(Solver &solver) {
     #pragma omp parallel for schedule(static) reduction(+:num_limited, sum_theta)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
         double s_floor = c->s_min_val;
 
         // Gather neighborhood entropy minimum from conforming neighbors

@@ -497,6 +497,9 @@
             <p>
                 Spatial discretization is defined using a block-structured Cartesian approach. The <code>domain.grid</code> file establishes individual, contiguous blocks and declares the mapping connections between their faces.
             </p>
+            <div class="note" style="margin-bottom: 1rem;">
+                <strong>Note on Grid Constraints:</strong> The solver utilizes a 64-bit Morton spatial hashing scheme for <code>O(1)</code> connectivity resolution. This imposes strict architectural limits of a maximum of <strong>511 total blocks</strong>, and a maximum of <strong>2047 &times; 2047 elements per block</strong>.
+            </div>
             <p>An example definition for <code>[Block0]</code>:</p>
             <pre><code>[Block0]
 N_ELEM_X = 20           # Elements in X direction

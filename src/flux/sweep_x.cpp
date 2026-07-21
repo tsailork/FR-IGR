@@ -16,6 +16,7 @@ void Solver::sweep_x() {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
         for (int iy = 0; iy < p.N_PTS; ++iy) {
 
             // Pre-compute pressure gradients for the entire cell if needed for acoustic advection
@@ -97,7 +98,7 @@ void Solver::sweep_x() {
             double sig_neigh;
 
             // Left Face (0)
-            const ImmersedBoundary::SurrogateFluxPoint* sfp_L = ImmersedBoundary::get_sbm_face(c->block_id, c->ey, c->ex, 0, iy);
+            const ImmersedBoundary::SurrogateFluxPoint* sfp_L = (p.ENABLE_IB && p.IB_METHOD == "SBM") ? ImmersedBoundary::get_sbm_face(c->block_id, c->ey, c->ex, 0, iy) : nullptr;
             if (sfp_L) {
                 double u_sb[4];
                 ImmersedBoundary::compute_sbm_state(*this, sfp_L, u_sb);
@@ -201,7 +202,7 @@ void Solver::sweep_x() {
             }
 
             // Right Face (1)
-            const ImmersedBoundary::SurrogateFluxPoint* sfp_R = ImmersedBoundary::get_sbm_face(c->block_id, c->ey, c->ex, 1, iy);
+            const ImmersedBoundary::SurrogateFluxPoint* sfp_R = (p.ENABLE_IB && p.IB_METHOD == "SBM") ? ImmersedBoundary::get_sbm_face(c->block_id, c->ey, c->ex, 1, iy) : nullptr;
             if (sfp_R) {
                 double u_sb[4];
                 ImmersedBoundary::compute_sbm_state(*this, sfp_R, u_sb);
@@ -356,6 +357,7 @@ void Solver::sweep_x() {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
 
         // Left Face (0) non-conforming coarser neighbor
         if (c->neighbors[0] && c->neighbors[0]->level < c->level) {

@@ -273,7 +273,8 @@ void VTKWriter::write_checkpoint(Solver& solver, int step, double time) {
             double press = (p.GAMMA - 1.0) * (E - 0.5 * r * (u*u + v*v));
             double S = c->S_field[iy * npts + ix];
             double p_phan = S / std::max(p.POS_LIMITER_EPS, r);
-            return press + p.PPR_THETA * (press - p_phan);
+            double theta_cfl = (p.PPR_ADAPTIVE_THETA) ? c->theta_avg : p.PPR_THETA;
+            return press + theta_cfl * (press - p_phan);
         });
         write_point_array("P_diff", [&](Cell* c, int iy, int ix) {
             double r = c->get_U(0, iy, ix, npts);
@@ -286,6 +287,11 @@ void VTKWriter::write_checkpoint(Solver& solver, int step, double time) {
             double p_phan = S / std::max(p.POS_LIMITER_EPS, r);
             return press - p_phan;
         });
+        if (p.OUTPUT_ADAPTIVE_THETA) {
+            write_point_array("Theta_PPR", [&](Cell* c, int iy, int ix) {
+                return (p.PPR_ADAPTIVE_THETA) ? c->theta_avg : p.PPR_THETA;
+            });
+        }
     }
 
     if (p.ENABLE_IB) {
@@ -630,7 +636,8 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
             double press = (p.GAMMA - 1.0) * (E - 0.5 * r * (u*u + v*v));
             double S = c->S_field[iy * p.N_PTS + ix];
             double p_phan = S / std::max(p.POS_LIMITER_EPS, r);
-            return press + p.PPR_THETA * (press - p_phan);
+            double theta_cfl = (p.PPR_ADAPTIVE_THETA) ? c->theta_avg : p.PPR_THETA;
+            return press + theta_cfl * (press - p_phan);
         });
         write_array("P_diff", [&](Cell* c, int iy, int ix) {
             double r = c->get_U(0, iy, ix, p.N_PTS);
@@ -643,6 +650,11 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
             double p_phan = S / std::max(p.POS_LIMITER_EPS, r);
             return press - p_phan;
         });
+        if (p.OUTPUT_ADAPTIVE_THETA) {
+            write_array("Theta_PPR", [&](Cell* c, int iy, int ix) {
+                return (p.PPR_ADAPTIVE_THETA) ? c->theta_avg : p.PPR_THETA;
+            });
+        }
     }
 
     if (p.ENABLE_IB) {

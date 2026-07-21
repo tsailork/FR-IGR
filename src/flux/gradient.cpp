@@ -18,6 +18,7 @@ void Solver::compute_gradients() {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
         for (int iy = 0; iy < p.N_PTS; ++iy) {
             double UL_face[4] = {}, UR_face[4] = {};
             for (int k = 0; k < p.N_PTS; ++k) {
@@ -30,7 +31,7 @@ void Solver::compute_gradients() {
             double jump_L[4] = {}, jump_R[4] = {};
 
             // Left Face (0) conforming/SFP/boundary
-            const ImmersedBoundary::SurrogateFluxPoint* sfp_L = ImmersedBoundary::get_sbm_face(c->block_id, c->ey, c->ex, 0, iy);
+            const ImmersedBoundary::SurrogateFluxPoint* sfp_L = (p.ENABLE_IB && p.IB_METHOD == "SBM") ? ImmersedBoundary::get_sbm_face(c->block_id, c->ey, c->ex, 0, iy) : nullptr;
             if (sfp_L) {
                 double U_neigh_L[4];
                 ImmersedBoundary::compute_sbm_state(*this, sfp_L, U_neigh_L);
@@ -52,7 +53,7 @@ void Solver::compute_gradients() {
             }
 
             // Right Face (1) conforming/SFP/boundary
-            const ImmersedBoundary::SurrogateFluxPoint* sfp_R = ImmersedBoundary::get_sbm_face(c->block_id, c->ey, c->ex, 1, iy);
+            const ImmersedBoundary::SurrogateFluxPoint* sfp_R = (p.ENABLE_IB && p.IB_METHOD == "SBM") ? ImmersedBoundary::get_sbm_face(c->block_id, c->ey, c->ex, 1, iy) : nullptr;
             if (sfp_R) {
                 double U_neigh_R[4];
                 ImmersedBoundary::compute_sbm_state(*this, sfp_R, U_neigh_R);
@@ -94,6 +95,7 @@ void Solver::compute_gradients() {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
 
         // Left Face (0) non-conforming coarser neighbor
         if (c->neighbors[0] && c->neighbors[0]->level < c->level) {
@@ -218,6 +220,7 @@ void Solver::compute_gradients() {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
         for (int ix = 0; ix < p.N_PTS; ++ix) {
             double UB_face[4] = {}, UT_face[4] = {};
             for (int k = 0; k < p.N_PTS; ++k) {
@@ -230,7 +233,7 @@ void Solver::compute_gradients() {
             double jump_B[4] = {}, jump_T[4] = {};
 
             // Bottom Face (2) conforming/SFP/boundary
-            const ImmersedBoundary::SurrogateFluxPoint* sfp_B = ImmersedBoundary::get_sbm_face(c->block_id, c->ey, c->ex, 2, ix);
+            const ImmersedBoundary::SurrogateFluxPoint* sfp_B = (p.ENABLE_IB && p.IB_METHOD == "SBM") ? ImmersedBoundary::get_sbm_face(c->block_id, c->ey, c->ex, 2, ix) : nullptr;
             if (sfp_B) {
                 double U_neigh_B[4];
                 ImmersedBoundary::compute_sbm_state(*this, sfp_B, U_neigh_B);
@@ -252,7 +255,7 @@ void Solver::compute_gradients() {
             }
 
             // Top Face (3) conforming/SFP/boundary
-            const ImmersedBoundary::SurrogateFluxPoint* sfp_T = ImmersedBoundary::get_sbm_face(c->block_id, c->ey, c->ex, 3, ix);
+            const ImmersedBoundary::SurrogateFluxPoint* sfp_T = (p.ENABLE_IB && p.IB_METHOD == "SBM") ? ImmersedBoundary::get_sbm_face(c->block_id, c->ey, c->ex, 3, ix) : nullptr;
             if (sfp_T) {
                 double U_neigh_T[4];
                 ImmersedBoundary::compute_sbm_state(*this, sfp_T, U_neigh_T);
@@ -294,6 +297,7 @@ void Solver::compute_gradients() {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
 
         // Bottom Face (2) non-conforming coarser neighbor
         if (c->neighbors[2] && c->neighbors[2]->level < c->level) {

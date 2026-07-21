@@ -1,7 +1,7 @@
 # Compiler and Flags
 CXX = g++
 # Standard production flags: optimized + OpenMP
-CXXFLAGS = -std=c++17 -g -Wall -Wextra -fopenmp -O3
+CXXFLAGS = -std=c++17 -Wall -Wextra -fopenmp -O3
 
 PROFFLAGS = 
 

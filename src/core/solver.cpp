@@ -165,8 +165,9 @@ void Solver::compute_ppr_theta_avg() {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
         if (!p.PPR_ADAPTIVE_THETA) {
-            c->theta_avg = p.PPR_THETA;
+            c->theta_max_tmp = p.PPR_THETA;
             continue;
         }
         double theta_max_cell = p.PPR_THETA_MIN;
@@ -213,7 +214,28 @@ void Solver::compute_ppr_theta_avg() {
                 theta_max_cell = std::max(theta_max_cell, theta);
             }
         }
-        c->theta_avg = theta_max_cell;
+        c->theta_max_tmp = theta_max_cell;
+    }
+
+    if (p.PPR_SMOOTH_THETA) {
+        #pragma omp parallel for schedule(static)
+        for (size_t i = 0; i < cells.size(); ++i) {
+            Cell* c = cells[i];
+            if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+            double max_t = c->theta_max_tmp;
+            for (int f = 0; f < 4; ++f) {
+                if (c->neighbors[f]) {
+                    max_t = std::max(max_t, c->neighbors[f]->theta_max_tmp);
+                }
+            }
+            c->theta_avg = max_t;
+        }
+    } else {
+        #pragma omp parallel for schedule(static)
+        for (size_t i = 0; i < cells.size(); ++i) {
+            if (p.ENABLE_MULTIRATE && !cells[i]->element_active) continue;
+            cells[i]->theta_avg = cells[i]->theta_max_tmp;
+        }
     }
 }
 
@@ -222,6 +244,7 @@ void Solver::compute_rhs() {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
         std::fill(c->RHS.begin(), c->RHS.end(), 0.0);
         if (p.ENABLE_PPR) {
             std::fill(c->S_RHS.begin(), c->S_RHS.end(), 0.0);
@@ -248,6 +271,7 @@ void Solver::compute_rhs() {
         #pragma omp parallel for schedule(static)
         for (size_t i = 0; i < cells.size(); ++i) {
             Cell* c = cells[i];
+            if (p.ENABLE_MULTIRATE && !c->element_active) continue;
             if (c->solid_mask) {
                 std::fill(c->RHS.begin(), c->RHS.end(), 0.0);
                 if (p.ENABLE_PPR) {
@@ -257,8 +281,6 @@ void Solver::compute_rhs() {
         }
     }
 }
-
-
 
 void Solver::compute_local_dt() {
     #pragma omp parallel for schedule(static)
@@ -271,9 +293,21 @@ void Solver::compute_local_dt() {
                 double u   = c->get_U(1, iy, ix, p.N_PTS) / rho;
                 double v   = c->get_U(2, iy, ix, p.N_PTS) / rho;
                 double press = (p.GAMMA - 1.0) * (c->get_U(3, iy, ix, p.N_PTS) - 0.5 * rho * (u * u + v * v));
-                if (press < 1e-12) press = 1e-12;
-                double sound_speed = std::sqrt(p.GAMMA * press / rho);
+                double press_safe = press;
+                if (p.ENABLE_PPR) {
+                    double theta_cfl = (p.PPR_ADAPTIVE_THETA) ? c->theta_avg : p.PPR_THETA;
+                    double p_phan = c->S_field[iy * p.N_PTS + ix] / rho;
+                    double p_reg = press + theta_cfl * (press - p_phan);
+                    press_safe = std::max(press, p_reg);
+                }
+                if (press_safe < 1e-12) press_safe = 1e-12;
+                double sound_speed = std::sqrt(p.GAMMA * press_safe / rho);
                 max_lambda = std::max({max_lambda, std::abs(u) + sound_speed, std::abs(v) + sound_speed});
+                if (p.ENABLE_PPR) {
+                    double s_wave_x = p.PPR_ADV_MULT * (std::abs(u) + p.PPR_GRAD_ADV_SCALE * sound_speed);
+                    double s_wave_y = p.PPR_ADV_MULT * (std::abs(v) + p.PPR_GRAD_ADV_SCALE * sound_speed);
+                    max_lambda = std::max({max_lambda, s_wave_x, s_wave_y});
+                }
             }
         }
         double h = std::min(c->dx, c->dy);
@@ -343,34 +377,34 @@ Solver::~Solver() {
 }
 
 uint64_t Solver::get_morton_id(int block_id, int level, uint32_t ex, uint32_t ey) const {
-    const int L_max = 15;
+    const int L_max = 14;
     const int N_b = 5;
     uint32_t x_fine = ex << (L_max - level);
     uint32_t y_fine = ey << (L_max - level);
-    return ((uint64_t)block_id << 48) | (morton_encode_2d(x_fine, y_fine) << N_b) | (uint64_t)level;
+    return ((uint64_t)block_id << 55) | (morton_encode_2d(x_fine, y_fine) << N_b) | (uint64_t)level;
 }
 
 bool Solver::is_ancestor(uint64_t ancestor_id, uint64_t key_id) const {
-    int block_id_A = (ancestor_id >> 48);
-    int block_id_K = (key_id >> 48);
+    int block_id_A = (ancestor_id >> 55);
+    int block_id_K = (key_id >> 55);
     if (block_id_A != block_id_K) return false;
 
     int L_A = ancestor_id & 0x1F;
     int L_K = key_id & 0x1F;
     if (L_A >= L_K) return false;
 
-    uint64_t raw_A = (ancestor_id >> 5) & 0x7FFFFFFFFFFFFULL;
-    uint64_t raw_K = (key_id >> 5) & 0x7FFFFFFFFFFFFULL;
+    uint64_t raw_A = (ancestor_id >> 5) & 0x3FFFFFFFFFFFFULL;
+    uint64_t raw_K = (key_id >> 5) & 0x3FFFFFFFFFFFFULL;
 
     uint32_t x_fine_A, y_fine_A;
     uint32_t x_fine_K, y_fine_K;
     morton_decode_2d(raw_A, x_fine_A, y_fine_A);
     morton_decode_2d(raw_K, x_fine_K, y_fine_K);
 
-    uint32_t ex_A = x_fine_A >> (15 - L_A);
-    uint32_t ey_A = y_fine_A >> (15 - L_A);
-    uint32_t ex_K = x_fine_K >> (15 - L_K);
-    uint32_t ey_K = y_fine_K >> (15 - L_K);
+    uint32_t ex_A = x_fine_A >> (14 - L_A);
+    uint32_t ey_A = y_fine_A >> (14 - L_A);
+    uint32_t ex_K = x_fine_K >> (14 - L_K);
+    uint32_t ey_K = y_fine_K >> (14 - L_K);
 
     return ((ex_K >> (L_K - L_A)) == ex_A) && ((ey_K >> (L_K - L_A)) == ey_A);
 }

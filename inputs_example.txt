@@ -320,6 +320,9 @@ OUTPUT_INTERVAL = 0.01
 # Type: bool (true/false)
 OUTPUT_DIV_ND = false
 
+# OUTPUT_ADAPTIVE_THETA: Boolean. If true, outputs the element-wise adaptive PPR theta field.
+OUTPUT_ADAPTIVE_THETA = false
+
 # RESTART_INTERVAL: Time interval between exact, lossless restart checkpoints (sol_*.vtm).
 RESTART_INTERVAL = 0.1
 
@@ -351,6 +354,10 @@ PROBE_3 = 0.9, 0.5, Mach
 ################################################################################
 # The simulation domain is defined in domain.grid using multiple [BlockN] 
 # sections. Each block is a Cartesian grid with its own resolution and BCs.
+#
+# Constraints (due to 64-bit Morton spatial hashing):
+#   - Maximum total number of blocks: 511
+#   - Maximum block dimensions (N_ELEM_X, N_ELEM_Y): 2047 x 2047
 #
 # Example [Block0] configuration:
 # [Block0]

@@ -103,6 +103,7 @@ Limiters::LimiterStats Limiters::apply_positivity_limiter(std::vector<Cell*>& ce
     #pragma omp parallel for schedule(static) reduction(+:num_limited, sum_theta)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
 
         // =============================================================
         // 0. Compute cell average

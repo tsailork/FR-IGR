@@ -13,7 +13,9 @@
 void Solver::step_rk3(double dt) {
     if (p.ENABLE_MULTIRATE) {
         compute_local_dt();
-        for (Cell* c : cells) {
+        #pragma omp parallel for schedule(static)
+        for (size_t i = 0; i < cells.size(); ++i) {
+            Cell* c = cells[i];
             double dt_elem = c->element_dt;
             int m = 0;
             if (dt > 1e-15) {
@@ -27,8 +29,10 @@ void Solver::step_rk3(double dt) {
             }
         }
     } else {
-        for (Cell* c : cells) {
-            c->element_active = true;
+        #pragma omp parallel for schedule(static)
+        for (size_t i = 0; i < cells.size(); ++i) {
+            cells[i]->element_active = true;
+            cells[i]->element_dt = dt;
         }
     }
 
@@ -36,6 +40,7 @@ void Solver::step_rk3(double dt) {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
         c->U_old = c->U;
         c->sigma_old = c->sigma_field;
         if (p.ENABLE_PPR) {
@@ -43,15 +48,17 @@ void Solver::step_rk3(double dt) {
         }
     }
 
-    auto relax_phantom_pressure = [&](double dt_stage, double alpha, double beta) {
+    auto relax_phantom_pressure = [&](double dt_stage_ratio, double alpha, double beta) {
         if (!p.ENABLE_PPR) return;
         #pragma omp parallel for schedule(static)
         for (size_t i = 0; i < cells.size(); ++i) {
             Cell* c = cells[i];
+            if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+            double dt_stage = dt_stage_ratio * c->element_dt;
             
             // 1. Explicit advection update for S
             for (size_t k = 0; k < c->S_field.size(); ++k) {
-                c->S_field[k] = alpha * c->S_old[k] + beta * (c->S_field[k] + dt * c->S_RHS[k]);
+                c->S_field[k] = alpha * c->S_old[k] + beta * (c->S_field[k] + dt_stage * c->S_RHS[k]);
             }
             
             // 2. Analytical relaxation step
@@ -108,7 +115,13 @@ void Solver::step_rk3(double dt) {
             double dt_diff  = 0.5 * p.IGR_TAU_R / (alpha_safe * (1.0 + p.IGR_BR2_ETA) * (2 * p.P_DEG + 1) * (2 * p.P_DEG + 1));
             double dt_relax = 0.5 * p.IGR_TAU_R;
             double dt_limit = std::min(dt_diff, dt_relax);
-            n_sub = static_cast<int>(std::ceil(dt / dt_limit));
+            double max_dt_active = dt;
+            if (p.ENABLE_MULTIRATE) {
+                for (Cell* c : cells) {
+                    if (c->element_active) max_dt_active = std::max(max_dt_active, c->element_dt);
+                }
+            }
+            n_sub = static_cast<int>(std::ceil(max_dt_active / dt_limit));
             if (n_sub < 1) n_sub = 1;
         }
     }
@@ -125,6 +138,7 @@ void Solver::step_rk3(double dt) {
         #pragma omp parallel for schedule(static)
         for (size_t i = 0; i < cells.size(); ++i) {
             Cell* c = cells[i];
+            if (p.ENABLE_MULTIRATE && !c->element_active) continue;
             for (int iy = 0; iy < p.N_PTS; ++iy) {
                 for (int ix = 0; ix < p.N_PTS; ++ix) {
                     int idx = iy * p.N_PTS + ix;
@@ -154,10 +168,12 @@ void Solver::step_rk3(double dt) {
             #pragma omp parallel for schedule(static)
             for (size_t i = 0; i < cells.size(); ++i) {
                 Cell* c = cells[i];
+                if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+                double dt_sub_c = c->element_dt / n_sub;
                 const size_t N_sig = c->sigma_field.size();
                 for (size_t k = 0; k < N_sig; ++k) {
                     c->sigma_field[k] = alpha * c->sigma_old[k] +
-                                        beta * (c->sigma_field[k] + dt_sub * c->sigma_RHS[k]);
+                                        beta * (c->sigma_field[k] + dt_sub_c * c->sigma_RHS[k]);
                 }
             }
             clamp_sigma_all();
@@ -175,11 +191,13 @@ void Solver::step_rk3(double dt) {
                 #pragma omp parallel for reduction(+:total_diff,total_pts)
                 for (size_t i = 0; i < cells.size(); ++i) {
                     Cell* c = cells[i];
+                    if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+                    double dt_sub_c = c->element_dt / n_sub;
                     const size_t N_sig = c->sigma_field.size();
                     total_pts += N_sig;
                     for (size_t k = 0; k < N_sig; ++k) {
                         double old_sig = c->sigma_field[k];
-                        double new_sig = old_sig + dt_sub * c->sigma_RHS[k];
+                        double new_sig = old_sig + dt_sub_c * c->sigma_RHS[k];
 
                         if (new_sig < 0.0) {
                             new_sig = 0.0;
@@ -210,10 +228,12 @@ void Solver::step_rk3(double dt) {
                 #pragma omp parallel for schedule(static)
                 for (size_t i = 0; i < cells.size(); ++i) {
                     Cell* c = cells[i];
+                    if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+                    const double dt_c = c->element_dt;
                     const size_t N_sig = c->sigma_field.size();
                     for (size_t k = 0; k < N_sig; ++k) {
                         c->sigma_field[k] = alpha * c->sigma_old[k] +
-                                            beta * (c->sigma_field[k] + dt * c->sigma_RHS[k]);
+                                            beta * (c->sigma_field[k] + dt_c * c->sigma_RHS[k]);
                     }
                 }
                 clamp_sigma_all();
@@ -221,10 +241,12 @@ void Solver::step_rk3(double dt) {
                 #pragma omp parallel for schedule(static)
                 for (size_t i = 0; i < cells.size(); ++i) {
                     Cell* c = cells[i];
+                    if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+                    double dt_sub_c = c->element_dt / n_sub;
                     const size_t N_sig = c->sigma_field.size();
                     for (size_t k = 0; k < N_sig; ++k) {
                         c->sigma_field[k] = alpha * c->sigma_old[k] +
-                                            beta * (c->sigma_field[k] + dt_sub * c->sigma_RHS[k]);
+                                            beta * (c->sigma_field[k] + dt_sub_c * c->sigma_RHS[k]);
                     }
                 }
                 clamp_sigma_all();
@@ -234,9 +256,11 @@ void Solver::step_rk3(double dt) {
                     #pragma omp parallel for schedule(static)
                     for (size_t i = 0; i < cells.size(); ++i) {
                         Cell* c = cells[i];
+                        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+                        double dt_sub_c = c->element_dt / n_sub;
                         const size_t N_sig = c->sigma_field.size();
                         for (size_t k = 0; k < N_sig; ++k) {
-                            c->sigma_field[k] += dt_sub * c->sigma_RHS[k];
+                            c->sigma_field[k] += dt_sub_c * c->sigma_RHS[k];
                         }
                     }
                     clamp_sigma_all();
@@ -252,31 +276,20 @@ void Solver::step_rk3(double dt) {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
-        if (p.ENABLE_MULTIRATE) {
-            if (c->element_active) {
-                for (size_t k = 0; k < c->U.size(); ++k) {
-                    c->U[k] = c->U_old[k] + dt * c->RHS[k];
-                }
-            } else {
-                for (size_t k = 0; k < c->U.size(); ++k) {
-                    c->U[k] = c->U_old[k];
-                    c->U_accum[k] += (1.0 / 6.0) * dt * c->RHS[k];
-                }
-            }
-        } else {
-            for (size_t k = 0; k < c->U.size(); ++k) {
-                c->U[k] = c->U_old[k] + dt * c->RHS[k];
-            }
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+        const double dt_stage = c->element_dt;
+        for (size_t k = 0; k < c->U.size(); ++k) {
+            c->U[k] = c->U_old[k] + dt_stage * c->RHS[k];
         }
     }
 
-    relax_phantom_pressure(dt, 0.0, 1.0);
+    relax_phantom_pressure(1.0, 0.0, 1.0);
 
     if (is_parabolic)
         sub_iterate_sigma_all(0.0, 1.0);
 
     if (p.ENABLE_IB && p.IB_METHOD == "VPM_ANALYTICAL") {
-        apply_ib_analytical(dt);
+        apply_ib_analytical(1.0);
     }
 
     if (p.ENABLE_POS_LIMITER) {
@@ -296,31 +309,20 @@ void Solver::step_rk3(double dt) {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
-        if (p.ENABLE_MULTIRATE) {
-            if (c->element_active) {
-                for (size_t k = 0; k < c->U.size(); ++k) {
-                    c->U[k] = 0.75 * c->U_old[k] + 0.25 * (c->U[k] + dt * c->RHS[k]);
-                }
-            } else {
-                for (size_t k = 0; k < c->U.size(); ++k) {
-                    c->U[k] = c->U_old[k];
-                    c->U_accum[k] += (1.0 / 6.0) * dt * c->RHS[k];
-                }
-            }
-        } else {
-            for (size_t k = 0; k < c->U.size(); ++k) {
-                c->U[k] = 0.75 * c->U_old[k] + 0.25 * (c->U[k] + dt * c->RHS[k]);
-            }
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+        const double dt_stage = c->element_dt;
+        for (size_t k = 0; k < c->U.size(); ++k) {
+            c->U[k] = 0.75 * c->U_old[k] + 0.25 * (c->U[k] + dt_stage * c->RHS[k]);
         }
     }
 
-    relax_phantom_pressure(0.25 * dt, 0.75, 0.25);
+    relax_phantom_pressure(0.25, 0.75, 0.25);
 
     if (is_parabolic)
         sub_iterate_sigma_all(0.75, 0.25);
 
     if (p.ENABLE_IB && p.IB_METHOD == "VPM_ANALYTICAL") {
-        apply_ib_analytical(0.25 * dt);
+        apply_ib_analytical(0.25);
     }
 
     if (p.ENABLE_POS_LIMITER) {
@@ -340,32 +342,20 @@ void Solver::step_rk3(double dt) {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
-        if (p.ENABLE_MULTIRATE) {
-            if (c->element_active) {
-                for (size_t k = 0; k < c->U.size(); ++k) {
-                    c->U[k] = (1.0 / 3.0) * c->U_old[k] + (2.0 / 3.0) * (c->U[k] + dt * c->RHS[k]);
-                }
-            } else {
-                for (size_t k = 0; k < c->U.size(); ++k) {
-                    c->U[k] = c->U_old[k];
-                    c->U_accum[k] += (2.0 / 3.0) * dt * c->RHS[k];
-                }
-            }
-        } else {
-            for (size_t k = 0; k < c->U.size(); ++k) {
-                c->U[k] = (1.0 / 3.0) * c->U_old[k] +
-                          (2.0 / 3.0) * (c->U[k] + dt * c->RHS[k]);
-            }
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+        const double dt_stage = c->element_dt;
+        for (size_t k = 0; k < c->U.size(); ++k) {
+            c->U[k] = (1.0 / 3.0) * c->U_old[k] + (2.0 / 3.0) * (c->U[k] + dt_stage * c->RHS[k]);
         }
     }
 
-    relax_phantom_pressure((2.0 / 3.0) * dt, 1.0 / 3.0, 2.0 / 3.0);
+    relax_phantom_pressure(2.0 / 3.0, 1.0 / 3.0, 2.0 / 3.0);
 
     if (is_parabolic)
         sub_iterate_sigma_all(1.0 / 3.0, 2.0 / 3.0);
 
     if (p.ENABLE_IB && p.IB_METHOD == "VPM_ANALYTICAL") {
-        apply_ib_analytical((2.0 / 3.0) * dt);
+        apply_ib_analytical(2.0 / 3.0);
     }
 
     if (p.ENABLE_POS_LIMITER) {
@@ -383,10 +373,6 @@ void Solver::step_rk3(double dt) {
         for (size_t i = 0; i < cells.size(); ++i) {
             Cell* c = cells[i];
             if (c->element_active) {
-                for (size_t k = 0; k < c->U.size(); ++k) {
-                    c->U[k] += c->U_accum[k];
-                    c->U_accum[k] = 0.0;
-                }
                 c->element_time += c->element_dt;
             }
         }

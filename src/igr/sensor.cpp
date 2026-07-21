@@ -14,6 +14,7 @@ void Solver::compute_sensor_source() {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
         const double epsilon = p.ALPHA_SCALE * (c->dx * c->dy);
 
         double u_loc[MAX_PTS * MAX_PTS];
