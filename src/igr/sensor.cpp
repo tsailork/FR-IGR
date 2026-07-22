@@ -44,7 +44,7 @@ void Solver::compute_sensor_source() {
                 double U_neigh_L[4], U_neigh_R[4], sd;
                 
                 // Left neighbor extrapolation
-                if (c->neighbors[0]) {
+                if (c->neighbors[0] && c->neighbors[0]->level == c->level) {
                     Cell* nc = c->neighbors[0];
                     char nface = c->neighbor_faces[0];
                     const double* weights = (nface == 'L') ? basis.l_L.data() : basis.l_R.data();
@@ -53,12 +53,32 @@ void Solver::compute_sensor_source() {
                         for (int v = 0; v < 4; ++v)
                             U_neigh_L[v] += nc->get_U(v, iy, k, p.N_PTS) * weights[k];
                     }
+                } else if (c->neighbors[0] && c->neighbors[0]->level < c->level) {
+                    Cell* nc = c->neighbors[0];
+                    char nface = c->neighbor_faces[0];
+                    int child_idx = c->ey & 1;
+                    const auto& P = (child_idx == 0) ? basis.P1 : basis.P2;
+                    double U_coarse_face[4][MAX_PTS] = {};
+                    const double* weights = (nface == 'L') ? basis.l_L.data() : basis.l_R.data();
+                    for (int ky = 0; ky < p.N_PTS; ++ky) {
+                        for (int kx = 0; kx < p.N_PTS; ++kx) {
+                            for (int v = 0; v < 4; ++v) {
+                                U_coarse_face[v][ky] += nc->get_U(v, ky, kx, p.N_PTS) * weights[kx];
+                            }
+                        }
+                    }
+                    for (int v = 0; v < 4; ++v) U_neigh_L[v] = 0.0;
+                    for (int ky = 0; ky < p.N_PTS; ++ky) {
+                        for (int v = 0; v < 4; ++v) {
+                            U_neigh_L[v] += P[ky][iy] * U_coarse_face[v][ky];
+                        }
+                    }
                 } else {
                     get_neigh_state_cell(*c, iy, false, UL_face, 0.0, U_neigh_L, sd, 0);
                 }
 
                 // Right neighbor extrapolation
-                if (c->neighbors[1]) {
+                if (c->neighbors[1] && c->neighbors[1]->level == c->level) {
                     Cell* nc = c->neighbors[1];
                     char nface = c->neighbor_faces[1];
                     const double* weights = (nface == 'L') ? basis.l_L.data() : basis.l_R.data();
@@ -66,6 +86,26 @@ void Solver::compute_sensor_source() {
                     for (int k = 0; k < p.N_PTS; ++k) {
                         for (int v = 0; v < 4; ++v)
                             U_neigh_R[v] += nc->get_U(v, iy, k, p.N_PTS) * weights[k];
+                    }
+                } else if (c->neighbors[1] && c->neighbors[1]->level < c->level) {
+                    Cell* nc = c->neighbors[1];
+                    char nface = c->neighbor_faces[1];
+                    int child_idx = c->ey & 1;
+                    const auto& P = (child_idx == 0) ? basis.P1 : basis.P2;
+                    double U_coarse_face[4][MAX_PTS] = {};
+                    const double* weights = (nface == 'L') ? basis.l_L.data() : basis.l_R.data();
+                    for (int ky = 0; ky < p.N_PTS; ++ky) {
+                        for (int kx = 0; kx < p.N_PTS; ++kx) {
+                            for (int v = 0; v < 4; ++v) {
+                                U_coarse_face[v][ky] += nc->get_U(v, ky, kx, p.N_PTS) * weights[kx];
+                            }
+                        }
+                    }
+                    for (int v = 0; v < 4; ++v) U_neigh_R[v] = 0.0;
+                    for (int ky = 0; ky < p.N_PTS; ++ky) {
+                        for (int v = 0; v < 4; ++v) {
+                            U_neigh_R[v] += P[ky][iy] * U_coarse_face[v][ky];
+                        }
                     }
                 } else {
                     get_neigh_state_cell(*c, iy, true, UR_face, 0.0, U_neigh_R, sd, 0);
@@ -120,7 +160,7 @@ void Solver::compute_sensor_source() {
                 double U_neigh_B[4], U_neigh_T[4], sd;
                 
                 // Bottom neighbor extrapolation
-                if (c->neighbors[2]) {
+                if (c->neighbors[2] && c->neighbors[2]->level == c->level) {
                     Cell* nc = c->neighbors[2];
                     char nface = c->neighbor_faces[2];
                     const double* weights = (nface == 'B') ? basis.l_L.data() : basis.l_R.data();
@@ -129,12 +169,32 @@ void Solver::compute_sensor_source() {
                         for (int v = 0; v < 4; ++v)
                             U_neigh_B[v] += nc->get_U(v, k, ix, p.N_PTS) * weights[k];
                     }
+                } else if (c->neighbors[2] && c->neighbors[2]->level < c->level) {
+                    Cell* nc = c->neighbors[2];
+                    char nface = c->neighbor_faces[2];
+                    int child_idx = c->ex & 1;
+                    const auto& P = (child_idx == 0) ? basis.P1 : basis.P2;
+                    double U_coarse_face[4][MAX_PTS] = {};
+                    const double* weights = (nface == 'B') ? basis.l_L.data() : basis.l_R.data();
+                    for (int kx = 0; kx < p.N_PTS; ++kx) {
+                        for (int ky = 0; ky < p.N_PTS; ++ky) {
+                            for (int v = 0; v < 4; ++v) {
+                                U_coarse_face[v][kx] += nc->get_U(v, ky, kx, p.N_PTS) * weights[ky];
+                            }
+                        }
+                    }
+                    for (int v = 0; v < 4; ++v) U_neigh_B[v] = 0.0;
+                    for (int kx = 0; kx < p.N_PTS; ++kx) {
+                        for (int v = 0; v < 4; ++v) {
+                            U_neigh_B[v] += P[kx][ix] * U_coarse_face[v][kx];
+                        }
+                    }
                 } else {
                     get_neigh_state_cell(*c, ix, false, UB_face, 0.0, U_neigh_B, sd, 1);
                 }
 
                 // Top neighbor extrapolation
-                if (c->neighbors[3]) {
+                if (c->neighbors[3] && c->neighbors[3]->level == c->level) {
                     Cell* nc = c->neighbors[3];
                     char nface = c->neighbor_faces[3];
                     const double* weights = (nface == 'B') ? basis.l_L.data() : basis.l_R.data();
@@ -142,6 +202,26 @@ void Solver::compute_sensor_source() {
                     for (int k = 0; k < p.N_PTS; ++k) {
                         for (int v = 0; v < 4; ++v)
                             U_neigh_T[v] += nc->get_U(v, k, ix, p.N_PTS) * weights[k];
+                    }
+                } else if (c->neighbors[3] && c->neighbors[3]->level < c->level) {
+                    Cell* nc = c->neighbors[3];
+                    char nface = c->neighbor_faces[3];
+                    int child_idx = c->ex & 1;
+                    const auto& P = (child_idx == 0) ? basis.P1 : basis.P2;
+                    double U_coarse_face[4][MAX_PTS] = {};
+                    const double* weights = (nface == 'B') ? basis.l_L.data() : basis.l_R.data();
+                    for (int kx = 0; kx < p.N_PTS; ++kx) {
+                        for (int ky = 0; ky < p.N_PTS; ++ky) {
+                            for (int v = 0; v < 4; ++v) {
+                                U_coarse_face[v][kx] += nc->get_U(v, ky, kx, p.N_PTS) * weights[ky];
+                            }
+                        }
+                    }
+                    for (int v = 0; v < 4; ++v) U_neigh_T[v] = 0.0;
+                    for (int kx = 0; kx < p.N_PTS; ++kx) {
+                        for (int v = 0; v < 4; ++v) {
+                            U_neigh_T[v] += P[kx][ix] * U_coarse_face[v][kx];
+                        }
                     }
                 } else {
                     get_neigh_state_cell(*c, ix, true, UT_face, 0.0, U_neigh_T, sd, 1);

@@ -37,26 +37,14 @@ SOURCE_CAP_COEFF = 10.0
 [PPR]
 ENABLE_PPR = true
 PPR_THETA = 8.0
-PPR_C_TAU = 0.2
+PPR_C_TAU = 0.15
 PPR_ADV_MULT = 1.0
 
-# --- Part A: Gradient-Guided Advection ---
-# Adds an acoustic correction to the advection velocity: u_adv = u + scale * a * grad(P)/|grad(P)|
-# +sign pushes phantom pressure into high-pressure (post-shock) region, evacuating pre-shock.
-# 0.0 = disabled (default), 1.0 = full acoustic-magnitude correction.
-PPR_GRAD_ADV_SCALE = 0.0
-# Floor on |grad P| to prevent NaN in smooth regions (keep very small).
-PPR_GRAD_EPS = 1e-4
-
-# --- Part B: Adaptive Theta via Non-Dimensional Divergence ---
-# When enabled, PPR_THETA is replaced by a per-element value that scales with local compression.
-# div_nd = -div(u)*h / (a*(P_DEG+1)): 0=smooth, 1=strong compression at acoustic CFL rate.
-# Piecewise linear map: theta_min at div_nd<=0, theta_mid at div_nd=1, theta_max at div_nd>=div_nd_max.
 PPR_ADAPTIVE_THETA = true
 PPR_SMOOTH_THETA = true
-PPR_THETA_MIN = 2.0      # theta in smooth/expanding regions
-PPR_THETA_MID = 10.0      # theta at moderate compression (div_nd = 1)
-PPR_THETA_MAX = 10.0      # theta at strong shock (equals current static PPR_THETA)
+PPR_THETA_MIN = 0.0      # theta in smooth/expanding regions
+PPR_THETA_MID = 30.0      # theta at moderate compression (div_nd = 1)
+PPR_THETA_MAX = 40.0      # theta at strong shock (equals current static PPR_THETA)
 PPR_DIV_ND_MAX = 1.5     # saturation threshold (above this, always PPR_THETA_MAX)
 
 [Stabilization]
@@ -105,7 +93,7 @@ ZONE_1_WIDTH = 0.5
 ZONE_1_HEIGHT = 0.65
 
 [IO]
-RESTART_FILE = outputs_positivity_ppr/pv_outputs/sol_60.vtu
+RESTART_FILE = 
 RESTART_TIME = 0.0
 OUTPUT_INTERVAL = 0.01
 PRINT_INTERVAL = 0.001
@@ -113,6 +101,7 @@ RESIDUAL_INTERVAL = 0.001
 RESTART_INTERVAL = 0.05
 
 OUTPUT_DIV_ND = true
+OUTPUT_ADAPTIVE_THETA = true
 
 [Probes]
 

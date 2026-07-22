@@ -59,6 +59,7 @@ struct Cell {
     int ex = -1;                      ///< Source element X coordinate index.
 
     // Solution and residual storage arrays (size: N_VARS * npts * npts)
+    // Conserved variables and residual accumulators
     std::vector<double> U;            ///< Conserved variables: [v * npts * npts + iy * npts + ix]
     std::vector<double> RHS;          ///< Accumulator for flow solver explicit stage RHS.
     std::vector<double> U_accum;      ///< Accumulated multirate updates.

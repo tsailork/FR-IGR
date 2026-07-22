@@ -76,6 +76,119 @@ void IC::apply(Solver& solver) {
                     v = p.V_INF;
                     press = p.P_INF;
 
+                } else if (p.IC_TYPE == "KELVIN_HELMHOLTZ" || p.IC_TYPE == "KHI") {
+                    // 2D Kelvin-Helmholtz Shear Layer Instability
+                    double y1 = 0.25, y2 = 0.75;
+                    double sigma = 0.025;
+                    double U0 = 0.5;
+                    double eps = 0.05;
+
+                    u = U0 * (std::tanh((y - y1) / sigma) - std::tanh((y - y2) / sigma) - 1.0);
+                    v = eps * U0 * std::sin(2.0 * M_PI * x) * 
+                        (std::exp(-std::pow((y - y1) / sigma, 2)) + std::exp(-std::pow((y - y2) / sigma, 2)));
+                    rho = 1.0 + 0.5 * (std::tanh((y - y1) / sigma) - std::tanh((y - y2) / sigma));
+                    press = 2.5;
+
+                } else if (p.IC_TYPE == "SHOCK_VORTEX") {
+                    // 2D Shock-Vortex Interaction (Inoue & Hattori benchmark)
+                    // Shock at xs = 0.5 moving right toward vortex at (xv, yv) = (1.5, 0.0)
+                    double xs = 0.5;            // Shock initial position
+                    double xv = 1.5, yv = 0.0;  // Vortex center position
+                    double Mv = 0.5;            // Vortex Mach number
+                    double rc = 0.2;            // Core radius scale
+                    double Ms = 1.2;            // Shock Mach number
+                    double gamma = p.GAMMA;
+
+                    double rx = x - xv;
+                    double ry = y - yv;
+                    double r = std::sqrt(rx * rx + ry * ry);
+                    double r_norm = r / rc;
+                    double v_theta = Mv * r_norm * std::exp(0.5 * (1.0 - r_norm * r_norm));
+
+                    double u_vort = (r > 1e-12) ? -v_theta * (ry / r) : 0.0;
+                    double v_vort = (r > 1e-12) ?  v_theta * (rx / r) : 0.0;
+                    double T_r = 1.0 - 0.5 * (gamma - 1.0) * Mv * Mv * std::exp(1.0 - r_norm * r_norm);
+                    if (T_r < 1e-4) T_r = 1e-4;
+
+                    double rho_R = std::pow(T_r, 1.0 / (gamma - 1.0));
+                    double p_R = (1.0 / gamma) * std::pow(T_r, gamma / (gamma - 1.0));
+
+                    // Rankine-Hugoniot post-shock state for Ms = 1.2 moving in +x direction
+                    double p0 = 1.0 / gamma;
+                    double a0 = 1.0; // sqrt(gamma * p0 / rho0) = 1.0
+                    double rho_L = 1.0 * ((gamma + 1.0) * Ms * Ms) / ((gamma - 1.0) * Ms * Ms + 2.0);
+                    double p_L = p0 * (1.0 + (2.0 * gamma / (gamma + 1.0)) * (Ms * Ms - 1.0));
+                    double u_L = (2.0 * a0 / (gamma + 1.0)) * (Ms - 1.0 / Ms);
+
+                    double w = sigmoid(x, xs, delta);
+                    rho   = (1.0 - w) * rho_L + w * rho_R;
+                    u     = (1.0 - w) * u_L   + w * u_vort;
+                    v     = (1.0 - w) * 0.0   + w * v_vort;
+                    press = (1.0 - w) * p_L   + w * p_R;
+
+                } else if (p.IC_TYPE == "DECAYING_TURBULENCE") {
+                    // 2D Decaying Isotropic Solenoidal Compressible Turbulence
+                    double x_tilde = 2.0 * M_PI * x;
+                    double y_tilde = 2.0 * M_PI * y;
+                    double u_sum = 0.0, v_sum = 0.0;
+                    double kp = 4.0;
+                    double U0 = 0.2; // Solenoidal turbulent Mach scale ~0.4
+
+                    for (int kx = 1; kx <= 6; ++kx) {
+                        for (int ky = 1; ky <= 6; ++ky) {
+                            double k = std::sqrt((double)(kx * kx + ky * ky));
+                            double A_k = (k / kp) * (k / kp) * std::exp(1.0 - (k / kp) * (k / kp));
+                            double phi_x = std::sin(kx * 12.345 + ky * 67.89);
+                            double phi_y = std::cos(kx * 54.321 + ky * 98.76);
+
+                            u_sum += -A_k * (ky / k) * std::sin(kx * x_tilde + phi_x) * std::cos(ky * y_tilde + phi_y);
+                            v_sum +=  A_k * (kx / k) * std::cos(kx * x_tilde + phi_x) * std::sin(ky * y_tilde + phi_y);
+                        }
+                    }
+                    rho = 1.0;
+                    u = U0 * u_sum;
+                    v = U0 * v_sum;
+                    press = 1.0 / p.GAMMA;
+
+                } else if (p.IC_TYPE == "RICHTMYER_MESHKOV" || p.IC_TYPE == "RMI") {
+                    // 2D Richtmyer-Meshkov Instability
+                    double xs = 0.2;       // Incident shock position
+                    double x0 = 0.5;       // Mean density interface position
+                    double amp = 0.05;     // Perturbation amplitude
+                    double Ly = 1.0;       // Domain height / wavelength
+                    double sigma_i = 0.01; // Interface smoothing thickness
+                    double Ms = 1.5;       // Shock Mach number
+                    double gamma = p.GAMMA;
+
+                    double xi = x0 + amp * std::sin(2.0 * M_PI * y / Ly);
+                    double rho1 = 1.0;     // Light fluid
+                    double rho2 = 3.0;     // Heavy fluid (Atwood number = 0.5)
+
+                    double rho_unshocked = rho1 + 0.5 * (rho2 - rho1) * (1.0 + std::tanh((x - xi) / sigma_i));
+                    double p_unshocked = 1.0 / gamma;
+
+                    double a1 = 1.0;
+                    double rho_L = rho1 * ((gamma + 1.0) * Ms * Ms) / ((gamma - 1.0) * Ms * Ms + 2.0);
+                    double p_L = p_unshocked * (1.0 + (2.0 * gamma / (gamma + 1.0)) * (Ms * Ms - 1.0));
+                    double u_L = (2.0 * a1 / (gamma + 1.0)) * (Ms - 1.0 / Ms);
+
+                    double w = sigmoid(x, xs, delta);
+                    rho   = (1.0 - w) * rho_L + w * rho_unshocked;
+                    u     = (1.0 - w) * u_L   + w * 0.0;
+                    v     = 0.0;
+                    press = (1.0 - w) * p_L   + w * p_unshocked;
+
+                } else if (p.IC_TYPE == "ORSZAG_TANG") {
+                    // 2D Compressible Hydrodynamic Orszag-Tang Vortex
+                    double xt = 2.0 * M_PI * x;
+                    double yt = 2.0 * M_PI * y;
+                    double gamma = p.GAMMA;
+
+                    rho = gamma * gamma;
+                    u = -std::sin(yt);
+                    v =  std::sin(xt);
+                    press = gamma + 0.25 * gamma * (std::cos(2.0 * xt) + 2.0 * std::cos(yt));
+
                 } else if (p.IC_TYPE == "LID_DRIVEN_CAVITY") {
                     rho = p.RHO_INF;
                     u = 0.0;
