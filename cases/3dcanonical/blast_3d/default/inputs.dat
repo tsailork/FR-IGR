@@ -1,0 +1,42 @@
+[Physics]
+GAMMA = 1.4
+IC_TYPE = BLAST_3D
+
+[Solver]
+P_DEG = 3
+CFL = 0.6
+T_FINAL = 0.33
+NUM_THREADS = 18
+
+[NavierStokes]
+ENABLE_NS = false
+
+[Regularization]
+ENABLE_IGR = false
+
+[PPR]
+ENABLE_PPR = true
+PPR_THETA = 1.0
+PPR_THETA = 1.0
+PPR_C_TAU = 0.15
+PPR_ADAPTIVE_THETA = true
+PPR_SMOOTH_THETA = true
+PPR_USE_DUCROS_SENSOR = true
+SHOCK_SENS_SCHEDULE = 0.0:1.0:1.5
+THETA_SCHEDULE      = 0.0:10.0:50.0
+
+[Stabilization]
+ENABLE_POS_LIMITER = true
+POS_LIMITER_EPS = 1e-12
+
+[ImmersedBoundary]
+ENABLE_IB = false
+
+[IO]
+OUTPUT_INTERVAL = 0.03
+RESTART_INTERVAL = 0.03
+RESIDUAL_INTERVAL = 0.01
+PROBE_INTERVAL = 0.01
+PRINT_INTERVAL = 0.03
+RESTART_FILE = pv_outputs/sol_10.vtu
+RESTART_TIME = 0.3
