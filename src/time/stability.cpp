@@ -76,7 +76,7 @@ double Solver::compute_dt() const {
         }
 
         double h = std::min(c->dx, c->dy);
-        double dt_conv = 0.5 * p.CFL * h / (max_lambda * (p.P_DEG + 1) * (p.P_DEG + 1));
+        double dt_conv = 0.5 * p.CFL * h / (max_lambda * (2 * p.P_DEG + 1));
         double dt_cell = dt_conv;
 
         if (p.ENABLE_IGR && p.IGR_TYPE == "PARABOLIC") {

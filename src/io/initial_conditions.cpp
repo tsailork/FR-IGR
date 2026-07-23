@@ -83,8 +83,9 @@ void IC::apply(Solver& solver) {
                     double U0 = 0.5;
                     double eps = 0.05;
 
+                    double k_wave = 3.0; // 3 disturbance cycles across domain x in [0, 1]
                     u = U0 * (std::tanh((y - y1) / sigma) - std::tanh((y - y2) / sigma) - 1.0);
-                    v = eps * U0 * std::sin(2.0 * M_PI * x) * 
+                    v = eps * U0 * std::sin(2.0 * M_PI * k_wave * x) * 
                         (std::exp(-std::pow((y - y1) / sigma, 2)) + std::exp(-std::pow((y - y2) / sigma, 2)));
                     rho = 1.0 + 0.5 * (std::tanh((y - y1) / sigma) - std::tanh((y - y2) / sigma));
                     press = 2.5;
