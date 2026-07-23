@@ -280,3 +280,34 @@ void Diagnostics::update(const Solver& solver, double t, int step) {
         next_print_output += params.PRINT_INTERVAL;
     }
 }
+
+Diagnostics::Diagnostics(const Parameters& p, const SolverDim<3>& solver, double startTime)
+    : params(p), sim_start_time(startTime), next_residual_output(startTime), next_probe_output(startTime), next_print_output(startTime)
+{
+    start_time = std::chrono::steady_clock::now();
+    last_print_wall_time = start_time;
+    bool is_restart = (startTime > 0.0);
+    std::ios_base::openmode mode = is_restart ? (std::ios::out | std::ios::app) : std::ios::out;
+    res_file.open("csv_outputs/residuals.csv", mode);
+    if (!is_restart && res_file.is_open()) {
+        res_file << "Time, L2_Rho, L2_RhoU, L2_RhoV, L2_RhoW, L2_E\n";
+    }
+}
+
+void Diagnostics::update(const SolverDim<3>& solver, double t, int step) {
+    if (t >= next_print_output) {
+        auto now = std::chrono::steady_clock::now();
+        std::chrono::duration<double> total_elapsed = now - start_time;
+        last_print_wall_time = now;
+        double progress = (t / params.T_FINAL) * 100.0;
+        double dt_run = t - sim_start_time;
+        double eta = (dt_run > 1e-8) ? (total_elapsed.count() / dt_run) * (params.T_FINAL - t) : 0.0;
+
+        std::cout << std::fixed << std::setprecision(4)
+                  << "[Step " << std::setw(5) << step << "] "
+                  << "t: " << std::setw(6) << t << " | "
+                  << std::setw(5) << progress << "% | "
+                  << "ETA: " << std::setw(5) << eta << "s\n";
+        next_print_output += params.PRINT_INTERVAL;
+    }
+}

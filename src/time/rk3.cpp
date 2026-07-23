@@ -391,3 +391,68 @@ void Solver::step_rk3(double dt) {
         update_ib_mask_field(current_time);
     }
 }
+
+void SolverDim<3>::step_rk3(double dt) {
+    #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < cells.size(); ++i) {
+        cells[i]->element_active = true;
+        cells[i]->element_dt = dt;
+    }
+
+    #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < cells.size(); ++i) {
+        Cell3D* c = cells[i];
+        c->U_old = c->U;
+        c->sigma_old = c->sigma_field;
+    }
+
+    auto execute_stage = [&](double alpha, double beta, double dt_stage_ratio) {
+        #pragma omp parallel for schedule(static)
+        for (size_t i = 0; i < cells.size(); ++i) {
+            std::fill(cells[i]->RHS.begin(), cells[i]->RHS.end(), 0.0);
+        }
+
+        sweep_x();
+        sweep_y();
+        sweep_z();
+
+        if (p.ENABLE_NS) {
+            compute_gradients();
+            viscous_sweep_x();
+            viscous_sweep_y();
+            viscous_sweep_z();
+        }
+
+        if (p.ENABLE_IB && p.IB_METHOD == "VPM") {
+            apply_ib_explicit();
+        }
+
+        #pragma omp parallel for schedule(static)
+        for (size_t i = 0; i < cells.size(); ++i) {
+            Cell3D* c = cells[i];
+            double dt_stage = dt_stage_ratio * c->element_dt;
+            size_t n_dofs = c->U.size();
+            for (size_t k = 0; k < n_dofs; ++k) {
+                c->U[k] = alpha * c->U_old[k] + beta * (c->U[k] + dt_stage * c->RHS[k]);
+            }
+        }
+
+        if (p.ENABLE_IGR) {
+            compute_sensor_source();
+            step_parabolic_igr(dt_stage_ratio);
+        }
+
+        if (p.ENABLE_POS_LIMITER) {
+            Limiters::apply_positivity_limiter(cells, basis, p);
+        }
+        if (p.ENABLE_ENTROPY_LIMITER) {
+            Limiters::apply_entropy_limiter(*this);
+        }
+    };
+
+    execute_stage(1.0, 0.0, 1.0);
+    execute_stage(0.75, 0.25, 0.25);
+    execute_stage(1.0 / 3.0, 2.0 / 3.0, 2.0 / 3.0);
+
+    current_time += dt;
+}

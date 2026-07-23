@@ -50,6 +50,55 @@ SCHEME_STYLE = {
 }
 
 
+def get_case_style(vname, case_path):
+    if "kelvin_helmholtz" in case_path.lower():
+        parts = vname.split("_")
+        
+        # Identify method
+        if "ppr" in parts:
+            method = "ppr_adaptive"
+        else:
+            method = "navier_stokes"
+            
+        # Find resolution
+        res = "64x64" if "64x64" in parts else "128x128"
+        
+        # Find P
+        p_deg = "P2" if "P2" in parts else "P3"
+        
+        # Find Re
+        re_val = "Re10000" if "Re10000" in parts else "Re20000"
+        
+        # Set color based on (resolution, p_deg) -> 4 distinct colors (RGB + Orange)
+        color_map = {
+            ("64x64", "P2"): "#1f77b4",   # Royal Blue
+            ("64x64", "P3"): "#ff7f0e",   # Bright Orange
+            ("128x128", "P2"): "#2ca02c", # Forest Green
+            ("128x128", "P3"): "#d62728"  # Crimson Red
+        }
+        color = color_map.get((res, p_deg), "#7f7f7f")
+        
+        # PPR is solid lines (-), NS is dashed lines (--)
+        ls = "-" if method == "ppr_adaptive" else "--"
+        
+        # Re10k is circle (o), Re20k is square (s)
+        marker = "o" if re_val == "Re10000" else "s"
+        
+        # Set nice labels
+        method_label = "PPR" if method == "ppr_adaptive" else "NS"
+        re_label = "Re10k" if re_val == "Re10000" else "Re20k"
+        label = f"{method_label} | {res} | {p_deg} | {re_label}"
+        
+        return {
+            "label": label,
+            "color": color,
+            "ls": ls,
+            "marker": marker
+        }
+    else:
+        return SCHEME_STYLE.get(vname, {"label": vname, "color": "#7f7f7f", "ls": "-", "marker": ""})
+
+
 def plot_comparative_energy_spectra(case_path, grid_res=(256, 256), output_dir=None):
     """
     Plots overlaid energy spectra E(k) across all scheme variants for a single benchmark case.
@@ -59,11 +108,29 @@ def plot_comparative_energy_spectra(case_path, grid_res=(256, 256), output_dir=N
         print(f"[COMPARATIVE PLOTS] No variant runs found in: {case_path}")
         return
 
+    is_khi = "kelvin_helmholtz" in case_path.lower()
+    if is_khi:
+        # Sort variant_dirs to group entries sharing the same color next to each other
+        def sort_key(d):
+            vname = os.path.basename(d)
+            parts = vname.split("_")
+            res = "64x64" if "64x64" in parts else "128x128"
+            p_deg = "P2" if "P2" in parts else "P3"
+            method = "ppr_adaptive" if "ppr" in parts else "navier_stokes"
+            re_val = "Re10000" if "Re10000" in parts else "Re20000"
+            
+            res_order = 0 if res == "64x64" else 1
+            p_order = 0 if p_deg == "P2" else 1
+            method_order = 0 if method == "ppr_adaptive" else 1
+            re_order = 0 if re_val == "Re10000" else 1
+            return (res_order, p_order, method_order, re_order)
+        variant_dirs.sort(key=sort_key)
+
     fig, ax = plt.subplots(figsize=(8, 6), dpi=300)
 
     for vdir in variant_dirs:
         vname = os.path.basename(vdir)
-        style = SCHEME_STYLE.get(vname, {"label": vname, "color": "#7f7f7f", "ls": "-", "marker": ""})
+        style = get_case_style(vname, case_path)
 
         pv_dir = os.path.join(vdir, "pv_outputs")
         if not os.path.exists(pv_dir):
@@ -96,7 +163,11 @@ def plot_comparative_energy_spectra(case_path, grid_res=(256, 256), output_dir=N
     ax.set_ylabel(r'Energy Density $E(k)$', fontsize=12)
     ax.set_title(f'Comparative Energy Spectrum: {os.path.basename(case_path)}', fontsize=13)
     ax.grid(True, which="both", ls="--", alpha=0.4)
-    ax.legend(fontsize=10, loc='best', framealpha=0.9)
+
+    if is_khi:
+        ax.legend(fontsize=9, bbox_to_anchor=(1.04, 1), loc="upper left", framealpha=0.95)
+    else:
+        ax.legend(fontsize=10, loc='best', framealpha=0.9)
 
     if output_dir is None:
         output_dir = os.path.join(case_path, "summary_plots")
@@ -115,6 +186,24 @@ def plot_comparative_enstrophy_history(case_path, output_dir=None):
     variant_dirs = [d for d in glob.glob(os.path.join(case_path, "*")) if os.path.isdir(d) and os.path.basename(d) not in ["summary_plots", "pv_outputs", "csv_outputs", "anims", "__pycache__"]]
     if not variant_dirs:
         return
+
+    is_khi = "kelvin_helmholtz" in case_path.lower()
+    if is_khi:
+        # Sort variant_dirs to group entries sharing the same color next to each other
+        def sort_key(d):
+            vname = os.path.basename(d)
+            parts = vname.split("_")
+            res = "64x64" if "64x64" in parts else "128x128"
+            p_deg = "P2" if "P2" in parts else "P3"
+            method = "ppr_adaptive" if "ppr" in parts else "navier_stokes"
+            re_val = "Re10000" if "Re10000" in parts else "Re20000"
+            
+            res_order = 0 if res == "64x64" else 1
+            p_order = 0 if p_deg == "P2" else 1
+            method_order = 0 if method == "ppr_adaptive" else 1
+            re_order = 0 if re_val == "Re10000" else 1
+            return (res_order, p_order, method_order, re_order)
+        variant_dirs.sort(key=sort_key)
 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8), dpi=300, sharex=True)
 
@@ -140,9 +229,11 @@ def plot_comparative_enstrophy_history(case_path, output_dir=None):
             except Exception:
                 pass
 
+    is_khi = "kelvin_helmholtz" in case_path.lower()
+
     for vdir in variant_dirs:
         vname = os.path.basename(vdir)
-        style = SCHEME_STYLE.get(vname, {"label": vname, "color": "#7f7f7f", "ls": "-", "marker": ""})
+        style = get_case_style(vname, case_path)
 
         csv_file = os.path.join(vdir, "csv_outputs", "enstrophy_history.csv")
         if not os.path.exists(csv_file):
@@ -164,16 +255,20 @@ def plot_comparative_enstrophy_history(case_path, output_dir=None):
     ax1.set_ylabel(r'Normalized Kinetic Energy $K(t)/K_0$', fontsize=11)
     ax1.set_title(f'Comparative Decay History: {os.path.basename(case_path)}', fontsize=13)
     ax1.grid(True, ls="--", alpha=0.4)
-    ax1.legend(fontsize=9, loc='best')
 
-    if default_k_limits:
+    if is_khi:
+        ax1.legend(fontsize=9, bbox_to_anchor=(1.04, 1), loc="upper left", framealpha=0.95)
+    else:
+        ax1.legend(fontsize=9, loc='best')
+
+    if not is_khi and default_k_limits:
         ax1.set_ylim(default_k_limits)
 
     ax2.set_xlabel(r'Time $t$', fontsize=11)
     ax2.set_ylabel(r'Normalized Enstrophy $\Omega(t)/\Omega_0$', fontsize=11)
     ax2.grid(True, ls="--", alpha=0.4)
 
-    if default_om_limits:
+    if not is_khi and default_om_limits:
         ax2.set_ylim(default_om_limits)
 
     if output_dir is None:

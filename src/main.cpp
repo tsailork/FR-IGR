@@ -2,7 +2,7 @@
  * @file main.cpp
  * @brief Main entry point for the Flux Reconstruction Euler solver.
  *
- * Orchestrates the full CFD simulation pipeline:
+ * Orchestrates the full CFD simulation pipeline in 2D and 3D:
  *  1. Parameter and domain grid loading.
  *  2. Solver initialization (applying initial conditions or VTK format restart serialization).
  *  3. Explicit time-stepping loop using dynamic CFL stability conditions and SSP-RK3 integration.
@@ -21,6 +21,7 @@
 #include "ib/sbm_geometry.hpp"
 #include <cmath>
 #include <iostream>
+#include <fstream>
 #include <filesystem>
 #include <cstdio>
 
@@ -28,41 +29,14 @@
 #include <omp.h>
 #endif
 
-int main() {
-    // 1. Load Parameters
-    Parameters params;
-    params.load_domain("domain.grid");
-    params.load_inputs("inputs.dat");
+template<int Dim>
+int run_simulation(Parameters& params) {
+    SolverDim<Dim> solver(params);
 
-    // Redirect stdout and stderr to out.log, disable buffering
-    if (!params.RESTART_FILE.empty()) {
-        std::freopen("out.log", "a", stdout);
-        std::freopen("out.log", "a", stderr);
-    } else {
-        std::freopen("out.log", "w", stdout);
-        std::freopen("out.log", "w", stderr);
-    }
-    std::setvbuf(stdout, NULL, _IONBF, 0);
-    std::setvbuf(stderr, NULL, _IONBF, 0);
-    std::cout << std::unitbuf;
-    std::cerr << std::unitbuf;
-
-    std::cout << "Starting FR-IGR Solver\n";
-#ifdef _OPENMP
-    std::cout << "OpenMP Enabled: " << omp_get_max_threads() << " threads\n";
-#else
-    std::cout << "OpenMP Disabled (Serial Mode)\n";
-#endif
-
-    // 2. Setup Solver
-    Solver solver(params);
-
-    // 3. Initialize Output Directory and Writer
     ensure_output_directory("pv_outputs");
     ensure_output_directory("csv_outputs");
     VTKWriter writer("solution");
 
-    // 4. Initialization: restart from file, or apply fresh IC
     double t = 0.0;
     int checkpoint_count = 0;
     int plot_count = 0;
@@ -83,14 +57,13 @@ int main() {
         std::cout << "Initializing solver with IC: " << params.IC_TYPE << "...\n";
         IC::apply(solver);
 
-        // Initialize Sigma field for Parabolic mode
         if (params.ENABLE_IGR && params.IGR_TYPE == "PARABOLIC") {
             solver.compute_sensor_source();
-            for (Cell* c : solver.cells) {
+            for (auto* c : solver.cells) {
                 c->sigma_field = c->S_buf;
             }
         }
-        
+
         if (params.ENABLE_SBM_DIAGNOSTICS && params.IB_METHOD == "SBM") {
             std::ofstream sbm_file("csv_outputs/sbm_diagnostics.csv");
             if (sbm_file.is_open()) {
@@ -99,16 +72,14 @@ int main() {
         }
     }
 
-    // 5. Time Stepping Loop
     int step = 0;
     double next_checkpoint = checkpoint_count * params.RESTART_INTERVAL + params.RESTART_INTERVAL;
     double next_plot       = plot_count * params.OUTPUT_INTERVAL + params.OUTPUT_INTERVAL;
     double next_residual_sbm = (std::floor(t / params.RESIDUAL_INTERVAL) + 1.0) * params.RESIDUAL_INTERVAL;
 
-    // Write initial states
     writer.write_checkpoint(solver, checkpoint_count++, t);
     writer.write_plot(solver, plot_count++, t);
-    
+
     Diagnostics diag(params, solver, t);
 
     while (t < params.T_FINAL) {
@@ -121,7 +92,6 @@ int main() {
 
         double dt = solver.compute_dt();
 
-        // Limit dt to hit output intervals exactly
         if (t + dt > next_checkpoint) dt = next_checkpoint - t;
         if (t + dt > next_plot)       dt = next_plot - t;
         if (t + dt > params.T_FINAL)  dt = params.T_FINAL - t;
@@ -138,7 +108,6 @@ int main() {
 
         diag.update(solver, t, step);
 
-        // Write SBM Diagnostics if scheduled
         if (t >= next_residual_sbm) {
             if (params.ENABLE_SBM_DIAGNOSTICS && params.IB_METHOD == "SBM") {
                 auto sbm_diags = ImmersedBoundary::get_sbm_diagnostics();
@@ -159,13 +128,11 @@ int main() {
             next_residual_sbm += params.RESIDUAL_INTERVAL;
         }
 
-        // Write checkpoint if scheduled
         if (std::abs(t - next_checkpoint) < 1e-12) {
             writer.write_checkpoint(solver, checkpoint_count++, t);
             next_checkpoint += params.RESTART_INTERVAL;
         }
 
-        // Write plot if scheduled
         if (std::abs(t - next_plot) < 1e-12) {
             writer.write_plot(solver, plot_count++, t);
             next_plot += params.OUTPUT_INTERVAL;
@@ -174,4 +141,38 @@ int main() {
 
     std::cout << "Simulation complete.\n";
     return 0;
+}
+
+int main() {
+    Parameters params;
+    params.load_domain("domain.grid");
+    params.load_inputs("inputs.dat");
+
+    if (!params.RESTART_FILE.empty()) {
+        std::freopen("out.log", "a", stdout);
+        std::freopen("out.log", "a", stderr);
+    } else {
+        std::freopen("out.log", "w", stdout);
+        std::freopen("out.log", "w", stderr);
+    }
+    std::setvbuf(stdout, NULL, _IONBF, 0);
+    std::setvbuf(stderr, NULL, _IONBF, 0);
+    std::cout << std::unitbuf;
+    std::cerr << std::unitbuf;
+
+    std::cout << "Starting FR-IGR Solver\n";
+#ifdef _OPENMP
+    std::cout << "OpenMP Enabled: " << omp_get_max_threads() << " threads\n";
+#else
+    std::cout << "OpenMP Disabled (Serial Mode)\n";
+#endif
+
+    bool is_3d = (!params.blocks.empty() && params.blocks[0].N_ELEM_Z > 1);
+    if (is_3d) {
+        std::cout << "Executing in 3D Mode\n";
+        return run_simulation<3>(params);
+    } else {
+        std::cout << "Executing in 2D Mode\n";
+        return run_simulation<2>(params);
+    }
 }

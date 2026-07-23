@@ -123,4 +123,42 @@ TEST_CASE("Initial Conditions Application") {
         Cell* cell_tr = solver.cells[3];
         CHECK(cell_tr->U[0 * npts * npts + 0 * npts + 0] > 0.0);
     }
+
+    SUBCASE("SHOCK_VORTEX") {
+        p.IC_TYPE = "SHOCK_VORTEX";
+        p.SHOCK_VORTEX_MS = 1.2;
+        p.SHOCK_VORTEX_MV = 0.25;
+        p.SHOCK_VORTEX_XS = 0.5;
+        p.SHOCK_VORTEX_XV = 0.8;
+        p.SHOCK_VORTEX_YV = 0.5;
+        p.SHOCK_VORTEX_RC = 0.2;
+        Solver solver(p);
+        IC::apply(solver);
+
+        REQUIRE(solver.cells.size() >= 4);
+        for (const auto* cell : solver.cells) {
+            CHECK(cell->U[0] > 0.0); // Density > 0
+            CHECK(cell->U[3] > 0.0); // Total energy > 0
+        }
+    }
+
+    SUBCASE("RICHTMYER_MESHKOV") {
+        p.IC_TYPE = "RICHTMYER_MESHKOV";
+        p.RMI_MS = 1.5;
+        p.RMI_RHO1 = 1.0;
+        p.RMI_RHO2 = 3.0;
+        p.RMI_XS = 0.2;
+        p.RMI_X0 = 0.5;
+        p.RMI_AMP = 0.05;
+        p.RMI_LY = 1.0;
+        p.RMI_SIGMA = 0.01;
+        Solver solver(p);
+        IC::apply(solver);
+
+        REQUIRE(solver.cells.size() >= 4);
+        for (const auto* cell : solver.cells) {
+            CHECK(cell->U[0] > 0.0); // Density > 0
+            CHECK(cell->U[3] > 0.0); // Total energy > 0
+        }
+    }
 }

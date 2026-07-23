@@ -101,3 +101,35 @@ double Solver::compute_dt() const {
     }
     return min_dt;
 }
+
+double SolverDim<3>::compute_dt() const {
+    double min_dt = 1e30;
+
+    #pragma omp parallel for reduction(min:min_dt) schedule(static)
+    for (size_t i = 0; i < cells.size(); ++i) {
+        Cell3D* c = cells[i];
+        double max_lambda = 1e-10;
+        int npts = p.N_PTS;
+        int npts3 = npts * npts * npts;
+
+        for (int pt = 0; pt < npts3; ++pt) {
+            double rho = std::max(1e-12, c->U[0 * npts3 + pt]);
+            double u   = c->U[1 * npts3 + pt] / rho;
+            double v   = c->U[2 * npts3 + pt] / rho;
+            double w   = c->U[3 * npts3 + pt] / rho;
+            double E   = c->U[4 * npts3 + pt];
+            double press = (p.GAMMA - 1.0) * (E - 0.5 * rho * (u*u + v*v + w*w));
+            double press_safe = std::max(p.POS_LIMITER_EPS, press);
+            double speed_sound = std::sqrt(p.GAMMA * press_safe / rho);
+            double vel_mag = std::sqrt(u*u + v*v + w*w);
+            double lambda = vel_mag + speed_sound;
+            max_lambda = std::max(max_lambda, lambda);
+        }
+
+        double h_min = std::min({c->dx, c->dy, c->dz});
+        double dt_cell = 0.5 * p.CFL * h_min / ((2.0 * p.P_DEG + 1.0) * max_lambda);
+        min_dt = std::min(min_dt, dt_cell);
+    }
+
+    return min_dt;
+}

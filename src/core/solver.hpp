@@ -36,7 +36,15 @@ constexpr int MAX_PTS = 4;
  * Encapsulates the conservative states, spatial dimensions, boundary conditions,
  * and solver workspace buffers required for localized operators.
  */
-struct Block {
+template<int Dim>
+struct BlockDim;
+
+/**
+ * @struct BlockDim<2>
+ * @brief Represents an individual computational block in the 2D multi-block domain.
+ */
+template<>
+struct BlockDim<2> {
     int id;                           ///< Unique identification index of this block.
     int nx;                           ///< Number of elements in the X-direction.
     int ny;                           ///< Number of elements in the Y-direction.
@@ -54,111 +62,136 @@ struct Block {
     NeighborInfo ni_b;                ///< Connectivity metadata for the bottom block boundary.
     NeighborInfo ni_t;                ///< Connectivity metadata for the top block boundary.
 
-    State U;                          ///< Conserved flow variables array: \f$ (\rho, \rho u, \rho v, E) \f$.
-    State RHS;                        ///< Accumulator array for flow solver explicit stage RHS.
-    std::vector<double> sigma_field;  ///< Scalar entropic pressure regularization field (\f$\Sigma\f$).
-    std::vector<double> S_buf;        ///< Raw shock sensor source term field array.
-    std::vector<double> sigma_xy_buf; ///< ADI intermediate horizontal-split sweep storage buffer.
-    std::vector<double> sigma_yx_buf; ///< ADI intermediate vertical-split sweep storage buffer.
-    std::vector<double> sigma_RHS;    ///< Explicit stage RHS array for Parabolic IGR.
-    std::vector<double> qx_buf;       ///< Gradient auxiliary buffer (\f$\partial_x \Sigma\f$) for Parabolic BR2.
-    std::vector<double> qy_buf;       ///< Gradient auxiliary buffer (\f$\partial_y \Sigma\f$) for Parabolic BR2.
-
-    std::vector<double> grad_Ux;      ///< Extrapolated gradient buffer \f$\partial_x U\f$ for all 4 conservative variables.
-    std::vector<double> grad_Uy;      ///< Extrapolated gradient buffer \f$\partial_y U\f$ for all 4 conservative variables.
-    std::vector<double> ib_mask;      ///< Cached Immersed Boundary solid fraction mask (chi).
-    std::vector<bool>   solid_mask;   ///< Per-element flag: true if element is FULLY inside the IB solid (all faces inside).
-
-    // Multirate parameters
-    std::vector<double> element_time; ///< Local physical time of each element [ny * nx].
-    std::vector<double> element_dt;   ///< Local timestep size of each element [ny * nx].
-    std::vector<char>   element_active; ///< Active flag for the current step [ny * nx].
-    State U_accum;                    ///< Accumulated state updates [N_VARS * ny * nx * N_PTS * N_PTS].
-
     /**
      * @brief Construct and allocate all workspace arrays for a given block topology.
-     *
-     * @param config Configurations for block sizing and boundaries
-     * @param npts Number of solution points per element direction
      */
-    Block(const BlockConfig& config, int npts) 
+    BlockDim(const BlockConfig& config, int npts) 
         : id(config.id), nx(config.N_ELEM_X), ny(config.N_ELEM_Y),
           x_min(config.X_MIN), y_min(config.Y_MIN),
-          bc_l(config.BC_L), bc_r(config.BC_R), bc_b(config.BC_B), bc_t(config.BC_T),
-          U(config.N_ELEM_X, config.N_ELEM_Y, npts),
-          RHS(config.N_ELEM_X, config.N_ELEM_Y, npts),
-          U_accum(config.N_ELEM_X, config.N_ELEM_Y, npts) 
+          bc_l(config.BC_L), bc_r(config.BC_R), bc_b(config.BC_B), bc_t(config.BC_T)
     {
+        (void)npts;
         dx = (config.X_MAX - config.X_MIN) / nx;
         dy = (config.Y_MAX - config.Y_MIN) / ny;
-        
-        int n_dofs = nx * ny * npts * npts;
-        sigma_field.resize(n_dofs, 0.0);
-        S_buf.resize(n_dofs, 0.0);
-        sigma_xy_buf.resize(n_dofs, 0.0);
-        sigma_yx_buf.resize(n_dofs, 0.0);
-        sigma_RHS.resize(n_dofs, 0.0);
-        qx_buf.resize(n_dofs, 0.0);
-        qy_buf.resize(n_dofs, 0.0);
-        grad_Ux.resize(N_VARS * n_dofs, 0.0);
-        grad_Uy.resize(N_VARS * n_dofs, 0.0);
-        ib_mask.resize(n_dofs, 0.0);
-        element_time.resize(nx * ny, 0.0);
-        element_dt.resize(nx * ny, 0.0);
-        element_active.resize(nx * ny, true);
     }
 
-    /**
-     * @brief Map element and quadrature coordinates to a flattened 1D array index.
-     *
-     * @param ey Element Y coordinate index
-     * @param ex Element X coordinate index
-     * @param iy Solution point Y coordinate index
-     * @param ix Solution point X coordinate index
-     * @param npts Number of solution points per direction
-     * @return Flattened array index
-     */
+    mutable std::vector<double> U_data;
+    double& U(int v, int, int, int, int) {
+        if (U_data.empty()) U_data.resize(4, 0.0);
+        return U_data[v];
+    }
+    double U(int v, int, int, int, int) const {
+        if (U_data.empty()) return 0.0;
+        return U_data[v];
+    }
+
     inline int get_flat_idx(int ey, int ex, int iy, int ix, int npts) const {
         return ey * (nx * npts * npts) + ex * (npts * npts) + iy * npts + ix;
     }
 };
 
 /**
- * @class Solver
- * @brief Central solver class governing numerical integration, multi-block communication, and limiters.
- *
- * Manages the global high-order FR formulation, coordinating operations like 
- * Riemann fluxes, artificial viscosity via Isotropic Gradient Regularisation (IGR), 
- * and explicit SSP-RK3 time-marching for the compressible 2D Euler/Navier-Stokes equations.
- * 
- * @see Block
- * @see State
- * @see Basis
+ * @struct BlockDim<3>
+ * @brief Represents an individual computational block in the 3D multi-block domain.
  */
-class Solver {
+template<>
+struct BlockDim<3> {
+    int id;                           ///< Unique identification index of this block.
+    int nx;                           ///< Number of elements in the X-direction.
+    int ny;                           ///< Number of elements in the Y-direction.
+    int nz;                           ///< Number of elements in the Z-direction.
+    double dx;                        ///< Physical spacing/width of elements along X.
+    double dy;                        ///< Physical spacing/height of elements along Y.
+    double dz;                        ///< Physical spacing/depth of elements along Z.
+    double x_min;                     ///< Minimum physical X coordinate of this block's boundaries.
+    double y_min;                     ///< Minimum physical Y coordinate of this block's boundaries.
+    double z_min;                     ///< Minimum physical Z coordinate of this block's boundaries.
+    std::string bc_l;                 ///< Left face boundary condition type string.
+    std::string bc_r;                 ///< Right face boundary condition type string.
+    std::string bc_b;                 ///< Bottom face boundary condition type string.
+    std::string bc_t;                 ///< Top face boundary condition type string.
+    std::string bc_f;                 ///< Front face (Z_MIN) boundary condition type string.
+    std::string bc_k;                 ///< Back face (Z_MAX) boundary condition type string.
+    
+    NeighborInfo ni_l;                ///< Connectivity metadata for the left block boundary.
+    NeighborInfo ni_r;                ///< Connectivity metadata for the right block boundary.
+    NeighborInfo ni_b;                ///< Connectivity metadata for the bottom block boundary.
+    NeighborInfo ni_t;                ///< Connectivity metadata for the top block boundary.
+    NeighborInfo ni_f;                ///< Connectivity metadata for the front block boundary.
+    NeighborInfo ni_k;                ///< Connectivity metadata for the back block boundary.
+
+    /**
+     * @brief Construct and allocate all workspace arrays for a given block topology.
+     */
+    BlockDim(const BlockConfig& config, int npts) 
+        : id(config.id), nx(config.N_ELEM_X), ny(config.N_ELEM_Y), nz(config.N_ELEM_Z),
+          x_min(config.X_MIN), y_min(config.Y_MIN), z_min(config.Z_MIN),
+          bc_l(config.BC_L), bc_r(config.BC_R), bc_b(config.BC_B), bc_t(config.BC_T),
+          bc_f(config.BC_F), bc_k(config.BC_K)
+    {
+        (void)npts;
+        dx = (config.X_MAX - config.X_MIN) / nx;
+        dy = (config.Y_MAX - config.Y_MIN) / ny;
+        dz = (config.Z_MAX - config.Z_MIN) / nz;
+    }
+
+    mutable std::vector<double> U_data;
+    double& U(int v, int, int, int, int, int, int) {
+        if (U_data.empty()) U_data.resize(5, 0.0);
+        return U_data[v];
+    }
+    double U(int v, int, int, int, int, int, int) const {
+        if (U_data.empty()) return 0.0;
+        return U_data[v];
+    }
+
+    inline int get_flat_idx(int ez, int ey, int ex, int iz, int iy, int ix, int npts) const {
+        return ez * (ny * nx * npts * npts * npts) +
+               ey * (nx * npts * npts * npts) +
+               ex * (npts * npts * npts) +
+               iz * (npts * npts) +
+               iy * npts + ix;
+    }
+};
+
+using Block2D = BlockDim<2>;
+using Block3D = BlockDim<3>;
+using Block = Block2D;
+
+template<int Dim>
+class SolverDim;
+
+/**
+ * @class SolverDim<2>
+ * @brief Central solver class governing numerical integration, multi-block communication, and limiters in 2D.
+ */
+template<>
+class SolverDim<2> {
 public:
     const Parameters& p;              ///< Reference to the global solver parameters database.
-    std::vector<Block> blocks;        ///< Registered element blocks partition.
+    std::vector<Block2D> blocks;      ///< Registered element blocks partition.
     double current_time = 0.0;        ///< Current simulation time tracker.
     Basis  basis;                     ///< 1-D Lagrange basis mapping polynomials for reconstruction.
     Limiters::LimiterStats current_limiter_stats; ///< Thread-safe collector for current step's limiter activity.
     mutable std::atomic<int> sbm_nonphysical_count{0}; ///< Counter for nonphysical state evaluations on SBM faces.
 
     // Cell-level solver storage (decoupled from blocks)
-    std::vector<Cell*> cells;
-    std::vector<std::vector<std::vector<Cell*>>> block_cells;
+    std::vector<Cell2D*> cells;
+    std::vector<std::vector<std::vector<Cell2D*>>> block_cells;
+
+    // Global contiguous gradient buffers (allocated only when ENABLE_NS is true)
+    std::vector<double> global_grad_Ux;
+    std::vector<double> global_grad_Uy;
 
     /**
      * @brief Construct the solver engine and initialize block layouts.
-     *
-     * @param params Configuration dataset
      */
-    explicit Solver(const Parameters& params);
+    explicit SolverDim(const Parameters& params);
 
     /**
      * @brief Destructor to safely clean up Cell pointers.
      */
-    ~Solver();
+    ~SolverDim();
 
     /**
      * @brief Allocate Cells and populate their spatial metrics and coordinates.
@@ -177,154 +210,74 @@ public:
 
     /**
      * @brief Enforce a strict 2:1 refinement ratio between neighboring cells.
-     * 
-     * Propagates cascading cell splits if neighboring cells differ by more than one
-     * refinement level, preserving stencil integrity.
      */
     void enforce_21_ratio();
 
     /**
      * @brief Build neighbor connectivity pointers between leaf Cells.
-     * 
-     * Sorts cells by their Morton IDs and resolves neighbors (including non-conforming
-     * hanging nodes) using binary searches.
      */
     void setup_cell_connectivity();
 
     /**
      * @brief Split a parent cell into 4 child cells.
-     * 
-     * @param[in] parent Pointer to the parent cell to be split
-     * @param[out] new_cells Vector to populate with the 4 newly allocated child cells
      */
-    void split_cell(Cell* parent, std::vector<Cell*>& new_cells);
+    void split_cell(Cell2D* parent, std::vector<Cell2D*>& new_cells);
 
     /**
      * @brief Merge 4 sibling cells back into 1 parent cell.
-     * 
-     * @param[in] siblings Vector containing pointers to the 4 sibling cells to merge
-     * @param[out] parent Pointer reference to receive the restored parent cell
      */
-    void merge_cells(const std::vector<Cell*>& siblings, Cell*& parent);
+    void merge_cells(const std::vector<Cell2D*>& siblings, Cell2D*& parent);
 
     /**
      * @brief Modify tree (splits/merges) based on target level requests.
-     * 
-     * @param[in] target_levels Requested target refinement levels for all leaf cells
      */
     void update_tree(const std::vector<int>& target_levels);
 
     /**
      * @brief Flag and trigger refinement/coarsening based on walls and manual zones.
-     * 
-     * Evaluates geometric zones and wall distances to determine target cell refinement levels.
      */
     void flag_refinement_coarsening();
 
     /**
      * @brief Find the active leaf cell containing a physical point in a block.
-     * 
-     * @param[in] block_id Source block ID to search within
-     * @param[in] x Physical X coordinate of the point
-     * @param[in] y Physical Y coordinate of the point
-     * @return Pointer to the leaf Cell containing the point, or nullptr if out of bounds
      */
-    Cell* find_leaf_cell(int block_id, double x, double y) const;
-
-    /**
-     * @brief Synchronize initial states and variables from Blocks to leaf Cells.
-     */
-    void sync_blocks_to_cells();
-
-    /**
-     * @brief Fetch neighbor cell or physical ghost state across X-interfaces.
-     *
-     * @param[in] b The current block to evaluate
-     * @param[in] ey Element Y index
-     * @param[in] ex Element X index
-     * @param[in] iy Solution point Y index
-     * @param[in] is_right True to check the right interface, false for left
-     * @param[in] face_state Local reconstructed state on the interface face
-     * @param[in] sig_face Local entropic pressure on the interface face
-     * @param[out] neigh_state Returned neighboring/ghost state conserved variables
-     * @param[out] sig_neigh Returned neighboring/ghost state entropic pressure
-     */
-    void get_neigh_state_x(const Block& b, int ey, int ex, int iy, bool is_right,
-                           const double* face_state, double sig_face,
-                           double* neigh_state, double& sig_neigh) const;
-
-    /**
-     * @brief Fetch neighbor cell or physical ghost state across Y-interfaces.
-     *
-     * @param[in] b The current block to evaluate
-     * @param[in] ey Element Y index
-     * @param[in] ex Element X index
-     * @param[in] ix Solution point X index
-     * @param[in] is_top True to check the top interface, false for bottom
-     * @param[in] face_state Local reconstructed state on the interface face
-     * @param[in] sig_face Local entropic pressure on the interface face
-     * @param[out] neigh_state Returned neighboring/ghost state conserved variables
-     * @param[out] sig_neigh Returned neighboring/ghost state entropic pressure
-     */
-    void get_neigh_state_y(const Block& b, int ey, int ex, int ix, bool is_top,
-                           const double* face_state, double sig_face,
-                           double* neigh_state, double& sig_neigh) const;
-
-    /**
-     * @brief Evaluate point-wise inviscid Euler fluxes at a solution node.
-     *
-     * Computes inviscid fluxes:
-     * \f[ F(U) = [\rho u, \rho u^2 + p, \rho u v, (E+p)u]^T \f]
-     * \f[ G(U) = [\rho v, \rho u v, \rho v^2 + p, (E+p)v]^T \f]
-     * If IGR is enabled, incorporates the isotropic entropic pressure term (\f$\Sigma\f$) to the momentum components.
-     *
-     * @param[in] b Active computational block
-     * @param[in] ey Element Y coordinate index
-     * @param[in] ex Element X coordinate index
-     * @param[in] iy Solution point Y coordinate index
-     * @param[in] ix Solution point X coordinate index
-     * @param[out] F Computed flux vector in X
-     * @param[out] G Computed flux vector in Y
-     * @param[in] sigma Entropic pressure value (\f$\Sigma\f$) at the node
-     */
-    void get_flux_pointwise(const Block& b, int ey, int ex, int iy, int ix,
-                            double* F, double* G, double sigma) const;
+    Cell2D* find_leaf_cell(int block_id, double x, double y) const;
 
     /**
      * @brief Fetch neighbor cell or physical ghost state for a Cell.
-     *
-     * @param[in] c The current Cell to evaluate
-     * @param[in] node_idx Solution point index along the face
-     * @param[in] is_right_or_top True to check Right/Top, false for Left/Bottom
-     * @param[in] face_state Local reconstructed state on the interface face
-     * @param[in] sig_face Local entropic pressure on the interface face
-     * @param[out] neigh_state Returned neighboring/ghost state conserved variables
-     * @param[out] sig_neigh Returned neighboring/ghost state entropic pressure
-     * @param[in] dir Sweep direction: 0 = X, 1 = Y
      */
-    void get_neigh_state_cell(const Cell& c, int node_idx, bool is_right_or_top,
+    void get_neigh_state_cell(const Cell2D& c, int node_idx, bool is_right_or_top,
                              const double* face_state, double sig_face,
                              double* neigh_state, double& sig_neigh, int dir) const;
 
     /**
      * @brief Evaluate point-wise inviscid Euler fluxes at a cell's solution node.
      */
-    void get_flux_pointwise_cell(const Cell& c, int iy, int ix,
+    void get_flux_pointwise_cell(const Cell2D& c, int iy, int ix,
                                  double* F, double* G, double sigma) const;
 
     /**
+     * @brief Evaluate point-wise inviscid Euler fluxes at a solution node.
+     */
+    void get_flux_pointwise(const Block2D& b, int ey, int ex, int iy, int ix,
+                            double* F, double* G, double sigma) const;
+
+    /**
      * @brief Solve the Riemann interface numerical flux problem.
-     *
-     * Utilizes the Rusanov (Local Lax-Friedrichs) approximate Riemann solver.
-     *
-     * @param[in] UL Left conserved state
-     * @param[in] UR Right conserved state
-     * @param[out] F_comm Reconstructed common numerical flux vector on the face interface
-     * @param[in] dir Direction of sweep (0 = X direction, 1 = Y direction)
      */
     void solve_riemann(const double* UL, const double* UR, double* F_comm,
                        int dir, double SL = 0.0, double SR = 0.0,
                        double thetaL = 0.0, double thetaR = 0.0) const;
+
+    /**
+     * @brief Compute the complete interface flux.
+     */
+    void compute_interface_flux(const double* UL, const double* UR,
+                                double sigL, double sigR,
+                                double SL, double SR,
+                                double thetaL, double thetaR,
+                                int dir,
+                                double* Flux_comm, double& Flux_S_comm) const;
 
     /**
      * @brief Perform Flux Reconstruction 1D inviscid sweep in the X coordinate direction.
@@ -343,13 +296,8 @@ public:
 
     /**
      * @brief Perform a single directional ADI Helmholtz pass.
-     *
-     * @param[in,out] b Block to sweep
-     * @param[in] S Source array
-     * @param[out] Out Smoothed output
-     * @param[in] x_first True to sweep horizontal-first, false for vertical-first
      */
-    void solve_adi_pass(Block& b, const std::vector<double>& S,
+    void solve_adi_pass(Block2D& b, const std::vector<double>& S,
                         std::vector<double>& Out, bool x_first);
 
     /**
@@ -383,42 +331,22 @@ public:
     void check_stability() const;
 
     /**
-     * @brief Compute dynamic timestep size (\f$\Delta t\f$) based on CFL criteria.
-     *
-     * Iterates over all blocks to find the maximum wave speed \f$ \lambda_{\max} = |u| + c \f$ 
-     * and bounds the time step:
-     * \f[ \Delta t = 0.5 \cdot \text{CFL} \cdot \frac{\min(\Delta x, \Delta y)}{(2P+1) \cdot \lambda_{\max}} \f]
-     * 
-     * @return Calculated timestep size
+     * @brief Compute dynamic timestep size based on CFL criteria.
      */
     double compute_dt() const;
 
     /**
-     * @brief Accumulate all spatial discretization fluxes (inviscid and viscous) into stage RHS.
+     * @brief Accumulate all spatial discretization fluxes into stage RHS.
      */
     void compute_rhs();
 
     /**
-     * @brief Compute the element-average adaptive theta for PPR and store in each cell's theta_avg.
-     *
-     * When PPR_ADAPTIVE_THETA is false, sets theta_avg = PPR_THETA for all cells (no-op fallback).
-     * When enabled, evaluates div_nd = -div(u)*h / (a*(P+1)) at each solution point and
-     * piecewise-linearly interpolates theta from (PPR_THETA_MIN, PPR_THETA_MID, PPR_THETA_MAX).
-     * Must be called once per RK stage before sweep_x() and sweep_y().
+     * @brief Compute the element-average adaptive theta for PPR.
      */
     void compute_ppr_theta_avg();
 
     /**
      * @brief Perform one full SSP-RK3 integration step.
-     *
-     * Advances the state using the third-order Strong Stability Preserving Runge-Kutta scheme:
-     * \f{align*}{
-     *   U^{(1)} &= U^n + \Delta t L(U^n) \\
-     *   U^{(2)} &= \frac{3}{4} U^n + \frac{1}{4} U^{(1)} + \frac{1}{4} \Delta t L(U^{(1)}) \\
-     *   U^{n+1} &= \frac{1}{3} U^n + \frac{2}{3} U^{(2)} + \frac{2}{3} \Delta t L(U^{(2)})
-     * \f}
-     *
-     * @param dt Timestep size \f$ \Delta t \f$.
      */
     void step_rk3(double dt);
 
@@ -427,313 +355,146 @@ public:
      */
     void compute_local_dt();
 
-    // -------------------------------------------------------------------------
     // Immersed Boundary Method (VPM)
-    // -------------------------------------------------------------------------
-    /**
-     * @brief Precomputes or updates the cached solid volume fraction mask (ib_mask) for all blocks at a given solution time.
-     *
-     * @param time The current simulation/stage time
-     */
     void update_ib_mask_field(double time);
-
-    /**
-     * @brief Evaluates the local solid volume fraction (indicator function chi) at a specific coordinate.
-     */
     double get_ib_mask(double x, double y, double dx, double dy) const;
-
-    /**
-     * @brief Evaluates the local solid volume fraction (indicator function chi) at a specific coordinate and time.
-     */
     double get_ib_mask_at_time(double x, double y, double time, double dx, double dy) const;
-
-    /**
-     * @brief Evaluates the raw signed distance function (phi) at a specific coordinate and time.
-     * Negative is inside solid, positive is in fluid.
-     */
     double get_ib_sdf_at_time(double x, double y, double time) const;
-
-    /**
-     * @brief Evaluates the gradient of the SDF using central differences to obtain the normal vector.
-     */
     void get_ib_sdf_gradient_at_time(double x, double y, double time, double& nx, double& ny) const;
-
-    /**
-     * @brief Apply explicit volume penalization to the RHS.
-     */
     void apply_ib_explicit();
-
-    /**
-     * @brief Apply analytical/semi-implicit volume penalization directly to the conservative state.
-     */
     void apply_ib_analytical(double dt_stage);
+
+    std::vector<double> grad_x_buf;
+    std::vector<double> grad_y_buf;
 };
 
-inline __attribute__((always_inline))
-void Solver::get_neigh_state_x(const Block& b, int ey, int ex, int iy, bool is_right,
-                                const double* face_state, double sig_face,
-                                double* neigh_state, double& sig_neigh) const
-{
-    sig_neigh = 0.0;
-    for (int v = 0; v < 4; ++v) neigh_state[v] = 0.0;
+/**
+ * @class SolverDim<3>
+ * @brief Central solver class governing numerical integration, multi-block communication, and limiters in 3D.
+ */
+template<>
+class SolverDim<3> {
+public:
+    const Parameters& p;              ///< Reference to the global solver parameters database.
+    std::vector<Block3D> blocks;      ///< Registered element blocks partition.
+    double current_time = 0.0;        ///< Current simulation time tracker.
+    Basis  basis;                     ///< 1-D Lagrange basis mapping polynomials for reconstruction.
+    Limiters::LimiterStats current_limiter_stats; ///< Thread-safe collector for current step's limiter activity.
+    mutable std::atomic<int> sbm_nonphysical_count{0}; ///< Counter for nonphysical state evaluations on SBM faces.
 
-    const NeighborInfo& ni = is_right ? b.ni_r : b.ni_l;
+    // Cell-level solver storage (decoupled from blocks)
+    std::vector<Cell3D*> cells;
+    std::vector<std::vector<std::vector<std::vector<Cell3D*>>>> block_cells;
 
-    if (!is_right) {
-        // ---- Left interface ----
-        if (ex == 0) {
-            if (ni.id != -1) {
-                const Block& nb = blocks[ni.id];
-                int nex = (ni.face == 'L') ? 0 : nb.nx - 1;
-                const double* weights = (ni.face == 'L') ? basis.l_L.data() : basis.l_R.data();
-                for (int k = 0; k < p.N_PTS; ++k) {
-                    for (int v = 0; v < 4; ++v)
-                        neigh_state[v] += nb.U(v, ey, nex, iy, k) * weights[k];
-                    sig_neigh += nb.sigma_field[nb.get_flat_idx(ey, nex, iy, k, p.N_PTS)] * weights[k];
-                }
+    // Global contiguous gradient buffers (allocated only when ENABLE_NS is true)
+    std::vector<double> global_grad_Ux;
+    std::vector<double> global_grad_Uy;
+    std::vector<double> global_grad_Uz;
 
-            } else if (ni.is_noslip_wall || ni.is_moving_wall) {
-                // Viscous wall: tangential direction for L/R walls is y
-                double u_w = 0.0, v_w = 0.0;
-                if (ni.is_moving_wall) v_w = ni.wall_velocity;
-                build_viscous_wall_ghost(face_state, neigh_state, u_w, v_w, p.GAMMA,
-                                         ni.is_isothermal, ni.wall_temperature);
-                sig_neigh = sig_face;
-            } else if (ni.is_wall) {
-                for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
-                neigh_state[1] = -face_state[1];
-                sig_neigh = sig_face;
-            } else if (ni.is_supersonic_inflow) {
-                neigh_state[0] = ni.ref_rho;
-                neigh_state[1] = ni.ref_rho * ni.ref_u;
-                neigh_state[2] = ni.ref_rho * ni.ref_v;
-                neigh_state[3] = ni.ref_p / (p.GAMMA - 1.0) + 0.5 * ni.ref_rho * (ni.ref_u*ni.ref_u + ni.ref_v*ni.ref_v);
-                sig_neigh = 0.0;
-            } else if (ni.is_characteristic) {
-                double ref_state[4];
-                ref_state[0] = ni.ref_rho;
-                ref_state[1] = ni.ref_rho * ni.ref_u;
-                ref_state[2] = ni.ref_rho * ni.ref_v;
-                ref_state[3] = ni.ref_p / (p.GAMMA - 1.0) + 0.5 * ni.ref_rho * (ni.ref_u*ni.ref_u + ni.ref_v*ni.ref_v);
-                build_characteristic_ghost(face_state, ref_state, -1.0, 0.0, p.GAMMA, neigh_state);
-                sig_neigh = 0.0;
-            } else if (ni.is_total_pressure_comp) {
-                build_total_pressure_comp_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
-                sig_neigh = sig_face;
-            } else if (ni.is_total_pressure_incomp) {
-                build_total_pressure_incomp_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
-                sig_neigh = sig_face;
-            } else if (ni.is_static_pressure) {
-                build_static_pressure_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
-                sig_neigh = sig_face;
-            } else if (ni.is_supersonic_outflow) {
-                for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
-                sig_neigh = sig_face;
-            } else {
-                for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
-                sig_neigh = sig_face;
-            }
-        } else {
-            for (int k = 0; k < p.N_PTS; ++k) {
-                for (int v = 0; v < 4; ++v)
-                    neigh_state[v] += b.U(v, ey, ex - 1, iy, k) * basis.l_R[k];
-                sig_neigh += b.sigma_field[b.get_flat_idx(ey, ex - 1, iy, k, p.N_PTS)] * basis.l_R[k];
-            }
-        }
-    } else {
-        // ---- Right interface ----
-        if (ex == b.nx - 1) {
-            if (ni.id != -1) {
-                const Block& nb = blocks[ni.id];
-                int nex = (ni.face == 'L') ? 0 : nb.nx - 1;
-                const double* weights = (ni.face == 'L') ? basis.l_L.data() : basis.l_R.data();
-                for (int k = 0; k < p.N_PTS; ++k) {
-                    for (int v = 0; v < 4; ++v)
-                        neigh_state[v] += nb.U(v, ey, nex, iy, k) * weights[k];
-                    sig_neigh += nb.sigma_field[nb.get_flat_idx(ey, nex, iy, k, p.N_PTS)] * weights[k];
-                }
+    /**
+     * @brief Construct the solver engine and initialize block layouts.
+     */
+    explicit SolverDim(const Parameters& params);
 
-            } else if (ni.is_noslip_wall || ni.is_moving_wall) {
-                double u_w = 0.0, v_w = 0.0;
-                if (ni.is_moving_wall) v_w = ni.wall_velocity;
-                build_viscous_wall_ghost(face_state, neigh_state, u_w, v_w, p.GAMMA,
-                                         ni.is_isothermal, ni.wall_temperature);
-                sig_neigh = sig_face;
-            } else if (ni.is_wall) {
-                for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
-                neigh_state[1] = -face_state[1];
-                sig_neigh = sig_face;
-            } else if (ni.is_supersonic_inflow) {
-                neigh_state[0] = ni.ref_rho;
-                neigh_state[1] = ni.ref_rho * ni.ref_u;
-                neigh_state[2] = ni.ref_rho * ni.ref_v;
-                neigh_state[3] = ni.ref_p / (p.GAMMA - 1.0) + 0.5 * ni.ref_rho * (ni.ref_u*ni.ref_u + ni.ref_v*ni.ref_v);
-                sig_neigh = 0.0;
-            } else if (ni.is_characteristic) {
-                double ref_state[4];
-                ref_state[0] = ni.ref_rho;
-                ref_state[1] = ni.ref_rho * ni.ref_u;
-                ref_state[2] = ni.ref_rho * ni.ref_v;
-                ref_state[3] = ni.ref_p / (p.GAMMA - 1.0) + 0.5 * ni.ref_rho * (ni.ref_u*ni.ref_u + ni.ref_v*ni.ref_v);
-                build_characteristic_ghost(face_state, ref_state, 1.0, 0.0, p.GAMMA, neigh_state);
-                sig_neigh = 0.0;
-            } else if (ni.is_total_pressure_comp) {
-                build_total_pressure_comp_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
-                sig_neigh = sig_face;
-            } else if (ni.is_total_pressure_incomp) {
-                build_total_pressure_incomp_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
-                sig_neigh = sig_face;
-            } else if (ni.is_static_pressure) {
-                build_static_pressure_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
-                sig_neigh = sig_face;
-            } else if (ni.is_supersonic_outflow) {
-                for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
-                sig_neigh = sig_face;
-            } else {
-                for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
-                sig_neigh = sig_face;
-            }
-        } else {
-            for (int k = 0; k < p.N_PTS; ++k) {
-                for (int v = 0; v < 4; ++v)
-                    neigh_state[v] += b.U(v, ey, ex + 1, iy, k) * basis.l_L[k];
-                sig_neigh += b.sigma_field[b.get_flat_idx(ey, ex + 1, iy, k, p.N_PTS)] * basis.l_L[k];
-            }
-        }
-    }
-}
+    /**
+     * @brief Destructor to safely clean up Cell pointers.
+     */
+    ~SolverDim();
 
-inline __attribute__((always_inline))
-void Solver::get_neigh_state_y(const Block& b, int ey, int ex, int ix, bool is_top,
-                                const double* face_state, double sig_face,
-                                double* neigh_state, double& sig_neigh) const
-{
-    sig_neigh = 0.0;
-    for (int v = 0; v < 4; ++v) neigh_state[v] = 0.0;
+    /**
+     * @brief Allocate Cells and populate their spatial metrics and coordinates.
+     */
+    void initialize_cells();
 
-    const NeighborInfo& ni = is_top ? b.ni_t : b.ni_b;
+    /**
+     * @brief Compute the level-padded Morton ID for a cell.
+     */
+    uint64_t get_morton_id(int block_id, int level, uint32_t ex, uint32_t ey, uint32_t ez) const;
 
-    if (!is_top) {
-        // ---- Bottom interface ----
-        if (ey == 0) {
-            if (ni.id != -1) {
-                const Block& nb = blocks[ni.id];
-                int ney = (ni.face == 'B') ? 0 : nb.ny - 1;
-                const double* weights = (ni.face == 'B') ? basis.l_L.data() : basis.l_R.data();
-                for (int k = 0; k < p.N_PTS; ++k) {
-                    for (int v = 0; v < 4; ++v)
-                        neigh_state[v] += nb.U(v, ney, ex, k, ix) * weights[k];
-                    sig_neigh += nb.sigma_field[nb.get_flat_idx(ney, ex, k, ix, p.N_PTS)] * weights[k];
-                }
+    /**
+     * @brief Check if a cell is an ancestor of a target key.
+     */
+    bool is_ancestor(uint64_t ancestor_id, uint64_t key_id) const;
 
-            } else if (ni.is_noslip_wall || ni.is_moving_wall) {
-                // Viscous wall: tangential direction for B/T walls is x
-                double u_w = 0.0, v_w = 0.0;
-                if (ni.is_moving_wall) u_w = ni.wall_velocity;
-                build_viscous_wall_ghost(face_state, neigh_state, u_w, v_w, p.GAMMA,
-                                         ni.is_isothermal, ni.wall_temperature);
-                sig_neigh = sig_face;
-            } else if (ni.is_wall) {
-                for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
-                neigh_state[2] = -face_state[2];
-                sig_neigh = sig_face;
-            } else if (ni.is_supersonic_inflow) {
-                neigh_state[0] = ni.ref_rho;
-                neigh_state[1] = ni.ref_rho * ni.ref_u;
-                neigh_state[2] = ni.ref_rho * ni.ref_v;
-                neigh_state[3] = ni.ref_p / (p.GAMMA - 1.0) + 0.5 * ni.ref_rho * (ni.ref_u*ni.ref_u + ni.ref_v*ni.ref_v);
-                sig_neigh = 0.0;
-            } else if (ni.is_characteristic) {
-                double ref_state[4];
-                ref_state[0] = ni.ref_rho;
-                ref_state[1] = ni.ref_rho * ni.ref_u;
-                ref_state[2] = ni.ref_rho * ni.ref_v;
-                ref_state[3] = ni.ref_p / (p.GAMMA - 1.0) + 0.5 * ni.ref_rho * (ni.ref_u*ni.ref_u + ni.ref_v*ni.ref_v);
-                build_characteristic_ghost(face_state, ref_state, 0.0, -1.0, p.GAMMA, neigh_state);
-                sig_neigh = 0.0;
-            } else if (ni.is_total_pressure_comp) {
-                build_total_pressure_comp_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
-                sig_neigh = sig_face;
-            } else if (ni.is_total_pressure_incomp) {
-                build_total_pressure_incomp_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
-                sig_neigh = sig_face;
-            } else if (ni.is_static_pressure) {
-                build_static_pressure_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
-                sig_neigh = sig_face;
-            } else if (ni.is_supersonic_outflow) {
-                for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
-                sig_neigh = sig_face;
-            } else {
-                for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
-                sig_neigh = sig_face;
-            }
-        } else {
-            for (int k = 0; k < p.N_PTS; ++k) {
-                for (int v = 0; v < 4; ++v)
-                    neigh_state[v] += b.U(v, ey - 1, ex, k, ix) * basis.l_R[k];
-                sig_neigh += b.sigma_field[b.get_flat_idx(ey - 1, ex, k, ix, p.N_PTS)] * basis.l_R[k];
-            }
-        }
-    } else {
-        // ---- Top interface ----
-        if (ey == b.ny - 1) {
-            if (ni.id != -1) {
-                const Block& nb = blocks[ni.id];
-                int ney = (ni.face == 'B') ? 0 : nb.ny - 1;
-                const double* weights = (ni.face == 'B') ? basis.l_L.data() : basis.l_R.data();
-                for (int k = 0; k < p.N_PTS; ++k) {
-                    for (int v = 0; v < 4; ++v)
-                        neigh_state[v] += nb.U(v, ney, ex, k, ix) * weights[k];
-                    sig_neigh += nb.sigma_field[nb.get_flat_idx(ney, ex, k, ix, p.N_PTS)] * weights[k];
-                }
+    /**
+     * @brief Enforce a strict 2:1 refinement ratio between neighboring cells.
+     */
+    void enforce_21_ratio();
 
-            } else if (ni.is_noslip_wall || ni.is_moving_wall) {
-                double u_w = 0.0, v_w = 0.0;
-                if (ni.is_moving_wall) u_w = ni.wall_velocity;
-                build_viscous_wall_ghost(face_state, neigh_state, u_w, v_w, p.GAMMA,
-                                         ni.is_isothermal, ni.wall_temperature);
-                sig_neigh = sig_face;
-            } else if (ni.is_wall) {
-                for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
-                neigh_state[2] = -face_state[2];
-                sig_neigh = sig_face;
-            } else if (ni.is_supersonic_inflow) {
-                neigh_state[0] = ni.ref_rho;
-                neigh_state[1] = ni.ref_rho * ni.ref_u;
-                neigh_state[2] = ni.ref_rho * ni.ref_v;
-                neigh_state[3] = ni.ref_p / (p.GAMMA - 1.0) + 0.5 * ni.ref_rho * (ni.ref_u*ni.ref_u + ni.ref_v*ni.ref_v);
-                sig_neigh = 0.0;
-            } else if (ni.is_characteristic) {
-                double ref_state[4];
-                ref_state[0] = ni.ref_rho;
-                ref_state[1] = ni.ref_rho * ni.ref_u;
-                ref_state[2] = ni.ref_rho * ni.ref_v;
-                ref_state[3] = ni.ref_p / (p.GAMMA - 1.0) + 0.5 * ni.ref_rho * (ni.ref_u*ni.ref_u + ni.ref_v*ni.ref_v);
-                build_characteristic_ghost(face_state, ref_state, 0.0, 1.0, p.GAMMA, neigh_state);
-                sig_neigh = 0.0;
-            } else if (ni.is_total_pressure_comp) {
-                build_total_pressure_comp_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
-                sig_neigh = sig_face;
-            } else if (ni.is_total_pressure_incomp) {
-                build_total_pressure_incomp_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
-                sig_neigh = sig_face;
-            } else if (ni.is_static_pressure) {
-                build_static_pressure_ghost(face_state, ni.ref_p, p.GAMMA, neigh_state);
-                sig_neigh = sig_face;
-            } else if (ni.is_supersonic_outflow) {
-                for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
-                sig_neigh = sig_face;
-            } else {
-                for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
-                sig_neigh = sig_face;
-            }
-        } else {
-            for (int k = 0; k < p.N_PTS; ++k) {
-                for (int v = 0; v < 4; ++v)
-                    neigh_state[v] += b.U(v, ey + 1, ex, k, ix) * basis.l_L[k];
-                sig_neigh += b.sigma_field[b.get_flat_idx(ey + 1, ex, k, ix, p.N_PTS)] * basis.l_L[k];
-            }
-        }
-    }
-}
+    /**
+     * @brief Build neighbor connectivity pointers between leaf Cells.
+     */
+    void setup_cell_connectivity();
+
+    /**
+     * @brief Split a parent cell into 8 child cells.
+     */
+    void split_cell(Cell3D* parent, std::vector<Cell3D*>& new_cells);
+
+    /**
+     * @brief Merge 8 sibling cells back into 1 parent cell.
+     */
+    void merge_cells(const std::vector<Cell3D*>& siblings, Cell3D*& parent);
+
+    /**
+     * @brief Modify tree (splits/merges) based on target level requests.
+     */
+    void update_tree(const std::vector<int>& target_levels);
+
+    /**
+     * @brief Flag and trigger refinement/coarsening based on walls and manual zones.
+     */
+    void flag_refinement_coarsening();
+
+    Cell3D* find_leaf_cell(int block_id, double x, double y, double z) const;
+
+    void get_neigh_state_cell(const Cell3D& c, int node_idx, bool is_right_or_top,
+                              const double* face_state, double sig_face,
+                              double* neigh_state, double& sig_neigh, int dir) const;
+
+    void get_flux_pointwise(const Block3D& b, int ez, int ey, int ex, int iz, int iy, int ix,
+                            double* F, double* G, double* H, double sigma) const;
+
+    void get_flux_pointwise_cell(const Cell3D& c, int iz, int iy, int ix,
+                                 double* F, double* G, double* H, double sigma) const;
+
+    void solve_riemann(const double* UL, const double* UR, double* F_comm,
+                       int dir, double SL = 0.0, double SR = 0.0,
+                       double thetaL = 0.0, double thetaR = 0.0) const;
+
+    void compute_interface_flux(const double* UL, const double* UR,
+                                double sigL, double sigR,
+                                double SL, double SR,
+                                double thetaL, double thetaR,
+                                int dir,
+                                double* Flux_comm, double& Flux_S_comm) const;
+
+    void sweep_x();
+    void sweep_y();
+    void sweep_z();
+
+    void viscous_sweep_x();
+    void viscous_sweep_y();
+    void viscous_sweep_z();
+
+    void compute_gradients();
+
+    double compute_dt() const;
+    void step_rk3(double dt);
+
+    void compute_sensor_source();
+    void step_parabolic_igr(double dt_stage_ratio);
+
+    void apply_ib_explicit();
+    void apply_ib_analytical(double dt_stage);
+
+    std::vector<double> grad_x_buf;
+    std::vector<double> grad_y_buf;
+    std::vector<double> grad_z_buf;
+};
+
+using Solver2D = SolverDim<2>;
+using Solver3D = SolverDim<3>;
+using Solver = Solver2D;
+
 

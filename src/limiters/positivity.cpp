@@ -282,3 +282,108 @@ Limiters::LimiterStats Limiters::apply_positivity_limiter(std::vector<Cell*>& ce
     stats.sum_theta = sum_theta;
     return stats;
 }
+
+Limiters::LimiterStats Limiters::apply_positivity_limiter(std::vector<Cell3D*>& cells,
+                                                           const Basis& basis,
+                                                           const Parameters& p) {
+    const double eps = p.POS_LIMITER_EPS;
+    const int npts = p.N_PTS;
+    const int npts3 = npts * npts * npts;
+
+    int num_limited = 0;
+    double sum_theta = 0.0;
+
+    #pragma omp parallel for schedule(static) reduction(+:num_limited, sum_theta)
+    for (size_t c_idx = 0; c_idx < cells.size(); ++c_idx) {
+        Cell3D* c = cells[c_idx];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+
+        double r_avg, ru_avg, rv_avg, rw_avg, E_avg;
+        compute_cell_average(*c, basis, r_avg, ru_avg, rv_avg, rw_avg, E_avg, npts);
+
+        double theta_r = 1.0;
+        double r_min = r_avg;
+
+        for (int pt = 0; pt < npts3; ++pt) {
+            double r = c->U[0 * npts3 + pt];
+            r_min = std::min(r_min, r);
+            if (r < eps) {
+                double ratio = (r_avg - eps) / (r_avg - r);
+                theta_r = std::min(theta_r, ratio);
+            }
+        }
+
+        double face_pts[MAX_FACE_PTS_3D][5];
+        int n_face = extrapolate_face_values(*c, basis, face_pts, npts);
+
+        for (int f = 0; f < n_face; ++f) {
+            double r = face_pts[f][0];
+            r_min = std::min(r_min, r);
+            if (r < eps) {
+                double ratio = (r_avg - eps) / (r_avg - r);
+                theta_r = std::min(theta_r, ratio);
+            }
+        }
+
+        if (theta_r < 1.0) {
+            for (int pt = 0; pt < npts3; ++pt) {
+                c->U[0 * npts3 + pt] = theta_r * (c->U[0 * npts3 + pt] - r_avg) + r_avg;
+                c->U[1 * npts3 + pt] = theta_r * (c->U[1 * npts3 + pt] - ru_avg) + ru_avg;
+                c->U[2 * npts3 + pt] = theta_r * (c->U[2 * npts3 + pt] - rv_avg) + rv_avg;
+                c->U[3 * npts3 + pt] = theta_r * (c->U[3 * npts3 + pt] - rw_avg) + rw_avg;
+                c->U[4 * npts3 + pt] = theta_r * (c->U[4 * npts3 + pt] - E_avg) + E_avg;
+            }
+            compute_cell_average(*c, basis, r_avg, ru_avg, rv_avg, rw_avg, E_avg, npts);
+        }
+
+        double theta_p = 1.0;
+
+        for (int pt = 0; pt < npts3; ++pt) {
+            double r  = c->U[0 * npts3 + pt];
+            double ru = c->U[1 * npts3 + pt];
+            double rv = c->U[2 * npts3 + pt];
+            double rw = c->U[3 * npts3 + pt];
+            double E  = c->U[4 * npts3 + pt];
+            double press = Limiters::pressure_3d(r, ru, rv, rw, E, p.GAMMA);
+            if (press < eps) {
+                theta_p = std::min(theta_p, bisect_for_theta_3d(
+                    r, ru, rv, rw, E, r_avg, ru_avg, rv_avg, rw_avg, E_avg,
+                    p.GAMMA, eps, true));
+            }
+        }
+
+        for (int f = 0; f < n_face; ++f) {
+            double r  = face_pts[f][0];
+            double ru = face_pts[f][1];
+            double rv = face_pts[f][2];
+            double rw = face_pts[f][3];
+            double E  = face_pts[f][4];
+            double press = Limiters::pressure_3d(r, ru, rv, rw, E, p.GAMMA);
+            if (press < eps) {
+                theta_p = std::min(theta_p, bisect_for_theta_3d(
+                    r, ru, rv, rw, E, r_avg, ru_avg, rv_avg, rw_avg, E_avg,
+                    p.GAMMA, eps, true));
+            }
+        }
+
+        if (theta_p < 1.0) {
+            for (int pt = 0; pt < npts3; ++pt) {
+                c->U[0 * npts3 + pt] = theta_p * (c->U[0 * npts3 + pt] - r_avg) + r_avg;
+                c->U[1 * npts3 + pt] = theta_p * (c->U[1 * npts3 + pt] - ru_avg) + ru_avg;
+                c->U[2 * npts3 + pt] = theta_p * (c->U[2 * npts3 + pt] - rv_avg) + rv_avg;
+                c->U[3 * npts3 + pt] = theta_p * (c->U[3 * npts3 + pt] - rw_avg) + rw_avg;
+                c->U[4 * npts3 + pt] = theta_p * (c->U[4 * npts3 + pt] - E_avg) + E_avg;
+            }
+            num_limited++;
+            sum_theta += theta_p;
+        } else if (theta_r < 1.0) {
+            num_limited++;
+            sum_theta += theta_r;
+        }
+    }
+
+    LimiterStats stats;
+    stats.num_limited = num_limited;
+    stats.sum_theta = sum_theta;
+    return stats;
+}

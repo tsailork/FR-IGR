@@ -19,7 +19,7 @@
  */
 struct NeighborInfo {
     int id = -1;                      ///< Neighbor block ID. Set to -1 if periodic boundary or physical wall.
-    char face = ' ';                  ///< Target neighbor face being contacted ('L', 'R', 'B', 'T').
+    char face = ' ';                  ///< Target neighbor face being contacted ('L', 'R', 'B', 'T', 'F', 'K').
     bool is_wall = false;             ///< Slip wall boundary condition indicator.
     bool is_supersonic_inflow = false;  ///< Supersonic inflow boundary condition indicator.
     bool is_supersonic_outflow = false; ///< Supersonic outflow boundary condition indicator.
@@ -30,6 +30,7 @@ struct NeighborInfo {
     double ref_rho = 1.0;             ///< Reference density imposed at the boundary.
     double ref_u = 0.0;               ///< Reference X-velocity imposed at the boundary.
     double ref_v = 0.0;               ///< Reference Y-velocity imposed at the boundary.
+    double ref_w = 0.0;               ///< Reference Z-velocity imposed at the boundary.
     double ref_p = 1.0;               ///< Reference pressure imposed at the boundary.
     bool is_noslip_wall = false;      ///< Viscous no-slip wall boundary condition indicator.
     bool is_moving_wall = false;      ///< Viscous moving no-slip wall boundary condition indicator.
@@ -39,11 +40,17 @@ struct NeighborInfo {
     bool refine = true;               ///< Indicator to include near-wall refinement for this boundary.
 };
 
+template<int Dim>
+struct CellDim;
+
 /**
- * @struct Cell
- * @brief Represents a single computational element/cell in the quadtree domain.
+ * @struct CellDim<2>
+ * @brief Represents a single computational element/cell in the quadtree domain (2D).
  */
-struct Cell {
+template<>
+struct CellDim<2> {
+    static constexpr int N_VARS = 4;
+
     uint64_t morton_id = 0;           ///< Unique Morton ID for space-filling curve sorting.
     int level = 0;                    ///< Refinement depth level (0 for conforming grid).
     double dx = 0.0;                  ///< Element size along the X coordinate direction.
@@ -59,7 +66,6 @@ struct Cell {
     int ex = -1;                      ///< Source element X coordinate index.
 
     // Solution and residual storage arrays (size: N_VARS * npts * npts)
-    // Conserved variables and residual accumulators
     std::vector<double> U;            ///< Conserved variables: [v * npts * npts + iy * npts + ix]
     std::vector<double> RHS;          ///< Accumulator for flow solver explicit stage RHS.
     std::vector<double> U_accum;      ///< Accumulated multirate updates.
@@ -84,17 +90,12 @@ struct Cell {
     double theta_avg = 1.0;            ///< Element-average adaptive theta (computed once per RK stage, used at face flux points).
     double theta_max_tmp = 0.0;        ///< Temporary buffer for smoothing theta.
 
-
-    // Local gradient fields (size: N_VARS * npts * npts)
-    std::vector<double> grad_Ux;      ///< Extrapolated gradient buffer d_x U.
-    std::vector<double> grad_Uy;      ///< Extrapolated gradient buffer d_y U.
-
     // Local Immersed Boundary fields
     std::vector<double> ib_mask;      ///< Cached solid volume fraction mask (chi), size: npts * npts.
     bool solid_mask = false;          ///< True if this element is fully inside the solid.
 
     // Conforming neighbors: 0=Left, 1=Right, 2=Bottom, 3=Top
-    Cell* neighbors[4] = {nullptr, nullptr, nullptr, nullptr};
+    CellDim<2>* neighbors[4] = {nullptr, nullptr, nullptr, nullptr};
     char neighbor_faces[4] = {' ', ' ', ' ', ' '};             ///< Faces of neighbors being contacted ('L', 'R', 'B', 'T')
     
     // Boundary conditions: if neighbors[f] is nullptr, BC is active on face f
@@ -108,36 +109,38 @@ struct Cell {
 
     double s_min_val = 0.0;           ///< Cached minimum entropy value for the entropy limiter.
     int target_level = 0;             ///< Target refinement level.
+    int cell_index = -1;              ///< Flat solver cell index map.
 
     /**
      * @brief Construct a Cell with allocated local arrays.
      */
-    Cell(int npts) {
+    CellDim(int npts, const Parameters* p = nullptr) {
         int n_dofs = N_VARS * npts * npts;
         int n_pts = npts * npts;
 
         U.resize(n_dofs, 0.0);
         RHS.resize(n_dofs, 0.0);
-        U_accum.resize(n_dofs, 0.0);
         U_old.resize(n_dofs, 0.0);
+
+        if (!p || p->ENABLE_MULTIRATE) {
+            U_accum.resize(n_dofs, 0.0);
+        }
 
         sigma_field.resize(n_pts, 0.0);
         sigma_old.resize(n_pts, 0.0);
         sigma_RHS.resize(n_pts, 0.0);
         S_buf.resize(n_pts, 0.0);
+
         qx_buf.resize(n_pts, 0.0);
         qy_buf.resize(n_pts, 0.0);
 
         S_field.resize(n_pts, 0.0);
         S_old.resize(n_pts, 0.0);
         S_RHS.resize(n_pts, 0.0);
-
         grad_px_field.resize(n_pts, 0.0);
         grad_py_field.resize(n_pts, 0.0);
         theta_avg = 1.0;
 
-        grad_Ux.resize(n_dofs, 0.0);
-        grad_Uy.resize(n_dofs, 0.0);
         ib_mask.resize(n_pts, 0.0);
 
         // Boundary info initialization
@@ -172,3 +175,151 @@ struct Cell {
         return RHS[v * npts * npts + iy * npts + ix];
     }
 };
+
+/**
+ * @struct CellDim<3>
+ * @brief Represents a single computational element/cell in the octree domain (3D).
+ */
+template<>
+struct CellDim<3> {
+    static constexpr int N_VARS = 5;
+
+    uint64_t morton_id = 0;           ///< Unique Morton ID for space-filling curve sorting.
+    int level = 0;                    ///< Refinement depth level (0 for conforming grid).
+    double dx = 0.0;                  ///< Element size along the X coordinate direction.
+    double dy = 0.0;                  ///< Element size along the Y coordinate direction.
+    double dz = 0.0;                  ///< Element size along the Z coordinate direction.
+    double x_min = 0.0;               ///< Minimum physical X coordinate of the cell.
+    double y_min = 0.0;               ///< Minimum physical Y coordinate of the cell.
+    double z_min = 0.0;               ///< Minimum physical Z coordinate of the cell.
+    double x_center = 0.0;            ///< Cell center X coordinate.
+    double y_center = 0.0;            ///< Cell center Y coordinate.
+    double z_center = 0.0;            ///< Cell center Z coordinate.
+
+    // Mapping back to the origin structured Block and logical indices
+    int block_id = -1;                ///< Source Block ID.
+    int ez = -1;                      ///< Source element Z coordinate index.
+    int ey = -1;                      ///< Source element Y coordinate index.
+    int ex = -1;                      ///< Source element X coordinate index.
+
+    // Solution and residual storage arrays (size: N_VARS * npts * npts * npts)
+    std::vector<double> U;            ///< Conserved variables: [v * npts^3 + iz * npts^2 + iy * npts + ix]
+    std::vector<double> RHS;          ///< Accumulator for flow solver explicit stage RHS.
+    std::vector<double> U_accum;      ///< Accumulated multirate updates.
+    std::vector<double> U_old;        ///< Saved state at the start of RK3 stage.
+
+    // Local regularization fields (size: npts * npts * npts)
+    std::vector<double> sigma_field;  ///< Scalar entropic pressure regularization field (Sigma).
+    std::vector<double> sigma_old;    ///< Saved Sigma at start of stage.
+    std::vector<double> sigma_RHS;    ///< Explicit stage RHS for Parabolic IGR.
+    std::vector<double> S_buf;        ///< Raw shock sensor source term field array.
+    std::vector<double> qx_buf;       ///< Gradient auxiliary buffer (d_x Sigma) for Parabolic BR2.
+    std::vector<double> qy_buf;       ///< Gradient auxiliary buffer (d_y Sigma) for Parabolic BR2.
+    std::vector<double> qz_buf;       ///< Gradient auxiliary buffer (d_z Sigma) for Parabolic BR2.
+
+    // Local phantom pressure fields (size: npts * npts * npts) for PPR
+    std::vector<double> S_field;      ///< Pointwise phantom pressure S = rho * P_phan
+    std::vector<double> S_old;        ///< Saved S field at start of stage
+    std::vector<double> S_RHS;        ///< Explicit stage RHS for PPR advection
+
+    // PPR gradient advection & adaptive theta fields
+    std::vector<double> grad_px_field; ///< dP/dx at each solution point.
+    std::vector<double> grad_py_field; ///< dP/dy at each solution point.
+    std::vector<double> grad_pz_field; ///< dP/dz at each solution point.
+    double theta_avg = 1.0;            ///< Element-average adaptive theta.
+    double theta_max_tmp = 0.0;        ///< Temporary buffer for smoothing theta.
+
+    // Local Immersed Boundary fields
+    std::vector<double> ib_mask;      ///< Cached solid volume fraction mask, size: npts^3.
+    bool solid_mask = false;          ///< True if this element is fully inside the solid.
+
+    // Conforming neighbors: 0=Left, 1=Right, 2=Bottom, 3=Top, 4=Front, 5=Back
+    CellDim<3>* neighbors[6] = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
+    char neighbor_faces[6] = {' ', ' ', ' ', ' ', ' ', ' '};   ///< Faces of neighbors being contacted ('L', 'R', 'B', 'T', 'F', 'K')
+    
+    // Boundary conditions: if neighbors[f] is nullptr, BC is active on face f
+    bool is_boundary[6] = {false, false, false, false, false, false};
+    std::vector<NeighborInfo> boundary_info;                  ///< Size 6, stores BC metadata for L, R, B, T, F, K.
+
+    // Multirate parameters
+    double element_time = 0.0;
+    double element_dt = 0.0;
+    bool element_active = true;
+
+    double s_min_val = 0.0;           ///< Cached minimum entropy value for the entropy limiter.
+    int target_level = 0;             ///< Target refinement level.
+    int cell_index = -1;              ///< Flat solver cell index map.
+
+    /**
+     * @brief Construct a Cell with allocated local arrays.
+     */
+    CellDim(int npts, const Parameters* p = nullptr) {
+        int npts3 = npts * npts * npts;
+        int n_dofs = N_VARS * npts3;
+
+        U.resize(n_dofs, 0.0);
+        RHS.resize(n_dofs, 0.0);
+        U_old.resize(n_dofs, 0.0);
+
+        if (!p || p->ENABLE_MULTIRATE) {
+            U_accum.resize(n_dofs, 0.0);
+        }
+
+        sigma_field.resize(npts3, 0.0);
+        sigma_old.resize(npts3, 0.0);
+        sigma_RHS.resize(npts3, 0.0);
+        S_buf.resize(npts3, 0.0);
+
+        qx_buf.resize(npts3, 0.0);
+        qy_buf.resize(npts3, 0.0);
+        qz_buf.resize(npts3, 0.0);
+
+        S_field.resize(npts3, 0.0);
+        S_old.resize(npts3, 0.0);
+        S_RHS.resize(npts3, 0.0);
+        grad_px_field.resize(npts3, 0.0);
+        grad_py_field.resize(npts3, 0.0);
+        grad_pz_field.resize(npts3, 0.0);
+        theta_avg = 1.0;
+
+        ib_mask.resize(npts3, 0.0);
+
+        // Boundary info initialization
+        boundary_info.resize(6);
+    }
+
+    /**
+     * @brief Indexing accessor for conserved variables in 3D.
+     */
+    inline double& get_U(int v, int iz, int iy, int ix, int npts) {
+        return U[v * npts * npts * npts + iz * npts * npts + iy * npts + ix];
+    }
+
+    /**
+     * @brief Read-only indexing accessor for conserved variables in 3D.
+     */
+    inline double get_U(int v, int iz, int iy, int ix, int npts) const {
+        return U[v * npts * npts * npts + iz * npts * npts + iy * npts + ix];
+    }
+
+    /**
+     * @brief Indexing accessor for residual accumulator RHS in 3D.
+     */
+    inline double& get_RHS(int v, int iz, int iy, int ix, int npts) {
+        return RHS[v * npts * npts * npts + iz * npts * npts + iy * npts + ix];
+    }
+
+    /**
+     * @brief Read-only indexing accessor for residual accumulator RHS in 3D.
+     */
+    inline double get_RHS(int v, int iz, int iy, int ix, int npts) const {
+        return RHS[v * npts * npts * npts + iz * npts * npts + iy * npts + ix];
+    }
+};
+
+// Aliases for dimensional types and backward compatibility alias
+using Cell2D = CellDim<2>;
+using Cell3D = CellDim<3>;
+using Cell = Cell2D;
+constexpr int N_VARS = Cell::N_VARS;
+

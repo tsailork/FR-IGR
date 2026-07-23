@@ -16,6 +16,7 @@
 #include <map>
 #include <algorithm>
 #include "../ib/sbm_geometry.hpp"
+#include "../igr/ducros_sensor.hpp"
 
 /**
  * @brief Parse a boundary condition string from domain.grid into a NeighborInfo metadata struct.
@@ -121,19 +122,13 @@ static void parse_bc_string(const std::string& bc_in, NeighborInfo& ni) {
     }
 }
 
-Solver::Solver(const Parameters& params)
+SolverDim<2>::SolverDim(const Parameters& params)
     : p(params), basis(p.P_DEG)
 {
     current_time = p.RESTART_TIME;
     blocks.clear();
     for (const auto& config : p.blocks) {
         blocks.emplace_back(config, p.N_PTS);
-    }
-    for (auto& b : blocks) {
-        std::fill(b.element_time.begin(), b.element_time.end(), current_time);
-        std::fill(b.element_dt.begin(), b.element_dt.end(), 0.0);
-        std::fill(b.element_active.begin(), b.element_active.end(), true);
-        std::fill(b.U_accum.data.begin(), b.U_accum.data.end(), 0.0);
     }
     
     // Pre-parse connectivity
@@ -170,7 +165,7 @@ void Solver::compute_ppr_theta_avg() {
             c->theta_max_tmp = p.PPR_THETA;
             continue;
         }
-        double theta_max_cell = p.PPR_THETA_MIN;
+        double theta_max_cell = 0.0;
         const double dmax = std::max(1.001, p.PPR_DIV_ND_MAX);
         
         // Pre-compute u and v arrays to avoid O(N^3) division by rho
@@ -186,31 +181,35 @@ void Solver::compute_ppr_theta_avg() {
 
         for (int iy = 0; iy < p.N_PTS; ++iy) {
             for (int ix = 0; ix < p.N_PTS; ++ix) {
-                // Compute div(u) via FR derivative matrix at this solution point
-                double du_dx = 0.0, dv_dy = 0.0;
-                for (int k = 0; k < p.N_PTS; ++k) {
-                    du_dx += basis.D[ix][k] * u_buf[iy][k];
-                    dv_dy += basis.D[iy][k] * v_buf[k][ix];
-                }
-                du_dx *= (2.0 / c->dx);
-                dv_dy *= (2.0 / c->dy);
-                double div_u = du_dx + dv_dy;
-
-                double rho   = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
-                double u_loc = c->get_U(1, iy, ix, p.N_PTS) / rho;
-                double v_loc = c->get_U(2, iy, ix, p.N_PTS) / rho;
-                double P_loc = std::max(p.POS_LIMITER_EPS,
-                    (p.GAMMA - 1.0) * (c->get_U(3, iy, ix, p.N_PTS) - 0.5 * rho * (u_loc*u_loc + v_loc*v_loc)));
-                double a_loc  = std::sqrt(p.GAMMA * P_loc / rho);
-                double h_loc  = std::min(c->dx, c->dy);
-                double div_nd = -div_u * h_loc / (a_loc * (p.P_DEG + 1));
-
-                // Piecewise linear interpolation across anchor points
                 double theta;
-                if      (div_nd <= 0.0)   theta = p.PPR_THETA_MIN;
-                else if (div_nd <  1.0)   theta = p.PPR_THETA_MIN + (p.PPR_THETA_MID - p.PPR_THETA_MIN) * div_nd;
-                else if (div_nd <  dmax)  theta = p.PPR_THETA_MID + (p.PPR_THETA_MAX - p.PPR_THETA_MID) * (div_nd - 1.0) / (dmax - 1.0);
-                else                      theta = p.PPR_THETA_MAX;
+                if (!p.PPR_THETA_SCHEDULE.empty() && p.PPR_THETA_SCHEDULE.size() == p.PPR_SENS_SCHEDULE.size()) {
+                    double sensor_val = Sensors::compute_combined_ppr_sensor(*c, iy, ix, basis, p, u_buf, v_buf);
+                    theta = Sensors::interpolate_schedule(sensor_val, p.PPR_SENS_SCHEDULE, p.PPR_THETA_SCHEDULE);
+                } else {
+                    // Fallback to 3-point non-dimensional divergence interpolation
+                    double du_dx = 0.0, dv_dy = 0.0;
+                    for (int k = 0; k < p.N_PTS; ++k) {
+                        du_dx += basis.D[ix][k] * u_buf[iy][k];
+                        dv_dy += basis.D[iy][k] * v_buf[k][ix];
+                    }
+                    du_dx *= (2.0 / c->dx);
+                    dv_dy *= (2.0 / c->dy);
+                    double div_u = du_dx + dv_dy;
+
+                    double rho   = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
+                    double u_loc = u_buf[iy][ix];
+                    double v_loc = v_buf[iy][ix];
+                    double P_loc = std::max(p.POS_LIMITER_EPS,
+                        (p.GAMMA - 1.0) * (c->get_U(3, iy, ix, p.N_PTS) - 0.5 * rho * (u_loc*u_loc + v_loc*v_loc)));
+                    double a_loc  = std::sqrt(p.GAMMA * P_loc / rho);
+                    double h_loc  = std::min(c->dx, c->dy);
+                    double div_nd = -div_u * h_loc / (a_loc * (p.P_DEG + 1));
+
+                    if      (div_nd <= 0.0)   theta = p.PPR_THETA_MIN;
+                    else if (div_nd <  1.0)   theta = p.PPR_THETA_MIN + (p.PPR_THETA_MID - p.PPR_THETA_MIN) * div_nd;
+                    else if (div_nd <  dmax)  theta = p.PPR_THETA_MID + (p.PPR_THETA_MAX - p.PPR_THETA_MID) * (div_nd - 1.0) / (dmax - 1.0);
+                    else                      theta = p.PPR_THETA_MAX;
+                }
                 theta_max_cell = std::max(theta_max_cell, theta);
             }
         }
@@ -369,7 +368,37 @@ static inline void morton_decode_2d(uint64_t morton, uint32_t& x, uint32_t& y) {
     y = undilate_1d(morton >> 1);
 }
 
-Solver::~Solver() {
+static inline uint64_t dilate_1d_3d(uint32_t x) {
+    uint64_t val = x & 0x1FFFFFULL; // Max 21 bits
+    val = (val | (val << 32)) & 0x1F00000000FFFFULL;
+    val = (val | (val << 16)) & 0x1F0000FF0000FFULL;
+    val = (val | (val << 8))  & 0x100F00F00F00F00FULL;
+    val = (val | (val << 4))  & 0x10c30c30c30c30c3ULL;
+    val = (val | (val << 2))  & 0x1249249249249249ULL;
+    return val;
+}
+
+static inline uint32_t undilate_1d_3d(uint64_t val) {
+    uint64_t x = val & 0x1249249249249249ULL;
+    x = (x | (x >> 2))  & 0x10c30c30c30c30c3ULL;
+    x = (x | (x >> 4))  & 0x100F00F00F00F00FULL;
+    x = (x | (x >> 8))  & 0x1F0000FF0000FFULL;
+    x = (x | (x >> 16)) & 0x1F00000000FFFFULL;
+    x = (x | (x >> 32)) & 0x1FFFFFULL;
+    return (uint32_t)x;
+}
+
+static inline uint64_t morton_encode_3d(uint32_t x, uint32_t y, uint32_t z) {
+    return dilate_1d_3d(x) | (dilate_1d_3d(y) << 1) | (dilate_1d_3d(z) << 2);
+}
+
+static inline void morton_decode_3d(uint64_t morton, uint32_t& x, uint32_t& y, uint32_t& z) {
+    x = undilate_1d_3d(morton);
+    y = undilate_1d_3d(morton >> 1);
+    z = undilate_1d_3d(morton >> 2);
+}
+
+SolverDim<2>::~SolverDim() {
     for (Cell* c : cells) {
         delete c;
     }
@@ -520,7 +549,7 @@ void Solver::initialize_cells() {
         block_cells[b.id] = std::vector<std::vector<Cell*>>(b.ny, std::vector<Cell*>(b.nx, nullptr));
         for (int ey = 0; ey < b.ny; ++ey) {
             for (int ex = 0; ex < b.nx; ++ex) {
-                Cell* c = new Cell(p.N_PTS);
+                Cell* c = new Cell(p.N_PTS, &p);
                 c->block_id = b.id;
                 c->ey = ey;
                 c->ex = ex;
@@ -546,6 +575,15 @@ void Solver::initialize_cells() {
     std::sort(cells.begin(), cells.end(), [](const Cell* a, const Cell* b) {
         return a->morton_id < b->morton_id;
     });
+
+    for (size_t i = 0; i < cells.size(); ++i) {
+        cells[i]->cell_index = static_cast<int>(i);
+    }
+
+    if (p.ENABLE_NS) {
+        global_grad_Ux.assign(N_VARS * cells.size() * p.N_PTS * p.N_PTS, 0.0);
+        global_grad_Uy.assign(N_VARS * cells.size() * p.N_PTS * p.N_PTS, 0.0);
+    }
 }
 
 void Solver::setup_cell_connectivity() {
@@ -686,38 +724,7 @@ void Solver::setup_cell_connectivity() {
     enforce_21_ratio();
 }
 
-void Solver::sync_blocks_to_cells() {
-    for (Cell* c : cells) {
-        int bid = c->block_id;
-        int ey = c->ey;
-        int ex = c->ex;
 
-        const Block* b_ptr = nullptr;
-        for (const auto& bk : blocks) {
-            if (bk.id == bid) { b_ptr = &bk; break; }
-        }
-        if (!b_ptr) continue;
-        const Block& b = *b_ptr;
-
-        for (int v = 0; v < 4; ++v) {
-            for (int iy = 0; iy < p.N_PTS; ++iy) {
-                for (int ix = 0; ix < p.N_PTS; ++ix) {
-                    c->get_U(v, iy, ix, p.N_PTS) = b.U(v, ey, ex, iy, ix);
-                }
-            }
-        }
-
-        if (p.ENABLE_IGR) {
-            for (int iy = 0; iy < p.N_PTS; ++iy) {
-                for (int ix = 0; ix < p.N_PTS; ++ix) {
-                    int flat = b.get_flat_idx(ey, ex, iy, ix, p.N_PTS);
-                    c->sigma_field[iy * p.N_PTS + ix] = b.sigma_field[flat];
-                    c->S_buf[iy * p.N_PTS + ix] = b.S_buf[flat];
-                }
-            }
-        }
-    }
-}
 
 void Solver::get_neigh_state_cell(const Cell& c, int node_idx, bool is_right_or_top,
                                   const double* face_state, double sig_face,
@@ -929,6 +936,116 @@ static void restrict_2d_scalar(const std::vector<double>& c0_arr, const std::vec
     }
 }
 
+static void prolong_3d(const std::vector<double>& parent_arr, std::vector<double>& child_arr,
+                       const std::vector<std::vector<double>>& PX,
+                       const std::vector<std::vector<double>>& PY,
+                       const std::vector<std::vector<double>>& PZ,
+                       int n_vars, int N) {
+    int N3 = N * N * N;
+    int N2 = N * N;
+    for (int v = 0; v < n_vars; ++v) {
+        for (int iz = 0; iz < N; ++iz) {
+            for (int iy = 0; iy < N; ++iy) {
+                for (int ix = 0; ix < N; ++ix) {
+                    double val = 0.0;
+                    for (int pz = 0; pz < N; ++pz) {
+                        for (int py = 0; py < N; ++py) {
+                            for (int px = 0; px < N; ++px) {
+                                double p_val = parent_arr[v * N3 + pz * N2 + py * N + px];
+                                val += p_val * PZ[pz][iz] * PY[py][iy] * PX[px][ix];
+                            }
+                        }
+                    }
+                    child_arr[v * N3 + iz * N2 + iy * N + ix] = val;
+                }
+            }
+        }
+    }
+}
+
+static void prolong_3d_scalar(const std::vector<double>& parent_arr, std::vector<double>& child_arr,
+                              const std::vector<std::vector<double>>& PX,
+                              const std::vector<std::vector<double>>& PY,
+                              const std::vector<std::vector<double>>& PZ,
+                              int N) {
+    int N2 = N * N;
+    for (int iz = 0; iz < N; ++iz) {
+        for (int iy = 0; iy < N; ++iy) {
+            for (int ix = 0; ix < N; ++ix) {
+                double val = 0.0;
+                for (int pz = 0; pz < N; ++pz) {
+                    for (int py = 0; py < N; ++py) {
+                        for (int px = 0; px < N; ++px) {
+                            double p_val = parent_arr[pz * N2 + py * N + px];
+                            val += p_val * PZ[pz][iz] * PY[py][iy] * PX[px][ix];
+                        }
+                    }
+                }
+                child_arr[iz * N2 + iy * N + ix] = val;
+            }
+        }
+    }
+}
+
+static void restrict_3d(const std::vector<const std::vector<double>*>& children_arrs,
+                        std::vector<double>& parent_arr,
+                        const std::vector<std::vector<double>>& R1, const std::vector<std::vector<double>>& R2,
+                        int n_vars, int N) {
+    int N3 = N * N * N;
+    int N2 = N * N;
+    for (int v = 0; v < n_vars; ++v) {
+        for (int iz = 0; iz < N; ++iz) {
+            for (int iy = 0; iy < N; ++iy) {
+                for (int ix = 0; ix < N; ++ix) {
+                    double val = 0.0;
+                    for (int c_idx = 0; c_idx < 8; ++c_idx) {
+                        const auto& RZ = (c_idx / 4 == 0) ? R1 : R2;
+                        const auto& RY = ((c_idx / 2) % 2 == 0) ? R1 : R2;
+                        const auto& RX = (c_idx % 2 == 0) ? R1 : R2;
+                        const auto& child_arr = *(children_arrs[c_idx]);
+                        for (int qz = 0; qz < N; ++qz) {
+                            for (int qy = 0; qy < N; ++qy) {
+                                for (int qx = 0; qx < N; ++qx) {
+                                    val += child_arr[v * N3 + qz * N2 + qy * N + qx] * RZ[qz][iz] * RY[qy][iy] * RX[qx][ix];
+                                }
+                            }
+                        }
+                    }
+                    parent_arr[v * N3 + iz * N2 + iy * N + ix] = val;
+                }
+            }
+        }
+    }
+}
+
+static void restrict_3d_scalar(const std::vector<const std::vector<double>*>& children_arrs,
+                               std::vector<double>& parent_arr,
+                               const std::vector<std::vector<double>>& R1, const std::vector<std::vector<double>>& R2,
+                               int N) {
+    int N2 = N * N;
+    for (int iz = 0; iz < N; ++iz) {
+        for (int iy = 0; iy < N; ++iy) {
+            for (int ix = 0; ix < N; ++ix) {
+                double val = 0.0;
+                for (int c_idx = 0; c_idx < 8; ++c_idx) {
+                    const auto& RZ = (c_idx / 4 == 0) ? R1 : R2;
+                    const auto& RY = ((c_idx / 2) % 2 == 0) ? R1 : R2;
+                    const auto& RX = (c_idx % 2 == 0) ? R1 : R2;
+                    const auto& child_arr = *(children_arrs[c_idx]);
+                    for (int qz = 0; qz < N; ++qz) {
+                        for (int qy = 0; qy < N; ++qy) {
+                            for (int qx = 0; qx < N; ++qx) {
+                                val += child_arr[qz * N2 + qy * N + qx] * RZ[qz][iz] * RY[qy][iy] * RX[qx][ix];
+                            }
+                        }
+                    }
+                }
+                parent_arr[iz * N2 + iy * N + ix] = val;
+            }
+        }
+    }
+}
+
 // =========================================================================
 // Quadtree AMR: Member Function Implementations
 // =========================================================================
@@ -961,7 +1078,7 @@ void Solver::split_cell(Cell* parent, std::vector<Cell*>& new_cells) {
     double dy_c = 0.5 * parent->dy;
 
     for (int c_idx = 0; c_idx < 4; ++c_idx) {
-        Cell* child = new Cell(N);
+        Cell* child = new Cell(N, &p);
         child->block_id = bid;
         child->level = L + 1;
         child->dx = dx_c;
@@ -988,11 +1105,15 @@ void Solver::split_cell(Cell* parent, std::vector<Cell*>& new_cells) {
         const auto& PY = (c_idx / 2 == 0) ? basis.P1 : basis.P2;
 
         prolong_2d(parent->U, child->U, PX, PY, 4, N);
-        prolong_2d_scalar(parent->sigma_field, child->sigma_field, PX, PY, N);
+        if (p.ENABLE_IGR) {
+            prolong_2d_scalar(parent->sigma_field, child->sigma_field, PX, PY, N);
+            prolong_2d_scalar(parent->sigma_old, child->sigma_old, PX, PY, N);
+            prolong_2d_scalar(parent->S_buf, child->S_buf, PX, PY, N);
+        }
         prolong_2d(parent->U_old, child->U_old, PX, PY, 4, N);
-        prolong_2d(parent->U_accum, child->U_accum, PX, PY, 4, N);
-        prolong_2d_scalar(parent->sigma_old, child->sigma_old, PX, PY, N);
-        prolong_2d_scalar(parent->S_buf, child->S_buf, PX, PY, N);
+        if (p.ENABLE_MULTIRATE) {
+            prolong_2d(parent->U_accum, child->U_accum, PX, PY, 4, N);
+        }
 
         new_cells[c_idx] = child;
     }
@@ -1027,7 +1148,7 @@ void Solver::merge_cells(const std::vector<Cell*>& siblings, Cell*& parent) {
     int parent_ex = c0->ex / 2;
     int parent_ey = c0->ey / 2;
 
-    parent = new Cell(N);
+    parent = new Cell(N, &p);
     parent->block_id = c0->block_id;
     parent->level = parent_level;
     parent->dx = 2.0 * c0->dx;
@@ -1047,11 +1168,15 @@ void Solver::merge_cells(const std::vector<Cell*>& siblings, Cell*& parent) {
     parent->s_min_val = c0->s_min_val;
 
     restrict_2d(c0->U, c1->U, c2->U, c3->U, parent->U, basis.R1, basis.R2, 4, N);
-    restrict_2d_scalar(c0->sigma_field, c1->sigma_field, c2->sigma_field, c3->sigma_field, parent->sigma_field, basis.R1, basis.R2, N);
+    if (p.ENABLE_IGR) {
+        restrict_2d_scalar(c0->sigma_field, c1->sigma_field, c2->sigma_field, c3->sigma_field, parent->sigma_field, basis.R1, basis.R2, N);
+        restrict_2d_scalar(c0->sigma_old, c1->sigma_old, c2->sigma_old, c3->sigma_old, parent->sigma_old, basis.R1, basis.R2, N);
+        restrict_2d_scalar(c0->S_buf, c1->S_buf, c2->S_buf, c3->S_buf, parent->S_buf, basis.R1, basis.R2, N);
+    }
     restrict_2d(c0->U_old, c1->U_old, c2->U_old, c3->U_old, parent->U_old, basis.R1, basis.R2, 4, N);
-    restrict_2d(c0->U_accum, c1->U_accum, c2->U_accum, c3->U_accum, parent->U_accum, basis.R1, basis.R2, 4, N);
-    restrict_2d_scalar(c0->sigma_old, c1->sigma_old, c2->sigma_old, c3->sigma_old, parent->sigma_old, basis.R1, basis.R2, N);
-    restrict_2d_scalar(c0->S_buf, c1->S_buf, c2->S_buf, c3->S_buf, parent->S_buf, basis.R1, basis.R2, N);
+    if (p.ENABLE_MULTIRATE) {
+        restrict_2d(c0->U_accum, c1->U_accum, c2->U_accum, c3->U_accum, parent->U_accum, basis.R1, basis.R2, 4, N);
+    }
 }
 
 void Solver::update_tree(const std::vector<int>& target_levels) {
@@ -1190,6 +1315,15 @@ void Solver::update_tree(const std::vector<int>& target_levels) {
             return a->morton_id < b->morton_id;
         });
 
+        for (size_t i = 0; i < cells.size(); ++i) {
+            cells[i]->cell_index = static_cast<int>(i);
+        }
+
+        if (p.ENABLE_NS) {
+            global_grad_Ux.assign(N_VARS * cells.size() * p.N_PTS * p.N_PTS, 0.0);
+            global_grad_Uy.assign(N_VARS * cells.size() * p.N_PTS * p.N_PTS, 0.0);
+        }
+
         setup_cell_connectivity();
     }
 }
@@ -1324,4 +1458,720 @@ void Solver::flag_refinement_coarsening() {
     }
 
     update_tree(target_levels);
+}
+
+// =========================================================================
+// SolverDim<3> Member Function Implementations
+// =========================================================================
+
+SolverDim<3>::SolverDim(const Parameters& params)
+    : p(params), basis(p.P_DEG)
+{
+    current_time = p.RESTART_TIME;
+    blocks.clear();
+    for (const auto& config : p.blocks) {
+        blocks.emplace_back(config, p.N_PTS);
+    }
+
+    initialize_cells();
+    setup_cell_connectivity();
+}
+
+SolverDim<3>::~SolverDim() {
+    for (Cell3D* c : cells) {
+        delete c;
+    }
+    cells.clear();
+}
+
+void SolverDim<3>::initialize_cells() {
+    for (Cell3D* c : cells) {
+        delete c;
+    }
+    cells.clear();
+
+    block_cells.clear();
+    block_cells.resize(blocks.size());
+
+    for (const auto& b : blocks) {
+        block_cells[b.id].resize(b.nz);
+        for (int ez = 0; ez < b.nz; ++ez) {
+            block_cells[b.id][ez].resize(b.ny);
+            for (int ey = 0; ey < b.ny; ++ey) {
+                block_cells[b.id][ez][ey].resize(b.nx, nullptr);
+            }
+        }
+
+        for (int ez = 0; ez < b.nz; ++ez) {
+            for (int ey = 0; ey < b.ny; ++ey) {
+                for (int ex = 0; ex < b.nx; ++ex) {
+                    Cell3D* c = new Cell3D(p.N_PTS, &p);
+                    c->block_id = b.id;
+                    c->ex = ex;
+                    c->ey = ey;
+                    c->ez = ez;
+                    c->dx = b.dx;
+                    c->dy = b.dy;
+                    c->dz = b.dz;
+                    c->x_min = b.x_min + ex * b.dx;
+                    c->y_min = b.y_min + ey * b.dy;
+                    c->z_min = b.z_min + ez * b.dz;
+                    c->x_center = c->x_min + 0.5 * b.dx;
+                    c->y_center = c->y_min + 0.5 * b.dy;
+                    c->z_center = c->z_min + 0.5 * b.dz;
+                    c->level = 0;
+                    c->morton_id = get_morton_id(b.id, 0, ex, ey, ez);
+                    c->element_time = current_time;
+                    c->element_dt = 0.0;
+                    c->element_active = true;
+
+                    block_cells[b.id][ez][ey][ex] = c;
+                    cells.push_back(c);
+                }
+            }
+        }
+    }
+
+    std::sort(cells.begin(), cells.end(), [](const Cell3D* a, const Cell3D* b) {
+        return a->morton_id < b->morton_id;
+    });
+
+    for (size_t i = 0; i < cells.size(); ++i) {
+        cells[i]->cell_index = static_cast<int>(i);
+    }
+
+    if (p.ENABLE_NS) {
+        global_grad_Ux.assign(Cell3D::N_VARS * cells.size() * p.N_PTS * p.N_PTS * p.N_PTS, 0.0);
+        global_grad_Uy.assign(Cell3D::N_VARS * cells.size() * p.N_PTS * p.N_PTS * p.N_PTS, 0.0);
+        global_grad_Uz.assign(Cell3D::N_VARS * cells.size() * p.N_PTS * p.N_PTS * p.N_PTS, 0.0);
+    }
+}
+
+uint64_t SolverDim<3>::get_morton_id(int block_id, int level, uint32_t ex, uint32_t ey, uint32_t ez) const {
+    const int L_max = 10;
+    const int N_b = 5;
+    uint32_t x_fine = ex << (L_max - level);
+    uint32_t y_fine = ey << (L_max - level);
+    uint32_t z_fine = ez << (L_max - level);
+    return ((uint64_t)block_id << 55) | (morton_encode_3d(x_fine, y_fine, z_fine) << N_b) | (uint64_t)level;
+}
+
+bool SolverDim<3>::is_ancestor(uint64_t ancestor_id, uint64_t key_id) const {
+    int block_id_A = (ancestor_id >> 55);
+    int block_id_K = (key_id >> 55);
+    if (block_id_A != block_id_K) return false;
+
+    int L_A = ancestor_id & 0x1F;
+    int L_K = key_id & 0x1F;
+    if (L_A >= L_K) return false;
+
+    uint64_t raw_A = (ancestor_id >> 5) & 0x3FFFFFFFFFFFFULL;
+    uint64_t raw_K = (key_id >> 5) & 0x3FFFFFFFFFFFFULL;
+
+    uint32_t x_fine_A, y_fine_A, z_fine_A;
+    uint32_t x_fine_K, y_fine_K, z_fine_K;
+    morton_decode_3d(raw_A, x_fine_A, y_fine_A, z_fine_A);
+    morton_decode_3d(raw_K, x_fine_K, y_fine_K, z_fine_K);
+
+    uint32_t ex_A = x_fine_A >> (10 - L_A);
+    uint32_t ey_A = y_fine_A >> (10 - L_A);
+    uint32_t ez_A = z_fine_A >> (10 - L_A);
+    uint32_t ex_K = x_fine_K >> (10 - L_K);
+    uint32_t ey_K = y_fine_K >> (10 - L_K);
+    uint32_t ez_K = z_fine_K >> (10 - L_K);
+
+    return ((ex_K >> (L_K - L_A)) == ex_A) &&
+           ((ey_K >> (L_K - L_A)) == ey_A) &&
+           ((ez_K >> (L_K - L_A)) == ez_A);
+}
+
+void SolverDim<3>::enforce_21_ratio() {
+    for (Cell3D* c : cells) {
+        int bid = c->block_id;
+        int ex = c->ex;
+        int ey = c->ey;
+        int ez = c->ez;
+        int L = c->level;
+
+        const Block3D* b_ptr = nullptr;
+        for (const auto& bk : blocks) {
+            if (bk.id == bid) { b_ptr = &bk; break; }
+        }
+        if (!b_ptr) continue;
+        const Block3D& b = *b_ptr;
+
+        for (int f = 0; f < 6; ++f) {
+            int nid = -1;
+            int ex_neigh = -1;
+            int ey_neigh = -1;
+            int ez_neigh = -1;
+            const NeighborInfo* ni = nullptr;
+
+            if (f == 0) {
+                if (ex > 0) { nid = bid; ex_neigh = ex - 1; ey_neigh = ey; ez_neigh = ez; }
+                else { ni = &b.ni_l; if (ni->id != -1) nid = ni->id; }
+            } else if (f == 1) {
+                if (ex < b.nx * (1 << L) - 1) { nid = bid; ex_neigh = ex + 1; ey_neigh = ey; ez_neigh = ez; }
+                else { ni = &b.ni_r; if (ni->id != -1) nid = ni->id; }
+            } else if (f == 2) {
+                if (ey > 0) { nid = bid; ex_neigh = ex; ey_neigh = ey - 1; ez_neigh = ez; }
+                else { ni = &b.ni_b; if (ni->id != -1) nid = ni->id; }
+            } else if (f == 3) {
+                if (ey < b.ny * (1 << L) - 1) { nid = bid; ex_neigh = ex; ey_neigh = ey + 1; ez_neigh = ez; }
+                else { ni = &b.ni_t; if (ni->id != -1) nid = ni->id; }
+            } else if (f == 4) {
+                if (ez > 0) { nid = bid; ex_neigh = ex; ey_neigh = ey; ez_neigh = ez - 1; }
+                else { ni = &b.ni_f; if (ni->id != -1) nid = ni->id; }
+            } else if (f == 5) {
+                if (ez < b.nz * (1 << L) - 1) { nid = bid; ex_neigh = ex; ey_neigh = ey; ez_neigh = ez + 1; }
+                else { ni = &b.ni_k; if (ni->id != -1) nid = ni->id; }
+            }
+
+            if (nid != -1) {
+                if (ni) {
+                    const Block3D* nb = nullptr;
+                    for (const auto& bk : blocks) { if (bk.id == nid) { nb = &bk; break; } }
+                    if (nb) {
+                        if (f == 0 || f == 1) {
+                            ex_neigh = (ni->face == 'L') ? 0 : nb->nx * (1 << L) - 1;
+                            ey_neigh = ey;
+                            ez_neigh = ez;
+                        } else if (f == 2 || f == 3) {
+                            ex_neigh = ex;
+                            ey_neigh = (ni->face == 'B') ? 0 : nb->ny * (1 << L) - 1;
+                            ez_neigh = ez;
+                        } else {
+                            ex_neigh = ex;
+                            ey_neigh = ey;
+                            ez_neigh = (ni->face == 'F') ? 0 : nb->nz * (1 << L) - 1;
+                        }
+                    }
+                }
+
+                for (int p_level = 0; p_level <= L + 2; ++p_level) {
+                    int scale = (L >= p_level) ? (1 << (L - p_level)) : 1;
+                    int div = (p_level > L) ? (1 << (p_level - L)) : 1;
+                    uint64_t target_id = get_morton_id(nid, p_level, (L >= p_level) ? (ex_neigh / scale) : (ex_neigh * div),
+                                                                     (L >= p_level) ? (ey_neigh / scale) : (ey_neigh * div),
+                                                                     (L >= p_level) ? (ez_neigh / scale) : (ez_neigh * div));
+                    auto it = std::lower_bound(cells.begin(), cells.end(), target_id, [](const Cell3D* cell, uint64_t val) {
+                        return cell->morton_id < val;
+                    });
+                    if (it != cells.end() && (*it)->morton_id == target_id) {
+                        if ((*it)->level > L + 1) {
+                            c->target_level = (*it)->level - 1;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+void SolverDim<3>::setup_cell_connectivity() {
+    for (Cell3D* c : cells) {
+        int bid = c->block_id;
+        int ex = c->ex;
+        int ey = c->ey;
+        int ez = c->ez;
+        int L = c->level;
+
+        const Block3D* b_ptr = nullptr;
+        for (const auto& bk : blocks) {
+            if (bk.id == bid) { b_ptr = &bk; break; }
+        }
+        if (!b_ptr) continue;
+        const Block3D& b = *b_ptr;
+
+        for (int f = 0; f < 6; ++f) {
+            c->neighbors[f] = nullptr;
+            c->neighbor_faces[f] = ' ';
+            c->is_boundary[f] = false;
+
+            int nid = -1;
+            int ex_neigh = -1;
+            int ey_neigh = -1;
+            int ez_neigh = -1;
+            bool physical_boundary = false;
+            const NeighborInfo* ni = nullptr;
+
+            if (f == 0) {
+                if (ex > 0) { nid = bid; ex_neigh = ex - 1; ey_neigh = ey; ez_neigh = ez; }
+                else { ni = &b.ni_l; if (ni->id != -1) { nid = ni->id; } else { physical_boundary = true; } }
+            } else if (f == 1) {
+                if (ex < b.nx * (1 << L) - 1) { nid = bid; ex_neigh = ex + 1; ey_neigh = ey; ez_neigh = ez; }
+                else { ni = &b.ni_r; if (ni->id != -1) { nid = ni->id; } else { physical_boundary = true; } }
+            } else if (f == 2) {
+                if (ey > 0) { nid = bid; ex_neigh = ex; ey_neigh = ey - 1; ez_neigh = ez; }
+                else { ni = &b.ni_b; if (ni->id != -1) { nid = ni->id; } else { physical_boundary = true; } }
+            } else if (f == 3) {
+                if (ey < b.ny * (1 << L) - 1) { nid = bid; ex_neigh = ex; ey_neigh = ey + 1; ez_neigh = ez; }
+                else { ni = &b.ni_t; if (ni->id != -1) { nid = ni->id; } else { physical_boundary = true; } }
+            } else if (f == 4) {
+                if (ez > 0) { nid = bid; ex_neigh = ex; ey_neigh = ey; ez_neigh = ez - 1; }
+                else { ni = &b.ni_f; if (ni->id != -1) { nid = ni->id; } else { physical_boundary = true; } }
+            } else if (f == 5) {
+                if (ez < b.nz * (1 << L) - 1) { nid = bid; ex_neigh = ex; ey_neigh = ey; ez_neigh = ez + 1; }
+                else { ni = &b.ni_k; if (ni->id != -1) { nid = ni->id; } else { physical_boundary = true; } }
+            }
+
+            if (physical_boundary) {
+                c->is_boundary[f] = true;
+                if (f == 0)      c->boundary_info[f] = b.ni_l;
+                else if (f == 1) c->boundary_info[f] = b.ni_r;
+                else if (f == 2) c->boundary_info[f] = b.ni_b;
+                else if (f == 3) c->boundary_info[f] = b.ni_t;
+                else if (f == 4) c->boundary_info[f] = b.ni_f;
+                else if (f == 5) c->boundary_info[f] = b.ni_k;
+            } else if (nid != -1) {
+                if (ni) {
+                    const Block3D* nb = nullptr;
+                    for (const auto& bk : blocks) { if (bk.id == nid) { nb = &bk; break; } }
+                    if (nb) {
+                        if (f == 0 || f == 1) {
+                            ex_neigh = (ni->face == 'L') ? 0 : nb->nx * (1 << L) - 1;
+                            ey_neigh = ey;
+                            ez_neigh = ez;
+                        } else if (f == 2 || f == 3) {
+                            ex_neigh = ex;
+                            ey_neigh = (ni->face == 'B') ? 0 : nb->ny * (1 << L) - 1;
+                            ez_neigh = ez;
+                        } else {
+                            ex_neigh = ex;
+                            ey_neigh = ey;
+                            ez_neigh = (ni->face == 'F') ? 0 : nb->nz * (1 << L) - 1;
+                        }
+                    }
+                }
+
+                uint64_t target_id = get_morton_id(nid, L, ex_neigh, ey_neigh, ez_neigh);
+                auto it = std::lower_bound(cells.begin(), cells.end(), target_id, [](const Cell3D* cell, uint64_t val) {
+                    return cell->morton_id < val;
+                });
+
+                if (it != cells.end() && (*it)->morton_id == target_id) {
+                    c->neighbors[f] = *it;
+                    c->neighbor_faces[f] = (f == 0) ? 'R' : (f == 1) ? 'L' : (f == 2) ? 'T' : (f == 3) ? 'B' : (f == 4) ? 'K' : 'F';
+                } else {
+                    bool found = false;
+                    for (int p_level = L - 1; p_level >= 0; --p_level) {
+                        int scale = 1 << (L - p_level);
+                        uint64_t p_id = get_morton_id(nid, p_level, ex_neigh / scale, ey_neigh / scale, ez_neigh / scale);
+                        auto it2 = std::lower_bound(cells.begin(), cells.end(), p_id, [](const Cell3D* cell, uint64_t val) {
+                            return cell->morton_id < val;
+                        });
+                        if (it2 != cells.end() && (*it2)->morton_id == p_id) {
+                            c->neighbors[f] = *it2;
+                            c->neighbor_faces[f] = (f == 0) ? 'R' : (f == 1) ? 'L' : (f == 2) ? 'T' : (f == 3) ? 'B' : (f == 4) ? 'K' : 'F';
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void SolverDim<3>::split_cell(Cell3D* parent, std::vector<Cell3D*>& new_cells) {
+    int N = p.N_PTS;
+    int L = parent->level;
+    int bid = parent->block_id;
+    int ex = parent->ex;
+    int ey = parent->ey;
+    int ez = parent->ez;
+
+    new_cells.clear();
+    new_cells.resize(8, nullptr);
+
+    double dx_c = 0.5 * parent->dx;
+    double dy_c = 0.5 * parent->dy;
+    double dz_c = 0.5 * parent->dz;
+
+    for (int c_idx = 0; c_idx < 8; ++c_idx) {
+        Cell3D* child = new Cell3D(N, &p);
+        child->block_id = bid;
+        child->level = L + 1;
+        child->dx = dx_c;
+        child->dy = dy_c;
+        child->dz = dz_c;
+
+        int ex_c = 2 * ex + (c_idx % 2);
+        int ey_c = 2 * ey + ((c_idx / 2) % 2);
+        int ez_c = 2 * ez + (c_idx / 4);
+        child->ex = ex_c;
+        child->ey = ey_c;
+        child->ez = ez_c;
+
+        child->x_min = parent->x_min + (c_idx % 2) * dx_c;
+        child->y_min = parent->y_min + ((c_idx / 2) % 2) * dy_c;
+        child->z_min = parent->z_min + (c_idx / 4) * dz_c;
+        child->x_center = child->x_min + 0.5 * dx_c;
+        child->y_center = child->y_min + 0.5 * dy_c;
+        child->z_center = child->z_min + 0.5 * dz_c;
+        child->morton_id = get_morton_id(bid, L + 1, ex_c, ey_c, ez_c);
+
+        child->element_time = parent->element_time;
+        child->element_dt = parent->element_dt;
+        child->element_active = parent->element_active;
+        child->solid_mask = parent->solid_mask;
+        child->s_min_val = parent->s_min_val;
+
+        const auto& PX = (c_idx % 2 == 0) ? basis.P1 : basis.P2;
+        const auto& PY = ((c_idx / 2) % 2 == 0) ? basis.P1 : basis.P2;
+        const auto& PZ = (c_idx / 4 == 0) ? basis.P1 : basis.P2;
+
+        prolong_3d(parent->U, child->U, PX, PY, PZ, Cell3D::N_VARS, N);
+        if (p.ENABLE_IGR) {
+            prolong_3d_scalar(parent->sigma_field, child->sigma_field, PX, PY, PZ, N);
+            prolong_3d_scalar(parent->sigma_old, child->sigma_old, PX, PY, PZ, N);
+            prolong_3d_scalar(parent->S_buf, child->S_buf, PX, PY, PZ, N);
+        }
+        prolong_3d(parent->U_old, child->U_old, PX, PY, PZ, Cell3D::N_VARS, N);
+        if (p.ENABLE_MULTIRATE) {
+            prolong_3d(parent->U_accum, child->U_accum, PX, PY, PZ, Cell3D::N_VARS, N);
+        }
+
+        new_cells[c_idx] = child;
+    }
+}
+
+void SolverDim<3>::merge_cells(const std::vector<Cell3D*>& siblings, Cell3D*& parent) {
+    if (siblings.size() != 8) {
+        throw std::runtime_error("merge_cells requires exactly 8 sibling cells in 3D");
+    }
+
+    int N = p.N_PTS;
+
+    std::vector<Cell3D*> sorted_sibs(8, nullptr);
+    for (Cell3D* sib : siblings) {
+        int ex_mod = sib->ex % 2;
+        int ey_mod = sib->ey % 2;
+        int ez_mod = sib->ez % 2;
+        int c_idx = ez_mod * 4 + ey_mod * 2 + ex_mod;
+        sorted_sibs[c_idx] = sib;
+    }
+
+    for (int i = 0; i < 8; ++i) {
+        if (!sorted_sibs[i]) {
+            throw std::runtime_error("siblings are not complete or correctly aligned in 3D");
+        }
+    }
+
+    Cell3D* c0 = sorted_sibs[0];
+    int parent_level = c0->level - 1;
+    int parent_ex = c0->ex / 2;
+    int parent_ey = c0->ey / 2;
+    int parent_ez = c0->ez / 2;
+
+    parent = new Cell3D(N, &p);
+    parent->block_id = c0->block_id;
+    parent->level = parent_level;
+    parent->dx = 2.0 * c0->dx;
+    parent->dy = 2.0 * c0->dy;
+    parent->dz = 2.0 * c0->dz;
+    parent->ex = parent_ex;
+    parent->ey = parent_ey;
+    parent->ez = parent_ez;
+    parent->x_min = c0->x_min;
+    parent->y_min = c0->y_min;
+    parent->z_min = c0->z_min;
+    parent->x_center = parent->x_min + 0.5 * parent->dx;
+    parent->y_center = parent->y_min + 0.5 * parent->dy;
+    parent->z_center = parent->z_min + 0.5 * parent->dz;
+    parent->morton_id = get_morton_id(c0->block_id, parent_level, parent_ex, parent_ey, parent_ez);
+
+    parent->element_time = c0->element_time;
+    parent->element_dt = c0->element_dt;
+    parent->element_active = c0->element_active;
+    parent->solid_mask = c0->solid_mask;
+    parent->s_min_val = c0->s_min_val;
+
+    std::vector<const std::vector<double>*> u_ptrs(8), sig_ptrs(8), sig_old_ptrs(8), s_buf_ptrs(8), u_old_ptrs(8), u_accum_ptrs(8);
+    for (int i = 0; i < 8; ++i) {
+        u_ptrs[i] = &sorted_sibs[i]->U;
+        sig_ptrs[i] = &sorted_sibs[i]->sigma_field;
+        sig_old_ptrs[i] = &sorted_sibs[i]->sigma_old;
+        s_buf_ptrs[i] = &sorted_sibs[i]->S_buf;
+        u_old_ptrs[i] = &sorted_sibs[i]->U_old;
+        u_accum_ptrs[i] = &sorted_sibs[i]->U_accum;
+    }
+
+    restrict_3d(u_ptrs, parent->U, basis.R1, basis.R2, Cell3D::N_VARS, N);
+    if (p.ENABLE_IGR) {
+        restrict_3d_scalar(sig_ptrs, parent->sigma_field, basis.R1, basis.R2, N);
+        restrict_3d_scalar(sig_old_ptrs, parent->sigma_old, basis.R1, basis.R2, N);
+        restrict_3d_scalar(s_buf_ptrs, parent->S_buf, basis.R1, basis.R2, N);
+    }
+    restrict_3d(u_old_ptrs, parent->U_old, basis.R1, basis.R2, Cell3D::N_VARS, N);
+    if (p.ENABLE_MULTIRATE) {
+        restrict_3d(u_accum_ptrs, parent->U_accum, basis.R1, basis.R2, Cell3D::N_VARS, N);
+    }
+}
+
+void SolverDim<3>::update_tree(const std::vector<int>& target_levels) {
+    if (cells.size() != target_levels.size()) return;
+
+    for (size_t i = 0; i < cells.size(); ++i) {
+        cells[i]->target_level = target_levels[i];
+    }
+
+    bool overall_changed = true;
+    int global_iter = 0;
+    const int max_global_iters = 10;
+
+    while (overall_changed && global_iter < max_global_iters) {
+        overall_changed = false;
+        global_iter++;
+
+        std::map<Cell3D*, std::vector<Cell3D*>> adj;
+        for (Cell3D* c : cells) {
+            for (int f = 0; f < 6; ++f) {
+                if (c->neighbors[f]) {
+                    adj[c].push_back(c->neighbors[f]);
+                }
+            }
+        }
+
+        bool tree_changed = true;
+        int propagation_iter = 0;
+        while (tree_changed && propagation_iter < 100) {
+            tree_changed = false;
+            propagation_iter++;
+
+            for (Cell3D* c : cells) {
+                for (Cell3D* neigh : adj[c]) {
+                    if (c->target_level > neigh->target_level + 1) {
+                        neigh->target_level = c->target_level - 1;
+                        tree_changed = true;
+                    }
+                }
+            }
+        }
+
+        std::vector<Cell3D*> next_cells;
+        bool changes_applied = false;
+
+        std::map<uint64_t, std::vector<Cell3D*>> parent_groups;
+        for (Cell3D* c : cells) {
+            if (c->target_level < c->level) {
+                int parent_ex = c->ex / 2;
+                int parent_ey = c->ey / 2;
+                int parent_ez = c->ez / 2;
+                uint64_t parent_id = get_morton_id(c->block_id, c->level - 1, parent_ex, parent_ey, parent_ez);
+                parent_groups[parent_id].push_back(c);
+            }
+        }
+
+        std::vector<bool> processed(cells.size(), false);
+
+        for (Cell3D* c : cells) {
+            if (processed[c->cell_index]) continue;
+
+            if (c->target_level > c->level) {
+                std::vector<Cell3D*> children;
+                split_cell(c, children);
+                next_cells.insert(next_cells.end(), children.begin(), children.end());
+                processed[c->cell_index] = true;
+                delete c;
+                changes_applied = true;
+                overall_changed = true;
+            } else if (c->target_level < c->level) {
+                int parent_ex = c->ex / 2;
+                int parent_ey = c->ey / 2;
+                int parent_ez = c->ez / 2;
+                uint64_t parent_id = get_morton_id(c->block_id, c->level - 1, parent_ex, parent_ey, parent_ez);
+                const auto& group = parent_groups[parent_id];
+
+                if (group.size() == 8) {
+                    bool all_merge = true;
+                    for (Cell3D* sib : group) {
+                        if (sib->target_level >= sib->level) {
+                            all_merge = false;
+                            break;
+                        }
+                    }
+
+                    if (all_merge) {
+                        Cell3D* parent = nullptr;
+                        merge_cells(group, parent);
+                        next_cells.push_back(parent);
+                        for (Cell3D* sib : group) {
+                            processed[sib->cell_index] = true;
+                            delete sib;
+                        }
+                        changes_applied = true;
+                        overall_changed = true;
+                    } else {
+                        next_cells.push_back(c);
+                        processed[c->cell_index] = true;
+                    }
+                } else {
+                    next_cells.push_back(c);
+                    processed[c->cell_index] = true;
+                }
+            } else {
+                next_cells.push_back(c);
+                processed[c->cell_index] = true;
+            }
+        }
+
+        if (changes_applied) {
+            cells = next_cells;
+            std::sort(cells.begin(), cells.end(), [](const Cell3D* a, const Cell3D* b) {
+                return a->morton_id < b->morton_id;
+            });
+            for (size_t i = 0; i < cells.size(); ++i) {
+                cells[i]->cell_index = static_cast<int>(i);
+            }
+            setup_cell_connectivity();
+        }
+    }
+}
+
+void SolverDim<3>::flag_refinement_coarsening() {}
+
+Cell3D* SolverDim<3>::find_leaf_cell(int block_id, double x, double y, double z) const {
+    for (Cell3D* c : cells) {
+        if (c->block_id == block_id) {
+            double xmax = c->x_min + c->dx;
+            double ymax = c->y_min + c->dy;
+            double zmax = c->z_min + c->dz;
+            const double eps = 1e-12;
+            if (x >= c->x_min - eps && x <= xmax + eps &&
+                y >= c->y_min - eps && y <= ymax + eps &&
+                z >= c->z_min - eps && z <= zmax + eps) {
+                return c;
+            }
+        }
+    }
+    return nullptr;
+}
+
+void SolverDim<3>::get_neigh_state_cell(const Cell3D& c, int node_idx, bool is_right_or_top,
+                                        const double* face_state, double sig_face,
+                                        double* neigh_state, double& sig_neigh, int dir) const
+{
+    sig_neigh = 0.0;
+    for (int v = 0; v < 5; ++v) neigh_state[v] = 0.0;
+
+    int face_idx = (dir == 0) ? (is_right_or_top ? 1 : 0) :
+                   ((dir == 1) ? (is_right_or_top ? 3 : 2) :
+                    (is_right_or_top ? 5 : 4));
+    const NeighborInfo& ni = c.boundary_info[face_idx];
+
+    if (ni.is_noslip_wall || ni.is_moving_wall) {
+        double u_w = 0.0, v_w = 0.0, w_w = 0.0;
+        if (ni.is_moving_wall) {
+            if (dir == 0) v_w = ni.wall_velocity;
+            else          u_w = ni.wall_velocity;
+        }
+        
+        double rho_f = std::max(p.POS_LIMITER_EPS, face_state[0]);
+        double u_f = face_state[1] / rho_f;
+        double v_f = face_state[2] / rho_f;
+        double w_f = face_state[3] / rho_f;
+        
+        double u_g = 2.0 * u_w - u_f;
+        double v_g = 2.0 * v_w - v_f;
+        double w_g = 2.0 * w_w - w_f;
+        
+        double p_f = (p.GAMMA - 1.0) * (face_state[4] - 0.5 * rho_f * (u_f*u_f + v_f*v_f + w_f*w_f));
+        double T_f = std::max(p.POS_LIMITER_EPS, p_f / rho_f);
+        double T_g = ni.is_isothermal ? ni.wall_temperature : T_f;
+        
+        double rho_g = rho_f;
+        double p_g = rho_g * T_g;
+        
+        neigh_state[0] = rho_g;
+        neigh_state[1] = rho_g * u_g;
+        neigh_state[2] = rho_g * v_g;
+        neigh_state[3] = rho_g * w_g;
+        neigh_state[4] = p_g / (p.GAMMA - 1.0) + 0.5 * rho_g * (u_g*u_g + v_g*v_g + w_g*w_g);
+        
+        sig_neigh = sig_face;
+    } else if (ni.is_wall) {
+        for (int v = 0; v < 5; ++v) neigh_state[v] = face_state[v];
+        neigh_state[1 + dir] = -face_state[1 + dir];
+        sig_neigh = sig_face;
+    } else if (ni.is_supersonic_inflow) {
+        neigh_state[0] = ni.ref_rho;
+        neigh_state[1] = ni.ref_rho * ni.ref_u;
+        neigh_state[2] = ni.ref_rho * ni.ref_v;
+        neigh_state[3] = ni.ref_rho * ni.ref_w;
+        neigh_state[4] = ni.ref_p / (p.GAMMA - 1.0) + 0.5 * ni.ref_rho * (ni.ref_u*ni.ref_u + ni.ref_v*ni.ref_v + ni.ref_w*ni.ref_w);
+        sig_neigh = 0.0;
+    } else if (ni.is_characteristic) {
+        double ref_state[5];
+        ref_state[0] = ni.ref_rho;
+        ref_state[1] = ni.ref_rho * ni.ref_u;
+        ref_state[2] = ni.ref_rho * ni.ref_v;
+        ref_state[3] = ni.ref_rho * ni.ref_w;
+        ref_state[4] = ni.ref_p / (p.GAMMA - 1.0) + 0.5 * ni.ref_rho * (ni.ref_u*ni.ref_u + ni.ref_v*ni.ref_v + ni.ref_w*ni.ref_w);
+        
+        double n_x = 0.0, n_y = 0.0, n_z = 0.0;
+        if (dir == 0) n_x = is_right_or_top ? 1.0 : -1.0;
+        else if (dir == 1) n_y = is_right_or_top ? 1.0 : -1.0;
+        else if (dir == 2) n_z = is_right_or_top ? 1.0 : -1.0;
+        
+        double rho_f = std::max(p.POS_LIMITER_EPS, face_state[0]);
+        double u_f = face_state[1] / rho_f;
+        double v_f = face_state[2] / rho_f;
+        double w_f = face_state[3] / rho_f;
+        double un_f = u_f * n_x + v_f * n_y + w_f * n_z;
+        double p_f = (p.GAMMA - 1.0) * (face_state[4] - 0.5 * rho_f * (u_f*u_f + v_f*v_f + w_f*w_f));
+        double c_f = std::sqrt(p.GAMMA * std::max(p.POS_LIMITER_EPS, p_f) / rho_f);
+        
+        double rho_r = ni.ref_rho;
+        double u_r = ni.ref_u;
+        double v_r = ni.ref_v;
+        double w_r = ni.ref_w;
+        double un_r = u_r * n_x + v_r * n_y + w_r * n_z;
+        double c_r = std::sqrt(p.GAMMA * ni.ref_p / rho_r);
+        
+        double R_plus = un_f + 2.0 * c_f / (p.GAMMA - 1.0);
+        double R_minus = un_r - 2.0 * c_r / (p.GAMMA - 1.0);
+        
+        double un, c, rho, u, v, w;
+        if (un_f > 0.0) {
+            un = 0.5 * (R_plus + R_minus);
+            c = 0.25 * (p.GAMMA - 1.0) * (R_plus - R_minus);
+            double entropy = p_f / std::pow(rho_f, p.GAMMA);
+            rho = std::pow(c*c / (p.GAMMA * entropy), 1.0 / (p.GAMMA - 1.0));
+            u = u_f + (un - un_f) * n_x;
+            v = v_f + (un - un_f) * n_y;
+            w = w_f + (un - un_f) * n_z;
+        } else {
+            un = 0.5 * (R_plus + R_minus);
+            c = 0.25 * (p.GAMMA - 1.0) * (R_plus - R_minus);
+            double entropy = ni.ref_p / std::pow(rho_r, p.GAMMA);
+            rho = std::pow(c*c / (p.GAMMA * entropy), 1.0 / (p.GAMMA - 1.0));
+            u = u_r + (un - un_r) * n_x;
+            v = v_r + (un - un_r) * n_y;
+            w = w_r + (un - un_r) * n_z;
+        }
+        
+        neigh_state[0] = rho;
+        neigh_state[1] = rho * u;
+        neigh_state[2] = rho * v;
+        neigh_state[3] = rho * w;
+        neigh_state[4] = rho * c*c / (p.GAMMA * (p.GAMMA - 1.0)) + 0.5 * rho * (u*u + v*v + w*w);
+        sig_neigh = 0.0;
+    } else if (ni.is_total_pressure_comp || ni.is_total_pressure_incomp || ni.is_static_pressure) {
+        double rho_f = std::max(p.POS_LIMITER_EPS, face_state[0]);
+        double u_f = face_state[1] / rho_f;
+        double v_f = face_state[2] / rho_f;
+        double w_f = face_state[3] / rho_f;
+        double p_g = ni.ref_p;
+        neigh_state[0] = rho_f;
+        neigh_state[1] = face_state[1];
+        neigh_state[2] = face_state[2];
+        neigh_state[3] = face_state[3];
+        neigh_state[4] = p_g / (p.GAMMA - 1.0) + 0.5 * rho_f * (u_f*u_f + v_f*v_f + w_f*w_f);
+        sig_neigh = sig_face;
+    } else {
+        for (int v = 0; v < 5; ++v) neigh_state[v] = face_state[v];
+        sig_neigh = sig_face;
+    }
 }

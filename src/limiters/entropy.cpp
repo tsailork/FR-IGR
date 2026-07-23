@@ -113,3 +113,88 @@ Limiters::LimiterStats Limiters::apply_entropy_limiter(Solver &solver) {
     stats.sum_theta = sum_theta;
     return stats;
 }
+
+Limiters::LimiterStats Limiters::apply_entropy_limiter(SolverDim<3>& solver) {
+    const Parameters& p = solver.p;
+    const Basis& basis = solver.basis;
+    std::vector<Cell3D*>& cells = solver.cells;
+
+    #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < cells.size(); ++i) {
+        if (p.ENABLE_MULTIRATE && !cells[i]->element_active) continue;
+        cells[i]->s_min_val = min_entropy_in_cell(*cells[i], p, p.N_PTS);
+    }
+
+    int num_limited = 0;
+    double sum_theta = 0.0;
+
+    #pragma omp parallel for schedule(static) reduction(+:num_limited, sum_theta)
+    for (size_t i = 0; i < cells.size(); ++i) {
+        Cell3D* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+        double s_floor = c->s_min_val;
+
+        for (int f = 0; f < 6; ++f) {
+            if (c->neighbors[f]) {
+                s_floor = std::min(s_floor, c->neighbors[f]->s_min_val);
+            }
+        }
+
+        s_floor -= p.ENTROPY_LIMITER_EPS;
+        if (s_floor < 1.0E-14) s_floor = 1.0E-14;
+
+        double r_avg, ru_avg, rv_avg, rw_avg, E_avg;
+        compute_cell_average(*c, basis, r_avg, ru_avg, rv_avg, rw_avg, E_avg, p.N_PTS);
+
+        double face_pts[MAX_FACE_PTS_3D][5];
+        int n_face = extrapolate_face_values(*c, basis, face_pts, p.N_PTS);
+
+        double theta_s = 1.0;
+        int npts3 = p.N_PTS * p.N_PTS * p.N_PTS;
+
+        for (int pt = 0; pt < npts3; ++pt) {
+            double r  = c->U[0 * npts3 + pt];
+            double ru = c->U[1 * npts3 + pt];
+            double rv = c->U[2 * npts3 + pt];
+            double rw = c->U[3 * npts3 + pt];
+            double E  = c->U[4 * npts3 + pt];
+            double s = specific_entropy_3d(r, ru, rv, rw, E, p.GAMMA);
+            if (s < s_floor) {
+                theta_s = std::min(theta_s, bisect_for_theta_3d(
+                    r, ru, rv, rw, E, r_avg, ru_avg, rv_avg, rw_avg, E_avg,
+                    p.GAMMA, s_floor, false));
+            }
+        }
+
+        for (int f = 0; f < n_face; ++f) {
+            double r  = face_pts[f][0];
+            double ru = face_pts[f][1];
+            double rv = face_pts[f][2];
+            double rw = face_pts[f][3];
+            double E  = face_pts[f][4];
+            double s = specific_entropy_3d(r, ru, rv, rw, E, p.GAMMA);
+            if (s < s_floor) {
+                theta_s = std::min(theta_s, bisect_for_theta_3d(
+                    r, ru, rv, rw, E, r_avg, ru_avg, rv_avg, rw_avg, E_avg,
+                    p.GAMMA, s_floor, false));
+            }
+        }
+
+        if (theta_s < 1.0) {
+            for (int pt = 0; pt < npts3; ++pt) {
+                c->U[0 * npts3 + pt] = theta_s * (c->U[0 * npts3 + pt] - r_avg) + r_avg;
+                c->U[1 * npts3 + pt] = theta_s * (c->U[1 * npts3 + pt] - ru_avg) + ru_avg;
+                c->U[2 * npts3 + pt] = theta_s * (c->U[2 * npts3 + pt] - rv_avg) + rv_avg;
+                c->U[3 * npts3 + pt] = theta_s * (c->U[3 * npts3 + pt] - rw_avg) + rw_avg;
+                c->U[4 * npts3 + pt] = theta_s * (c->U[4 * npts3 + pt] - E_avg) + E_avg;
+            }
+            num_limited++;
+            sum_theta += theta_s;
+        }
+    }
+
+    LimiterStats stats;
+    stats.num_limited = num_limited;
+    stats.sum_theta = sum_theta;
+    return stats;
+}

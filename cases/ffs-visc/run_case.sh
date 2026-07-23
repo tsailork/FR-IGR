@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+export OMP_NUM_THREADS=18
+export OMP_PROC_BIND=spread
+export OMP_PLACES=threads
+
 PROJECT_DIR="/home/tsk/Documents/GitHub/FR-IGR/"
 
 # Determine active running directory (the case directory)

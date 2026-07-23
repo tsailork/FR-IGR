@@ -10,31 +10,90 @@
 #include <sstream>
 #include <vector>
 #include <unordered_map>
+#include <cstring>
 
-static bool seek_data_array(std::ifstream& file, const std::string& name) {
+static std::vector<unsigned char> base64_decode(const std::string& in) {
+    std::vector<int> T(256, -1);
+    const char table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    for (int i = 0; i < 64; ++i) T[(unsigned char)table[i]] = i;
+
+    std::vector<unsigned char> out;
+    out.reserve(in.size() * 3 / 4);
+    int val = 0, valb = -8;
+    for (unsigned char c : in) {
+        if (T[c] == -1 || c == '=') break;
+        val = (val << 6) + T[c];
+        valb += 6;
+        if (valb >= 0) {
+            out.push_back(char((val >> valb) & 0xFF));
+            valb -= 8;
+        }
+    }
+    return out;
+}
+
+static bool seek_data_array(std::ifstream& file, const std::string& name, bool& is_binary, std::string& type_str) {
     std::string line;
     std::string target = "Name=\"" + name + "\"";
     while (std::getline(file, line)) {
         if (line.find("DataArray") != std::string::npos &&
             line.find(target) != std::string::npos) {
+            is_binary = (line.find("format=\"binary\"") != std::string::npos);
+            type_str = "Float32";
+            if (line.find("type=\"Float64\"") != std::string::npos) type_str = "Float64";
+            else if (line.find("type=\"UInt64\"") != std::string::npos) type_str = "UInt64";
+            else if (line.find("type=\"Int32\"") != std::string::npos) type_str = "Int32";
             return true;
         }
     }
     return false;
 }
 
-static std::vector<double> read_values(std::ifstream& file, int count) {
+static std::vector<double> read_values(std::ifstream& file, int count, bool is_binary, const std::string& type_str) {
     std::vector<double> vals;
     vals.reserve(count);
-    std::string line;
-    while ((int)vals.size() < count && std::getline(file, line)) {
-        if (line.find('<') != std::string::npos) {
+    if (is_binary) {
+        std::string line, b64_str;
+        while (std::getline(file, line)) {
             if (line.find("</DataArray>") != std::string::npos) break;
-            continue;
+            size_t start = line.find_first_not_of(" \t\r\n");
+            if (start != std::string::npos && line[start] != '<') {
+                size_t end = line.find_last_not_of(" \t\r\n");
+                b64_str += line.substr(start, end - start + 1);
+            }
         }
-        std::istringstream iss(line);
-        double v;
-        while (iss >> v) vals.push_back(v);
+        std::vector<unsigned char> decoded = base64_decode(b64_str);
+        if (decoded.size() >= 4) {
+            uint32_t num_bytes;
+            std::memcpy(&num_bytes, decoded.data(), sizeof(uint32_t));
+            const unsigned char* payload = decoded.data() + sizeof(uint32_t);
+            size_t payload_len = decoded.size() - sizeof(uint32_t);
+            
+            if (type_str == "Float32") {
+                size_t n = payload_len / sizeof(float);
+                const float* fptr = reinterpret_cast<const float*>(payload);
+                for (size_t i = 0; i < n && (int)vals.size() < count; ++i) vals.push_back(fptr[i]);
+            } else if (type_str == "Float64") {
+                size_t n = payload_len / sizeof(double);
+                const double* dptr = reinterpret_cast<const double*>(payload);
+                for (size_t i = 0; i < n && (int)vals.size() < count; ++i) vals.push_back(dptr[i]);
+            } else if (type_str == "UInt64") {
+                size_t n = payload_len / sizeof(uint64_t);
+                const uint64_t* uptr = reinterpret_cast<const uint64_t*>(payload);
+                for (size_t i = 0; i < n && (int)vals.size() < count; ++i) vals.push_back((double)uptr[i]);
+            }
+        }
+    } else {
+        std::string line;
+        while ((int)vals.size() < count && std::getline(file, line)) {
+            if (line.find('<') != std::string::npos) {
+                if (line.find("</DataArray>") != std::string::npos) break;
+                continue;
+            }
+            std::istringstream iss(line);
+            double v;
+            while (iss >> v) vals.push_back(v);
+        }
     }
     return vals;
 }
@@ -73,150 +132,159 @@ bool Restart::load_restart(const std::string& filename, Solver& solver) {
         return false;
     }
 
-    // Read MortonID array (UInt64)
     file.clear();
     file.seekg(0);
-    if (!seek_data_array(file, "MortonID")) {
+    bool is_binary = false;
+    std::string type_str;
+    if (!seek_data_array(file, "MortonID", is_binary, type_str)) {
         std::cerr << "[RESTART] Error: DataArray 'MortonID' not found in " << actual_filename << "\n";
         return false;
     }
+    std::vector<double> file_morton_raw = read_values(file, total_points, is_binary, type_str);
     std::vector<uint64_t> file_morton_ids;
-    file_morton_ids.reserve(total_points);
-    while ((int)file_morton_ids.size() < total_points && std::getline(file, line)) {
-        if (line.find('<') != std::string::npos) {
-            if (line.find("</DataArray>") != std::string::npos) break;
-            continue;
-        }
-        std::istringstream iss(line);
-        uint64_t v;
-        while (iss >> v) file_morton_ids.push_back(v);
-    }
+    file_morton_ids.reserve(file_morton_raw.size());
+    for (double v : file_morton_raw) file_morton_ids.push_back((uint64_t)v);
+
     if ((int)file_morton_ids.size() != total_points) {
         std::cerr << "[RESTART] Error: Expected " << total_points << " MortonID values, got " << file_morton_ids.size() << "\n";
         return false;
     }
 
-    // Read rho, rho_u, rho_v, rho_E
     const char* var_names[4] = {"rho", "rho_u", "rho_v", "rho_E"};
-    std::vector<std::vector<double>> state_vals(4);
+    std::vector<std::vector<double>> var_data(4);
+
     for (int v = 0; v < 4; ++v) {
         file.clear();
         file.seekg(0);
-        if (!seek_data_array(file, var_names[v])) {
+        if (!seek_data_array(file, var_names[v], is_binary, type_str)) {
             std::cerr << "[RESTART] Error: DataArray '" << var_names[v] << "' not found in " << actual_filename << "\n";
             return false;
         }
-        state_vals[v] = read_values(file, total_points);
-        if ((int)state_vals[v].size() != total_points) {
-            std::cerr << "[RESTART] Error: Expected " << total_points << " values for '" << var_names[v] << "', got " << state_vals[v].size() << "\n";
+        var_data[v] = read_values(file, total_points, is_binary, type_str);
+        if ((int)var_data[v].size() != total_points) {
+            std::cerr << "[RESTART] Error: Expected " << total_points << " values for '" << var_names[v] << "', got " << var_data[v].size() << "\n";
             return false;
         }
     }
 
-    // Read Sigma if present and enabled
-    std::vector<double> sigma_vals;
-    if (p.ENABLE_IGR) {
-        file.clear();
-        file.seekg(0);
-        if (seek_data_array(file, "Sigma")) {
-            sigma_vals = read_values(file, total_points);
-        }
-    }
-
-    // Read S_field (phantom pressure transport variable) if present and enabled.
-    // If ENABLE_PPR is true but the array is absent (old checkpoint or file saved
-    // without PPR), we fall back to re-computing S = rho * press from the loaded
-    // conserved state, which is applied per-cell in the matching loop below.
-    std::vector<double> s_field_vals;
-    bool s_field_from_file = false;
-    if (p.ENABLE_PPR) {
-        file.clear();
-        file.seekg(0);
-        if (seek_data_array(file, "S_field")) {
-            s_field_vals = read_values(file, total_points);
-            if ((int)s_field_vals.size() == total_points) {
-                s_field_from_file = true;
-            } else {
-                std::cerr << "[RESTART] Warning: 'S_field' array has unexpected size ("
-                          << s_field_vals.size() << " vs " << total_points
-                          << "); will re-compute from rho*press.\n";
-                s_field_vals.clear();
-            }
-        } else {
-            std::cout << "[RESTART] 'S_field' not found in checkpoint; "
-                         "initialising from rho*press (PPR equilibrium).\n";
-        }
-    }
-
-    // Match cell states by Morton ID
     std::unordered_map<uint64_t, Cell*> cell_map;
     for (Cell* c : solver.cells) {
         cell_map[c->morton_id] = c;
     }
 
     int matched_cells = 0;
-    int total_cells_in_file = total_points / npts2;
+    int file_num_cells = total_points / npts2;
 
-    for (int c_vtu = 0; c_vtu < total_cells_in_file; ++c_vtu) {
-        int point_offset = c_vtu * npts2;
-        uint64_t mid = file_morton_ids[point_offset];
-
+    for (int fc = 0; fc < file_num_cells; ++fc) {
+        int pt_start = fc * npts2;
+        uint64_t mid = file_morton_ids[pt_start];
         auto it = cell_map.find(mid);
         if (it != cell_map.end()) {
             Cell* c = it->second;
-            // Load conserved state
             for (int v = 0; v < 4; ++v) {
-                for (int node = 0; node < npts2; ++node) {
-                    c->U[v * npts2 + node] = state_vals[v][point_offset + node];
-                }
-            }
-            // Load Sigma if present
-            if (p.ENABLE_IGR && !sigma_vals.empty()) {
-                for (int node = 0; node < npts2; ++node) {
-                    c->sigma_field[node] = sigma_vals[point_offset + node];
-                }
-            }
-            // Load or compute S_field
-            if (p.ENABLE_PPR) {
-                if (s_field_from_file) {
-                    // Restore exact tracked phantom-pressure state from checkpoint
-                    for (int node = 0; node < npts2; ++node) {
-                        c->S_field[node] = s_field_vals[point_offset + node];
-                    }
-                } else {
-                    // Fallback: initialise to local equilibrium S = rho * press
-                    // so the positivity limiter does not fire on every cell at step 1
-                    for (int iy = 0; iy < npts; ++iy) {
-                        for (int ix = 0; ix < npts; ++ix) {
-                            int node = iy * npts + ix;
-                            double rho  = c->U[0 * npts2 + node];
-                            double rhou = c->U[1 * npts2 + node];
-                            double rhov = c->U[2 * npts2 + node];
-                            double E    = c->U[3 * npts2 + node];
-                            double press = (p.GAMMA - 1.0) *
-                                (E - 0.5 * (rhou*rhou + rhov*rhov) /
-                                           std::max(p.POS_LIMITER_EPS, rho));
-                            c->S_field[node] = std::max(p.POS_LIMITER_EPS,
-                                                        rho * press);
-                        }
-                    }
+                for (int pt = 0; pt < npts2; ++pt) {
+                    c->get_U(v, pt / npts, pt % npts, npts) = var_data[v][pt_start + pt];
                 }
             }
             matched_cells++;
         }
     }
 
-    std::cout << "[RESTART] Successfully matched and loaded " << matched_cells << " / " << solver.cells.size()
-              << " cells from checkpoint file (total cells in file: " << total_cells_in_file << ")";
-    if (p.ENABLE_PPR) {
-        std::cout << " | S_field: " << (s_field_from_file ? "restored from file" : "re-computed (rho*press)");
-    }
-    std::cout << "\n";
+    std::cout << "[RESTART] Successfully matched and loaded 2D state for " << matched_cells << " / " << solver.cells.size() << " cells\n";
+    return (matched_cells > 0);
+}
 
-    if (matched_cells != (int)solver.cells.size()) {
-        std::cerr << "[RESTART] Warning: Cell count mismatch. Solver has " << solver.cells.size()
-                  << " cells, but only " << matched_cells << " were matched and loaded from checkpoint.\n";
+bool Restart::load_restart(const std::string& filename, SolverDim<3>& solver) {
+    std::string actual_filename = filename;
+    if (filename.length() >= 4 && filename.substr(filename.length() - 4) == ".vtm") {
+        actual_filename = filename.substr(0, filename.length() - 4) + ".vtu";
     }
 
-    return true;
+    std::ifstream file(actual_filename);
+    if (!file.is_open()) {
+        std::cerr << "[RESTART] Error: Could not open checkpoint file " << actual_filename << "\n";
+        return false;
+    }
+
+    const Parameters& p = solver.p;
+    int npts = p.N_PTS;
+    int npts3 = npts * npts * npts;
+
+    int total_points = 0;
+    std::string line;
+    while (std::getline(file, line)) {
+        size_t pos = line.find("NumberOfPoints=\"");
+        if (pos != std::string::npos) {
+            pos += 16;
+            size_t end = line.find("\"", pos);
+            total_points = std::stoi(line.substr(pos, end - pos));
+            break;
+        }
+    }
+
+    if (total_points <= 0) {
+        std::cerr << "[RESTART] Error: Invalid total points " << total_points << " in checkpoint file.\n";
+        return false;
+    }
+
+    file.clear();
+    file.seekg(0);
+    bool is_binary = false;
+    std::string type_str;
+    if (!seek_data_array(file, "MortonID", is_binary, type_str)) {
+        std::cerr << "[RESTART] Error: DataArray 'MortonID' not found in " << actual_filename << "\n";
+        return false;
+    }
+    std::vector<double> file_morton_raw = read_values(file, total_points, is_binary, type_str);
+    std::vector<uint64_t> file_morton_ids;
+    file_morton_ids.reserve(file_morton_raw.size());
+    for (double v : file_morton_raw) file_morton_ids.push_back((uint64_t)v);
+
+    if ((int)file_morton_ids.size() != total_points) {
+        std::cerr << "[RESTART] Error: Expected " << total_points << " MortonID values, got " << file_morton_ids.size() << "\n";
+        return false;
+    }
+
+    const char* var_names[5] = {"rho", "rho_u", "rho_v", "rho_w", "rho_E"};
+    std::vector<std::vector<double>> var_data(5);
+
+    for (int v = 0; v < 5; ++v) {
+        file.clear();
+        file.seekg(0);
+        if (!seek_data_array(file, var_names[v], is_binary, type_str)) {
+            std::cerr << "[RESTART] Error: DataArray '" << var_names[v] << "' not found in " << actual_filename << "\n";
+            return false;
+        }
+        var_data[v] = read_values(file, total_points, is_binary, type_str);
+        if ((int)var_data[v].size() != total_points) {
+            std::cerr << "[RESTART] Error: Expected " << total_points << " values for '" << var_names[v] << "', got " << var_data[v].size() << "\n";
+            return false;
+        }
+    }
+
+    std::unordered_map<uint64_t, Cell3D*> cell_map;
+    for (Cell3D* c : solver.cells) {
+        cell_map[c->morton_id] = c;
+    }
+
+    int matched_cells = 0;
+    int file_num_cells = total_points / npts3;
+
+    for (int fc = 0; fc < file_num_cells; ++fc) {
+        int pt_start = fc * npts3;
+        uint64_t mid = file_morton_ids[pt_start];
+        auto it = cell_map.find(mid);
+        if (it != cell_map.end()) {
+            Cell3D* c = it->second;
+            for (int v = 0; v < 5; ++v) {
+                for (int pt = 0; pt < npts3; ++pt) {
+                    c->U[v * npts3 + pt] = var_data[v][pt_start + pt];
+                }
+            }
+            matched_cells++;
+        }
+    }
+
+    std::cout << "[RESTART] Successfully matched and loaded 3D state for " << matched_cells << " / " << solver.cells.size() << " cells\n";
+    return (matched_cells > 0);
 }

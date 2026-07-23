@@ -30,6 +30,7 @@
 struct ProbeDef {
     double x;              ///< Physical X coordinate of the probe location.
     double y;              ///< Physical Y coordinate of the probe location.
+    double z = 0.0;        ///< Physical Z coordinate of the probe location.
     std::string variable;  ///< Target variable name to probe (e.g. "Density", "Pressure", "Mach", "Sigma").
 };
 
@@ -43,14 +44,19 @@ struct BlockConfig {
     int id;                ///< Unique identifier for the computational block.
     int N_ELEM_X;          ///< Number of elements along the X direction.
     int N_ELEM_Y;          ///< Number of elements along the Y direction.
+    int N_ELEM_Z = 1;      ///< Number of elements along the Z direction.
     double X_MIN;          ///< Minimum physical X coordinate of the block.
     double X_MAX;          ///< Maximum physical X coordinate of the block.
     double Y_MIN;          ///< Minimum physical Y coordinate of the block.
     double Y_MAX;          ///< Maximum physical Y coordinate of the block.
+    double Z_MIN = 0.0;    ///< Minimum physical Z coordinate of the block.
+    double Z_MAX = 1.0;    ///< Maximum physical Z coordinate of the block.
     std::string BC_L;      ///< Boundary condition type on the left edge.
     std::string BC_R;      ///< Boundary condition type on the right edge.
     std::string BC_B;      ///< Boundary condition type on the bottom edge.
     std::string BC_T;      ///< Boundary condition type on the top edge.
+    std::string BC_F = "TRANSMISSIVE"; ///< Boundary condition type on the front edge.
+    std::string BC_K = "TRANSMISSIVE"; ///< Boundary condition type on the back edge.
 };
 
 /**
@@ -79,7 +85,27 @@ struct Parameters {
     double RHO_INF = 1.0;             ///< Reference freestream density.
     double U_INF   = 0.0;             ///< Reference freestream X-velocity.
     double V_INF   = 0.0;             ///< Reference freestream Y-velocity.
+    double W_INF   = 0.0;             ///< Reference freestream Z-velocity.
     double P_INF   = 1.0;             ///< Reference freestream pressure.
+
+    // Shock-Vortex Interaction (for IC_TYPE = SHOCK_VORTEX)
+    double SHOCK_VORTEX_MS = 1.2;     ///< Incident shock Mach number.
+    double SHOCK_VORTEX_MV = 0.25;    ///< Vortex Mach number (strength).
+    double SHOCK_VORTEX_XS = 0.5;     ///< Initial shock X location.
+    double SHOCK_VORTEX_XV = 1.5;     ///< Initial vortex core X location.
+    double SHOCK_VORTEX_YV = 0.0;     ///< Initial vortex core Y location.
+    double SHOCK_VORTEX_RC = 0.2;     ///< Vortex core radius scale.
+
+    // Richtmyer-Meshkov Instability (for IC_TYPE = RICHTMYER_MESHKOV or RMI)
+    double RMI_MS    = 1.5;           ///< Incident shock Mach number.
+    double RMI_RHO1  = 1.0;           ///< Light fluid density (unshocked region 1).
+    double RMI_RHO2  = 3.0;           ///< Heavy fluid density (unshocked region 2).
+    double RMI_XS    = 0.2;           ///< Initial shock X location.
+    double RMI_X0    = 0.5;           ///< Mean interface X location.
+    double RMI_AMP   = 0.05;          ///< Initial perturbation amplitude a0.
+    double RMI_LY    = 1.0;           ///< Perturbation wavelength / domain height Ly.
+    double RMI_SIGMA = 0.01;          ///< Smooth interface transition width.
+
 
     // -------------------------------------------------------------------------
     // Navier-Stokes (Viscous Fluxes)
@@ -129,6 +155,13 @@ struct Parameters {
     double PPR_THETA_MAX      = 2.0;      ///< Theta at div_nd >= PPR_DIV_ND_MAX (saturated strong shock).
     bool   PPR_SMOOTH_THETA   = false;    ///< Smooth theta across face neighbors.
     double PPR_DIV_ND_MAX     = 2.0;      ///< Non-dimensional divergence saturation threshold (maps to theta_max).
+
+    // Part C: Ducros schedule sensor
+    bool   PPR_USE_DUCROS_SENSOR  = true; ///< Use Ducros x non-dimensional divergence sensor for theta schedule.
+    std::string PPR_THETA_SCHEDULE_STR = "1.0:0.0:10.0:50.0"; ///< Piecewise linear schedule values for theta.
+    std::string PPR_SENS_SCHEDULE_STR  = "-0.2:0.0:1.0:1.5";  ///< Piecewise linear schedule breakpoints for sensor.
+    std::vector<double> PPR_THETA_SCHEDULE = {1.0, 0.0, 10.0, 50.0};
+    std::vector<double> PPR_SENS_SCHEDULE  = {-0.2, 0.0, 1.0, 1.5};
 
     // -------------------------------------------------------------------------
     // Time Stepping & I/O

@@ -25,5 +25,6 @@ namespace Limiters {
  * @return LimiterStats containing the count of modified elements and average scaling parameter.
  */
 LimiterStats apply_positivity_limiter(std::vector<Cell*>& cells, const Basis& basis, const Parameters& p);
+LimiterStats apply_positivity_limiter(std::vector<Cell3D*>& cells, const Basis& basis, const Parameters& p);
 
 } // namespace Limiters

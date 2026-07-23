@@ -201,6 +201,26 @@ The solver incorporates a fully conservative, dynamically-adaptable 2D quadtree 
 - **Convergence Checker Integration**: Introduced the `IGR_SUB_ITER_TOL` parameter to allow dynamic, tolerance-driven sub-iterations. Instead of sub-iterating a fixed lock-step count, the solver performs pseudo-time relaxation of the entropic pressure Helmholtz equation until the L1 difference norm of $\Sigma$ between iterations drops below the tolerance (or a maximum iteration budget is reached).
 - **Optimized OpenMP Reduction**: Utilized an OpenMP parallel reduction loop to perform the update, apply physical positivity/pressure cappings, and calculate the difference norm in a single pass.
 
+### 9. Shock-Vortex Interaction (SVI) Benchmark Verification & Parameterization
+- **Configurable SVI Parameters**: Exposed `SHOCK_VORTEX_MS` ($M_s$), `SHOCK_VORTEX_MV` ($M_v$), `SHOCK_VORTEX_XS` ($x_s$), `SHOCK_VORTEX_XV` ($x_v$), `SHOCK_VORTEX_YV` ($y_v$), and `SHOCK_VORTEX_RC` ($r_c$) in `Parameters` and `inputs.dat`, replacing unverified hardcoded values.
+- **Inoue & Hattori Benchmark Realization**: Configured the canonical 2D shock-vortex interaction case (`cases/2dcanonical/shock_vortex/default/inputs.dat`) to match the benchmark Case C from Inoue & Hattori (1999) ($M_s = 1.2, M_v = 0.25, Re = 800.0, r_c = 0.2$), activating Navier-Stokes viscous fluxes.
+- **Analytical State Verification**: Verified exact Rankine-Hugoniot post-shock relations for moving shock fronts and isentropic vortex pressure/density profiles with centripetal force balance.
+
+### 10. Unified Riemann & Interface Flux Modularization
+- **Centralized Flux Interface**: Created `Solver::compute_interface_flux` to centrally coordinate Riemann solver evaluations, physical/regularization face pressure contributions ($\sigma$), and bounded Positivity-Preserving Reconstruction (PPR) advection sweeps.
+- **Sweep Refactoring**: Refactored `sweep_x.cpp` and `sweep_y.cpp` to call this unified method, eliminating 12 duplicated calculation blocks across conforming, boundary, and non-conforming mesh interfaces. This simplifies spatial sweep readability and streamlines 3D solver sweeps extension.
+
+### 11. Richtmyer-Meshkov Instability (RMI) Benchmark Verification & Parameterization
+- **Configurable RMI Parameters**: Exposed `RMI_MS` ($M_s$), `RMI_RHO1` ($\rho_1$), `RMI_RHO2` ($\rho_2$), `RMI_XS` ($x_s$), `RMI_X0` ($x_0$), `RMI_AMP` ($a_0$), `RMI_LY` ($L_y$), and `RMI_SIGMA` ($\sigma$) in `Parameters` and `inputs.dat`, enabling dynamic Atwood number $A = \frac{\rho_2 - \rho_1}{\rho_2 + \rho_1}$ and perturbation mode selection.
+- **Cosine Boundary Symmetry**: Updated interface perturbation shape to $\xi(y) = x_0 + a_0 \cos(2\pi y / L_y)$, ensuring exact derivative wall symmetry $\frac{d\xi}{dy} = 0$ at $y=0$ and $y=L_y$ while preserving exact compatibility with periodic transverse boundaries.
+- **Single-Mode Benchmark Verification**: Configured the canonical 2D RMI case (`cases/2dcanonical/richtmyer_meshkov/default/inputs.dat`) for $M_s = 1.5$, $\rho_1 = 1.0, \rho_2 = 3.0$ (Atwood $A=0.5$), $x_s = 0.2, x_0 = 0.5, a_0 = 0.05, L_y = 1.0, Re = 10000.0$, matching established single-mode benchmark literature (Latini et al. 2007, Tritschler et al. 2014).
+
+### 12. 3D Spatial Discretization, Boundary Conditions, Gradients, and Viscous Sweeps
+- **3D Inviscid Sweeps**: Implemented X, Y, and Z coordinate-directed inviscid sweeps (`sweep_x`, `sweep_y`, `sweep_z`) for `SolverDim<3>` utilizing 2D tensor-product reconstructions at non-conforming mesh interfaces.
+- **3D Viscous Sweeps & Gradients**: Integrated 3D conservative variable gradient calculations (`compute_gradients`) with BR2 Phase 1 interface jump terms, and implemented 3D Navier-Stokes viscous sweeps (`viscous_sweep_x`, `viscous_sweep_y`, `viscous_sweep_z`) resolving the full 3D strain rate, stress, and heat flux tensors.
+- **3D Boundary Conditions**: Generalised `get_neigh_state_cell` for `SolverDim<3>` to reconstruct ghost states across all 6 block faces, supporting slip, no-slip, moving isothermal/adiabatic wall, characteristic far-field, and total pressure boundaries.
+- **Verification and Testing**: Embedded comprehensive unit tests verifying 3D Euler flux formulations and Riemann symmetry, confirming complete backward compatibility on all existing 2D regression tests.
+
 ## Documentation Maintenance (Agent Hook)
 Whenever tasked with "updating the documentation" for a new feature or change, you **MUST** ensure all the following locations are kept perfectly synchronized with the codebase:
 

@@ -374,3 +374,35 @@ void Solver::compute_sensor_source() {
         }
     }
 }
+
+void SolverDim<3>::compute_sensor_source() {
+    if (!p.ENABLE_IGR) return;
+
+    #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < cells.size(); ++i) {
+        Cell3D* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+        const double h_min = std::min({c->dx, c->dy, c->dz});
+        const double epsilon = p.ALPHA_SCALE * (h_min * h_min);
+        int npts = p.N_PTS;
+        int npts3 = npts * npts * npts;
+
+        for (int pt = 0; pt < npts3; ++pt) {
+            double rho = std::max(p.POS_LIMITER_EPS, c->U[0 * npts3 + pt]);
+            double rhou = c->U[1 * npts3 + pt];
+            double rhov = c->U[2 * npts3 + pt];
+            double rhow = c->U[3 * npts3 + pt];
+            double E    = c->U[4 * npts3 + pt];
+            double u = rhou / rho;
+            double v = rhov / rho;
+            double w = rhow / rho;
+
+            double press = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (E - 0.5 * rho * (u*u + v*v + w*w)));
+            double source_val = 0.0;
+            if (press < p.POS_LIMITER_EPS * 10.0) {
+                source_val = epsilon * rho * 0.1;
+            }
+            c->S_buf[pt] = source_val;
+        }
+    }
+}

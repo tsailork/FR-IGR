@@ -31,7 +31,15 @@ TEST_SUITE("Quadtree AMR Phase 3") {
             grid_out.close();
 
             std::ofstream inputs_out("test_cons.dat");
-            inputs_out << "[Solver]\nP_DEG = " << p_deg << "\n";
+            inputs_out << "[Solver]\n"
+                       << "P_DEG = " << p_deg << "\n"
+                       << "ENABLE_MULTIRATE = true\n"
+                       << "[Regularization]\n"
+                       << "ENABLE_IGR = true\n"
+                       << "[PPR]\n"
+                       << "ENABLE_PPR = true\n"
+                       << "[ImmersedBoundary]\n"
+                       << "ENABLE_IB = true\n";
             inputs_out.close();
 
             params.load_domain("test_cons.grid");

@@ -304,3 +304,34 @@ void Solver::compute_igr_parabolic_rhs() {
         }
     }
 }
+
+void SolverDim<3>::step_parabolic_igr(double dt_stage_ratio) {
+    if (!p.ENABLE_IGR) return;
+
+    #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < cells.size(); ++i) {
+        Cell3D* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+        int npts = p.N_PTS;
+        int npts3 = npts * npts * npts;
+
+        for (int pt = 0; pt < npts3; ++pt) {
+            double S = c->S_buf[pt];
+            double sig = c->sigma_field[pt];
+            c->sigma_RHS[pt] = (1.0 / p.IGR_TAU_R) * (S - sig);
+        }
+    }
+
+    #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < cells.size(); ++i) {
+        Cell3D* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+        double dt_stage = dt_stage_ratio * c->element_dt;
+        int npts3 = p.N_PTS * p.N_PTS * p.N_PTS;
+
+        for (int pt = 0; pt < npts3; ++pt) {
+            c->sigma_field[pt] += dt_stage * c->sigma_RHS[pt];
+            c->sigma_field[pt] = std::max(0.0, c->sigma_field[pt]);
+        }
+    }
+}

@@ -14,6 +14,26 @@ U_INF = 0.0
 V_INF = 0.0
 P_INF = 1.0
 
+# Shock-Vortex Interaction parameters (used if IC_TYPE = SHOCK_VORTEX)
+# Benchmark values based on Inoue & Hattori (1999) Case C (Ms=1.2, Mv=0.25)
+SHOCK_VORTEX_MS = 1.2
+SHOCK_VORTEX_MV = 0.25
+SHOCK_VORTEX_XS = 0.5
+SHOCK_VORTEX_XV = 1.5
+SHOCK_VORTEX_YV = 0.0
+SHOCK_VORTEX_RC = 0.2
+
+# Richtmyer-Meshkov Instability parameters (used if IC_TYPE = RICHTMYER_MESHKOV or RMI)
+# Single-mode benchmark values (Ms=1.5, Atwood A=0.5)
+RMI_MS = 1.5
+RMI_RHO1 = 1.0
+RMI_RHO2 = 3.0
+RMI_XS = 0.2
+RMI_X0 = 0.5
+RMI_AMP = 0.05
+RMI_LY = 1.0
+RMI_SIGMA = 0.01
+
 [Solver]
 # P_DEG: Polynomial degree of elements. 0 = Finite Volume, 1 = Linear, 2 = Quadratic
 P_DEG = 1
@@ -176,6 +196,16 @@ PPR_THETA_MAX = 2.0
 # Above this value, theta is clamped to PPR_THETA_MAX.
 # Typical range 1.5-5.0 depending on shock strength.
 PPR_DIV_ND_MAX = 2.0
+
+# --- Part C: Ducros Schedule Sensor ---
+# PPR_USE_DUCROS_SENSOR: Multiply uncapped non-dimensional divergence sensor by capped Ducros switch [0, 1] (default true).
+PPR_USE_DUCROS_SENSOR = true
+
+# shock_sens_schedule: Colon-separated breakpoints for sensor (x-coordinates).
+shock_sens_schedule = -0.2:0.0:1.0:1.5
+
+# theta_schedule: Colon-separated schedule values for theta (y-coordinates).
+theta_schedule = 1.0:0.0:10.0:50.0
 
 [ImmersedBoundary]
 # ENABLE_IB: Toggle the Immersed Boundary Method for solid boundaries

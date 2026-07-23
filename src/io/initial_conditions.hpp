@@ -11,7 +11,8 @@
 #include "../core/state.hpp"
 #include "../core/basis.hpp"
 
-class Solver;
+template<int Dim> class SolverDim;
+using Solver = SolverDim<2>;
 
 /**
  * @namespace IC
@@ -30,6 +31,7 @@ namespace IC {
  * @note Overwrites any existing state unless an immersed boundary (IB) mask prevents it.
  */
 void apply(Solver& solver);
+void apply(SolverDim<3>& solver);
 
 /**
  * @brief Evaluates a sigmoid function for initial condition smoothing.

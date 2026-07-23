@@ -24,6 +24,21 @@ static inline void trim(std::string &s) {
     s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), s.end());
 }
 
+static inline std::vector<double> parse_colon_vector(const std::string& str) {
+    std::vector<double> res;
+    std::stringstream ss(str);
+    std::string token;
+    while (std::getline(ss, token, ':')) {
+        trim(token);
+        if (!token.empty()) {
+            try {
+                res.push_back(std::stod(token));
+            } catch (...) {}
+        }
+    }
+    return res;
+}
+
 std::map<std::string, std::map<std::string, std::string>> Parameters::parse_ini(const std::string& filename) {
     std::map<std::string, std::map<std::string, std::string>> ini;
     std::ifstream file(filename);
@@ -73,21 +88,31 @@ void Parameters::load_domain(const std::string& filename) {
         if (section.find("Block") == 0) {
             BlockConfig b;
             try {
-                b.id = std::stoi(section.substr(5));
+                size_t num_pos = section.find_first_of("0123456789");
+                if (num_pos != std::string::npos) {
+                    b.id = std::stoi(section.substr(num_pos));
+                } else {
+                    continue;
+                }
             } catch (...) {
                 continue; // Skip sections that don't match [BlockN]
             }
 
             b.N_ELEM_X = kv.count("N_ELEM_X") ? std::stoi(kv.at("N_ELEM_X")) : 0;
             b.N_ELEM_Y = kv.count("N_ELEM_Y") ? std::stoi(kv.at("N_ELEM_Y")) : 0;
+            b.N_ELEM_Z = kv.count("N_ELEM_Z") ? std::stoi(kv.at("N_ELEM_Z")) : 1;
             b.X_MIN    = kv.count("X_MIN")    ? std::stod(kv.at("X_MIN"))    : 0.0;
             b.X_MAX    = kv.count("X_MAX")    ? std::stod(kv.at("X_MAX"))    : 1.0;
             b.Y_MIN    = kv.count("Y_MIN")    ? std::stod(kv.at("Y_MIN"))    : 0.0;
             b.Y_MAX    = kv.count("Y_MAX")    ? std::stod(kv.at("Y_MAX"))    : 1.0;
+            b.Z_MIN    = kv.count("Z_MIN")    ? std::stod(kv.at("Z_MIN"))    : 0.0;
+            b.Z_MAX    = kv.count("Z_MAX")    ? std::stod(kv.at("Z_MAX"))    : 1.0;
             b.BC_L     = kv.count("BC_L")     ? kv.at("BC_L")                : "TRANSMISSIVE";
             b.BC_R     = kv.count("BC_R")     ? kv.at("BC_R")                : "TRANSMISSIVE";
             b.BC_B     = kv.count("BC_B")     ? kv.at("BC_B")                : "TRANSMISSIVE";
             b.BC_T     = kv.count("BC_T")     ? kv.at("BC_T")                : "TRANSMISSIVE";
+            b.BC_F     = kv.count("BC_F")     ? kv.at("BC_F")                : "TRANSMISSIVE";
+            b.BC_K     = kv.count("BC_K")     ? kv.at("BC_K")                : "TRANSMISSIVE";
             
             blocks.push_back(b);
         }
@@ -104,10 +129,18 @@ void Parameters::load_domain(const std::string& filename) {
     }
 
     for (const auto& b : blocks) {
-        if (b.N_ELEM_X > 2047 || b.N_ELEM_Y > 2047) {
-            std::cerr << "[Error] Block " << b.id << " dimensions (" << b.N_ELEM_X << "x" << b.N_ELEM_Y 
-                      << ") exceed the maximum supported by Morton scheme (2047x2047).\n";
-            std::exit(EXIT_FAILURE);
+        if (b.N_ELEM_Z > 1) {
+            if (b.N_ELEM_X > 63 || b.N_ELEM_Y > 63 || b.N_ELEM_Z > 63) {
+                std::cerr << "[Error] Block " << b.id << " dimensions (" << b.N_ELEM_X << "x" << b.N_ELEM_Y << "x" << b.N_ELEM_Z
+                          << ") exceed the maximum supported by 3D Morton scheme (63x63x63).\n";
+                std::exit(EXIT_FAILURE);
+            }
+        } else {
+            if (b.N_ELEM_X > 2047 || b.N_ELEM_Y > 2047) {
+                std::cerr << "[Error] Block " << b.id << " dimensions (" << b.N_ELEM_X << "x" << b.N_ELEM_Y 
+                          << ") exceed the maximum supported by 2D Morton scheme (2047x2047).\n";
+                std::exit(EXIT_FAILURE);
+            }
         }
     }
 
@@ -190,7 +223,22 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("RHO_INF")) RHO_INF = std::stod(kv["RHO_INF"]);
         if (kv.count("U_INF"))   U_INF   = std::stod(kv["U_INF"]);
         if (kv.count("V_INF"))   V_INF   = std::stod(kv["V_INF"]);
+        if (kv.count("W_INF"))   W_INF   = std::stod(kv["W_INF"]);
         if (kv.count("P_INF"))   P_INF   = std::stod(kv["P_INF"]);
+        if (kv.count("SHOCK_VORTEX_MS")) SHOCK_VORTEX_MS = std::stod(kv["SHOCK_VORTEX_MS"]);
+        if (kv.count("SHOCK_VORTEX_MV")) SHOCK_VORTEX_MV = std::stod(kv["SHOCK_VORTEX_MV"]);
+        if (kv.count("SHOCK_VORTEX_XS")) SHOCK_VORTEX_XS = std::stod(kv["SHOCK_VORTEX_XS"]);
+        if (kv.count("SHOCK_VORTEX_XV")) SHOCK_VORTEX_XV = std::stod(kv["SHOCK_VORTEX_XV"]);
+        if (kv.count("SHOCK_VORTEX_YV")) SHOCK_VORTEX_YV = std::stod(kv["SHOCK_VORTEX_YV"]);
+        if (kv.count("SHOCK_VORTEX_RC")) SHOCK_VORTEX_RC = std::stod(kv["SHOCK_VORTEX_RC"]);
+        if (kv.count("RMI_MS"))    RMI_MS    = std::stod(kv["RMI_MS"]);
+        if (kv.count("RMI_RHO1"))  RMI_RHO1  = std::stod(kv["RMI_RHO1"]);
+        if (kv.count("RMI_RHO2"))  RMI_RHO2  = std::stod(kv["RMI_RHO2"]);
+        if (kv.count("RMI_XS"))    RMI_XS    = std::stod(kv["RMI_XS"]);
+        if (kv.count("RMI_X0"))    RMI_X0    = std::stod(kv["RMI_X0"]);
+        if (kv.count("RMI_AMP"))   RMI_AMP   = std::stod(kv["RMI_AMP"]);
+        if (kv.count("RMI_LY"))    RMI_LY    = std::stod(kv["RMI_LY"]);
+        if (kv.count("RMI_SIGMA")) RMI_SIGMA = std::stod(kv["RMI_SIGMA"]);
     }
 
     // --- [Solver] ---
@@ -240,6 +288,27 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("PPR_THETA_MID"))     PPR_THETA_MID     = std::stod(kv["PPR_THETA_MID"]);
         if (kv.count("PPR_THETA_MAX"))     PPR_THETA_MAX     = std::stod(kv["PPR_THETA_MAX"]);
         if (kv.count("PPR_DIV_ND_MAX"))    PPR_DIV_ND_MAX    = std::stod(kv["PPR_DIV_ND_MAX"]);
+        if (kv.count("PPR_USE_DUCROS_SENSOR"))  PPR_USE_DUCROS_SENSOR  = (kv["PPR_USE_DUCROS_SENSOR"] == "true" || kv["PPR_USE_DUCROS_SENSOR"] == "1");
+        if (kv.count("theta_schedule"))      PPR_THETA_SCHEDULE_STR = kv["theta_schedule"];
+        if (kv.count("PPR_THETA_SCHEDULE"))  PPR_THETA_SCHEDULE_STR = kv["PPR_THETA_SCHEDULE"];
+        if (kv.count("shock_sens_schedule")) PPR_SENS_SCHEDULE_STR  = kv["shock_sens_schedule"];
+        if (kv.count("PPR_SENS_SCHEDULE"))   PPR_SENS_SCHEDULE_STR  = kv["PPR_SENS_SCHEDULE"];
+
+        bool has_schedule_override = (kv.count("theta_schedule") || kv.count("PPR_THETA_SCHEDULE") ||
+                                      kv.count("shock_sens_schedule") || kv.count("PPR_SENS_SCHEDULE"));
+        bool has_legacy_override   = (kv.count("PPR_THETA_MIN") || kv.count("PPR_THETA_MID") ||
+                                      kv.count("PPR_THETA_MAX") || kv.count("PPR_DIV_ND_MAX"));
+
+        if (!has_schedule_override && has_legacy_override) {
+            PPR_THETA_SCHEDULE.clear();
+            PPR_SENS_SCHEDULE.clear();
+        } else {
+            auto parsed_theta = parse_colon_vector(PPR_THETA_SCHEDULE_STR);
+            if (parsed_theta.size() >= 2) PPR_THETA_SCHEDULE = parsed_theta;
+
+            auto parsed_sens = parse_colon_vector(PPR_SENS_SCHEDULE_STR);
+            if (parsed_sens.size() >= 2) PPR_SENS_SCHEDULE = parsed_sens;
+        }
     }
 
     // --- [Stabilization] ---
@@ -435,10 +504,18 @@ void Parameters::load_inputs(const std::string& filename) {
                 trim(token);
                 tokens.push_back(token);
             }
-            if (tokens.size() == 3) {
+            if (tokens.size() == 4) {
                 ProbeDef p;
                 p.x = std::stod(tokens[0]);
                 p.y = std::stod(tokens[1]);
+                p.z = std::stod(tokens[2]);
+                p.variable = tokens[3];
+                probes.push_back(p);
+            } else if (tokens.size() == 3) {
+                ProbeDef p;
+                p.x = std::stod(tokens[0]);
+                p.y = std::stod(tokens[1]);
+                p.z = 0.0;
                 p.variable = tokens[2];
                 probes.push_back(p);
             } else {

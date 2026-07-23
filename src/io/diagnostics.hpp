@@ -10,7 +10,8 @@
 #include <chrono>
 #include <vector>
 
-class Solver;
+template<int Dim> class SolverDim;
+using Solver = SolverDim<2>;
 
 /**
  * @class Diagnostics
@@ -22,6 +23,7 @@ public:
      * @brief Constructs the Diagnostics tracker and opens output file streams.
      */
     Diagnostics(const Parameters& p, const Solver& solver, double startTime);
+    Diagnostics(const Parameters& p, const SolverDim<3>& solver, double startTime);
 
     /**
      * @brief Destructor that cleanly flushes and closes active file streams.
@@ -32,6 +34,7 @@ public:
      * @brief Updates all diagnostic metrics and writes to disk if intervals are met.
      */
     void update(const Solver& solver, double t, int step);
+    void update(const SolverDim<3>& solver, double t, int step);
 
 private:
     const Parameters& params;

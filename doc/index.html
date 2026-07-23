@@ -29,13 +29,13 @@
             <h1>Solver Overview</h1>
             <p>
                 FR-IGR is a comprehensive, high-order numerical solver engineered for the simulation of compressible fluid dynamics. 
-                Specifically targeting the 2D Euler and Navier-Stokes equations, the solver is designed to accurately model complex aerodynamic phenomena ranging from smooth freestream flows to highly dynamic, shock-driven blast waves.
+                 Specifically targeting the 2D and 3D Euler and Navier-Stokes equations, the solver is designed to accurately model complex aerodynamic phenomena ranging from smooth freestream flows to highly dynamic, shock-driven blast waves.
             </p>
             
             <h2>Governing Equations</h2>
             <p>
-                The foundational physical system modeled by the solver is the compressible Navier-Stokes equations in two dimensions, accounting for the conservation of mass, momentum, and energy.
-                For inviscid simulations, the viscous stress tensor and heat flux terms are disabled, strictly reducing the system to the 2D Euler equations. 
+                The foundational physical system modeled by the solver is the compressible Navier-Stokes equations in two and three dimensions, accounting for the conservation of mass, momentum, and energy.
+                For inviscid simulations, the viscous stress tensor and heat flux terms are disabled, strictly reducing the system to the Euler equations. 
                 The continuous physical equations are advanced in time using an explicit Strong Stability Preserving Runge-Kutta (SSP-RK3) temporal discretization, which guarantees strictly bounded variation across discrete time steps.
             </p>
 

@@ -6,7 +6,8 @@
 #pragma once
 #include <string>
 
-class Solver;
+template<int Dim> class SolverDim;
+using Solver = SolverDim<2>;
 
 namespace Restart {
 
@@ -18,5 +19,6 @@ namespace Restart {
  * @return True if restart completes successfully, false if an error is encountered.
  */
 bool load_restart(const std::string& filename, Solver& solver);
+bool load_restart(const std::string& filename, SolverDim<3>& solver);
 
 } // namespace Restart
