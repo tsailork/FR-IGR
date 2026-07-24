@@ -11,6 +11,7 @@
 #include <cmath>
 #include <algorithm>
 #include <cstring>
+#include <unordered_map>
 
 #ifdef _WIN32
 #include <direct.h>
@@ -336,7 +337,7 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
 
     if (p.ENABLE_IGR) solver.compute_sensor_source();
 
-    int n_sub = std::max(1, p.P_DEG);
+    int n_sub = p.PLOT_SUB_DIVISIONS > 0 ? p.PLOT_SUB_DIVISIONS : std::max(1, p.P_DEG);
     int npts_local = n_sub + 1;
     int n_pts_cell = npts_local * npts_local + n_sub * n_sub;
     int n_cells_cell = 4 * n_sub * n_sub;
@@ -871,5 +872,285 @@ void VTKWriter::write_checkpoint(SolverDim<3>& solver, int step, double time) {
 }
 
 void VTKWriter::write_plot(SolverDim<3>& solver, int step, double time) {
-    write_checkpoint(solver, step, time);
+    const Parameters& p = solver.p;
+    std::string vtu_filename = "plot_" + std::to_string(step) + ".vtu";
+    std::string vtu_path = "pv_outputs/" + vtu_filename;
+
+    std::ofstream vtu(vtu_path, std::ios::binary);
+    if (!vtu.is_open()) {
+        std::cerr << "Error: Could not open VTU plot file " << vtu_path << "\n";
+        return;
+    }
+
+    int n_sub = p.PLOT_SUB_DIVISIONS > 0 ? p.PLOT_SUB_DIVISIONS : std::max(1, p.P_DEG);
+    int npts_local = n_sub + 1;
+    int n_pts_cell = npts_local * npts_local * npts_local;
+    int cells_per_element = n_sub * n_sub * n_sub;
+    int num_cells_total = solver.cells.size();
+    int total_vtk_cells = num_cells_total * cells_per_element;
+
+    auto eval_lagrange = [](int j, double x, const std::vector<double>& z) {
+        int n = z.size();
+        if (n == 1) return 1.0;
+        double numerator = 1.0;
+        double denominator = 1.0;
+        for (int k = 0; k < n; ++k) {
+            if (k != j) {
+                numerator *= (x - z[k]);
+                denominator *= (z[j] - z[k]);
+            }
+        }
+        return numerator / denominator;
+    };
+
+    struct PointKey {
+        int64_t x, y, z;
+        bool operator==(const PointKey& o) const {
+            return x == o.x && y == o.y && z == o.z;
+        }
+    };
+    struct PointKeyHash {
+        std::size_t operator()(const PointKey& k) const {
+            std::size_t h1 = std::hash<int64_t>{}(k.x);
+            std::size_t h2 = std::hash<int64_t>{}(k.y);
+            std::size_t h3 = std::hash<int64_t>{}(k.z);
+            return h1 ^ (h2 << 1) ^ (h3 << 2);
+        }
+    };
+
+    std::unordered_map<PointKey, int, PointKeyHash> point_map;
+    std::vector<float> pts_coords; // 3 floats per unique point
+    
+    int num_fields = 11 + (p.ENABLE_IGR ? 1 : 0) + (p.ENABLE_IB ? 1 : 0);
+    std::vector<double> field_sums;
+    std::vector<int> field_counts;
+    std::vector<uint64_t> morton_ids;
+
+    std::vector<int> cell_node_map(num_cells_total * n_pts_cell);
+
+    int npts3 = p.N_PTS * p.N_PTS * p.N_PTS;
+
+    for (size_t c_idx = 0; c_idx < solver.cells.size(); ++c_idx) {
+        Cell3D* c = solver.cells[c_idx];
+        for (int JZ = 0; JZ < npts_local; ++JZ) {
+            double t = -1.0 + 2.0 * JZ / n_sub;
+            double z = c->z_min + 0.5 * (1.0 + t) * c->dz;
+            std::vector<double> wz(p.N_PTS);
+            for (int iz = 0; iz < p.N_PTS; ++iz) wz[iz] = eval_lagrange(iz, t, solver.basis.z);
+
+            for (int JY = 0; JY < npts_local; ++JY) {
+                double s = -1.0 + 2.0 * JY / n_sub;
+                double y = c->y_min + 0.5 * (1.0 + s) * c->dy;
+                std::vector<double> wy(p.N_PTS);
+                for (int iy = 0; iy < p.N_PTS; ++iy) wy[iy] = eval_lagrange(iy, s, solver.basis.z);
+
+                for (int JX = 0; JX < npts_local; ++JX) {
+                    double r = -1.0 + 2.0 * JX / n_sub;
+                    double x = c->x_min + 0.5 * (1.0 + r) * c->dx;
+                    std::vector<double> wx(p.N_PTS);
+                    for (int ix = 0; ix < p.N_PTS; ++ix) wx[ix] = eval_lagrange(ix, r, solver.basis.z);
+
+                    PointKey key{
+                        static_cast<int64_t>(std::round(x * 1e6)),
+                        static_cast<int64_t>(std::round(y * 1e6)),
+                        static_cast<int64_t>(std::round(z * 1e6))
+                    };
+
+                    int pid;
+                    auto it = point_map.find(key);
+                    if (it == point_map.end()) {
+                        pid = static_cast<int>(pts_coords.size() / 3);
+                        point_map[key] = pid;
+                        pts_coords.push_back(static_cast<float>(x));
+                        pts_coords.push_back(static_cast<float>(y));
+                        pts_coords.push_back(static_cast<float>(z));
+                        field_sums.resize((pid + 1) * num_fields, 0.0);
+                        field_counts.push_back(0);
+                        morton_ids.push_back(c->morton_id);
+                    } else {
+                        pid = it->second;
+                    }
+
+                    int local_v_idx = JZ * npts_local * npts_local + JY * npts_local + JX;
+                    cell_node_map[c_idx * n_pts_cell + local_v_idx] = pid;
+
+                    // Interpolate U at (r, s, t)
+                    double U_interp[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
+                    double sigma_interp = 0.0;
+                    double ib_interp = 0.0;
+
+                    for (int iz = 0; iz < p.N_PTS; ++iz) {
+                        for (int iy = 0; iy < p.N_PTS; ++iy) {
+                            for (int ix = 0; ix < p.N_PTS; ++ix) {
+                                double w = wz[iz] * wy[iy] * wx[ix];
+                                int idx = iz * p.N_PTS * p.N_PTS + iy * p.N_PTS + ix;
+                                for (int v = 0; v < 5; ++v) {
+                                    U_interp[v] += c->U[v * npts3 + idx] * w;
+                                }
+                                if (p.ENABLE_IGR && idx < (int)c->sigma_field.size()) {
+                                    sigma_interp += c->sigma_field[idx] * w;
+                                }
+                                if (p.ENABLE_IB && idx < (int)c->ib_mask.size()) {
+                                    ib_interp += c->ib_mask[idx] * w;
+                                }
+                            }
+                        }
+                    }
+
+                    double rho   = U_interp[0];
+                    double rhou  = U_interp[1];
+                    double rhov  = U_interp[2];
+                    double rhow  = U_interp[3];
+                    double rhoE  = U_interp[4];
+
+                    double r_safe = std::max(1e-14, rho);
+                    double u = rhou / r_safe;
+                    double v = rhov / r_safe;
+                    double w_vel = rhow / r_safe;
+                    double press = (p.GAMMA - 1.0) * (rhoE - 0.5 * r_safe * (u*u + v*v + w_vel*w_vel));
+                    if (press < 1e-14) press = 1e-14;
+                    double temp = press / (RGASAIR * r_safe);
+                    double mach = std::sqrt(u*u + v*v + w_vel*w_vel) / std::sqrt(p.GAMMA * press / r_safe);
+
+                    int base_f = pid * num_fields;
+                    int f = 0;
+                    field_sums[base_f + (f++)] += rho;
+                    field_sums[base_f + (f++)] += rhou;
+                    field_sums[base_f + (f++)] += rhov;
+                    field_sums[base_f + (f++)] += rhow;
+                    field_sums[base_f + (f++)] += rhoE;
+                    field_sums[base_f + (f++)] += u;
+                    field_sums[base_f + (f++)] += v;
+                    field_sums[base_f + (f++)] += w_vel;
+                    field_sums[base_f + (f++)] += press;
+                    field_sums[base_f + (f++)] += temp;
+                    field_sums[base_f + (f++)] += mach;
+
+                    if (p.ENABLE_IGR && f < num_fields) {
+                        field_sums[base_f + (f++)] += sigma_interp;
+                    }
+                    if (p.ENABLE_IB && f < num_fields) {
+                        field_sums[base_f + (f++)] += ib_interp;
+                    }
+
+                    field_counts[pid]++;
+                }
+            }
+        }
+    }
+
+    int unique_points = static_cast<int>(pts_coords.size() / 3);
+
+    vtu << "<?xml version=\"1.0\"?>\n";
+    vtu << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+    vtu << "  <UnstructuredGrid>\n";
+    vtu << "    <Piece NumberOfPoints=\"" << unique_points << "\" NumberOfCells=\"" << total_vtk_cells << "\">\n";
+
+    // 1. Points
+    vtu << "      <Points>\n";
+    write_binary_data_array(vtu, "Points", 3, pts_coords);
+    vtu << "      </Points>\n";
+
+    // 2. Cells (Connectivity, Offsets, Types)
+    vtu << "      <Cells>\n";
+    std::vector<int32_t> conn_data;
+    std::vector<int32_t> offset_data;
+    std::vector<uint8_t> type_data;
+    conn_data.reserve(total_vtk_cells * 8);
+    offset_data.reserve(total_vtk_cells);
+    type_data.reserve(total_vtk_cells);
+
+    int current_offset = 0;
+    for (size_t c_idx = 0; c_idx < solver.cells.size(); ++c_idx) {
+        int cell_base = c_idx * n_pts_cell;
+        for (int iz = 0; iz < n_sub; ++iz) {
+            for (int iy = 0; iy < n_sub; ++iy) {
+                for (int ix = 0; ix < n_sub; ++ix) {
+                    int v0 = cell_node_map[cell_base + iz * npts_local * npts_local + iy * npts_local + ix];
+                    int v1 = cell_node_map[cell_base + iz * npts_local * npts_local + iy * npts_local + ix + 1];
+                    int v2 = cell_node_map[cell_base + iz * npts_local * npts_local + (iy + 1) * npts_local + ix + 1];
+                    int v3 = cell_node_map[cell_base + iz * npts_local * npts_local + (iy + 1) * npts_local + ix];
+                    int v4 = cell_node_map[cell_base + (iz + 1) * npts_local * npts_local + iy * npts_local + ix];
+                    int v5 = cell_node_map[cell_base + (iz + 1) * npts_local * npts_local + iy * npts_local + ix + 1];
+                    int v6 = cell_node_map[cell_base + (iz + 1) * npts_local * npts_local + (iy + 1) * npts_local + ix + 1];
+                    int v7 = cell_node_map[cell_base + (iz + 1) * npts_local * npts_local + (iy + 1) * npts_local + ix];
+
+                    conn_data.push_back(v0); conn_data.push_back(v1);
+                    conn_data.push_back(v2); conn_data.push_back(v3);
+                    conn_data.push_back(v4); conn_data.push_back(v5);
+                    conn_data.push_back(v6); conn_data.push_back(v7);
+
+                    current_offset += 8;
+                    offset_data.push_back(current_offset);
+                    type_data.push_back(12); // VTK_HEXAHEDRON
+                }
+            }
+        }
+    }
+
+    write_binary_data_array(vtu, "connectivity", 1, conn_data);
+    write_binary_data_array(vtu, "offsets", 1, offset_data);
+    write_binary_data_array(vtu, "types", 1, type_data);
+    vtu << "      </Cells>\n";
+
+    // 3. PointData - averaged field output across continuous domain
+    vtu << "      <PointData Scalars=\"rho\">\n";
+
+    auto write_averaged_field = [&](const std::string& name, int field_idx) {
+        std::vector<float> f_data;
+        f_data.reserve(unique_points);
+        for (int pid = 0; pid < unique_points; ++pid) {
+            double avg = 0.0;
+            if (pid < (int)field_counts.size() && field_counts[pid] > 0) {
+                int idx = pid * num_fields + field_idx;
+                if (idx < (int)field_sums.size()) {
+                    avg = field_sums[idx] / field_counts[pid];
+                }
+            }
+            f_data.push_back(static_cast<float>(avg));
+        }
+        write_binary_data_array(vtu, name, 1, f_data);
+    };
+
+    int f_idx = 0;
+    write_averaged_field("rho",         f_idx++);
+    write_averaged_field("rho_u",       f_idx++);
+    write_averaged_field("rho_v",       f_idx++);
+    write_averaged_field("rho_w",       f_idx++);
+    write_averaged_field("rho_E",       f_idx++);
+    write_averaged_field("u",           f_idx++);
+    write_averaged_field("v",           f_idx++);
+    write_averaged_field("w",           f_idx++);
+    write_averaged_field("Pressure",    f_idx++);
+    write_averaged_field("Temperature", f_idx++);
+    write_averaged_field("Mach",        f_idx++);
+
+    if (p.ENABLE_IGR) {
+        write_averaged_field("Sigma", f_idx++);
+    }
+    if (p.ENABLE_IB) {
+        write_averaged_field("ib_mask", f_idx++);
+    }
+
+    write_binary_data_array(vtu, "MortonID", 1, morton_ids);
+
+    vtu << "      </PointData>\n";
+    vtu << "    </Piece>\n";
+    vtu << "  </UnstructuredGrid>\n";
+    vtu << "</VTKFile>\n";
+
+    std::cout << "[Plot] Output written (3D Continuous Binary): " << vtu_path << "\n";
+
+    bool duplicate = false;
+    for (auto& snap : plot_snapshots) {
+        if (std::abs(snap.first - time) < 1e-12) {
+            snap.second = vtu_filename;
+            duplicate = true;
+            break;
+        }
+    }
+    if (!duplicate) plot_snapshots.push_back({time, vtu_filename});
+
+    write_pvd("plot.pvd", plot_snapshots);
 }
+

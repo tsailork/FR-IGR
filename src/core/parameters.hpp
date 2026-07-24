@@ -172,6 +172,7 @@ struct Parameters {
     bool   OUTPUT_DIV_ND    = false;  ///< Output the non-dimensional velocity divergence (div*).
     bool   OUTPUT_ADAPTIVE_THETA = false;  ///< Output the element-wise adaptive PPR theta field.
     double RESTART_INTERVAL = 0.1;    ///< Periodicity of exact binary restart checkpoints (.vts).
+    int    PLOT_SUB_DIVISIONS = 0;    ///< Number of equidistant sub-element visualization intervals per dimension (0 = auto max(1, P_DEG)).
     
     // New parameters for diagnostics
     double RESIDUAL_INTERVAL = 0.001; ///< Output time interval for tracking global residual norms.

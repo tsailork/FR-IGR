@@ -301,6 +301,15 @@ Limiters::LimiterStats Limiters::apply_positivity_limiter(std::vector<Cell3D*>& 
         double r_avg, ru_avg, rv_avg, rw_avg, E_avg;
         compute_cell_average(*c, basis, r_avg, ru_avg, rv_avg, rw_avg, E_avg, npts);
 
+        if (r_avg < eps) {
+            r_avg = eps;
+        }
+        double ke_avg = 0.5 * (ru_avg*ru_avg + rv_avg*rv_avg + rw_avg*rw_avg) / r_avg;
+        double p_avg  = (p.GAMMA - 1.0) * (E_avg - ke_avg);
+        if (p_avg < eps) {
+            E_avg = eps / (p.GAMMA - 1.0) + ke_avg;
+        }
+
         double theta_r = 1.0;
         double r_min = r_avg;
 

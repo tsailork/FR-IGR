@@ -23,6 +23,7 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
+#include <memory>
 #include <cstdio>
 
 #ifdef _OPENMP
@@ -80,7 +81,12 @@ int run_simulation(Parameters& params) {
     writer.write_checkpoint(solver, checkpoint_count++, t);
     writer.write_plot(solver, plot_count++, t);
 
-    Diagnostics diag(params, solver, t);
+    std::unique_ptr<Diagnostics> diag;
+    if constexpr (Dim == 2) {
+        diag = std::make_unique<Diagnostics>(params, solver, t);
+    } else {
+        diag = std::make_unique<Diagnostics>(params, solver, t);
+    }
 
     while (t < params.T_FINAL) {
         if (std::filesystem::exists("STOP")) {
@@ -100,13 +106,15 @@ int run_simulation(Parameters& params) {
         t += dt;
         step++;
 
+        solver.check_stability();
+
         if (solver.sbm_nonphysical_count > 0) {
             std::cout << "[WARNING] " << solver.sbm_nonphysical_count 
                       << " nonphysical SBM states (rho <= 0 or E <= 0) detected at step " << step << "\n";
             solver.sbm_nonphysical_count = 0;
         }
 
-        diag.update(solver, t, step);
+        diag->update(solver, t, step);
 
         if (t >= next_residual_sbm) {
             if (params.ENABLE_SBM_DIAGNOSTICS && params.IB_METHOD == "SBM") {

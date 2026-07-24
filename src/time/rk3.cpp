@@ -393,6 +393,13 @@ void Solver::step_rk3(double dt) {
 }
 
 void SolverDim<3>::step_rk3(double dt) {
+    current_limiter_stats.num_limited = 0;
+    current_limiter_stats.sum_theta = 0.0;
+    auto add_stats = [&](const Limiters::LimiterStats& s) {
+        current_limiter_stats.num_limited += s.num_limited;
+        current_limiter_stats.sum_theta += s.sum_theta;
+    };
+
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         cells[i]->element_active = true;
@@ -443,10 +450,10 @@ void SolverDim<3>::step_rk3(double dt) {
         }
 
         if (p.ENABLE_POS_LIMITER) {
-            Limiters::apply_positivity_limiter(cells, basis, p);
+            add_stats(Limiters::apply_positivity_limiter(cells, basis, p));
         }
         if (p.ENABLE_ENTROPY_LIMITER) {
-            Limiters::apply_entropy_limiter(*this);
+            add_stats(Limiters::apply_entropy_limiter(*this));
         }
     };
 

@@ -356,6 +356,11 @@ OUTPUT_ADAPTIVE_THETA = false
 # RESTART_INTERVAL: Time interval between exact, lossless restart checkpoints (sol_*.vtm).
 RESTART_INTERVAL = 0.1
 
+# PLOT_SUB_DIVISIONS: Number of equidistant sub-element visualization intervals per dimension in VTK plot files (plot_*.vtu).
+# Evaluates high-order Lagrange polynomials at equidistant sub-element points to capture sub-element solution curvature.
+# 0 = Automatic subdivision level based on element polynomial degree (max(1, P_DEG)).
+PLOT_SUB_DIVISIONS = 0
+
 # RESIDUAL_INTERVAL: Time interval between L2 residual tracking outputs to csv_outputs/residuals.csv
 RESIDUAL_INTERVAL = 0.005
 

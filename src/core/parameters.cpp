@@ -343,11 +343,12 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("OUTPUT_DIV_ND"))     OUTPUT_DIV_ND    = (kv["OUTPUT_DIV_ND"] == "true" || kv["OUTPUT_DIV_ND"] == "1");
         if (kv.count("OUTPUT_ADAPTIVE_THETA")) OUTPUT_ADAPTIVE_THETA = (kv["OUTPUT_ADAPTIVE_THETA"] == "true" || kv["OUTPUT_ADAPTIVE_THETA"] == "1");
         if (kv.count("RESTART_INTERVAL"))  RESTART_INTERVAL = std::stod(kv["RESTART_INTERVAL"]);
+        if (kv.count("PLOT_SUB_DIVISIONS") && !kv["PLOT_SUB_DIVISIONS"].empty()) PLOT_SUB_DIVISIONS = std::stoi(kv["PLOT_SUB_DIVISIONS"]);
         if (kv.count("RESIDUAL_INTERVAL")) RESIDUAL_INTERVAL = std::stod(kv["RESIDUAL_INTERVAL"]);
         if (kv.count("PROBE_INTERVAL"))    PROBE_INTERVAL    = std::stod(kv["PROBE_INTERVAL"]);
         if (kv.count("PRINT_INTERVAL"))    PRINT_INTERVAL    = std::stod(kv["PRINT_INTERVAL"]);
         if (kv.count("RESTART_FILE"))      RESTART_FILE      = kv["RESTART_FILE"];
-        if (kv.count("RESTART_TIME"))      RESTART_TIME      = std::stod(kv["RESTART_TIME"]);
+        if (kv.count("RESTART_TIME") && !kv["RESTART_TIME"].empty())      RESTART_TIME      = std::stod(kv["RESTART_TIME"]);
     }
 
     // --- [TreeDecomposition] ---

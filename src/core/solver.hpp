@@ -479,6 +479,7 @@ public:
 
     void compute_gradients();
 
+    void check_stability() const;
     double compute_dt() const;
     void step_rk3(double dt);
 

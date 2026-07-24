@@ -282,10 +282,18 @@ void Diagnostics::update(const Solver& solver, double t, int step) {
 }
 
 Diagnostics::Diagnostics(const Parameters& p, const SolverDim<3>& solver, double startTime)
-    : params(p), sim_start_time(startTime), next_residual_output(startTime), next_probe_output(startTime), next_print_output(startTime)
+    : params(p), sim_start_time(startTime)
 {
     start_time = std::chrono::steady_clock::now();
     last_print_wall_time = start_time;
+
+    // Synchronize interval counters with startTime (same as 2D constructor)
+    next_residual_output = (std::floor(startTime / params.RESIDUAL_INTERVAL) + 1.0) * params.RESIDUAL_INTERVAL;
+    next_probe_output    = (std::floor(startTime / params.PROBE_INTERVAL) + 1.0) * params.PROBE_INTERVAL;
+    next_print_output    = (std::floor(startTime / params.PRINT_INTERVAL) + 1.0) * params.PRINT_INTERVAL;
+
+    std::filesystem::create_directories("csv_outputs");
+
     bool is_restart = (startTime > 0.0);
     std::ios_base::openmode mode = is_restart ? (std::ios::out | std::ios::app) : std::ios::out;
     res_file.open("csv_outputs/residuals.csv", mode);
@@ -295,19 +303,71 @@ Diagnostics::Diagnostics(const Parameters& p, const SolverDim<3>& solver, double
 }
 
 void Diagnostics::update(const SolverDim<3>& solver, double t, int step) {
+    bool need_residual = (t >= next_residual_output && res_file.is_open()) || (t >= next_print_output);
+    std::vector<double> res(5, 0.0);
+
+    if (need_residual) {
+        double l2_rho = 0.0, l2_rhou = 0.0, l2_rhov = 0.0, l2_rhow = 0.0, l2_E = 0.0;
+        int npts3 = params.N_PTS * params.N_PTS * params.N_PTS;
+        long long total_pts = static_cast<long long>(solver.cells.size()) * npts3;
+
+        #pragma omp parallel for reduction(+:l2_rho, l2_rhou, l2_rhov, l2_rhow, l2_E)
+        for (size_t i = 0; i < solver.cells.size(); ++i) {
+            Cell3D* c = solver.cells[i];
+            for (int k = 0; k < npts3; ++k) {
+                l2_rho  += c->RHS[0 * npts3 + k] * c->RHS[0 * npts3 + k];
+                l2_rhou += c->RHS[1 * npts3 + k] * c->RHS[1 * npts3 + k];
+                l2_rhov += c->RHS[2 * npts3 + k] * c->RHS[2 * npts3 + k];
+                l2_rhow += c->RHS[3 * npts3 + k] * c->RHS[3 * npts3 + k];
+                l2_E    += c->RHS[4 * npts3 + k] * c->RHS[4 * npts3 + k];
+            }
+        }
+
+        if (total_pts > 0) {
+            res[0] = std::sqrt(l2_rho / total_pts);
+            res[1] = std::sqrt(l2_rhou / total_pts);
+            res[2] = std::sqrt(l2_rhov / total_pts);
+            res[3] = std::sqrt(l2_rhow / total_pts);
+            res[4] = std::sqrt(l2_E / total_pts);
+        }
+    }
+
+    if (t >= next_residual_output && res_file.is_open()) {
+        res_file << std::scientific << std::setprecision(6) << t << ", "
+                 << res[0] << ", " << res[1] << ", " << res[2] << ", " << res[3] << ", " << res[4] << "\n";
+        res_file.flush();
+        next_residual_output += params.RESIDUAL_INTERVAL;
+    }
+
     if (t >= next_print_output) {
         auto now = std::chrono::steady_clock::now();
         std::chrono::duration<double> total_elapsed = now - start_time;
         last_print_wall_time = now;
+
+        double l2_sum = res[0] + res[1] + res[2] + res[3] + res[4];
         double progress = (t / params.T_FINAL) * 100.0;
+
         double dt_run = t - sim_start_time;
-        double eta = (dt_run > 1e-8) ? (total_elapsed.count() / dt_run) * (params.T_FINAL - t) : 0.0;
+        double eta = 0.0;
+        if (dt_run > 1e-8) {
+            eta = (total_elapsed.count() / dt_run) * (params.T_FINAL - t);
+        }
 
         std::cout << std::fixed << std::setprecision(4)
                   << "[Step " << std::setw(5) << step << "] "
                   << "t: " << std::setw(6) << t << " | "
                   << std::setw(5) << progress << "% | "
-                  << "ETA: " << std::setw(5) << eta << "s\n";
+                  << "ETA: " << std::setw(5) << eta << "s | "
+                  << std::scientific << std::setprecision(3)
+                  << "L2_Sum: " << l2_sum;
+
+        if (params.ENABLE_POS_LIMITER || params.ENABLE_ENTROPY_LIMITER) {
+            double avg_theta = (solver.current_limiter_stats.num_limited > 0) ? 
+                                solver.current_limiter_stats.sum_theta / solver.current_limiter_stats.num_limited : 0.0;
+            std::cout << " | Lim: " << solver.current_limiter_stats.num_limited 
+                      << " (avg_th: " << std::fixed << std::setprecision(4) << avg_theta << ")";
+        }
+        std::cout << "\n";
         next_print_output += params.PRINT_INTERVAL;
     }
 }

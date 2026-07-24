@@ -1,6 +1,6 @@
 [Block0]
-N_ELEM_X = 64
-N_ELEM_Y = 64
+N_ELEM_X = 80
+N_ELEM_Y = 80
 X_MIN = 0.0
 X_MAX = 1.0
 Y_MIN = 0.0
