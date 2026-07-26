@@ -279,6 +279,108 @@ void Diagnostics::update(const Solver& solver, double t, int step) {
         std::cout << "\n";
         next_print_output += params.PRINT_INTERVAL;
     }
+
+    // Trigger Workshop Probe Export at t >= 0.7 for SHOCK_VORTEX_WORKSHOP
+    if ((params.IC_TYPE == "SHOCK_VORTEX_WORKSHOP" || params.IC_TYPE == "SHOCK_VORTEX_HIOCFD") && t >= 0.7) {
+        static bool exported = false;
+        if (!exported) {
+            export_workshop_probes(solver);
+            exported = true;
+        }
+    }
+}
+
+void Diagnostics::export_workshop_probes(const Solver& solver) const {
+    std::cout << "[DIAG] Exporting Workshop Shock-Vortex Line Probes at t = 0.7...\n";
+    std::filesystem::create_directories("csv_outputs");
+
+    auto sample_point = [&](double px, double py, double& rho, double& u, double& v, double& p) {
+        rho = 1.0; u = 0.0; v = 0.0; p = 1.0 / params.GAMMA;
+        for (Cell* c : solver.cells) {
+            if (px >= c->x_min && px <= c->x_min + c->dx &&
+                py >= c->y_min && py <= c->y_min + c->dy) {
+                double xc = c->x_min + 0.5 * c->dx;
+                double yc = c->y_min + 0.5 * c->dy;
+                double xi  = (px - xc) / (0.5 * c->dx);
+                double eta = (py - yc) / (0.5 * c->dy);
+
+                double u_int[4] = {0.0, 0.0, 0.0, 0.0};
+                for (int iy = 0; iy < params.N_PTS; ++iy) {
+                    for (int ix = 0; ix < params.N_PTS; ++ix) {
+                        double L_x = 1.0, L_y = 1.0;
+                        for (int k = 0; k < params.N_PTS; ++k) {
+                            if (ix != k) L_x *= (xi - solver.basis.z[k]) / (solver.basis.z[ix] - solver.basis.z[k]);
+                            if (iy != k) L_y *= (eta - solver.basis.z[k]) / (solver.basis.z[iy] - solver.basis.z[k]);
+                        }
+                        double w = L_x * L_y;
+                        u_int[0] += w * c->get_U(0, iy, ix, params.N_PTS);
+                        u_int[1] += w * c->get_U(1, iy, ix, params.N_PTS);
+                        u_int[2] += w * c->get_U(2, iy, ix, params.N_PTS);
+                        u_int[3] += w * c->get_U(3, iy, ix, params.N_PTS);
+                    }
+                }
+                rho = std::max(1e-12, u_int[0]);
+                u = u_int[1] / rho;
+                v = u_int[2] / rho;
+                p = (params.GAMMA - 1.0) * (u_int[3] - 0.5 * rho * (u*u + v*v));
+                break;
+            }
+        }
+    };
+
+    // 1. Line y = 0.4 (x in [0, 2.0])
+    {
+        std::ofstream f("csv_outputs/probe_y04.csv");
+        if (f.is_open()) {
+            f << "x,y,rho,u,v,press,Mach\n";
+            int npts_line = 400;
+            for (int i = 0; i <= npts_line; ++i) {
+                double px = 0.0 + (2.0 - 0.0) * i / npts_line;
+                double py = 0.4;
+                double rho, u, v, p;
+                sample_point(px, py, rho, u, v, p);
+                double mach = std::sqrt(u*u + v*v) / std::sqrt(params.GAMMA * std::abs(p) / rho);
+                f << std::scientific << std::setprecision(8) << px << "," << py << ","
+                  << rho << "," << u << "," << v << "," << p << "," << mach << "\n";
+            }
+        }
+    }
+
+    // 2. Line x = 0.52 (y in [0, 1.0])
+    {
+        std::ofstream f("csv_outputs/probe_x052.csv");
+        if (f.is_open()) {
+            f << "x,y,rho,u,v,press,Mach\n";
+            int npts_line = 200;
+            for (int i = 0; i <= npts_line; ++i) {
+                double px = 0.52;
+                double py = 0.0 + (1.0 - 0.0) * i / npts_line;
+                double rho, u, v, p;
+                sample_point(px, py, rho, u, v, p);
+                double mach = std::sqrt(u*u + v*v) / std::sqrt(params.GAMMA * std::abs(p) / rho);
+                f << std::scientific << std::setprecision(8) << px << "," << py << ","
+                  << rho << "," << u << "," << v << "," << p << "," << mach << "\n";
+            }
+        }
+    }
+
+    // 3. Line x = 1.05 (y in [0, 1.0])
+    {
+        std::ofstream f("csv_outputs/probe_x105.csv");
+        if (f.is_open()) {
+            f << "x,y,rho,u,v,press,Mach\n";
+            int npts_line = 200;
+            for (int i = 0; i <= npts_line; ++i) {
+                double px = 1.05;
+                double py = 0.0 + (1.0 - 0.0) * i / npts_line;
+                double rho, u, v, p;
+                sample_point(px, py, rho, u, v, p);
+                double mach = std::sqrt(u*u + v*v) / std::sqrt(params.GAMMA * std::abs(p) / rho);
+                f << std::scientific << std::setprecision(8) << px << "," << py << ","
+                  << rho << "," << u << "," << v << "," << p << "," << mach << "\n";
+            }
+        }
+    }
 }
 
 Diagnostics::Diagnostics(const Parameters& p, const SolverDim<3>& solver, double startTime)

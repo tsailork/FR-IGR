@@ -91,7 +91,7 @@ void IC::apply(Solver& solver) {
                     press = 2.5;
 
                 } else if (p.IC_TYPE == "SHOCK_VORTEX") {
-                    // 2D Shock-Vortex Interaction (Inoue & Hattori benchmark)
+                    // 2D Shock-Vortex Interaction (Inoue & Hattori 1999 benchmark)
                     double xs    = p.SHOCK_VORTEX_XS; // Shock initial position
                     double xv    = p.SHOCK_VORTEX_XV; // Vortex center X position
                     double yv    = p.SHOCK_VORTEX_YV; // Vortex center Y position
@@ -126,6 +126,90 @@ void IC::apply(Solver& solver) {
                     u     = (1.0 - w) * u_L   + w * u_vort;
                     v     = (1.0 - w) * 0.0   + w * v_vort;
                     press = (1.0 - w) * p_L   + w * p_R;
+
+                } else if (p.IC_TYPE == "SHOCK_VORTEX_WORKSHOP" || p.IC_TYPE == "SHOCK_VORTEX_HIOCFD") {
+                    // 2D Shock-Vortex Interaction (AIAA High-Fidelity CFD Workshop / HiOCFD Case CI2)
+                    // Frozen canonical benchmark parameters:
+                    const double xs = 0.5;   // Standing shock X position
+                    const double xv = 0.25;  // Vortex center X position
+                    const double yv = 0.5;   // Vortex center Y position
+                    const double ra = 0.075; // Inner core radius a
+                    const double rb = 0.175; // Outer cutoff radius b
+                    const double Mv = 0.9;   // Vortex strength (max tangential velocity = 0.9)
+                    const double Ms = 1.5;   // Upstream shock Mach number
+                    const double gamma = p.GAMMA;
+
+                    double rx = x - xv;
+                    double ry = y - yv;
+                    double r = std::sqrt(rx * rx + ry * ry);
+
+                    // Compute C2-smooth piecewise tangential velocity v_theta(r)
+                    double v_theta = 0.0;
+                    if (r <= ra) {
+                        v_theta = Mv * (r / ra);
+                    } else if (r < rb) {
+                        double eta = (r - ra) / (rb - ra);
+                        // Quintic polynomial smoother: S(eta) = 1 - 10*eta^3 + 15*eta^4 - 6*eta^5
+                        double S_eta = 1.0 - 10.0 * std::pow(eta, 3) + 15.0 * std::pow(eta, 4) - 6.0 * std::pow(eta, 5);
+                        v_theta = Mv * (r / ra) * S_eta;
+                    }
+
+                    double u_vort = (r > 1e-12) ? -v_theta * (ry / r) : 0.0;
+                    double v_vort = (r > 1e-12) ?  v_theta * (rx / r) : 0.0;
+
+                    // Compute temperature profile T(r) from radial momentum balance: dT/dr = -(gamma-1)*v_theta(r)^2 / r
+                    double T_r = 1.0;
+                    if (r < rb) {
+                        // Integrate from rb to max(r, ra) via 32-point Gauss-Legendre quadrature
+                        double r_lower = std::max(r, ra);
+                        double int_outer = 0.0;
+                        if (r_lower < rb) {
+                            const int N_QUAD = 32;
+                            // Standard 1D GL quadrature weights and nodes over [-1, 1]
+                            static const double quad_x[16] = {
+                                0.0950125098376374, 0.2816035537282587, 0.4580167776572274, 0.6178762444026438,
+                                0.7554044083550030, 0.8656312023878318, 0.9445750230732326, 0.9894009349916499,
+                                0.0476904739196324, 0.1420961932402165, 0.2335032644256801, 0.3204746682229562,
+                                0.4016629061448655, 0.4758066736270438, 0.5417387532729906, 0.5983713084877717
+                            };
+                            // Perform numerical integration of v_theta(s)^2 / s over [r_lower, rb]
+                            double half_len = 0.5 * (rb - r_lower);
+                            double mid_pt   = 0.5 * (rb + r_lower);
+                            for (int k = 0; k < N_QUAD; ++k) {
+                                double xi = (k < 16) ? mid_pt + half_len * quad_x[k] : mid_pt - half_len * quad_x[k - 16];
+                                double eta_s = (xi - ra) / (rb - ra);
+                                double S_s = 1.0 - 10.0 * std::pow(eta_s, 3) + 15.0 * std::pow(eta_s, 4) - 6.0 * std::pow(eta_s, 5);
+                                double v_s = Mv * (xi / ra) * S_s;
+                                int_outer += (v_s * v_s / xi) * (rb - r_lower) / N_QUAD;
+                            }
+                        }
+
+                        double int_inner = 0.0;
+                        if (r < ra) {
+                            // Analytical integral of (Mv * s / ra)^2 / s = Mv^2 / ra^2 * s -> 0.5 * Mv^2 / ra^2 * (ra^2 - r^2)
+                            int_inner = 0.5 * (Mv * Mv / (ra * ra)) * (ra * ra - r * r);
+                        }
+                        T_r = 1.0 - (gamma - 1.0) * (int_outer + int_inner);
+                    }
+                    if (T_r < 1e-4) T_r = 1e-4;
+
+                    double rho_vort = std::pow(T_r, 1.0 / (gamma - 1.0));
+                    double p_vort   = (1.0 / gamma) * std::pow(T_r, gamma / (gamma - 1.0));
+
+                    // Rankine-Hugoniot standing shock jump across xs = 0.5
+                    double p1 = 1.0 / gamma;
+                    double rho1 = 1.0;
+                    double u1 = Ms * std::sqrt(gamma * p1 / rho1); // u1 = 1.5
+
+                    double rho2 = rho1 * ((gamma + 1.0) * Ms * Ms) / ((gamma - 1.0) * Ms * Ms + 2.0);
+                    double p2   = p1 * (1.0 + (2.0 * gamma / (gamma + 1.0)) * (Ms * Ms - 1.0));
+                    double u2   = u1 * (rho1 / rho2);
+
+                    double w = sigmoid(x, xs, delta);
+                    rho   = (1.0 - w) * (rho1 * rho_vort) + w * rho2;
+                    u     = (1.0 - w) * (u1 + u_vort)     + w * u2;
+                    v     = (1.0 - w) * (v_vort)          + w * 0.0;
+                    press = (1.0 - w) * (p_vort)          + w * p2;
 
                 } else if (p.IC_TYPE == "DECAYING_TURBULENCE") {
                     // 2D Decaying Isotropic Solenoidal Compressible Turbulence

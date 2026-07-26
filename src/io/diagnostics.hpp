@@ -36,6 +36,11 @@ public:
     void update(const Solver& solver, double t, int step);
     void update(const SolverDim<3>& solver, double t, int step);
 
+    /**
+     * @brief Exports line probe data (y=0.4, x=0.52, x=1.05) for AIAA Workshop Shock-Vortex Benchmark at t=0.7.
+     */
+    void export_workshop_probes(const Solver& solver) const;
+
 private:
     const Parameters& params;
     double sim_start_time;

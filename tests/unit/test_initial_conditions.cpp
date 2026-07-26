@@ -161,4 +161,17 @@ TEST_CASE("Initial Conditions Application") {
             CHECK(cell->U[3] > 0.0); // Total energy > 0
         }
     }
+
+    SUBCASE("SHOCK_VORTEX_WORKSHOP") {
+        p.IC_TYPE = "SHOCK_VORTEX_WORKSHOP";
+        Solver solver(p);
+        IC::apply(solver);
+
+        REQUIRE(solver.cells.size() >= 4);
+        for (const auto* cell : solver.cells) {
+            CHECK(cell->U[0] > 0.0); // Density > 0
+            CHECK(cell->U[3] > 0.0); // Total energy > 0
+        }
+    }
 }
+
