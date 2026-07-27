@@ -250,6 +250,7 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("NUM_THREADS")) NUM_THREADS = std::stoi(kv["NUM_THREADS"]);
         if (kv.count("ENABLE_MULTIRATE")) ENABLE_MULTIRATE = (kv["ENABLE_MULTIRATE"] == "true" || kv["ENABLE_MULTIRATE"] == "1");
         if (kv.count("MAX_MULTIRATE_LEVEL")) MAX_MULTIRATE_LEVEL = std::stoi(kv["MAX_MULTIRATE_LEVEL"]);
+        if (kv.count("RIEMANN_SOLVER")) RIEMANN_SOLVER = kv["RIEMANN_SOLVER"];
     }
 
     // --- [Regularization] ---

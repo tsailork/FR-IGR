@@ -97,23 +97,9 @@ void Solver::sweep_y() {
                 }
                 compute_interface_flux(U_neigh, UB_face, sig_neigh, sig_B_face, S_neigh, S_B_face, nc->theta_avg, c->theta_avg, 1, Flux_B_local, Flux_S_B_comm);
             } else if (c->is_boundary[2]) {
-                get_neigh_state_cell(*c, ix, false,
-                                     UB_face, sig_B_face, U_neigh, sig_neigh, 1);
                 double S_neigh = S_B_face;
-                if (p.ENABLE_PPR) {
-                    double p_phan_local = S_B_face / std::max(p.POS_LIMITER_EPS, UB_face[0]);
-                    double p_phan_ghost = p_phan_local;
-                    const NeighborInfo& ni = c->boundary_info[2];
-                    if (ni.is_supersonic_inflow) {
-                        p_phan_ghost = ni.ref_p;
-                    } else if (ni.is_characteristic || ni.is_total_pressure_comp || ni.is_total_pressure_incomp || ni.is_static_pressure) {
-                        double v_ghost_n = -U_neigh[2] / std::max(p.POS_LIMITER_EPS, U_neigh[0]);
-                        if (v_ghost_n < 0.0) {
-                            p_phan_ghost = ni.ref_p;
-                        }
-                    }
-                    S_neigh = U_neigh[0] * p_phan_ghost;
-                }
+                get_neigh_state_cell(*c, ix, false,
+                                     UB_face, sig_B_face, U_neigh, sig_neigh, 1, S_B_face, &S_neigh);
                 compute_interface_flux(U_neigh, UB_face, sig_neigh, sig_B_face, S_neigh, S_B_face, c->theta_avg, c->theta_avg, 1, Flux_B_local, Flux_S_B_comm);
             }
 
@@ -124,7 +110,7 @@ void Solver::sweep_y() {
                 ImmersedBoundary::compute_sbm_state(*this, sfp_T, u_sb);
                 double rho_sb = std::max(p.POS_LIMITER_EPS, u_sb[0]);
                 double p_sb = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (u_sb[3] - 0.5 * (u_sb[1]*u_sb[1] + u_sb[2]*u_sb[2]) / rho_sb));
-                double S_sb = rho_sb * p_sb;
+                double S_sb = 2.0 * rho_sb * p_sb - S_T_face;
                 compute_interface_flux(UT_face, u_sb, sig_T_face, sig_T_face, S_T_face, S_sb, c->theta_avg, c->theta_avg, 1, Flux_T_local, Flux_S_T_comm);
             } else if (c->neighbors[3] && c->neighbors[3]->level == c->level) {
                 Cell* nc = c->neighbors[3];
@@ -143,23 +129,9 @@ void Solver::sweep_y() {
                 }
                 compute_interface_flux(UT_face, U_neigh, sig_T_face, sig_neigh, S_T_face, S_neigh, c->theta_avg, nc->theta_avg, 1, Flux_T_local, Flux_S_T_comm);
             } else if (c->is_boundary[3]) {
-                get_neigh_state_cell(*c, ix, true,
-                                     UT_face, sig_T_face, U_neigh, sig_neigh, 1);
                 double S_neigh = S_T_face;
-                if (p.ENABLE_PPR) {
-                    double p_phan_local = S_T_face / std::max(p.POS_LIMITER_EPS, UT_face[0]);
-                    double p_phan_ghost = p_phan_local;
-                    const NeighborInfo& ni = c->boundary_info[3];
-                    if (ni.is_supersonic_inflow) {
-                        p_phan_ghost = ni.ref_p;
-                    } else if (ni.is_characteristic || ni.is_total_pressure_comp || ni.is_total_pressure_incomp || ni.is_static_pressure) {
-                        double v_ghost_n = U_neigh[2] / std::max(p.POS_LIMITER_EPS, U_neigh[0]);
-                        if (v_ghost_n < 0.0) {
-                            p_phan_ghost = ni.ref_p;
-                        }
-                    }
-                    S_neigh = U_neigh[0] * p_phan_ghost;
-                }
+                get_neigh_state_cell(*c, ix, true,
+                                     UT_face, sig_T_face, U_neigh, sig_neigh, 1, S_T_face, &S_neigh);
                 compute_interface_flux(UT_face, U_neigh, sig_T_face, sig_neigh, S_T_face, S_neigh, c->theta_avg, c->theta_avg, 1, Flux_T_local, Flux_S_T_comm);
             }
 
@@ -482,23 +454,9 @@ void SolverDim<3>::sweep_y() {
                     }
                     compute_interface_flux(U_neigh, UB_face, sig_neigh, sig_B_face, S_neigh, S_B_face, nc->theta_avg, c->theta_avg, 1, Flux_B_local, Flux_S_B_comm);
                 } else if (c->is_boundary[2]) {
-                    get_neigh_state_cell(*c, iz * N + ix, false,
-                                         UB_face, sig_B_face, U_neigh, sig_neigh, 1);
                     double S_neigh = S_B_face;
-                    if (p.ENABLE_PPR) {
-                        double p_phan_local = S_B_face / std::max(p.POS_LIMITER_EPS, UB_face[0]);
-                        double p_phan_ghost = p_phan_local;
-                        const NeighborInfo& ni = c->boundary_info[2];
-                        if (ni.is_supersonic_inflow) {
-                            p_phan_ghost = ni.ref_p;
-                        } else if (ni.is_characteristic || ni.is_total_pressure_comp || ni.is_total_pressure_incomp || ni.is_static_pressure) {
-                            double u_ghost_n = -U_neigh[2] / std::max(p.POS_LIMITER_EPS, U_neigh[0]);
-                            if (u_ghost_n < 0.0) {
-                                p_phan_ghost = ni.ref_p;
-                            }
-                        }
-                        S_neigh = U_neigh[0] * p_phan_ghost;
-                    }
+                    get_neigh_state_cell(*c, iz * N + ix, false,
+                                         UB_face, sig_B_face, U_neigh, sig_neigh, 1, S_B_face, &S_neigh);
                     compute_interface_flux(U_neigh, UB_face, sig_neigh, sig_B_face, S_neigh, S_B_face, c->theta_avg, c->theta_avg, 1, Flux_B_local, Flux_S_B_comm);
                 }
 
@@ -520,23 +478,9 @@ void SolverDim<3>::sweep_y() {
                     }
                     compute_interface_flux(UT_face, U_neigh, sig_T_face, sig_neigh, S_T_face, S_neigh, c->theta_avg, nc->theta_avg, 1, Flux_T_local, Flux_S_T_comm);
                 } else if (c->is_boundary[3]) {
-                    get_neigh_state_cell(*c, iz * N + ix, true,
-                                         UT_face, sig_T_face, U_neigh, sig_neigh, 1);
                     double S_neigh = S_T_face;
-                    if (p.ENABLE_PPR) {
-                        double p_phan_local = S_T_face / std::max(p.POS_LIMITER_EPS, UT_face[0]);
-                        double p_phan_ghost = p_phan_local;
-                        const NeighborInfo& ni = c->boundary_info[3];
-                        if (ni.is_supersonic_inflow) {
-                            p_phan_ghost = ni.ref_p;
-                        } else if (ni.is_characteristic || ni.is_total_pressure_comp || ni.is_total_pressure_incomp || ni.is_static_pressure) {
-                            double u_ghost_n = U_neigh[2] / std::max(p.POS_LIMITER_EPS, U_neigh[0]);
-                            if (u_ghost_n < 0.0) {
-                                p_phan_ghost = ni.ref_p;
-                            }
-                        }
-                        S_neigh = U_neigh[0] * p_phan_ghost;
-                    }
+                    get_neigh_state_cell(*c, iz * N + ix, true,
+                                         UT_face, sig_T_face, U_neigh, sig_neigh, 1, S_T_face, &S_neigh);
                     compute_interface_flux(UT_face, U_neigh, sig_T_face, sig_neigh, S_T_face, S_neigh, c->theta_avg, c->theta_avg, 1, Flux_T_local, Flux_S_T_comm);
                 }
 

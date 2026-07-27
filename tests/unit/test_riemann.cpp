@@ -113,3 +113,41 @@ TEST_CASE("Rusanov Riemann solver - Y-direction") {
     CHECK(F_comm[2] == doctest::Approx(1.25));
     CHECK(F_comm[3] == doctest::Approx(1.8125));
 }
+
+TEST_CASE("PPR-HLLC Riemann solver - Pressure equilibration with WE-BC") {
+    Parameters p;
+    p.GAMMA = 1.4;
+    p.ENABLE_PPR = true;
+    p.RIEMANN_SOLVER = "HLLC";
+    Solver solver(p);
+
+    double rho = 1.2;
+    double p_phys = 100000.0;
+    double E = p_phys / (p.GAMMA - 1.0);
+    double UL[4] = {rho, 0.0, 0.0, E};
+    double UR[4] = {rho, 0.0, 0.0, E};
+
+    SUBCASE("Steady State Equilibrium") {
+        double SL = rho * p_phys;
+        double SR = 2.0 * (rho * p_phys) - SL; // SR = rho * p_phys
+
+        double F_comm[4] = {0.0};
+        double Flux_S_comm = 0.0;
+        solver.compute_interface_flux(UL, UR, 0.0, 0.0, SL, SR, 1.0, 1.0, 0, F_comm, Flux_S_comm);
+
+        CHECK(F_comm[1] == doctest::Approx(p_phys));
+    }
+
+    SUBCASE("Transient Shock Impact Boundedness") {
+        double SL = 0.7 * (rho * p_phys); // Phantom pressure lags behind physical shock
+        double SR = 2.0 * (rho * p_phys) - SL; // WE-BC ghost state
+
+        double F_comm[4] = {0.0};
+        double Flux_S_comm = 0.0;
+        solver.compute_interface_flux(UL, UR, 0.0, 0.0, SL, SR, 1.0, 1.0, 0, F_comm, Flux_S_comm);
+
+        // Wall normal momentum flux is closely bounded near physical pressure (within 5%)
+        CHECK(F_comm[1] > 0.95 * p_phys);
+        CHECK(F_comm[1] < 1.05 * p_phys);
+    }
+}

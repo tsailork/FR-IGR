@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PPR-HLLC Riemann Solver: Theory & Implementation</title>
+    <!-- MathJax for mathematical equations -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root {
+            --primary: #0f172a;
+            --secondary: #2563eb;
+            --primary-light: #eff6ff;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --border: #e2e8f0;
+            --code-bg: #0f172a;
+            --code-text: #f8fafc;
+            --alert-bg: #f0fdf4;
+            --alert-border: #16a34a;
+            --alert-text: #14532d;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--dark);
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background-color: #ffffff;
+        }
+        header {
+            text-align: center;
+            border-bottom: 3px solid var(--secondary);
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+        }
+        header h1 {
+            color: var(--primary);
+            margin: 0 0 10px 0;
+            font-size: 2.3rem;
+        }
+        header p {
+            font-size: 1.1rem;
+            color: #475569;
+            margin: 0;
+        }
+        h2 {
+            color: var(--secondary);
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 8px;
+            margin-top: 40px;
+        }
+        h3 {
+            color: var(--primary);
+            margin-top: 25px;
+            border-left: 4px solid var(--secondary);
+            padding-left: 10px;
+        }
+        p, li {
+            font-size: 1.05rem;
+            text-align: justify;
+        }
+        ul, ol {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .code-block {
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            padding: 20px;
+            border-radius: 8px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            white-space: pre;
+            line-height: 1.5;
+            margin: 20px 0;
+            border: 1px solid #334155;
+        }
+        .keyword { color: #38bdf8; }
+        .comment { color: #94a3b8; font-style: italic; }
+        .variable { color: #e2e8f0; }
+        .number { color: #f43f5e; }
+        .string { color: #a3e635; }
+        .call { color: #facc15; }
+        
+        .alert {
+            background-color: var(--alert-bg);
+            border-left: 5px solid var(--alert-border);
+            color: var(--alert-text);
+            padding: 15px 20px;
+            margin: 25px 0;
+            border-radius: 4px;
+        }
+        .math-box {
+            background-color: var(--primary-light);
+            padding: 18px;
+            border-radius: 6px;
+            border-left: 4px solid var(--secondary);
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            background: #ffffff;
+        }
+        th, td {
+            text-align: left;
+            padding: 12px 15px;
+            border: 1px solid var(--border);
+            font-size: 0.95rem;
+        }
+        th {
+            background-color: var(--secondary);
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: var(--light);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>HLLC Flux for Phantom Pressure Regularization</h1>
+        <p>Mathematical Derivation & 2D/3D Production Implementation</p>
+    </header>
+
+    <!-- SECTION 1 -->
+    <h2>1. Why Upgrade from Rusanov to HLLC?</h2>
+    <p>
+        While the Rusanov (Lax-Friedrichs) flux is extremely simple and robust, its single global wave-speed signal dissipation ($\lambda_{max}$) introduces severe <b>numerical dissipation</b> across non-acoustic waves.
+    </p>
+    <ul>
+        <li>
+            <b>Excessive Boundary Layer & Contact Smearing:</b> Rusanov treats contact discontinuities, shear layers, and boundary layers with the maximum acoustic wave speed ($|u_n| + a$). This excessively smears shear waves and boundary layers in high-order simulations.
+        </li>
+        <li>
+            <b>Resolution of the $S^*$-Contact Wave:</b> The HLLC (Harten-Lax-van Leer-Contact) solver explicitly restores the isolated middle contact wave ($S^*$). This ensures that entropy interfaces and contact surfaces are resolved with zero dissipation when aligned with the grid, while retaining full shock-capturing stability when coupled with PPR.
+        </li>
+        <li>
+            <b>Exact Conservation of Passive Scalars:</b> Because the phantom pressure state $S = \rho P_{phan}$ is passively advected with the fluid velocity, HLLC transports $S$ across contact waves without generating spurious numerical diffusion.
+        </li>
+    </ul>
+
+    <!-- SECTION 2 -->
+    <h2>2. Mathematical Derivation of the PPR-HLLC Flux</h2>
+    <p>
+        The 3D compressible Euler equations augmented with the phantom pressure state vector $\mathbf{U} = [\rho, \rho u, \rho v, \rho w, E, S]^T$ have the following interface normal flux vector $\mathbf{F}_n(\mathbf{U})$:
+    </p>
+    <div class="math-box">
+        $$\mathbf{F}_n(\mathbf{U}) = \begin{bmatrix} \rho u_n \\ \rho u u_n + P_{reg} n_x \\ \rho v u_n + P_{reg} n_y \\ \rho w u_n + P_{reg} n_z \\ (E + P_{reg}) u_n \\ S u_n \end{bmatrix}$$
+    </div>
+    <p>
+        where $u_n = \mathbf{u} \cdot \mathbf{n} = u n_x + v n_y + w n_z$ is the normal velocity, and $P_{reg} = P_{phys} + \theta (P_{phys} - P_{phan})$ is the regularized pressure.
+    </p>
+
+    <h3>Step 1: Signal Wave Speed Estimates ($S_L, S_R$)</h3>
+    <p>
+        To prevent shock-instabilities (carbuncles) while keeping acoustic safety, we estimate the left ($S_L$) and right ($S_R$) fastest wave speeds using Davis/Einfeldt bounds incorporating the maximum of physical and regularized pressures:
+    </p>
+    <div class="math-box">
+        $$a_L = \sqrt{\gamma \frac{\max(P_{phys, L}, P_{reg, L})}{\rho_L}}, \quad a_R = \sqrt{\gamma \frac{\max(P_{phys, R}, P_{reg, R})}{\rho_R}}$$
+        $$S_L = \min\left(u_{n, L} - a_L, u_{n, Roe} - a_{Roe}\right), \quad S_R = \max\left(u_{n, R} + a_R, u_{n, Roe} + a_{Roe}\right)$$
+    </div>
+
+    <h3>Step 2: Contact Wave Speed ($S^*$) & Star Regularized Pressure ($P^*$)</h3>
+    <p>
+        By integrating the normal momentum jump condition across the star region $[S_L, S_R]$ using $P_{reg}$, the middle contact wave speed $S^*$ is determined analytically:
+    </p>
+    <div class="math-box">
+        $$S^* = \frac{P_{reg, R} - P_{reg, L} + \rho_L u_{n, L} (S_L - u_{n, L}) - \rho_R u_{n, R} (S_R - u_{n, R})}{\rho_L (S_L - u_{n, L}) - \rho_R (S_R - u_{n, R})}$$
+    </div>
+    <p>
+        The regularized pressure in the star region $P^*$ is identical on both sides of the contact wave:
+    </p>
+    <div class="math-box">
+        $$P^* = P_{reg, L} + \rho_L (S_L - u_{n, L})(S^* - u_{n, L}) = P_{reg, R} + \rho_R (S_R - u_{n, R})(S^* - u_{n, R})$$
+    </div>
+
+    <h3>Step 3: Modified Star States ($\mathbf{U}_L^*, \mathbf{U}_R^*$)</h3>
+    <p>
+        For $K \in \{L, R\}$, the intermediate state vector $\mathbf{U}_K^*$ in the star region is given by:
+    </p>
+    <div class="math-box">
+        $$\mathbf{U}_K^* = \rho_K \left(\frac{S_K - u_{n, K}}{S_K - S^*}\right) \begin{bmatrix} 
+        1 \\ 
+        u_K + (S^* - u_{n, K})n_x \\ 
+        v_K + (S^* - u_{n, K})n_y \\ 
+        w_K + (S^* - u_{n, K})n_z \\ 
+        \frac{E_K}{\rho_K} + (S^* - u_{n, K})\left(S^* + \frac{P_{reg, K}}{\rho_K (S_K - u_{n, K})}\right) \\ 
+        \frac{S_K}{\rho_K} 
+        \end{bmatrix}$$
+    </div>
+
+    <h3>Step 4: HLLC Flux Selection Structure</h3>
+    <p>
+        The final numerical interface flux $\mathbf{F}_{HLLC}$ is defined according to the spatial position of the four wave regions relative to the interface $x/t = 0$:
+    </p>
+    <div class="math-box">
+        $$\mathbf{F}_{HLLC} = \begin{cases} 
+        \mathbf{F}_n(\mathbf{U}_L) & \text{if } 0 \le S_L \\ 
+        \mathbf{F}_n(\mathbf{U}_L) + S_L (\mathbf{U}_L^* - \mathbf{U}_L) & \text{if } S_L < 0 \le S^* \\ 
+        \mathbf{F}_n(\mathbf{U}_R) + S_R (\mathbf{U}_R^* - \mathbf{U}_R) & \text{if } S^* < 0 \le S_R \\ 
+        \mathbf{F}_n(\mathbf{U}_R) & \text{if } S_R < 0 
+        \end{cases}$$
+    </div>
+
+    <div class="alert">
+        <strong>Compatibility with WE-BC:</strong> When using the Wall-Equilibrated Boundary Condition (WE-BC), setting $S^+ = 2\rho^- P_{phys}^- - S^-$ on wall boundaries ensures $P_{reg, L} = P_{reg, R} = P_{phys}^-$. The HLLC solver automatically reduces to the exact physical wall momentum reaction force without any artificial pressure jump.
+    </div>
+
+    <!-- SECTION 3 -->
+    <h2>3. Production Python Implementation</h2>
+    <p>
+        Below is the production-ready 2D/3D implementation of the PPR-HLLC Riemann solver. It seamlessly integrates with the <b>Wall-Equilibrated Boundary Condition (WE-BC)</b> framework.
+    </p>
+
+    <div class="code-block"><span class="keyword">import</span> numpy <span class="keyword">as</span> np
+
+<span class="keyword">def</span> <span class="call">compute_ppr_hllc_interface_flux</span>(<span class="variable">U_L</span>, <span class="variable">U_R</span>, <span class="variable">normal</span>, <span class="variable">theta</span>, <span class="variable">gamma</span>):
+    <span class="comment">"""
+    Evaluates the 2D/3D HLLC numerical flux for Phantom Pressure Regularization (PPR).
+    
+    Parameters:
+    -----------
+    U_L, U_R : ndarray shape (6,) -> [rho, rhou, rhov, rhow, E, S] (Left/Right States)
+    normal   : ndarray shape (3,) -> Unit outward normal vector [nx, ny, nz]
+    theta    : float             -> PPR regularizing parameter
+    gamma    : float             -> Ratio of specific heats
+    
+    Returns:
+    --------
+    F_hllc   : ndarray shape (6,) -> Numerical interface flux
+    """</span>
+    <span class="variable">nx</span>, <span class="variable">ny</span>, <span class="variable">nz</span> = <span class="variable">normal</span>
+    
+    <span class="comment"># -------------------------------------------------------------------------</span>
+    <span class="comment"># 1. LEFT STATE PRIMITIVES & REGULARIZED PRESSURE</span>
+    <span class="comment"># -------------------------------------------------------------------------</span>
+    <span class="variable">rho_L</span> = <span class="variable">U_L</span>[<span class="number">0</span>]
+    <span class="variable">inv_rho_L</span> = <span class="number">1.0</span> / <span class="variable">rho_L</span>
+    <span class="variable">u_L</span> = <span class="variable">U_L</span>[<span class="number">1</span>] * <span class="variable">inv_rho_L</span>
+    <span class="variable">v_L</span> = <span class="variable">U_L</span>[<span class="number">2</span>] * <span class="variable">inv_rho_L</span>
+    <span class="variable">w_L</span> = <span class="variable">U_L</span>[<span class="number">3</span>] * <span class="variable">inv_rho_L</span>
+    <span class="variable">un_L</span> = <span class="variable">u_L</span> * <span class="variable">nx</span> + <span class="variable">v_L</span> * <span class="variable">ny</span> + <span class="variable">w_L</span> * <span class="variable">nz</span>
+    
+    <span class="variable">ke_L</span> = <span class="number">0.5</span> * <span class="variable">rho_L</span> * (<span class="variable">u_L</span>**<span class="number">2</span> + <span class="variable">v_L</span>**<span class="number">2</span> + <span class="variable">w_L</span>**<span class="number">2</span>)
+    <span class="variable">Pp_L</span> = (<span class="variable">gamma</span> - <span class="number">1.0</span>) * (<span class="variable">U_L</span>[<span class="number">4</span>] - <span class="variable">ke_L</span>)
+    <span class="variable">S_L_val</span> = <span class="variable">U_L</span>[<span class="number">5</span>]
+    <span class="variable">Pphan_L</span> = <span class="variable">S_L_val</span> * <span class="variable">inv_rho_L</span>
+    <span class="variable">Pr_L</span> = <span class="variable">Pp_L</span> + <span class="variable">theta</span> * (<span class="variable">Pp_L</span> - <span class="variable">Pphan_L</span>)
+    
+    <span class="comment"># Physical Flux L</span>
+    <span class="variable">F_L</span> = np.array([
+        <span class="variable">rho_L</span> * <span class="variable">un_L</span>,
+        <span class="variable">U_L</span>[<span class="number">1</span>] * <span class="variable">un_L</span> + <span class="variable">Pr_L</span> * <span class="variable">nx</span>,
+        <span class="variable">U_L</span>[<span class="number">2</span>] * <span class="variable">un_L</span> + <span class="variable">Pr_L</span> * <span class="variable">ny</span>,
+        <span class="variable">U_L</span>[<span class="number">3</span>] * <span class="variable">un_L</span> + <span class="variable">Pr_L</span> * <span class="variable">nz</span>,
+        (<span class="variable">U_L</span>[<span class="number">4</span>] + <span class="variable">Pr_L</span>) * <span class="variable">un_L</span>,
+        <span class="variable">S_L_val</span> * <span class="variable">un_L</span>
+    ])
+
+    <span class="comment"># -------------------------------------------------------------------------</span>
+    <span class="comment"># 2. RIGHT STATE PRIMITIVES & REGULARIZED PRESSURE</span>
+    <span class="comment"># -------------------------------------------------------------------------</span>
+    <span class="variable">rho_R</span> = <span class="variable">U_R</span>[<span class="number">0</span>]
+    <span class="variable">inv_rho_R</span> = <span class="number">1.0</span> / <span class="variable">rho_R</span>
+    <span class="variable">u_R</span> = <span class="variable">U_R</span>[<span class="number">1</span>] * <span class="variable">inv_rho_R</span>
+    <span class="variable">v_R</span> = <span class="variable">U_R</span>[<span class="number">2</span>] * <span class="variable">inv_rho_R</span>
+    <span class="variable">w_R</span> = <span class="variable">U_R</span>[<span class="number">3</span>] * <span class="variable">inv_rho_R</span>
+    <span class="variable">un_R</span> = <span class="variable">u_R</span> * <span class="variable">nx</span> + <span class="variable">v_R</span> * <span class="variable">ny</span> + <span class="variable">w_R</span> * <span class="variable">nz</span>
+    
+    <span class="variable">ke_R</span> = <span class="number">0.5</span> * <span class="variable">rho_R</span> * (<span class="variable">u_R</span>**<span class="number">2</span> + <span class="variable">v_R</span>**<span class="number">2</span> + <span class="variable">w_R</span>**<span class="number">2</span>)
+    <span class="variable">Pp_R</span> = (<span class="variable">gamma</span> - <span class="number">1.0</span>) * (<span class="variable">U_R</span>[<span class="number">4</span>] - <span class="variable">ke_R</span>)
+    <span class="variable">S_R_val</span> = <span class="variable">U_R</span>[<span class="number">5</span>]
+    <span class="variable">Pphan_R</span> = <span class="variable">S_R_val</span> * <span class="variable">inv_rho_R</span>
+    <span class="variable">Pr_R</span> = <span class="variable">Pp_R</span> + <span class="variable">theta</span> * (<span class="variable">Pp_R</span> - <span class="variable">Pphan_R</span>)
+    
+    <span class="comment"># Physical Flux R</span>
+    <span class="variable">F_R</span> = np.array([
+        <span class="variable">rho_R</span> * <span class="variable">un_R</span>,
+        <span class="variable">U_R</span>[<span class="number">1</span>] * <span class="variable">un_R</span> + <span class="variable">Pr_R</span> * <span class="variable">nx</span>,
+        <span class="variable">U_R</span>[<span class="number">2</span>] * <span class="variable">un_R</span> + <span class="variable">Pr_R</span> * <span class="variable">ny</span>,
+        <span class="variable">U_R</span>[<span class="number">3</span>] * <span class="variable">un_R</span> + <span class="variable">Pr_R</span> * <span class="variable">nz</span>,
+        (<span class="variable">U_R</span>[<span class="number">4</span>] + <span class="variable">Pr_R</span>) * <span class="variable">un_R</span>,
+        <span class="variable">S_R_val</span> * <span class="variable">un_R</span>
+    ])
+
+    <span class="comment"># -------------------------------------------------------------------------</span>
+    <span class="comment"># 3. WAVE SPEED ESTIMATION (S_L, S_R, S_star)</span>
+    <span class="comment"># -------------------------------------------------------------------------</span>
+    <span class="comment"># Acoustic sound speeds using maximum of physical and regularized pressures</span>
+    <span class="variable">a_L</span> = np.sqrt(<span class="variable">gamma</span> * max(<span class="variable">Pp_L</span>, <span class="variable">Pr_L</span>) * <span class="variable">inv_rho_L</span>)
+    <span class="variable">a_R</span> = np.sqrt(<span class="variable">gamma</span> * max(<span class="variable">Pp_R</span>, <span class="variable">Pr_R</span>) * <span class="variable">inv_rho_R</span>)
+    
+    <span class="comment"># Roe-averaged normal velocity and sound speed</span>
+    <span class="variable">sqrt_rho_L</span> = np.sqrt(<span class="variable">rho_L</span>)
+    <span class="variable">sqrt_rho_R</span> = np.sqrt(<span class="variable">rho_R</span>)
+    <span class="variable">inv_sqrt_sum</span> = <span class="number">1.0</span> / (<span class="variable">sqrt_rho_L</span> + <span class="variable">sqrt_rho_R</span>)
+    
+    <span class="variable">un_roe</span> = (<span class="variable">sqrt_rho_L</span> * <span class="variable">un_L</span> + <span class="variable">sqrt_rho_R</span> * <span class="variable">un_R</span>) * <span class="variable">inv_sqrt_sum</span>
+    <span class="variable">H_L</span> = (<span class="variable">U_L</span>[<span class="number">4</span>] + <span class="variable">Pr_L</span>) * <span class="variable">inv_rho_L</span>
+    <span class="variable">H_R</span> = (<span class="variable">U_R</span>[<span class="number">4</span>] + <span class="variable">Pr_R</span>) * <span class="variable">inv_rho_R</span>
+    <span class="variable">H_roe</span> = (<span class="variable">sqrt_rho_L</span> * <span class="variable">H_L</span> + <span class="variable">sqrt_rho_R</span> * <span class="variable">H_R</span>) * <span class="variable">inv_sqrt_sum</span>
+    <span class="variable">ke_roe</span> = <span class="number">0.5</span> * ((<span class="variable">sqrt_rho_L</span>*<span class="variable">u_L</span> + <span class="variable">sqrt_rho_R</span>*<span class="variable">u_R</span>)*<span class="variable">inv_sqrt_sum</span>)**<span class="number">2</span> + \
+             <span class="number">0.5</span> * ((<span class="variable">sqrt_rho_L</span>*<span class="variable">v_L</span> + <span class="variable">sqrt_rho_R</span>*<span class="variable">v_R</span>)*<span class="variable">inv_sqrt_sum</span>)**<span class="number">2</span> + \
+             <span class="number">0.5</span> * ((<span class="variable">sqrt_rho_L</span>*<span class="variable">w_L</span> + <span class="variable">sqrt_rho_R</span>*<span class="variable">w_R</span>)*<span class="variable">inv_sqrt_sum</span>)**<span class="number">2</span>
+    <span class="variable">a_roe</span> = np.sqrt(max(<span class="number">1e-12</span>, (<span class="variable">gamma</span> - <span class="number">1.0</span>) * (<span class="variable">H_roe</span> - <span class="variable">ke_roe</span>)))
+    
+    <span class="comment"># Einfeldt Bounds</span>
+    <span class="variable">S_L</span> = min(<span class="variable">un_L</span> - <span class="variable">a_L</span>, <span class="variable">un_roe</span> - <span class="variable">a_roe</span>)
+    <span class="variable">S_R</span> = max(<span class="variable">un_R</span> + <span class="variable">a_R</span>, <span class="variable">un_roe</span> + <span class="variable">a_roe</span>)
+    
+    <span class="comment"># Middle Contact Wave Speed S_star</span>
+    <span class="variable">num_star</span> = <span class="variable">Pr_R</span> - <span class="variable">Pr_L</span> + <span class="variable">rho_L</span> * <span class="variable">un_L</span> * (<span class="variable">S_L</span> - <span class="variable">un_L</span>) - <span class="variable">rho_R</span> * <span class="variable">un_R</span> * (<span class="variable">S_R</span> - <span class="variable">un_R</span>)
+    <span class="variable">den_star</span> = <span class="variable">rho_L</span> * (<span class="variable">S_L</span> - <span class="variable">un_L</span>) - <span class="variable">rho_R</span> * (<span class="variable">S_R</span> - <span class="variable">un_R</span>)
+    <span class="variable">S_star</span> = <span class="variable">num_star</span> / <span class="variable">den_star</span>
+
+    <span class="comment"># -------------------------------------------------------------------------</span>
+    <span class="comment"># 4. HLLC FLUX SELECTION LOGIC</span>
+    <span class="comment"># -------------------------------------------------------------------------</span>
+    <span class="keyword">if</span> <span class="variable">S_L</span> >= <span class="number">0.0</span>:
+        <span class="keyword">return</span> <span class="variable">F_L</span>
+        
+    <span class="keyword">elif</span> <span class="variable">S_L</span> < <span class="number">0.0</span> <span class="keyword">and</span> <span class="variable">S_star</span> >= <span class="number">0.0</span>:
+        <span class="comment"># Left Star State U_L*</span>
+        <span class="variable">fac_L</span> = <span class="variable">rho_L</span> * (<span class="variable">S_L</span> - <span class="variable">un_L</span>) / (<span class="variable">S_L</span> - <span class="variable">S_star</span>)
+        <span class="variable">U_star_L</span> = np.array([
+            <span class="variable">fac_L</span>,
+            <span class="variable">fac_L</span> * (<span class="variable">u_L</span> + (<span class="variable">S_star</span> - <span class="variable">un_L</span>) * <span class="variable">nx</span>),
+            <span class="variable">fac_L</span> * (<span class="variable">v_L</span> + (<span class="variable">S_star</span> - <span class="variable">un_L</span>) * <span class="variable">ny</span>),
+            <span class="variable">fac_L</span> * (<span class="variable">w_L</span> + (<span class="variable">S_star</span> - <span class="variable">un_L</span>) * <span class="variable">nz</span>),
+            <span class="variable">fac_L</span> * (<span class="variable">U_L</span>[<span class="number">4</span>]*<span class="variable">inv_rho_L</span> + (<span class="variable">S_star</span> - <span class="variable">un_L</span>) * (<span class="variable">S_star</span> + <span class="variable">Pr_L</span> / (<span class="variable">rho_L</span> * (<span class="variable">S_L</span> - <span class="variable">un_L</span>)))),
+            <span class="variable">S_L_val</span> * (<span class="variable">S_L</span> - <span class="variable">un_L</span>) / (<span class="variable">S_L</span> - <span class="variable">S_star</span>)
+        ])
+        <span class="keyword">return</span> <span class="variable">F_L</span> + <span class="variable">S_L</span> * (<span class="variable">U_star_L</span> - <span class="variable">U_L</span>)
+        
+    <span class="keyword">elif</span> <span class="variable">S_star</span> < <span class="number">0.0</span> <span class="keyword">and</span> <span class="variable">S_R</span> >= <span class="number">0.0</span>:
+        <span class="comment"># Right Star State U_R*</span>
+        <span class="variable">fac_R</span> = <span class="variable">rho_R</span> * (<span class="variable">S_R</span> - <span class="variable">un_R</span>) / (<span class="variable">S_R</span> - <span class="variable">S_star</span>)
+        <span class="variable">U_star_R</span> = np.array([
+            <span class="variable">fac_R</span>,
+            <span class="variable">fac_R</span> * (<span class="variable">u_R</span> + (<span class="variable">S_star</span> - <span class="variable">un_R</span>) * <span class="variable">nx</span>),
+            <span class="variable">fac_R</span> * (<span class="variable">v_R</span> + (<span class="variable">S_star</span> - <span class="variable">un_R</span>) * <span class="variable">ny</span>),
+            <span class="variable">fac_R</span> * (<span class="variable">w_R</span> + (<span class="variable">S_star</span> - <span class="variable">un_R</span>) * <span class="variable">nz</span>),
+            <span class="variable">fac_R</span> * (<span class="variable">U_R</span>[<span class="number">4</span>]*<span class="variable">inv_rho_R</span> + (<span class="variable">S_star</span> - <span class="variable">un_R</span>) * (<span class="variable">S_star</span> + <span class="variable">Pr_R</span> / (<span class="variable">rho_R</span> * (<span class="variable">S_R</span> - <span class="variable">un_R</span>)))),
+            <span class="variable">S_R_val</span> * (<span class="variable">S_R</span> - <span class="variable">un_R</span>) / (<span class="variable">S_R</span> - <span class="variable">S_star</span>)
+        ])
+        <span class="keyword">return</span> <span class="variable">F_R</span> + <span class="variable">S_R</span> * (<span class="variable">U_star_R</span> - <span class="variable">U_R</span>)
+        
+    <span class="keyword">else</span>:
+        <span class="keyword">return</span> <span class="variable">F_R</span>
+    </div>
+
+</body>
+</html>

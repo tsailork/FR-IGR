@@ -80,6 +80,7 @@ struct Parameters {
     double CFL   = 0.5;               ///< Courant-Friedrichs-Lewy stability safety factor.
     double GAMMA = 1.4;               ///< Specific heat ratio for the ideal gas.
     std::string IC_TYPE = "RIEMANN_2D_C3"; ///< Target physical initial condition profile name.
+    std::string RIEMANN_SOLVER = "HLLC";   ///< Unified Riemann numerical flux solver ("HLLC" or "RUSANOV").
 
     // Freestream (for IC_TYPE = FREESTREAM)
     double RHO_INF = 1.0;             ///< Reference freestream density.

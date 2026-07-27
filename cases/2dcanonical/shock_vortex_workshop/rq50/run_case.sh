@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-PROJECT_DIR="/home/tsk/Documents/GitHub/FR-IGR"
+PROJECT_DIR="/mnt/c/Users/tskoepli/Documents/GitHub/FR-IGR"
 
 # Determine active running directory (the case directory)
 CASE_DIR="$(pwd)"

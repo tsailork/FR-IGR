@@ -248,7 +248,8 @@ public:
      */
     void get_neigh_state_cell(const Cell2D& c, int node_idx, bool is_right_or_top,
                              const double* face_state, double sig_face,
-                             double* neigh_state, double& sig_neigh, int dir) const;
+                             double* neigh_state, double& sig_neigh, int dir,
+                             double S_face = 0.0, double* S_neigh = nullptr) const;
 
     /**
      * @brief Evaluate point-wise inviscid Euler fluxes at a cell's solution node.
@@ -450,7 +451,8 @@ public:
 
     void get_neigh_state_cell(const Cell3D& c, int node_idx, bool is_right_or_top,
                               const double* face_state, double sig_face,
-                              double* neigh_state, double& sig_neigh, int dir) const;
+                              double* neigh_state, double& sig_neigh, int dir,
+                              double S_face = 0.0, double* S_neigh = nullptr) const;
 
     void get_flux_pointwise(const Block3D& b, int ez, int ey, int ex, int iz, int iy, int ix,
                             double* F, double* G, double* H, double sigma) const;

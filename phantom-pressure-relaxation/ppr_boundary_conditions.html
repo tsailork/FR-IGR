@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phantom Pressure Regularization: 2D/3D Boundary Condition Guide</title>
+    <!-- MathJax for mathematical equations -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --primary-light: #eff6ff;
+            --dark: #1f2937;
+            --light: #f8fafc;
+            --border: #e2e8f0;
+            --code-bg: #0f172a;
+            --code-text: #f8fafc;
+            --alert-bg: #fef3c7;
+            --alert-border: #f59e0b;
+            --alert-text: #92400e;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--dark);
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background-color: #ffffff;
+        }
+        header {
+            text-align: center;
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+        }
+        header h1 {
+            color: var(--primary);
+            margin: 0 0 10px 0;
+            font-size: 2.3rem;
+        }
+        header p {
+            font-size: 1.1rem;
+            color: #475569;
+            margin: 0;
+        }
+        h2 {
+            color: var(--primary);
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 8px;
+            margin-top: 40px;
+        }
+        h3 {
+            color: var(--dark);
+            margin-top: 25px;
+            border-left: 4px solid var(--primary);
+            padding-left: 10px;
+        }
+        p, li {
+            font-size: 1.05rem;
+            text-align: justify;
+        }
+        ul, ol {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .code-block {
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            padding: 20px;
+            border-radius: 8px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            white-space: pre;
+            line-height: 1.5;
+            margin: 20px 0;
+            border: 1px solid #334155;
+        }
+        .keyword { color: #38bdf8; }
+        .comment { color: #94a3b8; font-style: italic; }
+        .variable { color: #e2e8f0; }
+        .number { color: #f43f5e; }
+        .string { color: #a3e635; }
+        .call { color: #facc15; }
+        
+        .alert {
+            background-color: var(--alert-bg);
+            border-left: 5px solid var(--alert-border);
+            color: var(--alert-text);
+            padding: 15px 20px;
+            margin: 25px 0;
+            border-radius: 4px;
+        }
+        .math-box {
+            background-color: var(--primary-light);
+            padding: 18px;
+            border-radius: 6px;
+            border-left: 4px solid var(--primary);
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            background: #ffffff;
+        }
+        th, td {
+            text-align: left;
+            padding: 12px 15px;
+            border: 1px solid var(--border);
+            font-size: 0.95rem;
+        }
+        th {
+            background-color: var(--primary);
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: var(--light);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Phantom Pressure Regularization (PPR)</h1>
+        <p>Comprehensive Theory & Implementation Guide for General 2D/3D Boundary Conditions</p>
+    </header>
+
+    <!-- SECTION 1 -->
+    <h2>1. The Theoretical Boundary Failure: "The Wall Lag Trap"</h2>
+    <p>
+        In high-order spatial schemes (e.g., Flux Reconstruction, Discontinuous Galerkin), <b>Phantom Pressure Regularization (PPR)</b> regularizes shock waves by introducing an advected scalar state $S = \rho P_{phan}$. The regularized pressure $P_{reg}$ used in interface momentum flux evaluations is defined as:
+    </p>
+    <div class="math-box">
+        $$P_{reg} = P_{phys} + \theta (P_{phys} - P_{phan})$$
+    </div>
+    <p>
+        where $P_{phys}$ is the thermodynamic pressure, $P_{phan} = S/\rho$ is the phantom pressure, and $\theta > 0$ is a tuning parameter.
+    </p>
+    
+    <h3>The Physics of Boundary Blowup</h3>
+    <p>
+        When strong shocks impact or move along solid walls in 2D and 3D, naive ghost-state formulations cause catastrophic numerical blowups. The physical and numerical mechanisms behind this instability are:
+    </p>
+    <ol>
+        <li>
+            <b>Kinematic Advection Lock:</b> At an inviscid wall boundary, the normal flow velocity is strictly zero ($\mathbf{u} \cdot \mathbf{n} = 0$). Consequently, the advective normal flux of the phantom variable across the wall is zero ($S \mathbf{u} \cdot \mathbf{n} = 0$). Phantom pressure cannot be transported across or along the boundary by fluid convection.
+        </li>
+        <li>
+            <b>Thermodynamic Reflection Lag:</b> During shock reflection at a wall, the physical pressure $P_{phys}$ jumps instantaneously. However, $P_{phan}$ at the boundary interface relies solely on the pointwise relaxation source term $\frac{\rho}{\tau}(P_{phys} - P_{phan})$ to adjust. Because the relaxation time $\tau$ is finite, $P_{phan}$ lags severely behind $P_{phys}$.
+        </li>
+        <li>
+            <b>Unphysical Force Spike:</b> Because $P_{phys} \gg P_{phan}$ during shock impact, the regularized pressure $P_{reg}$ at the wall face spikes to an unphysically massive value ($P_{reg} \gg P_{phys, shock}$).
+        </li>
+        <li>
+            <b>Feedback Loop & Breakdown:</b> This artificial pressure spike exerts a massive normal force vector pushing <i>away</i> from the wall face into adjacent interior elements. In subsequent Runge-Kutta sub-stages, this force drives an unphysical acoustic expansion wave, triggering velocity divergence shocks near the wall that amplify $P_{reg}$ further until the solver crashes ($\text{NaN}$).
+        </li>
+    </ol>
+
+    <div class="alert">
+        <strong>Fundamental Principle:</strong> Hyperbolic bulk viscosity is designed to damp volumetric compression <i>inside the fluid domain</i> ($\nabla \cdot \mathbf{u} < 0$). It must <b>never</b> penalize the kinematic boundary constraint ($\mathbf{u} \cdot \mathbf{n} = 0$).
+    </div>
+
+    <!-- SECTION 2 -->
+    <h2>2. Mathematical Formulation: The Wall-Equilibrated Ghost State (WE-BC)</h2>
+    <p>
+        To prevent boundary blowups, we construct a <b>Wall-Equilibrated (WE) Ghost State</b> ($\mathbf{U}^+$) for the interface Riemann solver. This state forces the face-averaged regularized pressure $P_{reg, face}$ at solid boundaries to equal the physical thermodynamic pressure $P_{phys}^-$, while allowing full regularized bulk-viscosity damping at interior element nodes.
+    </p>
+
+    <h3>General 2D/3D Kinematic Kinematics</h3>
+    <p>
+        Let $\mathbf{n} = [n_x, n_y, n_z]^T$ be the unit outward normal vector at a boundary face, and $\mathbf{U}^- = [\rho^-, \rho^- u_x^-, \rho^- u_y^-, \rho^- u_z^-, E^-, S^-]^T$ be the interior state extrapolated to the interface face.
+    </p>
+    <p>The normal velocity component $u_n^-$ and vector velocity $\mathbf{u}^-$ are:</p>
+    <div class="math-box">
+        $$u_n^- = \mathbf{u}^- \cdot \mathbf{n} = u_x^- n_x + u_y^- n_y + u_z^- n_z$$
+        $$\mathbf{u}^+ = \mathbf{u}^- - 2 u_n^- \mathbf{n}$$
+    </div>
+
+    <h3>Mathematical Proof of Pressure Equilibration</h3>
+    <p>
+        To enforce $P_{reg, face} \equiv P_{phys}^-$, we define the ghost phantom state $S^+$ as:
+    </p>
+    <div class="math-box">
+        $$S^+ = 2 \rho^- P_{phys}^- - S^-$$
+    </div>
+    <p>
+        Evaluating the face-averaged phantom pressure $P_{phan, face}$ across the boundary interface yields:
+    </p>
+    <div class="math-box">
+        $$P_{phan, face} = \frac{1}{2}\left(P_{phan}^- + P_{phan}^+\right) = \frac{1}{2}\left(\frac{S^-}{\rho^-} + \frac{S^+}{\rho^-}\right) = \frac{1}{2}\left(\frac{S^- + 2\rho^- P_{phys}^- - S^-}{\rho^-}\right) = P_{phys}^-$$
+    </div>
+    <p>
+        Substituting $P_{phan, face}$ into the regularized pressure expression at the boundary face gives:
+    </p>
+    <div class="math-box">
+        $$P_{reg, face} = P_{phys}^- + \theta \left( P_{phys}^- - P_{phan, face} \right) = P_{phys}^- + \theta (0) \equiv P_{phys}^-$$
+    </div>
+    <p>
+        This guarantees that the momentum reaction force exerted by the boundary face is strictly bounded by the physical thermodynamic pressure $P_{phys}^-$.
+    </p>
+
+    <!-- SECTION 3 -->
+    <h2>3. General 2D/3D Boundary Condition Specification</h2>
+    <p>
+        Below is the mathematical specification for constructing the ghost state vector $\mathbf{U}^+ = [\rho^+, \rho^+\mathbf{u}^+, E^+, S^+]^T$ across all standard boundary types in 2D and 3D solvers.
+    </p>
+
+    <h3>1. Inviscid Solid Wall (Slip Boundary)</h3>
+    <p>
+        Reflects normal velocity, preserves density and thermodynamic pressure, and applies wall-equilibration to the phantom state.
+    </p>
+    <div class="math-box">
+        $$\rho^+ = \rho^-, \quad \mathbf{u}^+ = \mathbf{u}^- - 2(\mathbf{u}^- \cdot \mathbf{n})\mathbf{n}, \quad P_{phys}^+ = P_{phys}^-$$
+        $$E^+ = \frac{P_{phys}^-}{\gamma - 1} + \frac{1}{2}\rho^- \|\mathbf{u}^+\|^2, \quad S^+ = 2 \rho^- P_{phys}^- - S^-$$
+    </div>
+
+    <h3>2. Viscous Solid Wall (No-Slip Boundary)</h3>
+    <p>
+        Enforces zero velocity at the wall ($\mathbf{u}_{wall} = \mathbf{0}$) and zero normal pressure gradient ($\nabla P_{phys} \cdot \mathbf{n} = 0$).
+    </p>
+    <div class="math-box">
+        $$\rho^+ = \rho^-, \quad \mathbf{u}^+ = -\mathbf{u}^-, \quad P_{phys}^+ = P_{phys}^-$$
+        $$E^+ = \frac{P_{phys}^-}{\gamma - 1} + \frac{1}{2}\rho^- \|\mathbf{u}^+\|^2, \quad S^+ = 2 \rho^- P_{phys}^- - S^-$$
+    </div>
+
+    <h3>3. Supersonic Inflow</h3>
+    <p>
+        All characteristics enter the domain. Set all state variables directly to the free-stream Dirichlet conditions $[\rho_\infty, \mathbf{u}_\infty, P_\infty]^T$:
+    </p>
+    <div class="math-box">
+        $$\rho^+ = \rho_\infty, \quad \mathbf{u}^+ = \mathbf{u}_\infty, \quad E^+ = \frac{P_\infty}{\gamma - 1} + \frac{1}{2}\rho_\infty \|\mathbf{u}_\infty\|^2, \quad S^+ = \rho_\infty P_\infty$$
+    </div>
+
+    <h3>4. Supersonic Outflow</h3>
+    <p>
+        All characteristics exit the domain. Copy the interior state directly:
+    </p>
+    <div class="math-box">
+        $$\mathbf{U}^+ = \mathbf{U}^-$$
+    </div>
+
+    <h3>5. Subsonic Outflow</h3>
+    <p>
+        Prescribe target static exit pressure $P_{out}$. Extrapolate density, velocity, and equilibrate the ghost phantom state to $P_{out}$:
+    </p>
+    <div class="math-box">
+        $$\rho^+ = \rho^-, \quad \mathbf{u}^+ = \mathbf{u}^-, \quad P_{phys}^+ = 2 P_{out} - P_{phys}^-$$
+        $$E^+ = \frac{P_{phys}^+}{\gamma - 1} + \frac{1}{2}\rho^+ \|\mathbf{u}^+\|^2, \quad S^+ = 2 \rho^- P_{out} - S^-$$
+    </div>
+
+    <h3>6. Subsonic Inflow</h3>
+    <p>
+        Prescribe free-stream density $\rho_{in}$, velocity $\mathbf{u}_{in}$, and static pressure $P_{in}$.
+    </p>
+    <div class="math-box">
+        $$\rho^+ = \rho_{in}, \quad \mathbf{u}^+ = \mathbf{u}_{in}, \quad E^+ = \frac{P_{in}}{\gamma - 1} + \frac{1}{2}\rho_{in} \|\mathbf{u}_{in}\|^2, \quad S^+ = \rho_{in} P_{in}$$
+    </div>
+
+    <!-- SUMMARY TABLE -->
+    <h3>Boundary Condition Reference Matrix</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Boundary Type</th>
+                <th>Velocity ($\mathbf{u}^+$)</th>
+                <th>Thermodynamic Pressure ($P_{phys}^+$)</th>
+                <th>Phantom State ($S^+$)</th>
+                <th>Interface Pressure ($P_{reg, face}$)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><b>Slip Wall</b></td>
+                <td>$\mathbf{u}^- - 2(\mathbf{u}^- \cdot \mathbf{n})\mathbf{n}$</td>
+                <td>$P_{phys}^-$</td>
+                <td>$2 \rho^- P_{phys}^- - S^-$</td>
+                <td>$P_{phys}^-$ (Physical)</td>
+            </tr>
+            <tr>
+                <td><b>No-Slip Wall</b></td>
+                <td>$-\mathbf{u}^-$</td>
+                <td>$P_{phys}^-$</td>
+                <td>$2 \rho^- P_{phys}^- - S^-$</td>
+                <td>$P_{phys}^-$ (Physical)</td>
+            </tr>
+            <tr>
+                <td><b>Supersonic Inflow</b></td>
+                <td>$\mathbf{u}_\infty$</td>
+                <td>$P_\infty$</td>
+                <td>$\rho_\infty P_\infty$</td>
+                <td>$P_\infty$</td>
+            </tr>
+            <tr>
+                <td><b>Supersonic Outflow</b></td>
+                <td>$\mathbf{u}^-$</td>
+                <td>$P_{phys}^-$</td>
+                <td>$S^-$</td>
+                <td>$P_{reg}^-$</td>
+            </tr>
+            <tr>
+                <td><b>Subsonic Outflow</b></td>
+                <td>$\mathbf{u}^-$</td>
+                <td>$2 P_{out} - P_{phys}^-$</td>
+                <td>$2 \rho^- P_{out} - S^-$</td>
+                <td>$P_{out}$ (Prescribed)</td>
+            </tr>
+            <tr>
+                <td><b>Subsonic Inflow</b></td>
+                <td>$\mathbf{u}_{in}$</td>
+                <td>$P_{in}$</td>
+                <td>$\rho_{in} P_{in}$</td>
+                <td>$P_{in}$</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- SECTION 4 -->
+    <h2>4. Production Python Implementation (2D & 3D Compatible)</h2>
+    <p>
+        The following routine implements general boundary ghost state construction and evaluates the boundary normal flux using a PPR-compatible Rusanov interface solver. It handles both 2D (with $w=0, n_z=0$) and 3D solvers.
+    </p>
+
+    <div class="code-block"><span class="keyword">import</span> numpy <span class="keyword">as</span> np
+
+<span class="keyword">def</span> <span class="call">compute_ppr_boundary_flux</span>(<span class="variable">U_int</span>, <span class="variable">normal</span>, <span class="variable">bc_type</span>, <span class="variable">bc_params</span>, <span class="variable">theta</span>, <span class="variable">gamma</span>):
+    <span class="comment">"""
+    Evaluates generalized 2D/3D numerical boundary fluxes for PPR/HBV solvers.
+    
+    Parameters:
+    -----------
+    U_int     : ndarray shape (6,) -> [rho, rhou, rhov, rhow, E, S] (Interior State)
+    normal    : ndarray shape (3,) -> Unit outward normal vector [nx, ny, nz]
+    bc_type   : str -> 'SLIP_WALL', 'NO_SLIP_WALL', 'SUPERSONIC_INFLOW', 
+                        'SUPERSONIC_OUTFLOW', 'SUBSONIC_OUTFLOW', 'SUBSONIC_INFLOW'
+    bc_params : dict -> Boundary values (e.g., {'P_out': 101325.0, 'rho_in': 1.225, ...})
+    theta     : float -> PPR regularizing parameter
+    gamma     : float -> Specific heat ratio
+    """</span>
+    <span class="variable">rho_in</span> = <span class="variable">U_int</span>[<span class="number">0</span>]
+    <span class="variable">inv_rho</span> = <span class="number">1.0</span> / <span class="variable">rho_in</span>
+    <span class="variable">u_in</span> = <span class="variable">U_int</span>[<span class="number">1</span>] * <span class="variable">inv_rho</span>
+    <span class="variable">v_in</span> = <span class="variable">U_int</span>[<span class="number">2</span>] * <span class="variable">inv_rho</span>
+    <span class="variable">w_in</span> = <span class="variable">U_int</span>[<span class="number">3</span>] * <span class="variable">inv_rho</span>
+    
+    <span class="variable">ke_in</span> = <span class="number">0.5</span> * <span class="variable">rho_in</span> * (<span class="variable">u_in</span>**<span class="number">2</span> + <span class="variable">v_in</span>**<span class="number">2</span> + <span class="variable">w_in</span>**<span class="number">2</span>)
+    <span class="variable">P_phys_in</span> = (<span class="variable">gamma</span> - <span class="number">1.0</span>) * (<span class="variable">U_int</span>[<span class="number">4</span>] - <span class="variable">ke_in</span>)
+    <span class="variable">S_in</span> = <span class="variable">U_int</span>[<span class="number">5</span>]
+    
+    <span class="variable">U_ghost</span> = np.zeros(<span class="number">6</span>)
+    
+    <span class="comment"># =========================================================================</span>
+    <span class="comment"># 1. GHOST STATE CONSTRUCTION</span>
+    <span class="comment"># =========================================================================</span>
+    <span class="keyword">if</span> <span class="variable">bc_type</span> == <span class="string">'SLIP_WALL'</span>:
+        <span class="variable">un</span> = <span class="variable">u_in</span> * <span class="variable">normal</span>[<span class="number">0</span>] + <span class="variable">v_in</span> * <span class="variable">normal</span>[<span class="number">1</span>] + <span class="variable">w_in</span> * <span class="variable">normal</span>[<span class="number">2</span>]
+        <span class="variable">u_g</span> = <span class="variable">u_in</span> - <span class="number">2.0</span> * <span class="variable">un</span> * <span class="variable">normal</span>[<span class="number">0</span>]
+        <span class="variable">v_g</span> = <span class="variable">v_in</span> - <span class="number">2.0</span> * <span class="variable">un</span> * <span class="variable">normal</span>[<span class="number">1</span>]
+        <span class="variable">w_g</span> = <span class="variable">w_in</span> - <span class="number">2.0</span> * <span class="variable">un</span> * <span class="variable">normal</span>[<span class="number">2</span>]
+        
+        <span class="variable">U_ghost</span>[<span class="number">0</span>] = <span class="variable">rho_in</span>
+        <span class="variable">U_ghost</span>[<span class="number">1</span>] = <span class="variable">rho_in</span> * <span class="variable">u_g</span>
+        <span class="variable">U_ghost</span>[<span class="number">2</span>] = <span class="variable">rho_in</span> * <span class="variable">v_g</span>
+        <span class="variable">U_ghost</span>[<span class="number">3</span>] = <span class="variable">rho_in</span> * <span class="variable">w_g</span>
+        <span class="variable">U_ghost</span>[<span class="number">4</span>] = <span class="variable">P_phys_in</span> / (<span class="variable">gamma</span> - <span class="number">1.0</span>) + <span class="number">0.5</span> * <span class="variable">rho_in</span> * (<span class="variable">u_g</span>**<span class="number">2</span> + <span class="variable">v_g</span>**<span class="number">2</span> + <span class="variable">w_g</span>**<span class="number">2</span>)
+        <span class="variable">U_ghost</span>[<span class="number">5</span>] = <span class="number">2.0</span> * <span class="variable">rho_in</span> * <span class="variable">P_phys_in</span> - <span class="variable">S_in</span>  <span class="comment"># WE-BC Formulation</span>
+
+    <span class="keyword">elif</span> <span class="variable">bc_type</span> == <span class="string">'NO_SLIP_WALL'</span>:
+        <span class="variable">U_ghost</span>[<span class="number">0</span>] = <span class="variable">rho_in</span>
+        <span class="variable">U_ghost</span>[<span class="number">1</span>] = -<span class="variable">U_int</span>[<span class="number">1</span>]
+        <span class="variable">U_ghost</span>[<span class="number">2</span>] = -<span class="variable">U_int</span>[<span class="number">2</span>]
+        <span class="variable">U_ghost</span>[<span class="number">3</span>] = -<span class="variable">U_int</span>[<span class="number">3</span>]
+        <span class="variable">U_ghost</span>[<span class="number">4</span>] = <span class="variable">P_phys_in</span> / (<span class="variable">gamma</span> - <span class="number">1.0</span>) + <span class="number">0.5</span> * <span class="variable">rho_in</span> * (<span class="variable">u_in</span>**<span class="number">2</span> + <span class="variable">v_in</span>**<span class="number">2</span> + <span class="variable">w_in</span>**<span class="number">2</span>)
+        <span class="variable">U_ghost</span>[<span class="number">5</span>] = <span class="number">2.0</span> * <span class="variable">rho_in</span> * <span class="variable">P_phys_in</span> - <span class="variable">S_in</span>  <span class="comment"># WE-BC Formulation</span>
+
+    <span class="keyword">elif</span> <span class="variable">bc_type</span> == <span class="string">'SUPERSONIC_OUTFLOW'</span>:
+        <span class="variable">U_ghost</span> = <span class="variable">U_int</span>.copy()
+
+    <span class="keyword">elif</span> <span class="variable">bc_type</span> == <span class="string">'SUBSONIC_OUTFLOW'</span>:
+        <span class="variable">P_out</span> = <span class="variable">bc_params</span>[<span class="string">'P_out'</span>]
+        <span class="variable">P_g</span> = <span class="number">2.0</span> * <span class="variable">P_out</span> - <span class="variable">P_phys_in</span>
+        <span class="variable">U_ghost</span>[<span class="number">0</span>] = <span class="variable">rho_in</span>
+        <span class="variable">U_ghost</span>[<span class="number">1</span>] = <span class="variable">U_int</span>[<span class="number">1</span>]
+        <span class="variable">U_ghost</span>[<span class="number">2</span>] = <span class="variable">U_int</span>[<span class="number">2</span>]
+        <span class="variable">U_ghost</span>[<span class="number">3</span>] = <span class="variable">U_int</span>[<span class="number">3</span>]
+        <span class="variable">U_ghost</span>[<span class="number">4</span>] = <span class="variable">P_g</span> / (<span class="variable">gamma</span> - <span class="number">1.0</span>) + <span class="variable">ke_in</span>
+        <span class="variable">U_ghost</span>[<span class="number">5</span>] = <span class="number">2.0</span> * <span class="variable">rho_in</span> * <span class="variable">P_out</span> - <span class="variable">S_in</span>  <span class="comment"># Target P_out at face</span>
+
+    <span class="keyword">elif</span> <span class="variable">bc_type</span> == <span class="string">'SUPERSONIC_INFLOW'</span>:
+        <span class="variable">rho_inf</span> = <span class="variable">bc_params</span>[<span class="string">'rho'</span>]
+        <span class="variable">u_inf</span>, <span class="variable">v_inf</span>, <span class="variable">w_inf</span> = <span class="variable">bc_params</span>[<span class="string">'u'</span>], <span class="variable">bc_params</span>[<span class="string">'v'</span>], <span class="variable">bc_params</span>[<span class="string">'w'</span>]
+        <span class="variable">P_inf</span> = <span class="variable">bc_params</span>[<span class="string">'P'</span>]
+        <span class="variable">ke_inf</span> = <span class="number">0.5</span> * <span class="variable">rho_inf</span> * (<span class="variable">u_inf</span>**<span class="number">2</span> + <span class="variable">v_inf</span>**<span class="number">2</span> + <span class="variable">w_inf</span>**<span class="number">2</span>)
+        
+        <span class="variable">U_ghost</span>[<span class="number">0</span>] = <span class="variable">rho_inf</span>
+        <span class="variable">U_ghost</span>[<span class="number">1</span>] = <span class="variable">rho_inf</span> * <span class="variable">u_inf</span>
+        <span class="variable">U_ghost</span>[<span class="number">2</span>] = <span class="variable">rho_inf</span> * <span class="variable">v_inf</span>
+        <span class="variable">U_ghost</span>[<span class="number">3</span>] = <span class="variable">rho_inf</span> * <span class="variable">w_inf</span>
+        <span class="variable">U_ghost</span>[<span class="number">4</span>] = <span class="variable">P_inf</span> / (<span class="variable">gamma</span> - <span class="number">1.0</span>) + <span class="variable">ke_inf</span>
+        <span class="variable">U_ghost</span>[<span class="number">5</span>] = <span class="variable">rho_inf</span> * <span class="variable">P_inf</span>
+
+    <span class="comment"># =========================================================================</span>
+    <span class="comment"># 2. RIEMANN INTERFACE FLUX EVALUATION (PPR-Rusanov)</span>
+    <span class="comment"># =========================================================================</span>
+    <span class="keyword">return</span> <span class="call">compute_ppr_rusanov_interface_flux</span>(<span class="variable">U_int</span>, <span class="variable">U_ghost</span>, <span class="variable">normal</span>, <span class="variable">theta</span>, <span class="variable">gamma</span>)
+
+
+<span class="keyword">def</span> <span class="call">compute_ppr_rusanov_interface_flux</span>(<span class="variable">U_L</span>, <span class="variable">U_R</span>, <span class="variable">normal</span>, <span class="variable">theta</span>, <span class="variable">gamma</span>):
+    <span class="comment">"""
+    Evaluates interface normal flux using regularized pressure and safe wave speeds.
+    """</span>
+    <span class="variable">nx</span>, <span class="variable">ny</span>, <span class="variable">nz</span> = <span class="variable">normal</span>
+    
+    <span class="comment"># Left State Flux & Pressure</span>
+    <span class="variable">rho_L</span> = <span class="variable">U_L</span>[<span class="number">0</span>]
+    <span class="variable">u_L</span>, <span class="variable">v_L</span>, <span class="variable">w_L</span> = <span class="variable">U_L</span>[<span class="number">1</span>]/<span class="variable">rho_L</span>, <span class="variable">U_L</span>[<span class="number">2</span>]/<span class="variable">rho_L</span>, <span class="variable">U_L</span>[<span class="number">3</span>]/<span class="variable">rho_L</span>
+    <span class="variable">ke_L</span> = <span class="number">0.5</span> * <span class="variable">rho_L</span> * (<span class="variable">u_L</span>**<span class="number">2</span> + <span class="variable">v_L</span>**<span class="number">2</span> + <span class="variable">w_L</span>**<span class="number">2</span>)
+    <span class="variable">Pp_L</span> = (<span class="variable">gamma</span> - <span class="number">1.0</span>) * (<span class="variable">U_L</span>[<span class="number">4</span>] - <span class="variable">ke_L</span>)
+    <span class="variable">Pr_L</span> = <span class="variable">Pp_L</span> + <span class="variable">theta</span> * (<span class="variable">Pp_L</span> - <span class="variable">U_L</span>[<span class="number">5</span>]/<span class="variable">rho_L</span>)
+    
+    <span class="variable">un_L</span> = <span class="variable">u_L</span>*<span class="variable">nx</span> + <span class="variable">v_L</span>*<span class="variable">ny</span> + <span class="variable">w_L</span>*<span class="variable">nz</span>
+    <span class="variable">Fn_L</span> = np.array([
+        <span class="variable">rho_L</span>*<span class="variable">un_L</span>,
+        <span class="variable">U_L</span>[<span class="number">1</span>]*<span class="variable">un_L</span> + <span class="variable">Pr_L</span>*<span class="variable">nx</span>,
+        <span class="variable">U_L</span>[<span class="number">2</span>]*<span class="variable">un_L</span> + <span class="variable">Pr_L</span>*<span class="variable">ny</span>,
+        <span class="variable">U_L</span>[<span class="number">3</span>]*<span class="variable">un_L</span> + <span class="variable">Pr_L</span>*<span class="variable">nz</span>,
+        (<span class="variable">U_L</span>[<span class="number">4</span>] + <span class="variable">Pr_L</span>)*<span class="variable">un_L</span>,
+        <span class="variable">U_L</span>[<span class="number">5</span>]*<span class="variable">un_L</span>
+    ])
+    
+    <span class="comment"># Right State Flux & Pressure</span>
+    <span class="variable">rho_R</span> = <span class="variable">U_R</span>[<span class="number">0</span>]
+    <span class="variable">u_R</span>, <span class="variable">v_R</span>, <span class="variable">w_R</span> = <span class="variable">U_R</span>[<span class="number">1</span>]/<span class="variable">rho_R</span>, <span class="variable">U_R</span>[<span class="number">2</span>]/<span class="variable">rho_R</span>, <span class="variable">U_R</span>[<span class="number">3</span>]/<span class="variable">rho_R</span>
+    <span class="variable">ke_R</span> = <span class="number">0.5</span> * <span class="variable">rho_R</span> * (<span class="variable">u_R</span>**<span class="number">2</span> + <span class="variable">v_R</span>**<span class="number">2</span> + <span class="variable">w_R</span>**<span class="number">2</span>)
+    <span class="variable">Pp_R</span> = (<span class="variable">gamma</span> - <span class="number">1.0</span>) * (<span class="variable">U_R</span>[<span class="number">4</span>] - <span class="variable">ke_R</span>)
+    <span class="variable">Pr_R</span> = <span class="variable">Pp_R</span> + <span class="variable">theta</span> * (<span class="variable">Pp_R</span> - <span class="variable">U_R</span>[<span class="number">5</span>]/<span class="variable">rho_R</span>)
+    
+    <span class="variable">un_R</span> = <span class="variable">u_R</span>*<span class="variable">nx</span> + <span class="variable">v_R</span>*<span class="variable">ny</span> + <span class="variable">w_R</span>*<span class="variable">nz</span>
+    <span class="variable">Fn_R</span> = np.array([
+        <span class="variable">rho_R</span>*<span class="variable">un_R</span>,
+        <span class="variable">U_R</span>[<span class="number">1</span>]*<span class="variable">un_R</span> + <span class="variable">Pr_R</span>*<span class="variable">nx</span>,
+        <span class="variable">U_R</span>[<span class="number">2</span>]*<span class="variable">un_R</span> + <span class="variable">Pr_R</span>*<span class="variable">ny</span>,
+        <span class="variable">U_R</span>[<span class="number">3</span>]*<span class="variable">un_R</span> + <span class="variable">Pr_R</span>*<span class="variable">nz</span>,
+        (<span class="variable">U_R</span>[<span class="number">4</span>] + <span class="variable">Pr_R</span>)*<span class="variable">un_R</span>,
+        <span class="variable">U_R</span>[<span class="number">5</span>]*<span class="variable">un_R</span>
+    ])
+    
+    <span class="comment"># Safe Speed of Sound Bounds</span>
+    <span class="variable">a_L</span> = np.sqrt(<span class="variable">gamma</span> * max(<span class="variable">Pp_L</span>, <span class="variable">Pr_L</span>) / <span class="variable">rho_L</span>)
+    <span class="variable">a_R</span> = np.sqrt(<span class="variable">gamma</span> * max(<span class="variable">Pp_R</span>, <span class="variable">Pr_R</span>) / <span class="variable">rho_R</span>)
+    <span class="variable">lambda_max</span> = max(abs(<span class="variable">un_L</span>) + <span class="variable">a_L</span>, abs(<span class="variable">un_R</span>) + <span class="variable">a_R</span>)
+    
+    <span class="comment"># Interface Normal Flux Evaluation</span>
+    <span class="keyword">return</span> <span class="number">0.5</span> * (<span class="variable">Fn_L</span> + <span class="variable">Fn_R</span>) - <span class="number">0.5</span> * <span class="variable">lambda_max</span> * (<span class="variable">U_R</span> - <span class="variable">U_L</span>)
+    </div>
+
+</body>
+</html>

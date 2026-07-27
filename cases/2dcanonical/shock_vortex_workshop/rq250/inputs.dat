@@ -6,7 +6,8 @@ IC_TYPE = SHOCK_VORTEX_WORKSHOP
 P_DEG = 2
 CFL = 0.4
 T_FINAL = 0.7
-NUM_THREADS = 18
+NUM_THREADS = 30
+RIEMANN_SOLVER = RUSANOV
 
 [Regularization]
 ENABLE_IGR = false
@@ -19,7 +20,7 @@ PPR_ADV_MULT = 1.0
 PPR_ADAPTIVE_THETA = true
 PPR_SMOOTH_THETA = true
 PPR_USE_DUCROS_SENSOR = true
-shock_sens_schedule = 0.0:1.0:1.5
+shock_sens_schedule = 0.0:0.5:1.0
 theta_schedule      = 0.0:20.0:50.0
 
 [Stabilization]

@@ -728,7 +728,8 @@ void Solver::setup_cell_connectivity() {
 
 void Solver::get_neigh_state_cell(const Cell& c, int node_idx, bool is_right_or_top,
                                   const double* face_state, double sig_face,
-                                  double* neigh_state, double& sig_neigh, int dir) const
+                                  double* neigh_state, double& sig_neigh, int dir,
+                                  double S_face, double* S_neigh) const
 {
     sig_neigh = 0.0;
     for (int v = 0; v < 4; ++v) neigh_state[v] = 0.0;
@@ -784,6 +785,27 @@ void Solver::get_neigh_state_cell(const Cell& c, int node_idx, bool is_right_or_
     } else {
         for (int v = 0; v < 4; ++v) neigh_state[v] = face_state[v];
         sig_neigh = sig_face;
+    }
+
+    if (S_neigh) {
+        double rho_f = std::max(p.POS_LIMITER_EPS, face_state[0]);
+        double u_f = face_state[1] / rho_f;
+        double v_f = face_state[2] / rho_f;
+        double ke_f = 0.5 * rho_f * (u_f*u_f + v_f*v_f);
+        double p_phys_f = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (face_state[3] - ke_f));
+
+        if (ni.is_noslip_wall || ni.is_moving_wall || ni.is_wall) {
+            *S_neigh = 2.0 * rho_f * p_phys_f - S_face;
+        } else if (ni.is_supersonic_inflow) {
+            *S_neigh = ni.ref_rho * ni.ref_p;
+        } else if (ni.is_supersonic_outflow) {
+            *S_neigh = S_face;
+        } else if (ni.is_characteristic || ni.is_total_pressure_comp || ni.is_total_pressure_incomp || ni.is_static_pressure) {
+            double p_target = (ni.ref_p > 0.0) ? ni.ref_p : p_phys_f;
+            *S_neigh = 2.0 * rho_f * p_target - S_face;
+        } else {
+            *S_neigh = 2.0 * rho_f * p_phys_f - S_face;
+        }
     }
 }
 
@@ -2051,7 +2073,8 @@ Cell3D* SolverDim<3>::find_leaf_cell(int block_id, double x, double y, double z)
 
 void SolverDim<3>::get_neigh_state_cell(const Cell3D& c, int node_idx, bool is_right_or_top,
                                         const double* face_state, double sig_face,
-                                        double* neigh_state, double& sig_neigh, int dir) const
+                                        double* neigh_state, double& sig_neigh, int dir,
+                                        double S_face, double* S_neigh) const
 {
     sig_neigh = 0.0;
     for (int v = 0; v < 5; ++v) neigh_state[v] = 0.0;
@@ -2173,5 +2196,27 @@ void SolverDim<3>::get_neigh_state_cell(const Cell3D& c, int node_idx, bool is_r
     } else {
         for (int v = 0; v < 5; ++v) neigh_state[v] = face_state[v];
         sig_neigh = sig_face;
+    }
+
+    if (S_neigh) {
+        double rho_f = std::max(p.POS_LIMITER_EPS, face_state[0]);
+        double u_f = face_state[1] / rho_f;
+        double v_f = face_state[2] / rho_f;
+        double w_f = face_state[3] / rho_f;
+        double ke_f = 0.5 * rho_f * (u_f*u_f + v_f*v_f + w_f*w_f);
+        double p_phys_f = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (face_state[4] - ke_f));
+
+        if (ni.is_noslip_wall || ni.is_moving_wall || ni.is_wall) {
+            *S_neigh = 2.0 * rho_f * p_phys_f - S_face;
+        } else if (ni.is_supersonic_inflow) {
+            *S_neigh = ni.ref_rho * ni.ref_p;
+        } else if (ni.is_supersonic_outflow) {
+            *S_neigh = S_face;
+        } else if (ni.is_characteristic || ni.is_total_pressure_comp || ni.is_total_pressure_incomp || ni.is_static_pressure) {
+            double p_target = (ni.ref_p > 0.0) ? ni.ref_p : p_phys_f;
+            *S_neigh = 2.0 * rho_f * p_target - S_face;
+        } else {
+            *S_neigh = 2.0 * rho_f * p_phys_f - S_face;
+        }
     }
 }
