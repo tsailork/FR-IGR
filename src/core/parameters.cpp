@@ -291,6 +291,11 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("PPR_THETA_MAX"))     PPR_THETA_MAX     = std::stod(kv["PPR_THETA_MAX"]);
         if (kv.count("PPR_DIV_ND_MAX"))    PPR_DIV_ND_MAX    = std::stod(kv["PPR_DIV_ND_MAX"]);
         if (kv.count("PPR_USE_DUCROS_SENSOR"))  PPR_USE_DUCROS_SENSOR  = (kv["PPR_USE_DUCROS_SENSOR"] == "true" || kv["PPR_USE_DUCROS_SENSOR"] == "1");
+        if (kv.count("PPR_MACH_FILTER"))        PPR_MACH_FILTER        = (kv["PPR_MACH_FILTER"] == "true" || kv["PPR_MACH_FILTER"] == "1");
+        if (kv.count("PPR_MACH_SUB"))           PPR_MACH_SUB           = std::stod(kv["PPR_MACH_SUB"]);
+        if (kv.count("PPR_MACH_CUT"))           PPR_MACH_CUT           = std::stod(kv["PPR_MACH_CUT"]);
+        if (kv.count("PPR_STAG_CAP_MULT"))      PPR_STAG_CAP_MULT      = std::stod(kv["PPR_STAG_CAP_MULT"]);
+        if (kv.count("PPR_A_EFF_MULT"))         PPR_A_EFF_MULT         = std::stod(kv["PPR_A_EFF_MULT"]);
         if (kv.count("theta_schedule"))      PPR_THETA_SCHEDULE_STR = kv["theta_schedule"];
         if (kv.count("PPR_THETA_SCHEDULE"))  PPR_THETA_SCHEDULE_STR = kv["PPR_THETA_SCHEDULE"];
         if (kv.count("shock_sens_schedule")) PPR_SENS_SCHEDULE_STR  = kv["shock_sens_schedule"];

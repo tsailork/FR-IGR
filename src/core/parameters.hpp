@@ -165,6 +165,15 @@ struct Parameters {
     std::vector<double> PPR_THETA_SCHEDULE = {1.0, 0.0, 10.0, 50.0};
     std::vector<double> PPR_SENS_SCHEDULE  = {-0.2, 0.0, 1.0, 1.5};
 
+    // Part D: Mach-number filter (stagnation region false-positive filter)
+    bool   PPR_MACH_FILTER        = false; ///< Enable Mach-number filtering of PPR shock sensor/theta.
+    double PPR_MACH_SUB           = 0.10;  ///< Lower Mach threshold below which filter=0.
+    double PPR_MACH_CUT           = 0.25;  ///< Upper Mach threshold above which filter=1.
+
+    // Stagnation pressure cap and acoustic speed boost multipliers
+    double PPR_STAG_CAP_MULT      = 1.0;   ///< Scaling multiplier on total/stagnation pressure upper bound.
+    double PPR_A_EFF_MULT         = 1.0;   ///< Scaling multiplier kappa on theta acoustic speed boost: sqrt(1 + kappa * theta).
+
     // -------------------------------------------------------------------------
     // Time Stepping & I/O
     // -------------------------------------------------------------------------

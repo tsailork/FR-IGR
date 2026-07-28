@@ -219,6 +219,26 @@ shock_sens_schedule = -0.2:0.0:1.0:1.5
 # theta_schedule: Colon-separated schedule values for theta (y-coordinates).
 theta_schedule = 1.0:0.0:10.0:50.0
 
+# --- Part D: Mach-Number Filter (Stagnation Region Suppressor) ---
+# PPR_MACH_FILTER: Enable Mach-number filtering of PPR shock sensor/theta (default false).
+#   When true, multiplies theta by a smooth Mach transition filter phi(M):
+#     phi(M) = 0 for M <= PPR_MACH_SUB (stagnation/quiescent flow)
+#     phi(M) = 1 for M >= PPR_MACH_CUT (supersonic shock flow)
+PPR_MACH_FILTER = false
+PPR_MACH_SUB    = 0.10
+PPR_MACH_CUT    = 0.25
+
+# --- Part E: Stagnation Cap Multiplier & Acoustic Speed Scaling ---
+# PPR_STAG_CAP_MULT: Scaling multiplier on total/stagnation pressure cap (default 1.0).
+#   P_reg <= PPR_STAG_CAP_MULT * P_phys * (1 + 0.5*(gamma-1)*M^2)^(gamma/(gamma-1)).
+#   Increase > 1.0 to relax the stagnation pressure cap ceiling.
+PPR_STAG_CAP_MULT = 1.0
+
+# PPR_A_EFF_MULT: Scaling multiplier (kappa) on acoustic speed boost (default 1.0).
+#   a_eff = a_phys * sqrt(1 + PPR_A_EFF_MULT * theta).
+#   Set < 1.0 (e.g. 0.0 or 0.25) to relax CFL time-step restriction when slow regions are stable.
+PPR_A_EFF_MULT = 1.0
+
 [ImmersedBoundary]
 # ENABLE_IB: Toggle the Immersed Boundary Method for solid boundaries
 ENABLE_IB = false

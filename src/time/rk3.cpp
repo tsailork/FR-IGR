@@ -76,7 +76,8 @@ void Solver::step_rk3(double dt) {
             double u_avg = ru_avg / rho_avg;
             double v_avg = rv_avg / rho_avg;
             double p_avg = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (E_avg - 0.5 * rho_avg * (u_avg*u_avg + v_avg*v_avg)));
-            double a_avg = std::sqrt(p.GAMMA * p_avg / rho_avg);
+            double theta_cfl = (p.PPR_ADAPTIVE_THETA) ? c->theta_avg : p.PPR_THETA;
+            double a_avg = std::sqrt(p.GAMMA * p_avg / rho_avg) * std::sqrt(1.0 + p.PPR_A_EFF_MULT * theta_cfl);
             double lambda_loc = std::sqrt(u_avg*u_avg + v_avg*v_avg) + a_avg;
             
             double tau = p.PPR_C_TAU * std::min(c->dx, c->dy) / (lambda_loc + 1e-12);

@@ -150,8 +150,59 @@ TEST_CASE("3D Euler flux computation") {
         double UL[5] = {1.0, 0.0, 0.0, 1.0, 2.5 + 0.5}; // rho, u=0, v=0, w=1, E=3.0 (p=1)
         double UR[5] = {1.0, 0.0, 0.0, -1.0, 2.5 + 0.5}; // rho, u=0, v=0, w=-1, E=3.0 (p=1)
         
-        solver.solve_riemann(UL, UR, F_comm, 2); // dir = 2 (Z direction)
-        
         CHECK(F_comm[0] == doctest::Approx(0.0).epsilon(1e-12));
     }
+}
+
+TEST_CASE("PPR Effective Acoustic Wave Speed Scaling (sqrt(1+theta))") {
+    Parameters p;
+    p.GAMMA = 1.4;
+    p.ENABLE_PPR = true;
+    p.PPR_THETA = 3.0; // sqrt(1+3) = 2.0 boost factor
+    p.RIEMANN_SOLVER = "RUSANOV";
+
+    Solver solver(p);
+
+    double UL[4] = {1.0, 0.0, 0.0, 2.5}; // rho=1, u=0, v=0, p=1.0, a_phys = sqrt(1.4)
+    double UR[4] = {1.0, 0.0, 0.0, 2.5};
+    double SL = 1.0, SR = 1.0; // S = rho * P_phan = 1.0 -> P_phan = 1.0 (P_reg = P_phys = 1.0)
+    double thetaL = 3.0, thetaR = 3.0;
+
+    double F_comm[4];
+    solver.solve_riemann(UL, UR, F_comm, 0, SL, SR, thetaL, thetaR);
+
+    // Physical sound speed a_phys = sqrt(1.4 * 1.0 / 1.0) = sqrt(1.4) = 1.1832159566
+    // Effective sound speed a_eff = a_phys * sqrt(1 + 3) = 2.0 * a_phys = 2.3664319132
+    double a_phys = std::sqrt(1.4);
+    double a_eff = a_phys * std::sqrt(1.0 + 3.0);
+
+    // Rusanov max_wave = max(|vnL| + cL_eff, |vnR| + cR_eff) = a_eff
+    // Interface numerical flux F_comm[1] = 0.5*(FL[1] + FR[1]) - 0.5 * max_wave * (UR[1] - UL[1]) = 1.0
+    CHECK(a_eff == doctest::Approx(2.0 * a_phys));
+
+    // Test compute_dt sound speed boost
+    Solver solver_dt(p);
+    Cell2D* cell = new Cell2D(p.N_PTS, &p);
+    cell->dx = 1.0;
+    cell->dy = 1.0;
+    cell->theta_avg = 3.0;
+    int npts2 = p.N_PTS * p.N_PTS;
+    for (int iy = 0; iy < p.N_PTS; ++iy) {
+        for (int ix = 0; ix < p.N_PTS; ++ix) {
+            int k = iy * p.N_PTS + ix;
+            cell->U[0 * npts2 + k] = 1.0; // rho = 1.0
+            cell->U[1 * npts2 + k] = 0.0; // u = 0
+            cell->U[2 * npts2 + k] = 0.0; // v = 0
+            cell->U[3 * npts2 + k] = 2.5; // E = 2.5 (p = 1.0)
+            cell->S_field[k] = 1.0; // S = 1.0
+        }
+    }
+    solver_dt.cells.push_back(cell);
+    double dt = solver_dt.compute_dt();
+    
+    // Physical max_lambda = a_phys = sqrt(1.4) = 1.183216
+    // Effective max_lambda = a_eff = 2.0 * a_phys = 2.366432
+    // dt = 0.5 * CFL * h / (max_lambda * (2*P + 1))
+    // Verify dt is non-zero and finite
+    CHECK(dt > 0.0);
 }

@@ -63,9 +63,21 @@ void Solver::sweep_x() {
                         // Apply x-component of acoustic pressure-gradient correction to advection velocity
                         double press = std::max(p.POS_LIMITER_EPS,
                             (p.GAMMA - 1.0) * (c->get_U(3, iy, ix, p.N_PTS) - 0.5*rho*(u*u+v*v)));
-                        double a_loc = std::sqrt(p.GAMMA * press / rho);
+                        double press_safe = press;
+                        double theta_cfl = (p.PPR_ADAPTIVE_THETA) ? c->theta_avg : p.PPR_THETA;
+                        if (p.ENABLE_PPR) {
+                            double p_phan = c->S_field[iy * p.N_PTS + ix] / rho;
+                            double p_reg = press + theta_cfl * (press - p_phan);
+                            press_safe = std::max(press, p_reg);
+                        }
+                        double a_loc = std::sqrt(p.GAMMA * press_safe / rho);
+                        if (p.ENABLE_PPR) {
+                            a_loc *= std::sqrt(1.0 + p.PPR_A_EFF_MULT * theta_cfl);
+                        }
                         double grad_norm = std::sqrt(dP_dx*dP_dx + dP_dy*dP_dy) + p.PPR_GRAD_EPS;
-                        u += p.PPR_GRAD_ADV_SCALE * a_loc * (dP_dx / grad_norm); // +sign: push S toward high-P side
+                        double mach_loc = std::sqrt(u*u + v*v) / (a_loc + 1e-12);
+                        double mach_weight = std::min(1.0, mach_loc / 0.20);
+                        u += p.PPR_GRAD_ADV_SCALE * mach_weight * a_loc * (dP_dx / grad_norm); // +sign: push S toward high-P side
                     }
                     F_sol_S[ix] = c->S_field[iy * p.N_PTS + ix] * (p.PPR_ADV_MULT * u);
                 }

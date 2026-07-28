@@ -66,6 +66,10 @@ double Solver::compute_dt() const {
                 }
                 if (press_safe < 1e-12) press_safe = 1e-12;
                 double sound_speed = std::sqrt(p.GAMMA * press_safe / rho);
+                if (p.ENABLE_PPR) {
+                    double theta_cfl = (p.PPR_ADAPTIVE_THETA) ? c->theta_avg : p.PPR_THETA;
+                    sound_speed *= std::sqrt(1.0 + p.PPR_A_EFF_MULT * theta_cfl);
+                }
                 max_lambda = std::max({max_lambda, std::abs(u) + sound_speed, std::abs(v) + sound_speed});
                 if (p.ENABLE_PPR) {
                     double s_wave_x = p.PPR_ADV_MULT * (std::abs(u) + p.PPR_GRAD_ADV_SCALE * sound_speed);
@@ -84,8 +88,8 @@ double Solver::compute_dt() const {
                 double alpha_safe = std::max(1e-10, p.ALPHA_SCALE);
                 double dt_diff  = 0.5 * p.IGR_TAU_R / (alpha_safe * (1.0 + p.IGR_BR2_ETA) * (2 * p.P_DEG + 1) * (2 * p.P_DEG + 1));
                 double dt_relax = 0.5 * p.IGR_TAU_R;
-                double dt_limit = std::min(dt_diff, dt_relax);
-                dt_cell = std::min(dt_conv, p.IGR_SUB_ITERS * dt_limit);
+                double dt_igr   = std::min(dt_diff, dt_relax);
+                dt_cell = std::min(dt_conv, dt_igr * p.IGR_SUB_ITERS);
             }
         }
 
@@ -107,30 +111,27 @@ void SolverDim<3>::check_stability() const {
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell3D* c = cells[i];
         if (p.ENABLE_MULTIRATE && !c->element_active) continue;
-        int npts = p.N_PTS;
-        int npts3 = npts * npts * npts;
+        int npts3 = p.N_PTS * p.N_PTS * p.N_PTS;
         for (int pt = 0; pt < npts3; ++pt) {
             double rho  = c->U[0 * npts3 + pt];
             double rhou = c->U[1 * npts3 + pt];
             double rhov = c->U[2 * npts3 + pt];
             double rhow = c->U[3 * npts3 + pt];
             double E    = c->U[4 * npts3 + pt];
-            double press = (p.GAMMA - 1.0) * (E - 0.5 * (rhou*rhou + rhov*rhov + rhow*rhow) / std::max(1e-14, rho));
+            double press = (p.GAMMA - 1.0) * (E - 0.5*(rhou*rhou + rhov*rhov + rhow*rhow)/rho);
             if (std::isnan(rho) || std::isnan(press) || rho <= 0.0 || press <= 0.0) {
                 #pragma omp critical
                 {
                     std::cerr << std::scientific << std::setprecision(15)
-                              << "\n[STABILITY ERROR] 3D cell_index=" << i
-                              << " morton_id=" << c->morton_id
-                              << " block=" << c->block_id
-                              << " node_idx=" << pt
+                              << "\n[STABILITY ERROR 3D] cell_index=" << i
+                              << " node=" << pt
                               << "\n  rho  = " << rho
                               << "\n  rhou = " << rhou
                               << "\n  rhov = " << rhov
                               << "\n  rhow = " << rhow
                               << "\n  E    = " << E
                               << "\n  p    = " << press << "\n";
-                    std::exit(EXIT_FAILURE);
+                    exit(1);
                 }
             }
         }
@@ -155,12 +156,28 @@ double SolverDim<3>::compute_dt() const {
             double E   = c->U[4 * npts3 + pt];
             double press = (p.GAMMA - 1.0) * (E - 0.5 * rho * (u*u + v*v + w*w));
             double press_safe = std::max(p.POS_LIMITER_EPS, press);
+            if (p.ENABLE_PPR) {
+                double theta_cfl = (p.PPR_ADAPTIVE_THETA) ? c->theta_avg : p.PPR_THETA;
+                double p_phan = c->S_field[pt] / rho;
+                double p_reg = press + theta_cfl * (press - p_phan);
+                press_safe = std::max(press_safe, p_reg);
+            }
             double speed_sound = std::sqrt(p.GAMMA * press_safe / rho);
+            if (p.ENABLE_PPR) {
+                double theta_cfl = (p.PPR_ADAPTIVE_THETA) ? c->theta_avg : p.PPR_THETA;
+                speed_sound *= std::sqrt(1.0 + p.PPR_A_EFF_MULT * theta_cfl);
+            }
             
             double lambda_x = std::abs(u) + speed_sound;
             double lambda_y = std::abs(v) + speed_sound;
             double lambda_z = std::abs(w) + speed_sound;
             max_lambda = std::max({max_lambda, lambda_x, lambda_y, lambda_z});
+            if (p.ENABLE_PPR) {
+                double s_wave_x = p.PPR_ADV_MULT * (std::abs(u) + p.PPR_GRAD_ADV_SCALE * speed_sound);
+                double s_wave_y = p.PPR_ADV_MULT * (std::abs(v) + p.PPR_GRAD_ADV_SCALE * speed_sound);
+                double s_wave_z = p.PPR_ADV_MULT * (std::abs(w) + p.PPR_GRAD_ADV_SCALE * speed_sound);
+                max_lambda = std::max({max_lambda, s_wave_x, s_wave_y, s_wave_z});
+            }
         }
 
         double h_min = std::min({c->dx, c->dy, c->dz});

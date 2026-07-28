@@ -116,11 +116,12 @@ void Solver::solve_riemann(const double* UL, const double* UR, double* F_comm,
     double vnR = (dir == 0) ? uR : vR;
 
     double pL_reg = pL, pR_reg = pR;
+    double theta_cfl_L = 0.0, theta_cfl_R = 0.0;
     if (p.ENABLE_PPR) {
         double pL_phan = SL * inv_rhoL;
         double pR_phan = SR * inv_rhoR;
-        double theta_cfl_L = (p.PPR_ADAPTIVE_THETA) ? thetaL : p.PPR_THETA;
-        double theta_cfl_R = (p.PPR_ADAPTIVE_THETA) ? thetaR : p.PPR_THETA;
+        theta_cfl_L = (p.PPR_ADAPTIVE_THETA) ? thetaL : p.PPR_THETA;
+        theta_cfl_R = (p.PPR_ADAPTIVE_THETA) ? thetaR : p.PPR_THETA;
 
         if (pL - pL_phan < 0.0) {
             double theta_safe = (pL - p.POS_LIMITER_EPS) / (pL_phan - pL);
@@ -133,11 +134,24 @@ void Solver::solve_riemann(const double* UL, const double* UR, double* F_comm,
 
         pL_reg = std::max(p.POS_LIMITER_EPS, pL + theta_cfl_L * (pL - pL_phan));
         pR_reg = std::max(p.POS_LIMITER_EPS, pR + theta_cfl_R * (pR - pR_phan));
+
+        double inv_a2_L = rhoL / (p.GAMMA * pL);
+        double inv_a2_R = rhoR / (p.GAMMA * pR);
+        double mach2_L = (uL*uL + vL*vL) * inv_a2_L;
+        double mach2_R = (uR*uR + vR*vR) * inv_a2_R;
+        double pL_stag = p.PPR_STAG_CAP_MULT * pL * std::pow(1.0 + 0.5 * (p.GAMMA - 1.0) * mach2_L, p.GAMMA / (p.GAMMA - 1.0));
+        double pR_stag = p.PPR_STAG_CAP_MULT * pR * std::pow(1.0 + 0.5 * (p.GAMMA - 1.0) * mach2_R, p.GAMMA / (p.GAMMA - 1.0));
+        pL_reg = std::min(pL_stag, pL_reg);
+        pR_reg = std::min(pR_stag, pR_reg);
     }
 
     if (p.RIEMANN_SOLVER == "RUSANOV") {
         double cL = std::sqrt(p.GAMMA * std::max(pL, pL_reg) * inv_rhoL);
         double cR = std::sqrt(p.GAMMA * std::max(pR, pR_reg) * inv_rhoR);
+        if (p.ENABLE_PPR) {
+            cL *= std::sqrt(1.0 + p.PPR_A_EFF_MULT * theta_cfl_L);
+            cR *= std::sqrt(1.0 + p.PPR_A_EFF_MULT * theta_cfl_R);
+        }
         double max_wave = std::max(std::abs(vnL) + cL, std::abs(vnR) + cR);
 
         double FL[4], FR[4];
@@ -155,6 +169,10 @@ void Solver::solve_riemann(const double* UL, const double* UR, double* F_comm,
         // HLLC Riemann Solver (Default)
         double aL = std::sqrt(p.GAMMA * std::max(pL, pL_reg) * inv_rhoL);
         double aR = std::sqrt(p.GAMMA * std::max(pR, pR_reg) * inv_rhoR);
+        if (p.ENABLE_PPR) {
+            aL *= std::sqrt(1.0 + p.PPR_A_EFF_MULT * theta_cfl_L);
+            aR *= std::sqrt(1.0 + p.PPR_A_EFF_MULT * theta_cfl_R);
+        }
 
         double sqrt_rhoL = std::sqrt(rhoL);
         double sqrt_rhoR = std::sqrt(rhoR);
@@ -168,6 +186,9 @@ void Solver::solve_riemann(const double* UL, const double* UR, double* F_comm,
         double v_roe = (sqrt_rhoL * vL + sqrt_rhoR * vR) * inv_sqrt_sum;
         double ke_roe = 0.5 * (u_roe*u_roe + v_roe*v_roe);
         double a_roe = std::sqrt(std::max(1e-12, (p.GAMMA - 1.0) * (H_roe - ke_roe)));
+        if (p.ENABLE_PPR) {
+            a_roe *= std::sqrt(1.0 + 0.5 * p.PPR_A_EFF_MULT * (theta_cfl_L + theta_cfl_R));
+        }
 
         double SL_wave = std::min(vnL - aL, vn_roe - a_roe);
         double SR_wave = std::max(vnR + aR, vn_roe + a_roe);
@@ -250,12 +271,19 @@ void Solver::compute_interface_flux(const double* UL, const double* UR,
             double pL = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (UL[3] - 0.5 * rhoL * (uL*uL + vL*vL)));
             double pR = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (UR[3] - 0.5 * rhoR * (uR*uR + vR*vR)));
 
-            double pL_reg = pL + thetaL * (pL - SL * inv_rhoL);
-            double pR_reg = pR + thetaR * (pR - SR * inv_rhoR);
+            double pL_reg = std::max(p.POS_LIMITER_EPS, pL + thetaL * (pL - SL * inv_rhoL));
+            double pR_reg = std::max(p.POS_LIMITER_EPS, pR + thetaR * (pR - SR * inv_rhoR));
+            double inv_a2_L = rhoL / (p.GAMMA * pL);
+            double inv_a2_R = rhoR / (p.GAMMA * pR);
+            double mach2_L = (uL*uL + vL*vL) * inv_a2_L;
+            double mach2_R = (uR*uR + vR*vR) * inv_a2_R;
+            double pL_stag = p.PPR_STAG_CAP_MULT * pL * std::pow(1.0 + 0.5 * (p.GAMMA - 1.0) * mach2_L, p.GAMMA / (p.GAMMA - 1.0));
+            double pR_stag = p.PPR_STAG_CAP_MULT * pR * std::pow(1.0 + 0.5 * (p.GAMMA - 1.0) * mach2_R, p.GAMMA / (p.GAMMA - 1.0));
+            pL_reg = std::min(pL_stag, pL_reg);
+            pR_reg = std::min(pR_stag, pR_reg);
 
-            double aL = std::sqrt(p.GAMMA * std::max(pL, pL_reg) * inv_rhoL);
-            double aR = std::sqrt(p.GAMMA * std::max(pR, pR_reg) * inv_rhoR);
-
+            double aL = std::sqrt(p.GAMMA * std::max(pL, pL_reg) * inv_rhoL) * std::sqrt(1.0 + p.PPR_A_EFF_MULT * thetaL);
+            double aR = std::sqrt(p.GAMMA * std::max(pR, pR_reg) * inv_rhoR) * std::sqrt(1.0 + p.PPR_A_EFF_MULT * thetaR);
             double sqrt_rhoL = std::sqrt(rhoL);
             double sqrt_rhoR = std::sqrt(rhoR);
             double inv_sqrt_sum = 1.0 / (sqrt_rhoL + sqrt_rhoR);
@@ -267,7 +295,7 @@ void Solver::compute_interface_flux(const double* UL, const double* UR,
             double u_roe = (sqrt_rhoL * uL + sqrt_rhoR * uR) * inv_sqrt_sum;
             double v_roe = (sqrt_rhoL * vL + sqrt_rhoR * vR) * inv_sqrt_sum;
             double ke_roe = 0.5 * (u_roe*u_roe + v_roe*v_roe);
-            double a_roe = std::sqrt(std::max(1e-12, (p.GAMMA - 1.0) * (H_roe - ke_roe)));
+            double a_roe = std::sqrt(std::max(1e-12, (p.GAMMA - 1.0) * (H_roe - ke_roe))) * std::sqrt(1.0 + 0.5 * p.PPR_A_EFF_MULT * (thetaL + thetaR));
 
             double SL_wave = std::min(vnL - aL, vn_roe - a_roe);
             double SR_wave = std::max(vnR + aR, vn_roe + a_roe);
@@ -308,8 +336,8 @@ void Solver::compute_interface_flux(const double* UL, const double* UR,
             double pL_reg = pL + thetaL * (pL - SL / rhoL);
             double pR_reg = pR + thetaR * (pR - SR / rhoR);
 
-            double cL = std::sqrt(p.GAMMA * std::max(pL, pL_reg) / rhoL);
-            double cR = std::sqrt(p.GAMMA * std::max(pR, pR_reg) / rhoR);
+            double cL = std::sqrt(p.GAMMA * std::max(pL, pL_reg) / rhoL) * std::sqrt(1.0 + p.PPR_A_EFF_MULT * thetaL);
+            double cR = std::sqrt(p.GAMMA * std::max(pR, pR_reg) / rhoR) * std::sqrt(1.0 + p.PPR_A_EFF_MULT * thetaR);
 
             double lam = std::abs(p.PPR_ADV_MULT) * std::max(std::abs(uL) + cL, std::abs(uR) + cR);
             Flux_S_comm = 0.5 * p.PPR_ADV_MULT * (SL * uL + SR * uR) - 0.5 * lam * (SR - SL);
@@ -375,11 +403,12 @@ void SolverDim<3>::solve_riemann(const double* UL, const double* UR, double* F_c
     double vnR = (dir == 0) ? uR : ((dir == 1) ? vR : wR);
 
     double pL_reg = pL, pR_reg = pR;
+    double theta_cfl_L = 0.0, theta_cfl_R = 0.0;
     if (p.ENABLE_PPR) {
         double pL_phan = SL * inv_rhoL;
         double pR_phan = SR * inv_rhoR;
-        double theta_cfl_L = (p.PPR_ADAPTIVE_THETA) ? thetaL : p.PPR_THETA;
-        double theta_cfl_R = (p.PPR_ADAPTIVE_THETA) ? thetaR : p.PPR_THETA;
+        theta_cfl_L = (p.PPR_ADAPTIVE_THETA) ? thetaL : p.PPR_THETA;
+        theta_cfl_R = (p.PPR_ADAPTIVE_THETA) ? thetaR : p.PPR_THETA;
 
         if (pL - pL_phan < 0.0) {
             double theta_safe = (pL - p.POS_LIMITER_EPS) / (pL_phan - pL);
@@ -392,11 +421,24 @@ void SolverDim<3>::solve_riemann(const double* UL, const double* UR, double* F_c
 
         pL_reg = std::max(p.POS_LIMITER_EPS, pL + theta_cfl_L * (pL - pL_phan));
         pR_reg = std::max(p.POS_LIMITER_EPS, pR + theta_cfl_R * (pR - pR_phan));
+
+        double inv_a2_L = rhoL / (p.GAMMA * pL);
+        double inv_a2_R = rhoR / (p.GAMMA * pR);
+        double mach2_L = (uL*uL + vL*vL + wL*wL) * inv_a2_L;
+        double mach2_R = (uR*uR + vR*vR + wR*wR) * inv_a2_R;
+        double pL_stag = p.PPR_STAG_CAP_MULT * pL * std::pow(1.0 + 0.5 * (p.GAMMA - 1.0) * mach2_L, p.GAMMA / (p.GAMMA - 1.0));
+        double pR_stag = p.PPR_STAG_CAP_MULT * pR * std::pow(1.0 + 0.5 * (p.GAMMA - 1.0) * mach2_R, p.GAMMA / (p.GAMMA - 1.0));
+        pL_reg = std::min(pL_stag, pL_reg);
+        pR_reg = std::min(pR_stag, pR_reg);
     }
 
     if (p.RIEMANN_SOLVER == "RUSANOV") {
         double cL = std::sqrt(p.GAMMA * std::max(pL, pL_reg) * inv_rhoL);
         double cR = std::sqrt(p.GAMMA * std::max(pR, pR_reg) * inv_rhoR);
+        if (p.ENABLE_PPR) {
+            cL *= std::sqrt(1.0 + p.PPR_A_EFF_MULT * theta_cfl_L);
+            cR *= std::sqrt(1.0 + p.PPR_A_EFF_MULT * theta_cfl_R);
+        }
         double max_wave = std::max(std::abs(vnL) + cL, std::abs(vnR) + cR);
 
         double FL[5], FR[5];
@@ -417,6 +459,10 @@ void SolverDim<3>::solve_riemann(const double* UL, const double* UR, double* F_c
         // 3D HLLC Riemann Solver
         double aL = std::sqrt(p.GAMMA * std::max(pL, pL_reg) * inv_rhoL);
         double aR = std::sqrt(p.GAMMA * std::max(pR, pR_reg) * inv_rhoR);
+        if (p.ENABLE_PPR) {
+            aL *= std::sqrt(1.0 + p.PPR_A_EFF_MULT * theta_cfl_L);
+            aR *= std::sqrt(1.0 + p.PPR_A_EFF_MULT * theta_cfl_R);
+        }
 
         double sqrt_rhoL = std::sqrt(rhoL);
         double sqrt_rhoR = std::sqrt(rhoR);
@@ -431,6 +477,9 @@ void SolverDim<3>::solve_riemann(const double* UL, const double* UR, double* F_c
         double w_roe = (sqrt_rhoL * wL + sqrt_rhoR * wR) * inv_sqrt_sum;
         double ke_roe = 0.5 * (u_roe*u_roe + v_roe*v_roe + w_roe*w_roe);
         double a_roe = std::sqrt(std::max(1e-12, (p.GAMMA - 1.0) * (H_roe - ke_roe)));
+        if (p.ENABLE_PPR) {
+            a_roe *= std::sqrt(1.0 + 0.5 * p.PPR_A_EFF_MULT * (theta_cfl_L + theta_cfl_R));
+        }
 
         double SL_wave = std::min(vnL - aL, vn_roe - a_roe);
         double SR_wave = std::max(vnR + aR, vn_roe + a_roe);
@@ -505,11 +554,19 @@ void SolverDim<3>::compute_interface_flux(const double* UL, const double* UR,
             double pL = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (UL[4] - 0.5 * rhoL * (uL*uL + vL*vL + wL*wL)));
             double pR = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (UR[4] - 0.5 * rhoR * (uR*uR + vR*vR + wR*wR)));
 
-            double pL_reg = pL + thetaL * (pL - SL * inv_rhoL);
-            double pR_reg = pR + thetaR * (pR - SR * inv_rhoR);
+            double pL_reg = std::max(p.POS_LIMITER_EPS, pL + thetaL * (pL - SL * inv_rhoL));
+            double pR_reg = std::max(p.POS_LIMITER_EPS, pR + thetaR * (pR - SR * inv_rhoR));
+            double inv_a2_L = rhoL / (p.GAMMA * pL);
+            double inv_a2_R = rhoR / (p.GAMMA * pR);
+            double mach2_L = (uL*uL + vL*vL + wL*wL) * inv_a2_L;
+            double mach2_R = (uR*uR + vR*vR + wR*wR) * inv_a2_R;
+            double pL_stag = p.PPR_STAG_CAP_MULT * pL * std::pow(1.0 + 0.5 * (p.GAMMA - 1.0) * mach2_L, p.GAMMA / (p.GAMMA - 1.0));
+            double pR_stag = p.PPR_STAG_CAP_MULT * pR * std::pow(1.0 + 0.5 * (p.GAMMA - 1.0) * mach2_R, p.GAMMA / (p.GAMMA - 1.0));
+            pL_reg = std::min(pL_stag, pL_reg);
+            pR_reg = std::min(pR_stag, pR_reg);
 
-            double aL = std::sqrt(p.GAMMA * std::max(pL, pL_reg) * inv_rhoL);
-            double aR = std::sqrt(p.GAMMA * std::max(pR, pR_reg) * inv_rhoR);
+            double aL = std::sqrt(p.GAMMA * std::max(pL, pL_reg) * inv_rhoL) * std::sqrt(1.0 + p.PPR_A_EFF_MULT * thetaL);
+            double aR = std::sqrt(p.GAMMA * std::max(pR, pR_reg) * inv_rhoR) * std::sqrt(1.0 + p.PPR_A_EFF_MULT * thetaR);
 
             double sqrt_rhoL = std::sqrt(rhoL);
             double sqrt_rhoR = std::sqrt(rhoR);
@@ -523,7 +580,7 @@ void SolverDim<3>::compute_interface_flux(const double* UL, const double* UR,
             double v_roe = (sqrt_rhoL * vL + sqrt_rhoR * vR) * inv_sqrt_sum;
             double w_roe = (sqrt_rhoL * wL + sqrt_rhoR * wR) * inv_sqrt_sum;
             double ke_roe = 0.5 * (u_roe*u_roe + v_roe*v_roe + w_roe*w_roe);
-            double a_roe = std::sqrt(std::max(1e-12, (p.GAMMA - 1.0) * (H_roe - ke_roe)));
+            double a_roe = std::sqrt(std::max(1e-12, (p.GAMMA - 1.0) * (H_roe - ke_roe))) * std::sqrt(1.0 + 0.5 * p.PPR_A_EFF_MULT * (thetaL + thetaR));
 
             double SL_wave = std::min(vnL - aL, vn_roe - a_roe);
             double SR_wave = std::max(vnR + aR, vn_roe + a_roe);
@@ -564,8 +621,8 @@ void SolverDim<3>::compute_interface_flux(const double* UL, const double* UR,
             double pL_reg = pL + thetaL * (pL - SL / rhoL);
             double pR_reg = pR + thetaR * (pR - SR / rhoR);
 
-            double cL = std::sqrt(p.GAMMA * std::max(pL, pL_reg) / rhoL);
-            double cR = std::sqrt(p.GAMMA * std::max(pR, pR_reg) / rhoR);
+            double cL = std::sqrt(p.GAMMA * std::max(pL, pL_reg) / rhoL) * std::sqrt(1.0 + p.PPR_A_EFF_MULT * thetaL);
+            double cR = std::sqrt(p.GAMMA * std::max(pR, pR_reg) / rhoR) * std::sqrt(1.0 + p.PPR_A_EFF_MULT * thetaR);
 
             double lam = std::abs(p.PPR_ADV_MULT) * std::max(std::abs(uL) + cL, std::abs(uR) + cR);
             Flux_S_comm = 0.5 * p.PPR_ADV_MULT * (SL * uL + SR * uR) - 0.5 * lam * (SR - SL);

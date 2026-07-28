@@ -210,6 +210,19 @@ void Solver::compute_ppr_theta_avg() {
                     else if (div_nd <  dmax)  theta = p.PPR_THETA_MID + (p.PPR_THETA_MAX - p.PPR_THETA_MID) * (div_nd - 1.0) / (dmax - 1.0);
                     else                      theta = p.PPR_THETA_MAX;
                 }
+
+                if (p.PPR_MACH_FILTER) {
+                    double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
+                    double u_loc = u_buf[iy][ix];
+                    double v_loc = v_buf[iy][ix];
+                    double P_loc = std::max(p.POS_LIMITER_EPS,
+                        (p.GAMMA - 1.0) * (c->get_U(3, iy, ix, p.N_PTS) - 0.5 * rho * (u_loc*u_loc + v_loc*v_loc)));
+                    double a_loc = std::sqrt(p.GAMMA * P_loc / rho);
+                    double mach_loc = std::sqrt(u_loc*u_loc + v_loc*v_loc) / (a_loc + 1e-12);
+                    double phi_m = std::clamp((mach_loc - p.PPR_MACH_SUB) / (p.PPR_MACH_CUT - p.PPR_MACH_SUB + 1e-12), 0.0, 1.0);
+                    theta *= phi_m;
+                }
+
                 theta_max_cell = std::max(theta_max_cell, theta);
             }
         }
