@@ -13,19 +13,21 @@ RIEMANN_SOLVER = RUSANOV
 ENABLE_IGR = false
 
 [PPR]
-ENABLE_PPR = true
+ENABLE_PPR = false
 PPR_THETA = 10.0
 PPR_C_TAU = 0.15
 PPR_ADV_MULT = 1.0
 PPR_ADAPTIVE_THETA = true
-PPR_SMOOTH_THETA = true
+PPR_SMOOTH_THETA = false
 PPR_USE_DUCROS_SENSOR = false
 shock_sens_schedule = 0.0:0.25:1.0
-theta_schedule      = 0.0:20.0:50.0
+theta_schedule      = 0.0:10.0:25.0
 
 [Stabilization]
 ENABLE_POS_LIMITER = true
 POS_LIMITER_EPS = 1e-12
+ENABLE_ENTROPY_LIMITER = true
+ENTROPY_LIMITER_EPS = 1e-3
 
 [IO]
 OUTPUT_INTERVAL = 0.1
