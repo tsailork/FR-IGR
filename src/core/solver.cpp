@@ -726,6 +726,43 @@ void Solver::setup_cell_connectivity() {
 
 
 
+double Solver::compute_wall_phantom_pressure(const double* face_state,
+                                             const double* neigh_state,
+                                             double S_face,
+                                             const std::string& mode,
+                                             int n_dim,
+                                             double pos_eps,
+                                             double gamma)
+{
+    double rho_f = std::max(pos_eps, face_state[0]);
+    double ke_f = 0.0;
+    for (int d = 0; d < n_dim; ++d) {
+        double v = face_state[1 + d] / rho_f;
+        ke_f += 0.5 * rho_f * v * v;
+    }
+    double p_phys_f = std::max(pos_eps, (gamma - 1.0) * (face_state[1 + n_dim] - ke_f));
+    double P_diff_face = p_phys_f - S_face / rho_f;
+
+    double rho_g = std::max(pos_eps, neigh_state[0]);
+    double ke_g = 0.0;
+    for (int d = 0; d < n_dim; ++d) {
+        double v = neigh_state[1 + d] / rho_g;
+        ke_g += 0.5 * rho_g * v * v;
+    }
+    double p_phys_g = std::max(pos_eps, (gamma - 1.0) * (neigh_state[1 + n_dim] - ke_g));
+
+    if (mode == "PHYSICAL_DIRICHLET" || mode == "DIRICHLET") {
+        return rho_g * p_phys_g;
+    } else if (mode == "CONSTANT_DIFFERENCE" || mode == "CONSTANT" || mode == "NEUMANN") {
+        double P_phan_ghost = std::max(pos_eps, p_phys_g - P_diff_face);
+        return rho_g * P_phan_ghost;
+    } else {
+        // EQUILIBRATED (default)
+        double P_phan_ghost = std::max(pos_eps, p_phys_g + P_diff_face);
+        return rho_g * P_phan_ghost;
+    }
+}
+
 void Solver::get_neigh_state_cell(const Cell& c, int node_idx, bool is_right_or_top,
                                   const double* face_state, double sig_face,
                                   double* neigh_state, double& sig_neigh, int dir,
@@ -788,23 +825,14 @@ void Solver::get_neigh_state_cell(const Cell& c, int node_idx, bool is_right_or_
     }
 
     if (S_neigh) {
-        double rho_f = std::max(p.POS_LIMITER_EPS, face_state[0]);
-        double u_f = face_state[1] / rho_f;
-        double v_f = face_state[2] / rho_f;
-        double ke_f = 0.5 * rho_f * (u_f*u_f + v_f*v_f);
-        double p_phys_f = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (face_state[3] - ke_f));
-
         if (ni.is_noslip_wall || ni.is_moving_wall || ni.is_wall) {
-            *S_neigh = 2.0 * rho_f * p_phys_f - S_face;
+            *S_neigh = compute_wall_phantom_pressure(face_state, neigh_state, S_face, p.PPR_WALL_BC, 2, p.POS_LIMITER_EPS, p.GAMMA);
         } else if (ni.is_supersonic_inflow) {
             *S_neigh = ni.ref_rho * ni.ref_p;
         } else if (ni.is_supersonic_outflow) {
             *S_neigh = S_face;
-        } else if (ni.is_characteristic || ni.is_total_pressure_comp || ni.is_total_pressure_incomp || ni.is_static_pressure) {
-            double p_target = (ni.ref_p > 0.0) ? ni.ref_p : p_phys_f;
-            *S_neigh = 2.0 * rho_f * p_target - S_face;
         } else {
-            *S_neigh = 2.0 * rho_f * p_phys_f - S_face;
+            *S_neigh = compute_wall_phantom_pressure(face_state, neigh_state, S_face, p.PPR_WALL_BC, 2, p.POS_LIMITER_EPS, p.GAMMA);
         }
     }
 }
@@ -2199,24 +2227,14 @@ void SolverDim<3>::get_neigh_state_cell(const Cell3D& c, int node_idx, bool is_r
     }
 
     if (S_neigh) {
-        double rho_f = std::max(p.POS_LIMITER_EPS, face_state[0]);
-        double u_f = face_state[1] / rho_f;
-        double v_f = face_state[2] / rho_f;
-        double w_f = face_state[3] / rho_f;
-        double ke_f = 0.5 * rho_f * (u_f*u_f + v_f*v_f + w_f*w_f);
-        double p_phys_f = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (face_state[4] - ke_f));
-
         if (ni.is_noslip_wall || ni.is_moving_wall || ni.is_wall) {
-            *S_neigh = 2.0 * rho_f * p_phys_f - S_face;
+            *S_neigh = Solver::compute_wall_phantom_pressure(face_state, neigh_state, S_face, p.PPR_WALL_BC, 3, p.POS_LIMITER_EPS, p.GAMMA);
         } else if (ni.is_supersonic_inflow) {
             *S_neigh = ni.ref_rho * ni.ref_p;
         } else if (ni.is_supersonic_outflow) {
             *S_neigh = S_face;
-        } else if (ni.is_characteristic || ni.is_total_pressure_comp || ni.is_total_pressure_incomp || ni.is_static_pressure) {
-            double p_target = (ni.ref_p > 0.0) ? ni.ref_p : p_phys_f;
-            *S_neigh = 2.0 * rho_f * p_target - S_face;
         } else {
-            *S_neigh = 2.0 * rho_f * p_phys_f - S_face;
+            *S_neigh = Solver::compute_wall_phantom_pressure(face_state, neigh_state, S_face, p.PPR_WALL_BC, 3, p.POS_LIMITER_EPS, p.GAMMA);
         }
     }
 }

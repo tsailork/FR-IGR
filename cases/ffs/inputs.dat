@@ -13,15 +13,10 @@ P_DEG = 3
 CFL = 0.5
 T_FINAL = 4.0
 NUM_THREADS = 18
-ENABLE_MULTIRATE = false
-MAX_MULTIRATE_LEVEL = 3
+RIEMANN_SOLVER=RUSANOV
 
 [NavierStokes]
 ENABLE_NS = false
-RE = 50000.0
-PR = 0.72
-MACH_REF = 3.0
-NS_BR2_ETA = 1.0
 
 [Regularization]
 ENABLE_IGR = false
@@ -29,15 +24,14 @@ ENABLE_IGR = false
 [PPR]
 ENABLE_PPR = true
 PPR_THETA = 10.0
-PPR_C_TAU = 0.1
+PPR_C_TAU = 0.15
 PPR_ADV_MULT = 1.0
-
 PPR_ADAPTIVE_THETA = true
 PPR_SMOOTH_THETA = true
-PPR_THETA_MIN = 0.0      # theta in smooth/expanding regions
-PPR_THETA_MID = 30.0      # theta at moderate compression (div_nd = 1)
-PPR_THETA_MAX = 40.0      # theta at strong shock (equals current static PPR_THETA)
-PPR_DIV_ND_MAX = 1.5     # saturation threshold (above this, always PPR_THETA_MAX)
+PPR_USE_DUCROS_SENSOR = false
+shock_sens_schedule = 0.0:0.25:1.0
+theta_schedule      = 0.0:20.0:50.0
+PPR_WALL_BC = CONSTANT_DIFFERENCE
 
 [Stabilization]
 ENABLE_POS_LIMITER = true

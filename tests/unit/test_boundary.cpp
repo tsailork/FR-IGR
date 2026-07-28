@@ -83,38 +83,55 @@ TEST_CASE("Boundary Conditions Ghost States") {
     }
 }
 
-TEST_CASE("Wall-Equilibrated Ghost State (WE-BC) for PPR") {
-    Parameters p;
-    p.GAMMA = 1.4;
-    p.ENABLE_PPR = true;
-    Solver solver(p);
-
-    Cell2D c(p.N_PTS, &p);
-    c.is_boundary[0] = true;
-    c.boundary_info[0].is_wall = true;
-
+TEST_CASE("PPR Wall Boundary Condition Modes") {
+    double gamma = 1.4;
     double rho = 1.2;
     double u = 2.0;
     double v = -0.5;
     double p_phys = 100000.0;
-    double E = p_phys / (p.GAMMA - 1.0) + 0.5 * rho * (u*u + v*v);
+    double E = p_phys / (gamma - 1.0) + 0.5 * rho * (u*u + v*v);
     double face_state[4] = {rho, rho*u, rho*v, E};
+    double neigh_state[4] = {rho, -rho*u, rho*v, E}; // slip wall ghost
 
-    double S_face = 0.8 * (rho * p_phys);
-    double S_ghost = 0.0;
-    double neigh_state[4] = {0.0};
-    double sig_neigh = 0.0;
+    double S_face = 0.8 * (rho * p_phys); // P_phan_face = 80,000, P_diff_face = 20,000
 
-    solver.get_neigh_state_cell(c, 0, false, face_state, 0.0, neigh_state, sig_neigh, 0, S_face, &S_ghost);
+    SUBCASE("EQUILIBRATED mode") {
+        double S_ghost = Solver::compute_wall_phantom_pressure(face_state, neigh_state, S_face, "EQUILIBRATED", 2, 1e-12, gamma);
+        double P_phan_ghost = S_ghost / neigh_state[0];
+        double P_diff_ghost = p_phys - P_phan_ghost;
+        double P_diff_face = p_phys - (S_face / rho);
 
-    double S_ghost_expected = 2.0 * rho * p_phys - S_face;
-    CHECK(S_ghost == doctest::Approx(S_ghost_expected));
+        // Anti-symmetric difference: P_diff_ghost = -P_diff_face => P_diff_avg = 0
+        CHECK(P_diff_ghost == doctest::Approx(-P_diff_face));
+        double P_diff_avg = 0.5 * (P_diff_face + P_diff_ghost);
+        CHECK(P_diff_avg == doctest::Approx(0.0));
+    }
 
-    double S_face_avg = 0.5 * (S_face + S_ghost);
-    double p_phan_face = S_face_avg / rho;
-    CHECK(p_phan_face == doctest::Approx(p_phys));
+    SUBCASE("PHYSICAL_DIRICHLET mode") {
+        double S_ghost = Solver::compute_wall_phantom_pressure(face_state, neigh_state, S_face, "PHYSICAL_DIRICHLET", 2, 1e-12, gamma);
+        double P_phan_ghost = S_ghost / neigh_state[0];
 
-    double theta = 1.5;
-    double p_reg_face = p_phys + theta * (p_phys - p_phan_face);
-    CHECK(p_reg_face == doctest::Approx(p_phys));
+        // Ghost phantom pressure equals ghost physical pressure
+        CHECK(P_phan_ghost == doctest::Approx(p_phys));
+        CHECK(S_ghost == doctest::Approx(rho * p_phys));
+
+        double P_diff_face = p_phys - (S_face / rho);
+        double P_diff_ghost = p_phys - P_phan_ghost; // 0
+        double P_diff_avg = 0.5 * (P_diff_face + P_diff_ghost);
+        CHECK(P_diff_avg == doctest::Approx(0.5 * P_diff_face));
+    }
+
+    SUBCASE("CONSTANT_DIFFERENCE mode") {
+        double S_ghost = Solver::compute_wall_phantom_pressure(face_state, neigh_state, S_face, "CONSTANT_DIFFERENCE", 2, 1e-12, gamma);
+        double P_phan_ghost = S_ghost / neigh_state[0];
+
+        double P_diff_face = p_phys - (S_face / rho);
+        double P_diff_ghost = p_phys - P_phan_ghost;
+
+        // Constant difference: P_diff_ghost = P_diff_face => P_diff_avg = P_diff_face
+        CHECK(P_diff_ghost == doctest::Approx(P_diff_face));
+        double P_diff_avg = 0.5 * (P_diff_face + P_diff_ghost);
+        CHECK(P_diff_avg == doctest::Approx(P_diff_face));
+    }
 }
+

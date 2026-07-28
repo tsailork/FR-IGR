@@ -102,9 +102,7 @@ void Solver::sweep_x() {
             if (sfp_L) {
                 double u_sb[4];
                 ImmersedBoundary::compute_sbm_state(*this, sfp_L, u_sb);
-                double rho_sb = std::max(p.POS_LIMITER_EPS, u_sb[0]);
-                double p_sb = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (u_sb[3] - 0.5 * (u_sb[1]*u_sb[1] + u_sb[2]*u_sb[2]) / rho_sb));
-                double S_sb = rho_sb * p_sb;
+                double S_sb = compute_wall_phantom_pressure(UL_face, u_sb, S_L_face, p.PPR_WALL_BC, 2, p.POS_LIMITER_EPS, p.GAMMA);
                 compute_interface_flux(u_sb, UL_face, sig_L_face, sig_L_face, S_sb, S_L_face, c->theta_avg, c->theta_avg, 0, Flux_L_local, Flux_S_L_comm);
             } else if (c->neighbors[0] && c->neighbors[0]->level == c->level) {
                 Cell* nc = c->neighbors[0];
@@ -134,9 +132,7 @@ void Solver::sweep_x() {
             if (sfp_R) {
                 double u_sb[4];
                 ImmersedBoundary::compute_sbm_state(*this, sfp_R, u_sb);
-                double rho_sb = std::max(p.POS_LIMITER_EPS, u_sb[0]);
-                double p_sb = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (u_sb[3] - 0.5 * (u_sb[1]*u_sb[1] + u_sb[2]*u_sb[2]) / rho_sb));
-                double S_sb = 2.0 * rho_sb * p_sb - S_R_face;
+                double S_sb = compute_wall_phantom_pressure(UR_face, u_sb, S_R_face, p.PPR_WALL_BC, 2, p.POS_LIMITER_EPS, p.GAMMA);
                 compute_interface_flux(UR_face, u_sb, sig_R_face, sig_R_face, S_R_face, S_sb, c->theta_avg, c->theta_avg, 0, Flux_R_local, Flux_S_R_comm);
             } else if (c->neighbors[1] && c->neighbors[1]->level == c->level) {
                 Cell* nc = c->neighbors[1];

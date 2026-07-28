@@ -278,6 +278,7 @@ void Parameters::load_inputs(const std::string& filename) {
     if (ini.count("PPR")) {
         auto& kv = ini["PPR"];
         if (kv.count("ENABLE_PPR"))        ENABLE_PPR        = (kv["ENABLE_PPR"] == "true" || kv["ENABLE_PPR"] == "1");
+        if (kv.count("PPR_WALL_BC"))       PPR_WALL_BC       = kv["PPR_WALL_BC"];
         if (kv.count("PPR_THETA"))         PPR_THETA         = std::stod(kv["PPR_THETA"]);
         if (kv.count("PPR_C_TAU"))         PPR_C_TAU         = std::stod(kv["PPR_C_TAU"]);
         if (kv.count("PPR_ADV_MULT"))      PPR_ADV_MULT      = std::stod(kv["PPR_ADV_MULT"]);

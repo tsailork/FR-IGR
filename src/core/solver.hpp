@@ -252,6 +252,17 @@ public:
                              double S_face = 0.0, double* S_neigh = nullptr) const;
 
     /**
+     * @brief Computes ghost state phantom pressure (S_ghost) for wall boundary conditions.
+     */
+    static double compute_wall_phantom_pressure(const double* face_state,
+                                                const double* neigh_state,
+                                                double S_face,
+                                                const std::string& mode,
+                                                int n_dim = 2,
+                                                double pos_eps = 1e-12,
+                                                double gamma = 1.4);
+
+    /**
      * @brief Evaluate point-wise inviscid Euler fluxes at a cell's solution node.
      */
     void get_flux_pointwise_cell(const Cell2D& c, int iy, int ix,

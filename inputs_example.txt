@@ -138,6 +138,18 @@ ENTROPY_LIMITER_EPS = 1e-4
 # ENABLE_PPR: Enable Phantom Pressure Regularization (PPR) for shock capturing.
 ENABLE_PPR = false
 
+# PPR_WALL_BC: Boundary condition mode for phantom pressure (S = rho * P_phan) at physical and SBM wall faces.
+#   - EQUILIBRATED: Anti-symmetric pressure difference (P_diff,ghost = -P_diff,face).
+#                   Forces zero average pressure difference at the wall interface (P_diff,avg = 0).
+#                   Best for preserving un-regularized physical boundary layers in smooth flow. (Default)
+#   - PHYSICAL_DIRICHLET: Zero ghost pressure difference (P_phan,ghost = P_phys,ghost, S_ghost = rho_ghost * P_phys,ghost).
+#                         Imposes 50% boundary layer relaxation intensity at the wall interface (P_diff,avg = 0.5 * P_diff,face).
+#                         (Option A)
+#   - CONSTANT_DIFFERENCE: Constant pressure difference across wall boundary (P_diff,ghost = P_diff,face).
+#                          Preserves 100% of interior relaxation intensity at the wall interface (P_diff,avg = P_diff,face).
+#                          Recommended for strong shock reflections off solid walls. (Option B)
+PPR_WALL_BC = EQUILIBRATED
+
 # PPR_THETA: Extrapolation factor parameter (theta >= 0). 
 # Used to calculate the regularized pressure: P_reg = P_phys + theta * (P_phys - P_phan).
 # Larger values increase the level of shock regularization.
