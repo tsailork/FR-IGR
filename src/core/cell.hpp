@@ -89,6 +89,15 @@ struct CellDim<2> {
     std::vector<double> grad_py_field; ///< dP/dy at each solution point (computed in x-sweep, read in y-sweep).
     double theta_avg = 1.0;            ///< Element-average adaptive theta (computed once per RK stage, used at face flux points).
     double theta_max_tmp = 0.0;        ///< Temporary buffer for smoothing theta.
+    double theta_ax = 0.0;             ///< 1st-degree Legendre modal expansion coefficient along X.
+    double theta_ay = 0.0;             ///< 1st-degree Legendre modal expansion coefficient along Y.
+
+    inline double get_theta(double zx, double zy, bool use_subcell) const {
+        if (use_subcell) {
+            return std::max(0.0, theta_avg + theta_ax * zx + theta_ay * zy);
+        }
+        return theta_avg;
+    }
 
     // Local Immersed Boundary fields
     std::vector<double> ib_mask;      ///< Cached solid volume fraction mask (chi), size: npts * npts.
@@ -134,12 +143,14 @@ struct CellDim<2> {
         qx_buf.resize(n_pts, 0.0);
         qy_buf.resize(n_pts, 0.0);
 
-        S_field.resize(n_pts, 0.0);
-        S_old.resize(n_pts, 0.0);
-        S_RHS.resize(n_pts, 0.0);
+        if (p && p->ENABLE_PPR) {
+            S_field.resize(n_pts, 0.0);
+            S_old.resize(n_pts, 0.0);
+            S_RHS.resize(n_pts, 0.0);
+        }
         grad_px_field.resize(n_pts, 0.0);
         grad_py_field.resize(n_pts, 0.0);
-        theta_avg = 1.0;
+        theta_avg = 0.0;
 
         ib_mask.resize(n_pts, 0.0);
 
@@ -228,6 +239,16 @@ struct CellDim<3> {
     std::vector<double> grad_pz_field; ///< dP/dz at each solution point.
     double theta_avg = 1.0;            ///< Element-average adaptive theta.
     double theta_max_tmp = 0.0;        ///< Temporary buffer for smoothing theta.
+    double theta_ax = 0.0;             ///< 1st-degree Legendre modal expansion coefficient along X.
+    double theta_ay = 0.0;             ///< 1st-degree Legendre modal expansion coefficient along Y.
+    double theta_az = 0.0;             ///< 1st-degree Legendre modal expansion coefficient along Z.
+
+    inline double get_theta(double zx, double zy, double zz, bool use_subcell) const {
+        if (use_subcell) {
+            return std::max(0.0, theta_avg + theta_ax * zx + theta_ay * zy + theta_az * zz);
+        }
+        return theta_avg;
+    }
 
     // Local Immersed Boundary fields
     std::vector<double> ib_mask;      ///< Cached solid volume fraction mask, size: npts^3.
@@ -274,13 +295,15 @@ struct CellDim<3> {
         qy_buf.resize(npts3, 0.0);
         qz_buf.resize(npts3, 0.0);
 
-        S_field.resize(npts3, 0.0);
-        S_old.resize(npts3, 0.0);
-        S_RHS.resize(npts3, 0.0);
+        if (p && p->ENABLE_PPR) {
+            S_field.resize(npts3, 0.0);
+            S_old.resize(npts3, 0.0);
+            S_RHS.resize(npts3, 0.0);
+        }
         grad_px_field.resize(npts3, 0.0);
         grad_py_field.resize(npts3, 0.0);
         grad_pz_field.resize(npts3, 0.0);
-        theta_avg = 1.0;
+        theta_avg = 0.0;
 
         ib_mask.resize(npts3, 0.0);
 

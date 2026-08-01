@@ -221,6 +221,13 @@ The solver incorporates a fully conservative, dynamically-adaptable 2D quadtree 
 - **3D Boundary Conditions**: Generalised `get_neigh_state_cell` for `SolverDim<3>` to reconstruct ghost states across all 6 block faces, supporting slip, no-slip, moving isothermal/adiabatic wall, characteristic far-field, and total pressure boundaries.
 - **Verification and Testing**: Embedded comprehensive unit tests verifying 3D Euler flux formulations and Riemann symmetry, confirming complete backward compatibility on all existing 2D regression tests.
 
+### 13. Hyperbolic Non-Equilibrium Phantom Pressure Relaxation (PPR) Rebuild
+- **Modular PPR Module (`src/ppr/`)**: Encapsulated all PPR routines into `src/ppr/ppr.hpp` and `src/ppr/ppr.cpp` under namespace `PPR`, including `get_thermodynamics`, `compute_element_theta_2d`, `relax_phantom_pressure_2d`, and `apply_phantom_pressure_limiter_2d`.
+- **Zero-Overhead Memory & Toggling**: Refactored `CellDim<2>` and `CellDim<3>` to allocate `S_field`, `S_old`, and `S_RHS` dynamically **only when `ENABLE_PPR = true`**, preserving 0-byte extra memory allocation and 0-overhead performance for 4-variable Euler/NS/IGR runs.
+- **Physical Regularized Sound Speed & Waves**: Implemented regularized sound speed $a_{\text{reg}} = \sqrt{\max\left( \frac{1 + \theta_e}{\rho} [P_{\text{phys}} + (\gamma - 1) P_{\text{reg}}], \, \frac{\gamma P_{\text{phys}}}{\rho} \right)}$ and updated interface wave speed bound $C_{\max} = \max(|u_{n,L}| + a_{\text{reg},L}, \, |u_{n,R}| + a_{\text{reg},R})$.
+- **Thermodynamic Energy Guard & 3-Element Nodal Limiter**: Implemented anti-dissipative velocity divergence indicator filtering ($\theta_{\text{raw}, e} = 0.0$ if anti-dissipative) and nodal 3-element directional stencil min/max pressure clipping on $P_{\text{phan}}$.
+- **Parameterization**: Exposed `PPR_N_CELLS_SHOCK` (default `2.5`), `PPR_C_TAU` (default `0.25`), `PPR_C_POS` (default `0.05`), and `PPR_C_MAX` (default `2.5`) in `inputs.dat` and `inputs_example.txt`.
+
 ## Documentation Maintenance (Agent Hook)
 Whenever tasked with "updating the documentation" for a new feature or change, you **MUST** ensure all the following locations are kept perfectly synchronized with the codebase:
 
@@ -237,3 +244,4 @@ Whenever tasked with "updating the documentation" for a new feature or change, y
    - Whenever a new configuration flag or numerical parameter is added to `src/core/parameters.hpp`, it **must** be documented in `inputs_example.txt` with a detailed explanation and sample value.
 5. **Project Context (`GEMINI.md`)**:
    - Append major architectural paradigms, algorithmic improvements, or testing infrastructure changes to the "Technical Refinements" section of this file to ensure future agents understand the context.
+

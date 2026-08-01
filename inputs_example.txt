@@ -135,7 +135,7 @@ ENABLE_ENTROPY_LIMITER = true
 ENTROPY_LIMITER_EPS = 1e-4
 
 [PPR]
-# ENABLE_PPR: Enable Phantom Pressure Regularization (PPR) for shock capturing.
+# ENABLE_PPR: Enable Hyperbolic Non-Equilibrium Phantom Pressure Relaxation (PPR) shock capturing.
 ENABLE_PPR = false
 
 # PPR_WALL_BC: Boundary condition mode for phantom pressure (S = rho * P_phan) at physical and SBM wall faces.
@@ -143,29 +143,51 @@ ENABLE_PPR = false
 #                   Forces zero average pressure difference at the wall interface (P_diff,avg = 0).
 #                   Best for preserving un-regularized physical boundary layers in smooth flow. (Default)
 #   - PHYSICAL_DIRICHLET: Zero ghost pressure difference (P_phan,ghost = P_phys,ghost, S_ghost = rho_ghost * P_phys,ghost).
-#                         Imposes 50% boundary layer relaxation intensity at the wall interface (P_diff,avg = 0.5 * P_diff,face).
-#                         (Option A)
+#                         Imposes 50% boundary layer relaxation intensity at the wall interface.
 #   - CONSTANT_DIFFERENCE: Constant pressure difference across wall boundary (P_diff,ghost = P_diff,face).
-#                          Preserves 100% of interior relaxation intensity at the wall interface (P_diff,avg = P_diff,face).
-#                          Recommended for strong shock reflections off solid walls. (Option B)
+#                          Recommended for strong shock reflections off solid walls.
 PPR_WALL_BC = EQUILIBRATED
 
-# PPR_THETA: Extrapolation factor parameter (theta >= 0). 
-# Used to calculate the regularized pressure: P_reg = P_phys + theta * (P_phys - P_phan).
-# Larger values increase the level of shock regularization.
-PPR_THETA = 0.55
+# --- Core PPR Shock Indicator & Relaxation Parameters ---
+# PPR_N_CELLS_SHOCK: Target shock transition width in terms of grid cell counts (N_cells, shock).
+#                    Scales the intra-element velocity divergence shock indicator theta_e.
+#                    Default = 2.5 (spans shock transition over 2 to 3 cells).
+PPR_N_CELLS_SHOCK = 2.5
 
-# PPR_C_TAU: Scaling coefficient for the relaxation time tau.
-# Used to compute relaxation timescale: tau = PPR_C_TAU * h / (||u|| + a).
-# Typically in the range 0.01 to 1.0.
-PPR_C_TAU = 0.1
+# PPR_C_TAU: Scaling coefficient for the analytical relaxation timescale tau.
+#            tau = PPR_C_TAU * (h_eff / (N+1)) / (a_phys + ||u|| + 1e-12).
+#            Default = 0.25.
+PPR_C_TAU = 0.25
 
-# PPR_ADV_MULT: Advection velocity multiplier (kappa) for phantom pressure transport.
-# Multiplies the local fluid velocity when advecting the phantom pressure: F_S = S * (kappa * u).
-#   - 1.0: Standard advection along fluid streamlines (default).
-#   - 0.0: Disables spatial advection (pure point-wise local relaxation mode).
-#   - -1.0: Reverses advection direction relative to fluid velocity.
-PPR_ADV_MULT = 1.0
+# PPR_C_POS: Non-negativity bound factor (c_pos) for regularized pressure (P_reg >= c_pos * P_phys).
+#            Determines the upper bound on phantom pressure: P_phan <= (1 + (1 - c_pos)/theta) * P_phys.
+#            Default = 0.05.
+PPR_C_POS = 0.05
+
+# PPR_C_MAX: Maximum peak regularization factor (C_max) for regularized pressure (P_reg <= C_max * P_phys).
+#            Determines the lower bound on phantom pressure: P_phan >= (1 - (C_max - 1)/theta) * P_phys.
+#            Default = 2.5.
+PPR_C_MAX = 2.5
+
+# --- Advanced Multidimensional PPR Enhancements & Switches ---
+# PPR_USE_SHOCK_NORMAL_MACH: Use shock-normal Mach number M_n = |u . grad(P)| / a in Master Law (default true).
+#                             When true, projects fluid velocity onto local pressure gradient n_shock = grad(P)/|grad(P)|.
+#                             Prevents tangential velocity along oblique shock flanks from over-inflating theta_e.
+PPR_USE_SHOCK_NORMAL_MACH = true
+
+# PPR_USE_SOFTMAX_INDICATOR: Use L_p soft-max norm over solution points for indicator I_e (default true).
+#                            Filters out isolated single-node truncation noise spikes while strongly responding to shocks.
+PPR_USE_SOFTMAX_INDICATOR = true
+PPR_SOFTMAX_P             = 4.0
+
+# PPR_USE_SUBCELL_LINEAR_THETA: Project theta to 1st-degree Legendre sub-cell modal expansion (default true).
+#                               Achieves sub-cell localized regularized pressure with EXACT ZERO ALIASING ERROR.
+PPR_USE_SUBCELL_LINEAR_THETA = true
+
+# PPR_USE_DYNAMIC_C_TAU: Automatically compute dynamic order & Mach calibrated C_tau(N, M_n) guide rule (default false).
+#                        When true (or when PPR_C_TAU <= 0), C_tau is dynamically evaluated:
+#                        C_tau = (PPR_N_CELLS_SHOCK / (2*(N+1))) * sqrt(1 + M_n^2 / (1 + M_n^2)).
+PPR_USE_DYNAMIC_C_TAU = false
 
 # --- Part A: Gradient-Guided Phantom Pressure Advection ---
 # PPR_GRAD_ADV_SCALE: Acoustic pressure-gradient advection scale (default 0.0 = off).
@@ -182,29 +204,13 @@ PPR_GRAD_ADV_SCALE = 0.0
 # smooth, uniform-pressure regions. Typically kept very small (1e-6 to 1e-8).
 PPR_GRAD_EPS = 1e-6
 
-# --- Part B: Adaptive Theta via Non-Dimensional Divergence ---
-# PPR_ADAPTIVE_THETA: Enable divergence-driven adaptive theta (default false).
-#                     Overwrites PPR_THETA if true.
-# PPR_SMOOTH_THETA:   Add a second pass to the theta calculation that sets a cell's 
-#                     theta to the maximum between itself and its face neighbors (default false).
-PPR_ADAPTIVE_THETA = false
-PPR_SMOOTH_THETA = false
-
-# Non-dimensional divergence definition:
-#   div_nd = -div(u) * h / (a * (P_DEG + 1))
-# div_nd = 0: smooth/uniform flow.  div_nd = 1: compression at acoustic-CFL rate (strong shock indicator).
-
-# PPR_THETA_MIN: Theta value when div_nd <= 0 (smooth or expanding flow).
-# Use 0 to disable artificial regularization in rarefaction regions.
-PPR_THETA_MIN = 0.0
-
-# PPR_THETA_MID: Theta value at div_nd = 1.0 (moderate compression at acoustic-CFL rate).
-PPR_THETA_MID = 1.0
-
-# PPR_THETA_MAX: Theta value at div_nd >= PPR_DIV_ND_MAX (saturated strong shock).
-PPR_THETA_MAX = 2.0
-
-# PPR_DIV_ND_MAX: Non-dimensional divergence saturation threshold.
+# --- Part B: Adaptive & Smoothed Theta Shock Indicator ---
+# In the updated PPR scheme, adaptive theta calculation and face-neighbor max-smoothing are
+# built-in core defaults. The indicator theta_e is evaluated dynamically using:
+#   1. Non-dimensional velocity divergence: indicator = div(u) * h_eff / ((N+1) * a_phys)
+#   2. Local Mach number scaling: theta_raw = (PPR_N_CELLS_SHOCK * (N+1) * (gamma+1) / (8 * PPR_C_TAU)) * (1 + M_avg) * max(0, -indicator)
+#   3. Thermodynamic Energy Guard: zeroes theta_raw if anti-dissipative (theta_raw * (P_phys - P_phan) * div(u) > 0)
+#   4. Face-Neighbor Max Smoothing: theta_e = max(theta_raw, max_neighbor theta_raw)
 # Above this value, theta is clamped to PPR_THETA_MAX.
 # Typical range 1.5-5.0 depending on shock strength.
 PPR_DIV_ND_MAX = 2.0

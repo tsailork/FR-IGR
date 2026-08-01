@@ -9,8 +9,8 @@ V_INF = 0.0
 P_INF = 1.0
 
 [Solver]
-P_DEG = 3
-CFL = 0.5
+P_DEG = 2
+CFL = 0.6
 T_FINAL = 4.0
 NUM_THREADS = 18
 RIEMANN_SOLVER=RUSANOV
@@ -22,23 +22,18 @@ ENABLE_NS = false
 ENABLE_IGR = false
 
 [PPR]
-ENABLE_PPR = true
-PPR_THETA = 10.0
-PPR_C_TAU = 0.075
-PPR_ADV_MULT = 1.0
-PPR_ADAPTIVE_THETA = true
-PPR_SMOOTH_THETA = true
-PPR_USE_DUCROS_SENSOR = false
-shock_sens_schedule = 0.0:1.0
-theta_schedule      = 0.0:50.0
-PPR_WALL_BC = EQUILIBRATED
-PPR_A_EFF_MULT = 0.25
+ENABLE_PPR   = true
+PPR_WALL_BC  = CONSTANT_DIFFERENCE
+PPR_N_CELLS_SHOCK = 3.0
+PPR_C_TAU    = 0.5
+PPR_C_POS    = 0.00001
+PPR_C_MAX    = 100000.0
 
-# Stagnation Region Remediation: Mach-number Filter
-PPR_STAG_CAP_MULT = 2.0
-PPR_MACH_FILTER = true
-PPR_MACH_SUB    = 0.15
-PPR_MACH_CUT    = 0.333
+PPR_USE_SHOCK_NORMAL_MACH = true
+PPR_USE_SOFTMAX_INDICATOR = false
+PPR_SOFTMAX_P = 4
+
+
 
 [Stabilization]
 ENABLE_POS_LIMITER = true

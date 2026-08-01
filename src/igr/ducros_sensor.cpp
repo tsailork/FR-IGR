@@ -73,12 +73,8 @@ double compute_combined_ppr_sensor(const Cell& c, int iy, int ix,
     double h_loc  = std::min(c.dx, c.dy);
     double div_nd = -div_u * h_loc / (a_loc * (p.P_DEG + 1));
 
-    // Combined sensor scalar: capped Ducros * uncapped non-dimensional divergence
-    if (p.PPR_USE_DUCROS_SENSOR) {
-        return s_ducros * div_nd;
-    } else {
-        return div_nd;
-    }
+    // Combined sensor scalar: non-dimensional divergence
+    return div_nd;
 }
 
 } // namespace Sensors

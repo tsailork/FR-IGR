@@ -6,6 +6,7 @@
 #include "../core/solver.hpp"
 #include "../limiters/entropy.hpp"
 #include "../limiters/positivity.hpp"
+#include "../ppr/ppr.hpp"
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -62,43 +63,7 @@ void Solver::step_rk3(double dt) {
             }
             
             // 2. Analytical relaxation step
-            double r_avg = 0.0, ru_avg = 0.0, rv_avg = 0.0, E_avg = 0.0;
-            for (int iy = 0; iy < p.N_PTS; ++iy) {
-                for (int ix = 0; ix < p.N_PTS; ++ix) {
-                    double w = (basis.w[iy] * 0.5) * (basis.w[ix] * 0.5);
-                    r_avg  += w * c->get_U(0, iy, ix, p.N_PTS);
-                    ru_avg += w * c->get_U(1, iy, ix, p.N_PTS);
-                    rv_avg += w * c->get_U(2, iy, ix, p.N_PTS);
-                    E_avg  += w * c->get_U(3, iy, ix, p.N_PTS);
-                }
-            }
-            double rho_avg = std::max(p.POS_LIMITER_EPS, r_avg);
-            double u_avg = ru_avg / rho_avg;
-            double v_avg = rv_avg / rho_avg;
-            double p_avg = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (E_avg - 0.5 * rho_avg * (u_avg*u_avg + v_avg*v_avg)));
-            double theta_cfl = (p.PPR_ADAPTIVE_THETA) ? c->theta_avg : p.PPR_THETA;
-            double a_avg = std::sqrt(p.GAMMA * p_avg / rho_avg) * std::sqrt(1.0 + p.PPR_A_EFF_MULT * theta_cfl);
-            double lambda_loc = std::sqrt(u_avg*u_avg + v_avg*v_avg) + a_avg;
-            
-            double tau = p.PPR_C_TAU * std::min(c->dx, c->dy) / (lambda_loc + 1e-12);
-            double exp_factor = std::exp(-dt_stage / tau);
-            
-            for (int iy = 0; iy < p.N_PTS; ++iy) {
-                for (int ix = 0; ix < p.N_PTS; ++ix) {
-                    int k = iy * p.N_PTS + ix;
-                    double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
-                    double u = c->get_U(1, iy, ix, p.N_PTS) / rho;
-                    double v = c->get_U(2, iy, ix, p.N_PTS) / rho;
-                    double E = c->get_U(3, iy, ix, p.N_PTS);
-                    double press = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (E - 0.5 * rho * (u*u + v*v)));
-                    double S_eq = rho * press;
-                    
-                    c->S_field[k] = S_eq + (c->S_field[k] - S_eq) * exp_factor;
-                    if (c->S_field[k] < p.POS_LIMITER_EPS) {
-                        c->S_field[k] = p.POS_LIMITER_EPS;
-                    }
-                }
-            }
+            PPR::relax_phantom_pressure_2d(*c, dt_stage, basis, p);
         }
     };
 
@@ -285,6 +250,9 @@ void Solver::step_rk3(double dt) {
     }
 
     relax_phantom_pressure(1.0, 0.0, 1.0);
+    if (p.ENABLE_PPR) {
+        PPR::apply_phantom_pressure_limiter_2d(cells, basis, p);
+    }
 
     if (is_parabolic)
         sub_iterate_sigma_all(0.0, 1.0);
@@ -318,6 +286,9 @@ void Solver::step_rk3(double dt) {
     }
 
     relax_phantom_pressure(0.25, 0.75, 0.25);
+    if (p.ENABLE_PPR) {
+        PPR::apply_phantom_pressure_limiter_2d(cells, basis, p);
+    }
 
     if (is_parabolic)
         sub_iterate_sigma_all(0.75, 0.25);
@@ -351,6 +322,9 @@ void Solver::step_rk3(double dt) {
     }
 
     relax_phantom_pressure(2.0 / 3.0, 1.0 / 3.0, 2.0 / 3.0);
+    if (p.ENABLE_PPR) {
+        PPR::apply_phantom_pressure_limiter_2d(cells, basis, p);
+    }
 
     if (is_parabolic)
         sub_iterate_sigma_all(1.0 / 3.0, 2.0 / 3.0);
@@ -412,12 +386,22 @@ void SolverDim<3>::step_rk3(double dt) {
         Cell3D* c = cells[i];
         c->U_old = c->U;
         c->sigma_old = c->sigma_field;
+        if (p.ENABLE_PPR) {
+            c->S_old = c->S_field;
+        }
     }
 
     auto execute_stage = [&](double alpha, double beta, double dt_stage_ratio) {
         #pragma omp parallel for schedule(static)
         for (size_t i = 0; i < cells.size(); ++i) {
             std::fill(cells[i]->RHS.begin(), cells[i]->RHS.end(), 0.0);
+            if (p.ENABLE_PPR) {
+                std::fill(cells[i]->S_RHS.begin(), cells[i]->S_RHS.end(), 0.0);
+            }
+        }
+
+        if (p.ENABLE_PPR) {
+            PPR::compute_element_theta_3d(cells, basis, p);
         }
 
         sweep_x();
@@ -443,6 +427,16 @@ void SolverDim<3>::step_rk3(double dt) {
             for (size_t k = 0; k < n_dofs; ++k) {
                 c->U[k] = alpha * c->U_old[k] + beta * (c->U[k] + dt_stage * c->RHS[k]);
             }
+            if (p.ENABLE_PPR) {
+                for (size_t k = 0; k < c->S_field.size(); ++k) {
+                    c->S_field[k] = alpha * c->S_old[k] + beta * (c->S_field[k] + dt_stage * c->S_RHS[k]);
+                }
+                PPR::relax_phantom_pressure_3d(*c, dt_stage, basis, p);
+            }
+        }
+
+        if (p.ENABLE_PPR) {
+            PPR::apply_phantom_pressure_limiter_3d(cells, basis, p);
         }
 
         if (p.ENABLE_IGR) {

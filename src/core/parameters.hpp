@@ -142,37 +142,17 @@ struct Parameters {
     // -------------------------------------------------------------------------
     // PPR (Phantom Pressure Regularization)
     // -------------------------------------------------------------------------
-    bool   ENABLE_PPR         = false;    ///< Toggle Phantom Pressure Regularization.
-    std::string PPR_WALL_BC   = "EQUILIBRATED"; ///< Wall BC for phantom pressure: EQUILIBRATED, PHYSICAL_DIRICHLET, CONSTANT_DIFFERENCE.
-    double PPR_THETA          = 1.0;      ///< Regularization feedback coefficient (theta).
-    double PPR_C_TAU          = 0.2;      ///< Scaling coefficient for the relaxation time (C_tau).
-    double PPR_ADV_MULT       = 1.0;      ///< Advection velocity multiplier (kappa) for phantom pressure advection.
-    // Part A: Gradient-guided advection
-    double PPR_GRAD_ADV_SCALE = 0.0;      ///< Acoustic pressure-gradient advection scale. 0=off, 1=full: u_adv = u + scale*a*grad(P)/|grad(P)|.
-    double PPR_GRAD_EPS       = 1e-6;     ///< Floor on ||grad P|| to prevent division-by-zero in smooth regions.
-    // Part B: Adaptive theta via non-dimensional divergence
-    bool   PPR_ADAPTIVE_THETA = false;    ///< Enable divergence-driven adaptive theta (overrides PPR_THETA when true).
-    double PPR_THETA_MIN      = 0.0;      ///< Theta at div_nd <= 0 (smooth/expanding flow).
-    double PPR_THETA_MID      = 1.0;      ///< Theta at div_nd = 1 (moderate acoustic-CFL compression).
-    double PPR_THETA_MAX      = 2.0;      ///< Theta at div_nd >= PPR_DIV_ND_MAX (saturated strong shock).
-    bool   PPR_SMOOTH_THETA   = false;    ///< Smooth theta across face neighbors.
-    double PPR_DIV_ND_MAX     = 2.0;      ///< Non-dimensional divergence saturation threshold (maps to theta_max).
-
-    // Part C: Ducros schedule sensor
-    bool   PPR_USE_DUCROS_SENSOR  = true; ///< Use Ducros x non-dimensional divergence sensor for theta schedule.
-    std::string PPR_THETA_SCHEDULE_STR = "1.0:0.0:10.0:50.0"; ///< Piecewise linear schedule values for theta.
-    std::string PPR_SENS_SCHEDULE_STR  = "-0.2:0.0:1.0:1.5";  ///< Piecewise linear schedule breakpoints for sensor.
-    std::vector<double> PPR_THETA_SCHEDULE = {1.0, 0.0, 10.0, 50.0};
-    std::vector<double> PPR_SENS_SCHEDULE  = {-0.2, 0.0, 1.0, 1.5};
-
-    // Part D: Mach-number filter (stagnation region false-positive filter)
-    bool   PPR_MACH_FILTER        = false; ///< Enable Mach-number filtering of PPR shock sensor/theta.
-    double PPR_MACH_SUB           = 0.10;  ///< Lower Mach threshold below which filter=0.
-    double PPR_MACH_CUT           = 0.25;  ///< Upper Mach threshold above which filter=1.
-
-    // Stagnation pressure cap and acoustic speed boost multipliers
-    double PPR_STAG_CAP_MULT      = 1.0;   ///< Scaling multiplier on total/stagnation pressure upper bound.
-    double PPR_A_EFF_MULT         = 1.0;   ///< Scaling multiplier kappa on theta acoustic speed boost: sqrt(1 + kappa * theta).
+    bool   ENABLE_PPR           = false;    ///< Toggle Phantom Pressure Regularization.
+    std::string PPR_WALL_BC     = "EQUILIBRATED"; ///< Wall BC for phantom pressure: EQUILIBRATED, PHYSICAL_DIRICHLET, CONSTANT_DIFFERENCE.
+    double PPR_N_CELLS_SHOCK    = 2.5;      ///< Target shock thickness in cell units (default: 2.0 - 2.5).
+    double PPR_C_TAU            = 0.25;     ///< Time scale ratio for non-equilibrium relaxation (default: 0.25).
+    double PPR_C_POS            = 0.05;     ///< Lower positivity bound coefficient for regularized pressure (default: 0.05).
+    double PPR_C_MAX            = 2.5;      ///< Upper bound coefficient for regularized pressure (default: 2.5).
+    bool   PPR_USE_SHOCK_NORMAL_MACH   = true;  ///< Use shock-normal Mach number M_n = |u . grad(P)| / a in Master Law.
+    bool   PPR_USE_SOFTMAX_INDICATOR   = true;  ///< Use L_p soft-max norm for indicator I_e instead of hard single-node max.
+    double PPR_SOFTMAX_P               = 4.0;   ///< Exponent p for soft-max norm over quadrature points (default: 4.0).
+    bool   PPR_USE_SUBCELL_LINEAR_THETA= true;  ///< Project theta to 1st-degree Legendre sub-cell modal expansion (zero aliasing).
+    bool   PPR_USE_DYNAMIC_C_TAU       = false; ///< Auto-evaluate C_tau(N, M_n) dynamic guide rule.
 
     // -------------------------------------------------------------------------
     // Time Stepping & I/O

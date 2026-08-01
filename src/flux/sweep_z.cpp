@@ -37,33 +37,8 @@ void SolverDim<3>::sweep_z() {
                                             c->sigma_field[iz * N2 + iy * N + ix]);
                     if (p.ENABLE_PPR) {
                         double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iz, iy, ix, N));
-                        double u   = c->get_U(1, iz, iy, ix, N) / rho;
-                        double v   = c->get_U(2, iz, iy, ix, N) / rho;
                         double w   = c->get_U(3, iz, iy, ix, N) / rho;
-                        if (p.PPR_GRAD_ADV_SCALE > 0.0) {
-                            int idx = iz * N2 + iy * N + ix;
-                            double dP_dx = c->grad_px_field[idx];
-                            double dP_dy = c->grad_py_field[idx];
-                            double dP_dz = c->grad_pz_field[idx];
-                            double press = std::max(p.POS_LIMITER_EPS,
-                                (p.GAMMA - 1.0) * (c->get_U(4, iz, iy, ix, N) - 0.5*rho*(u*u+v*v+w*w)));
-                            double press_safe = press;
-                            double theta_cfl = (p.PPR_ADAPTIVE_THETA) ? c->theta_avg : p.PPR_THETA;
-                            if (p.ENABLE_PPR) {
-                                double p_phan = c->S_field[iz * N2 + iy * N + ix] / rho;
-                                double p_reg = press + theta_cfl * (press - p_phan);
-                                press_safe = std::max(press, p_reg);
-                            }
-                            double a_loc = std::sqrt(p.GAMMA * press_safe / rho);
-                            if (p.ENABLE_PPR) {
-                                a_loc *= std::sqrt(1.0 + p.PPR_A_EFF_MULT * theta_cfl);
-                            }
-                            double grad_norm = std::sqrt(dP_dx*dP_dx + dP_dy*dP_dy + dP_dz*dP_dz) + p.PPR_GRAD_EPS;
-                            double mach_loc = std::sqrt(u*u + v*v + w*w) / (a_loc + 1e-12);
-                            double mach_weight = std::min(1.0, mach_loc / 0.20);
-                            w += p.PPR_GRAD_ADV_SCALE * mach_weight * a_loc * (dP_dz / grad_norm);
-                        }
-                        H_sol_S[iz] = c->S_field[iz * N2 + iy * N + ix] * (p.PPR_ADV_MULT * w);
+                        H_sol_S[iz] = c->S_field[iz * N2 + iy * N + ix] * w;
                     }
                 }
 

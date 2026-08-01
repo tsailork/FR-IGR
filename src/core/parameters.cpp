@@ -279,43 +279,15 @@ void Parameters::load_inputs(const std::string& filename) {
         auto& kv = ini["PPR"];
         if (kv.count("ENABLE_PPR"))        ENABLE_PPR        = (kv["ENABLE_PPR"] == "true" || kv["ENABLE_PPR"] == "1");
         if (kv.count("PPR_WALL_BC"))       PPR_WALL_BC       = kv["PPR_WALL_BC"];
-        if (kv.count("PPR_THETA"))         PPR_THETA         = std::stod(kv["PPR_THETA"]);
+        if (kv.count("PPR_N_CELLS_SHOCK")) PPR_N_CELLS_SHOCK = std::stod(kv["PPR_N_CELLS_SHOCK"]);
         if (kv.count("PPR_C_TAU"))         PPR_C_TAU         = std::stod(kv["PPR_C_TAU"]);
-        if (kv.count("PPR_ADV_MULT"))      PPR_ADV_MULT      = std::stod(kv["PPR_ADV_MULT"]);
-        if (kv.count("PPR_GRAD_ADV_SCALE")) PPR_GRAD_ADV_SCALE = std::stod(kv["PPR_GRAD_ADV_SCALE"]);
-        if (kv.count("PPR_GRAD_EPS"))      PPR_GRAD_EPS      = std::stod(kv["PPR_GRAD_EPS"]);
-        if (kv.count("PPR_ADAPTIVE_THETA")) PPR_ADAPTIVE_THETA = (kv["PPR_ADAPTIVE_THETA"] == "true" || kv["PPR_ADAPTIVE_THETA"] == "1");
-        if (kv.count("PPR_SMOOTH_THETA")) PPR_SMOOTH_THETA = (kv["PPR_SMOOTH_THETA"] == "true" || kv["PPR_SMOOTH_THETA"] == "1");
-        if (kv.count("PPR_THETA_MIN"))     PPR_THETA_MIN     = std::stod(kv["PPR_THETA_MIN"]);
-        if (kv.count("PPR_THETA_MID"))     PPR_THETA_MID     = std::stod(kv["PPR_THETA_MID"]);
-        if (kv.count("PPR_THETA_MAX"))     PPR_THETA_MAX     = std::stod(kv["PPR_THETA_MAX"]);
-        if (kv.count("PPR_DIV_ND_MAX"))    PPR_DIV_ND_MAX    = std::stod(kv["PPR_DIV_ND_MAX"]);
-        if (kv.count("PPR_USE_DUCROS_SENSOR"))  PPR_USE_DUCROS_SENSOR  = (kv["PPR_USE_DUCROS_SENSOR"] == "true" || kv["PPR_USE_DUCROS_SENSOR"] == "1");
-        if (kv.count("PPR_MACH_FILTER"))        PPR_MACH_FILTER        = (kv["PPR_MACH_FILTER"] == "true" || kv["PPR_MACH_FILTER"] == "1");
-        if (kv.count("PPR_MACH_SUB"))           PPR_MACH_SUB           = std::stod(kv["PPR_MACH_SUB"]);
-        if (kv.count("PPR_MACH_CUT"))           PPR_MACH_CUT           = std::stod(kv["PPR_MACH_CUT"]);
-        if (kv.count("PPR_STAG_CAP_MULT"))      PPR_STAG_CAP_MULT      = std::stod(kv["PPR_STAG_CAP_MULT"]);
-        if (kv.count("PPR_A_EFF_MULT"))         PPR_A_EFF_MULT         = std::stod(kv["PPR_A_EFF_MULT"]);
-        if (kv.count("theta_schedule"))      PPR_THETA_SCHEDULE_STR = kv["theta_schedule"];
-        if (kv.count("PPR_THETA_SCHEDULE"))  PPR_THETA_SCHEDULE_STR = kv["PPR_THETA_SCHEDULE"];
-        if (kv.count("shock_sens_schedule")) PPR_SENS_SCHEDULE_STR  = kv["shock_sens_schedule"];
-        if (kv.count("PPR_SENS_SCHEDULE"))   PPR_SENS_SCHEDULE_STR  = kv["PPR_SENS_SCHEDULE"];
-
-        bool has_schedule_override = (kv.count("theta_schedule") || kv.count("PPR_THETA_SCHEDULE") ||
-                                      kv.count("shock_sens_schedule") || kv.count("PPR_SENS_SCHEDULE"));
-        bool has_legacy_override   = (kv.count("PPR_THETA_MIN") || kv.count("PPR_THETA_MID") ||
-                                      kv.count("PPR_THETA_MAX") || kv.count("PPR_DIV_ND_MAX"));
-
-        if (!has_schedule_override && has_legacy_override) {
-            PPR_THETA_SCHEDULE.clear();
-            PPR_SENS_SCHEDULE.clear();
-        } else {
-            auto parsed_theta = parse_colon_vector(PPR_THETA_SCHEDULE_STR);
-            if (parsed_theta.size() >= 2) PPR_THETA_SCHEDULE = parsed_theta;
-
-            auto parsed_sens = parse_colon_vector(PPR_SENS_SCHEDULE_STR);
-            if (parsed_sens.size() >= 2) PPR_SENS_SCHEDULE = parsed_sens;
-        }
+        if (kv.count("PPR_C_POS"))         PPR_C_POS         = std::stod(kv["PPR_C_POS"]);
+        if (kv.count("PPR_C_MAX"))         PPR_C_MAX         = std::stod(kv["PPR_C_MAX"]);
+        if (kv.count("PPR_USE_SHOCK_NORMAL_MACH"))   PPR_USE_SHOCK_NORMAL_MACH   = (kv["PPR_USE_SHOCK_NORMAL_MACH"] == "true" || kv["PPR_USE_SHOCK_NORMAL_MACH"] == "1");
+        if (kv.count("PPR_USE_SOFTMAX_INDICATOR"))   PPR_USE_SOFTMAX_INDICATOR   = (kv["PPR_USE_SOFTMAX_INDICATOR"] == "true" || kv["PPR_USE_SOFTMAX_INDICATOR"] == "1");
+        if (kv.count("PPR_SOFTMAX_P"))               PPR_SOFTMAX_P               = std::stod(kv["PPR_SOFTMAX_P"]);
+        if (kv.count("PPR_USE_SUBCELL_LINEAR_THETA"))PPR_USE_SUBCELL_LINEAR_THETA= (kv["PPR_USE_SUBCELL_LINEAR_THETA"] == "true" || kv["PPR_USE_SUBCELL_LINEAR_THETA"] == "1");
+        if (kv.count("PPR_USE_DYNAMIC_C_TAU"))       PPR_USE_DYNAMIC_C_TAU       = (kv["PPR_USE_DYNAMIC_C_TAU"] == "true" || kv["PPR_USE_DYNAMIC_C_TAU"] == "1");
     }
 
     // --- [Stabilization] ---

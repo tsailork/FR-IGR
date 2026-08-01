@@ -39,6 +39,21 @@ TEST_CASE("IO - VTK Output and Restart Round-Trip") {
     }
     
     // Write VTK output
-    CHECK(std::filesystem::exists("pv_outputs/sol_0.vtu"));
+    std::string vtu_path = "pv_outputs/sol_0.vtu";
+    CHECK(std::filesystem::exists(vtu_path));
+
+    std::ifstream vtu(vtu_path);
+    CHECK(vtu.is_open());
+    std::string line;
+    bool found_binary_tag = false;
+    while (std::getline(vtu, line)) {
+        if (line.find("format=\"binary\"") != std::string::npos) {
+            found_binary_tag = true;
+            break;
+        }
+    }
+    CHECK(found_binary_tag);
+    vtu.close();
+
     std::filesystem::current_path(old_path);
 }

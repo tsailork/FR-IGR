@@ -167,6 +167,24 @@ bool Restart::load_restart(const std::string& filename, Solver& solver) {
         }
     }
 
+    std::vector<double> s_field_data;
+    if (p.ENABLE_PPR) {
+        file.clear();
+        file.seekg(0);
+        if (seek_data_array(file, "S_field", is_binary, type_str)) {
+            s_field_data = read_values(file, total_points, is_binary, type_str);
+        }
+    }
+
+    std::vector<double> sigma_data;
+    if (p.ENABLE_IGR) {
+        file.clear();
+        file.seekg(0);
+        if (seek_data_array(file, "Sigma", is_binary, type_str)) {
+            sigma_data = read_values(file, total_points, is_binary, type_str);
+        }
+    }
+
     std::unordered_map<uint64_t, Cell*> cell_map;
     for (Cell* c : solver.cells) {
         cell_map[c->morton_id] = c;
@@ -184,6 +202,16 @@ bool Restart::load_restart(const std::string& filename, Solver& solver) {
             for (int v = 0; v < 4; ++v) {
                 for (int pt = 0; pt < npts2; ++pt) {
                     c->get_U(v, pt / npts, pt % npts, npts) = var_data[v][pt_start + pt];
+                }
+            }
+            if (!s_field_data.empty() && (int)s_field_data.size() == total_points) {
+                for (int pt = 0; pt < npts2; ++pt) {
+                    c->S_field[pt] = s_field_data[pt_start + pt];
+                }
+            }
+            if (!sigma_data.empty() && (int)sigma_data.size() == total_points) {
+                for (int pt = 0; pt < npts2; ++pt) {
+                    c->sigma_field[pt] = sigma_data[pt_start + pt];
                 }
             }
             matched_cells++;

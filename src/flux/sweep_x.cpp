@@ -19,31 +19,6 @@ void Solver::sweep_x() {
         if (p.ENABLE_MULTIRATE && !c->element_active) continue;
         for (int iy = 0; iy < p.N_PTS; ++iy) {
 
-            // Pre-compute pressure gradients for the entire cell if needed for acoustic advection
-            if (iy == 0 && p.ENABLE_PPR && p.PPR_GRAD_ADV_SCALE > 0.0) {
-                double P_buf[MAX_PTS][MAX_PTS];
-                for (int ty = 0; ty < p.N_PTS; ++ty) {
-                    for (int tx = 0; tx < p.N_PTS; ++tx) {
-                        double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, ty, tx, p.N_PTS));
-                        double u = c->get_U(1, ty, tx, p.N_PTS) / rho;
-                        double v = c->get_U(2, ty, tx, p.N_PTS) / rho;
-                        P_buf[ty][tx] = (p.GAMMA - 1.0) * (c->get_U(3, ty, tx, p.N_PTS) - 0.5 * rho * (u * u + v * v));
-                    }
-                }
-                for (int ty = 0; ty < p.N_PTS; ++ty) {
-                    for (int tx = 0; tx < p.N_PTS; ++tx) {
-                        double dP_dx = 0.0, dP_dy = 0.0;
-                        for (int k = 0; k < p.N_PTS; ++k) {
-                            dP_dx += basis.D[tx][k] * P_buf[ty][k];
-                            dP_dy += basis.D[ty][k] * P_buf[k][tx];
-                        }
-                        int idx = ty * p.N_PTS + tx;
-                        c->grad_px_field[idx] = dP_dx * (2.0 / c->dx);
-                        c->grad_py_field[idx] = dP_dy * (2.0 / c->dy);
-                    }
-                }
-            }
-
             // --- 1. Pointwise X-flux at each solution point ---
             double F_sol[MAX_PTS][4];
             double F_sol_S[MAX_PTS] = {};
@@ -54,32 +29,7 @@ void Solver::sweep_x() {
                 if (p.ENABLE_PPR) {
                     double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
                     double u   = c->get_U(1, iy, ix, p.N_PTS) / rho;
-                    double v   = c->get_U(2, iy, ix, p.N_PTS) / rho;
-                    // Part A: compute full 2D pressure gradient and store for y-sweep reuse
-                    if (p.PPR_GRAD_ADV_SCALE > 0.0) {
-                        int idx = iy * p.N_PTS + ix;
-                        double dP_dx = c->grad_px_field[idx];
-                        double dP_dy = c->grad_py_field[idx];
-                        // Apply x-component of acoustic pressure-gradient correction to advection velocity
-                        double press = std::max(p.POS_LIMITER_EPS,
-                            (p.GAMMA - 1.0) * (c->get_U(3, iy, ix, p.N_PTS) - 0.5*rho*(u*u+v*v)));
-                        double press_safe = press;
-                        double theta_cfl = (p.PPR_ADAPTIVE_THETA) ? c->theta_avg : p.PPR_THETA;
-                        if (p.ENABLE_PPR) {
-                            double p_phan = c->S_field[iy * p.N_PTS + ix] / rho;
-                            double p_reg = press + theta_cfl * (press - p_phan);
-                            press_safe = std::max(press, p_reg);
-                        }
-                        double a_loc = std::sqrt(p.GAMMA * press_safe / rho);
-                        if (p.ENABLE_PPR) {
-                            a_loc *= std::sqrt(1.0 + p.PPR_A_EFF_MULT * theta_cfl);
-                        }
-                        double grad_norm = std::sqrt(dP_dx*dP_dx + dP_dy*dP_dy) + p.PPR_GRAD_EPS;
-                        double mach_loc = std::sqrt(u*u + v*v) / (a_loc + 1e-12);
-                        double mach_weight = std::min(1.0, mach_loc / 0.20);
-                        u += p.PPR_GRAD_ADV_SCALE * mach_weight * a_loc * (dP_dx / grad_norm); // +sign: push S toward high-P side
-                    }
-                    F_sol_S[ix] = c->S_field[iy * p.N_PTS + ix] * (p.PPR_ADV_MULT * u);
+                    F_sol_S[ix] = u * c->S_field[iy * p.N_PTS + ix];
                 }
             }
 
@@ -417,38 +367,6 @@ void SolverDim<3>::sweep_x() {
         for (int iz = 0; iz < N; ++iz) {
             for (int iy = 0; iy < N; ++iy) {
 
-                // Pre-compute pressure gradients for acoustic advection if needed
-                if (iz == 0 && iy == 0 && p.ENABLE_PPR && p.PPR_GRAD_ADV_SCALE > 0.0) {
-                    std::vector<double> P_buf(N3);
-                    for (int tz = 0; tz < N; ++tz) {
-                        for (int ty = 0; ty < N; ++ty) {
-                            for (int tx = 0; tx < N; ++tx) {
-                                double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, tz, ty, tx, N));
-                                double u = c->get_U(1, tz, ty, tx, N) / rho;
-                                double v = c->get_U(2, tz, ty, tx, N) / rho;
-                                double w = c->get_U(3, tz, ty, tx, N) / rho;
-                                P_buf[tz * N2 + ty * N + tx] = (p.GAMMA - 1.0) * (c->get_U(4, tz, ty, tx, N) - 0.5 * rho * (u*u + v*v + w*w));
-                            }
-                        }
-                    }
-                    for (int tz = 0; tz < N; ++tz) {
-                        for (int ty = 0; ty < N; ++ty) {
-                            for (int tx = 0; tx < N; ++tx) {
-                                double dP_dx = 0.0, dP_dy = 0.0, dP_dz = 0.0;
-                                for (int k = 0; k < N; ++k) {
-                                    dP_dx += basis.D[tx][k] * P_buf[tz * N2 + ty * N + k];
-                                    dP_dy += basis.D[ty][k] * P_buf[tz * N2 + k * N + tx];
-                                    dP_dz += basis.D[tz][k] * P_buf[k * N2 + ty * N + tx];
-                                }
-                                int idx = tz * N2 + ty * N + tx;
-                                c->grad_px_field[idx] = dP_dx * (2.0 / c->dx);
-                                c->grad_py_field[idx] = dP_dy * (2.0 / c->dy);
-                                c->grad_pz_field[idx] = dP_dz * (2.0 / c->dz);
-                            }
-                        }
-                    }
-                }
-
                 // Pointwise X-flux at each solution point
                 double F_sol[MAX_PTS][5];
                 double F_sol_S[MAX_PTS] = {};
@@ -459,20 +377,7 @@ void SolverDim<3>::sweep_x() {
                     if (p.ENABLE_PPR) {
                         double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iz, iy, ix, N));
                         double u   = c->get_U(1, iz, iy, ix, N) / rho;
-                        double v   = c->get_U(2, iz, iy, ix, N) / rho;
-                        double w   = c->get_U(3, iz, iy, ix, N) / rho;
-                        if (p.PPR_GRAD_ADV_SCALE > 0.0) {
-                            int idx = iz * N2 + iy * N + ix;
-                            double dP_dx = c->grad_px_field[idx];
-                            double dP_dy = c->grad_py_field[idx];
-                            double dP_dz = c->grad_pz_field[idx];
-                            double press = std::max(p.POS_LIMITER_EPS,
-                                (p.GAMMA - 1.0) * (c->get_U(4, iz, iy, ix, N) - 0.5*rho*(u*u+v*v+w*w)));
-                            double a_loc = std::sqrt(p.GAMMA * press / rho);
-                            double grad_norm = std::sqrt(dP_dx*dP_dx + dP_dy*dP_dy + dP_dz*dP_dz) + p.PPR_GRAD_EPS;
-                            u += p.PPR_GRAD_ADV_SCALE * a_loc * (dP_dx / grad_norm);
-                        }
-                        F_sol_S[ix] = c->S_field[iz * N2 + iy * N + ix] * (p.PPR_ADV_MULT * u);
+                        F_sol_S[ix] = c->S_field[iz * N2 + iy * N + ix] * u;
                     }
                 }
 

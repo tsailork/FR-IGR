@@ -4,6 +4,7 @@
  */
 
 #include "../core/solver.hpp"
+#include "../ppr/ppr.hpp"
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -57,25 +58,13 @@ double Solver::compute_dt() const {
                 double u   = c->get_U(1, iy, ix, p.N_PTS) / rho;
                 double v   = c->get_U(2, iy, ix, p.N_PTS) / rho;
                 double press = (p.GAMMA - 1.0) * (c->get_U(3, iy, ix, p.N_PTS) - 0.5 * rho * (u * u + v * v));
-                double press_safe = press;
+                double sound_speed = std::sqrt(p.GAMMA * std::max(1e-12, press) / rho);
                 if (p.ENABLE_PPR) {
-                    double theta_cfl = (p.PPR_ADAPTIVE_THETA) ? c->theta_avg : p.PPR_THETA;
-                    double p_phan = c->S_field[iy * p.N_PTS + ix] / rho;
-                    double p_reg = press + theta_cfl * (press - p_phan);
-                    press_safe = std::max(press, p_reg);
-                }
-                if (press_safe < 1e-12) press_safe = 1e-12;
-                double sound_speed = std::sqrt(p.GAMMA * press_safe / rho);
-                if (p.ENABLE_PPR) {
-                    double theta_cfl = (p.PPR_ADAPTIVE_THETA) ? c->theta_avg : p.PPR_THETA;
-                    sound_speed *= std::sqrt(1.0 + p.PPR_A_EFF_MULT * theta_cfl);
+                    double S = c->S_field[iy * p.N_PTS + ix];
+                    sound_speed = PPR::get_a_reg(rho, c->get_U(1, iy, ix, p.N_PTS), c->get_U(2, iy, ix, p.N_PTS),
+                                                 c->get_U(3, iy, ix, p.N_PTS), S, c->theta_avg, p.GAMMA, 1e-12);
                 }
                 max_lambda = std::max({max_lambda, std::abs(u) + sound_speed, std::abs(v) + sound_speed});
-                if (p.ENABLE_PPR) {
-                    double s_wave_x = p.PPR_ADV_MULT * (std::abs(u) + p.PPR_GRAD_ADV_SCALE * sound_speed);
-                    double s_wave_y = p.PPR_ADV_MULT * (std::abs(v) + p.PPR_GRAD_ADV_SCALE * sound_speed);
-                    max_lambda = std::max({max_lambda, s_wave_x, s_wave_y});
-                }
             }
         }
 
@@ -149,35 +138,23 @@ double SolverDim<3>::compute_dt() const {
         int npts3 = npts * npts * npts;
 
         for (int pt = 0; pt < npts3; ++pt) {
-            double rho = std::max(1e-12, c->U[0 * npts3 + pt]);
-            double u   = c->U[1 * npts3 + pt] / rho;
-            double v   = c->U[2 * npts3 + pt] / rho;
-            double w   = c->U[3 * npts3 + pt] / rho;
-            double E   = c->U[4 * npts3 + pt];
-            double press = (p.GAMMA - 1.0) * (E - 0.5 * rho * (u*u + v*v + w*w));
-            double press_safe = std::max(p.POS_LIMITER_EPS, press);
+            double rho  = std::max(1e-12, c->U[0 * npts3 + pt]);
+            double rhou = c->U[1 * npts3 + pt];
+            double rhov = c->U[2 * npts3 + pt];
+            double rhow = c->U[3 * npts3 + pt];
+            double E    = c->U[4 * npts3 + pt];
+            double u    = rhou / rho;
+            double v    = rhov / rho;
+            double w    = rhow / rho;
+            double speed_sound = std::sqrt(p.GAMMA * std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (E - 0.5 * rho * (u*u + v*v + w*w))) / rho);
             if (p.ENABLE_PPR) {
-                double theta_cfl = (p.PPR_ADAPTIVE_THETA) ? c->theta_avg : p.PPR_THETA;
-                double p_phan = c->S_field[pt] / rho;
-                double p_reg = press + theta_cfl * (press - p_phan);
-                press_safe = std::max(press_safe, p_reg);
-            }
-            double speed_sound = std::sqrt(p.GAMMA * press_safe / rho);
-            if (p.ENABLE_PPR) {
-                double theta_cfl = (p.PPR_ADAPTIVE_THETA) ? c->theta_avg : p.PPR_THETA;
-                speed_sound *= std::sqrt(1.0 + p.PPR_A_EFF_MULT * theta_cfl);
+                speed_sound = PPR::get_a_reg_3d(rho, rhou, rhov, rhow, E, c->S_field[pt], c->theta_avg, p.GAMMA, p.POS_LIMITER_EPS);
             }
             
             double lambda_x = std::abs(u) + speed_sound;
             double lambda_y = std::abs(v) + speed_sound;
             double lambda_z = std::abs(w) + speed_sound;
             max_lambda = std::max({max_lambda, lambda_x, lambda_y, lambda_z});
-            if (p.ENABLE_PPR) {
-                double s_wave_x = p.PPR_ADV_MULT * (std::abs(u) + p.PPR_GRAD_ADV_SCALE * speed_sound);
-                double s_wave_y = p.PPR_ADV_MULT * (std::abs(v) + p.PPR_GRAD_ADV_SCALE * speed_sound);
-                double s_wave_z = p.PPR_ADV_MULT * (std::abs(w) + p.PPR_GRAD_ADV_SCALE * speed_sound);
-                max_lambda = std::max({max_lambda, s_wave_x, s_wave_y, s_wave_z});
-            }
         }
 
         double h_min = std::min({c->dx, c->dy, c->dz});

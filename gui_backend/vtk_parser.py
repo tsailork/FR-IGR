@@ -1,6 +1,7 @@
 import os
 import sys
 import re
+import base64
 import xml.etree.ElementTree as ET
 import numpy as np
 from gui_backend.state import state
@@ -10,6 +11,7 @@ EXTENT_RE = re.compile(r'WholeExtent="([^"]+)"')
 PIECE_POINTS_RE = re.compile(r'NumberOfPoints="(\d+)"')
 PIECE_POINTS_ALT_RE = re.compile(r'<Piece[^>]+NumberOfPoints="(\d+)"')
 POINTS_BLOCK_RE = re.compile(r'<Points>\s*<DataArray[^>]*>(.*?)</DataArray>\s*</Points>', re.DOTALL)
+POINTS_BLOCK_TAG_RE = re.compile(r'<Points>\s*(<DataArray[^>]*>)(.*?)</DataArray>\s*</Points>', re.DOTALL)
 
 # Dict mapping lowercase frontend names to actual VTK scalar array names
 VTK_VAR_MAPPING = {
@@ -31,6 +33,34 @@ VTK_VAR_MAPPING = {
 def get_vtk_var_name(var_name):
     """Maps lowercase frontend variable name to target array name written in VTK files."""
     return VTK_VAR_MAPPING.get(var_name.lower(), var_name)
+
+def parse_xml_node_array(node):
+    if node is None or node.text is None:
+        return np.array([], dtype=float)
+    fmt = node.attrib.get("format", "ascii")
+    data_type = node.attrib.get("type", "Float32")
+    dtype = np.float64 if data_type == "Float64" else (np.uint64 if data_type == "UInt64" else (np.int32 if data_type == "Int32" else np.float32))
+    
+    text = node.text.strip()
+    if fmt == "binary":
+        raw_bytes = base64.b64decode(text)
+        return np.frombuffer(raw_bytes[4:], dtype=dtype).astype(np.float64)
+    else:
+        return np.fromstring(text, dtype=dtype, sep=' ')
+
+def parse_regex_tag_array(full_tag, text_content):
+    is_binary = 'format="binary"' in full_tag or "format='binary'" in full_tag
+    is_float64 = 'type="Float64"' in full_tag or "type='Float64'" in full_tag
+    is_uint64 = 'type="UInt64"' in full_tag or "type='UInt64'" in full_tag
+    is_int32 = 'type="Int32"' in full_tag or "type='Int32'" in full_tag
+    dtype = np.float64 if is_float64 else (np.uint64 if is_uint64 else (np.int32 if is_int32 else np.float32))
+
+    text_content = text_content.strip()
+    if is_binary:
+        raw_bytes = base64.b64decode(text_content)
+        return np.frombuffer(raw_bytes[4:], dtype=dtype).astype(np.float64)
+    else:
+        return np.fromstring(text_content, dtype=dtype, sep=' ')
 
 def parse_latest_vts(var_name):
     """Parses all blocks in the latest written VTM dataset file using ET."""
@@ -102,19 +132,19 @@ def parse_latest_vts(var_name):
             
             # Extract points
             points_node = vts_root.find(".//Points/DataArray")
-            if points_node is None or not points_node.text:
+            points_vals = parse_xml_node_array(points_node)
+            if len(points_vals) == 0:
                 continue
-            points_vals = [float(x) for x in points_node.text.split()]
-            x_coords = points_vals[0::3]
-            y_coords = points_vals[1::3]
+            x_coords = points_vals[0::3].tolist()
+            y_coords = points_vals[1::3].tolist()
             
             # Extract target scalar values
             scalar_node = vts_root.find(f".//PointData/DataArray[@Name='{var_name}']")
             if scalar_node is None:
                 scalar_node = vts_root.find(".//PointData/DataArray[@Name='rho']")
             
-            if scalar_node is not None and scalar_node.text:
-                values = [float(x) for x in scalar_node.text.split()]
+            if scalar_node is not None:
+                values = parse_xml_node_array(scalar_node).tolist()
             else:
                 values = [0.0] * (nx * ny)
                 
@@ -161,23 +191,21 @@ def fast_parse_vts(vts_path, var_name):
             ny = 1
             is_structured = False
         
-        points_block_match = POINTS_BLOCK_RE.search(content)
+        points_block_match = POINTS_BLOCK_TAG_RE.search(content)
         if not points_block_match:
             return None
-        points_str = points_block_match.group(1).strip()
-        points_vals = np.fromstring(points_str, dtype=float, sep=' ')
+        points_vals = parse_regex_tag_array(points_block_match.group(1), points_block_match.group(2))
         x_coords = points_vals[0::3]
         y_coords = points_vals[1::3]
         
-        scalar_pattern = rf'<DataArray[^>]+Name=["\']{var_name}["\'][^>]*>(.*?)</DataArray>'
+        scalar_pattern = rf'(<DataArray[^>]+Name=["\']{var_name}["\'][^>]*>)(.*?)</DataArray>'
         scalar_match = re.search(scalar_pattern, content, re.DOTALL)
         if not scalar_match:
-            scalar_match = re.search(r'<DataArray[^>]+Name=["\']rho["\'][^>]*>(.*?)</DataArray>', content, re.DOTALL)
+            scalar_match = re.search(r'(<DataArray[^>]+Name=["\']rho["\'][^>]*>)(.*?)</DataArray>', content, re.DOTALL)
             if not scalar_match:
                 return None
         
-        scalar_str = scalar_match.group(1).strip()
-        values = np.fromstring(scalar_str, dtype=float, sep=' ')
+        values = parse_regex_tag_array(scalar_match.group(1), scalar_match.group(2))
         
         return {
             "nx": nx,

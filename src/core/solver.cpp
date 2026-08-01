@@ -17,6 +17,7 @@
 #include <algorithm>
 #include "../ib/sbm_geometry.hpp"
 #include "../igr/ducros_sensor.hpp"
+#include "../ppr/ppr.hpp"
 
 /**
  * @brief Parse a boundary condition string from domain.grid into a NeighborInfo metadata struct.
@@ -157,98 +158,7 @@ SolverDim<2>::SolverDim(const Parameters& params)
 /// Pre-compute element-average adaptive theta for PPR and store in each cell's theta_avg.
 void Solver::compute_ppr_theta_avg() {
     if (!p.ENABLE_PPR) return;
-    #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < cells.size(); ++i) {
-        Cell* c = cells[i];
-        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
-        if (!p.PPR_ADAPTIVE_THETA) {
-            c->theta_max_tmp = p.PPR_THETA;
-            continue;
-        }
-        double theta_max_cell = 0.0;
-        const double dmax = std::max(1.001, p.PPR_DIV_ND_MAX);
-        
-        // Pre-compute u and v arrays to avoid O(N^3) division by rho
-        double u_buf[MAX_PTS][MAX_PTS];
-        double v_buf[MAX_PTS][MAX_PTS];
-        for (int iy = 0; iy < p.N_PTS; ++iy) {
-            for (int ix = 0; ix < p.N_PTS; ++ix) {
-                double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
-                u_buf[iy][ix] = c->get_U(1, iy, ix, p.N_PTS) / rho;
-                v_buf[iy][ix] = c->get_U(2, iy, ix, p.N_PTS) / rho;
-            }
-        }
-
-        for (int iy = 0; iy < p.N_PTS; ++iy) {
-            for (int ix = 0; ix < p.N_PTS; ++ix) {
-                double theta;
-                if (!p.PPR_THETA_SCHEDULE.empty() && p.PPR_THETA_SCHEDULE.size() == p.PPR_SENS_SCHEDULE.size()) {
-                    double sensor_val = Sensors::compute_combined_ppr_sensor(*c, iy, ix, basis, p, u_buf, v_buf);
-                    theta = Sensors::interpolate_schedule(sensor_val, p.PPR_SENS_SCHEDULE, p.PPR_THETA_SCHEDULE);
-                } else {
-                    // Fallback to 3-point non-dimensional divergence interpolation
-                    double du_dx = 0.0, dv_dy = 0.0;
-                    for (int k = 0; k < p.N_PTS; ++k) {
-                        du_dx += basis.D[ix][k] * u_buf[iy][k];
-                        dv_dy += basis.D[iy][k] * v_buf[k][ix];
-                    }
-                    du_dx *= (2.0 / c->dx);
-                    dv_dy *= (2.0 / c->dy);
-                    double div_u = du_dx + dv_dy;
-
-                    double rho   = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
-                    double u_loc = u_buf[iy][ix];
-                    double v_loc = v_buf[iy][ix];
-                    double P_loc = std::max(p.POS_LIMITER_EPS,
-                        (p.GAMMA - 1.0) * (c->get_U(3, iy, ix, p.N_PTS) - 0.5 * rho * (u_loc*u_loc + v_loc*v_loc)));
-                    double a_loc  = std::sqrt(p.GAMMA * P_loc / rho);
-                    double h_loc  = std::min(c->dx, c->dy);
-                    double div_nd = -div_u * h_loc / (a_loc * (p.P_DEG + 1));
-
-                    if      (div_nd <= 0.0)   theta = p.PPR_THETA_MIN;
-                    else if (div_nd <  1.0)   theta = p.PPR_THETA_MIN + (p.PPR_THETA_MID - p.PPR_THETA_MIN) * div_nd;
-                    else if (div_nd <  dmax)  theta = p.PPR_THETA_MID + (p.PPR_THETA_MAX - p.PPR_THETA_MID) * (div_nd - 1.0) / (dmax - 1.0);
-                    else                      theta = p.PPR_THETA_MAX;
-                }
-
-                if (p.PPR_MACH_FILTER) {
-                    double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
-                    double u_loc = u_buf[iy][ix];
-                    double v_loc = v_buf[iy][ix];
-                    double P_loc = std::max(p.POS_LIMITER_EPS,
-                        (p.GAMMA - 1.0) * (c->get_U(3, iy, ix, p.N_PTS) - 0.5 * rho * (u_loc*u_loc + v_loc*v_loc)));
-                    double a_loc = std::sqrt(p.GAMMA * P_loc / rho);
-                    double mach_loc = std::sqrt(u_loc*u_loc + v_loc*v_loc) / (a_loc + 1e-12);
-                    double phi_m = std::clamp((mach_loc - p.PPR_MACH_SUB) / (p.PPR_MACH_CUT - p.PPR_MACH_SUB + 1e-12), 0.0, 1.0);
-                    theta *= phi_m;
-                }
-
-                theta_max_cell = std::max(theta_max_cell, theta);
-            }
-        }
-        c->theta_max_tmp = theta_max_cell;
-    }
-
-    if (p.PPR_SMOOTH_THETA) {
-        #pragma omp parallel for schedule(static)
-        for (size_t i = 0; i < cells.size(); ++i) {
-            Cell* c = cells[i];
-            if (p.ENABLE_MULTIRATE && !c->element_active) continue;
-            double max_t = c->theta_max_tmp;
-            for (int f = 0; f < 4; ++f) {
-                if (c->neighbors[f]) {
-                    max_t = std::max(max_t, c->neighbors[f]->theta_max_tmp);
-                }
-            }
-            c->theta_avg = max_t;
-        }
-    } else {
-        #pragma omp parallel for schedule(static)
-        for (size_t i = 0; i < cells.size(); ++i) {
-            if (p.ENABLE_MULTIRATE && !cells[i]->element_active) continue;
-            cells[i]->theta_avg = cells[i]->theta_max_tmp;
-        }
-    }
+    PPR::compute_element_theta_2d(cells, basis, p);
 }
 
 /// Assemble the full right-hand side: IGR + inviscid sweeps + viscous fluxes.
@@ -301,25 +211,18 @@ void Solver::compute_local_dt() {
         double max_lambda = 1e-10;
         for (int iy = 0; iy < p.N_PTS; ++iy) {
             for (int ix = 0; ix < p.N_PTS; ++ix) {
-                double rho = std::max(1e-12, c->get_U(0, iy, ix, p.N_PTS));
-                double u   = c->get_U(1, iy, ix, p.N_PTS) / rho;
-                double v   = c->get_U(2, iy, ix, p.N_PTS) / rho;
-                double press = (p.GAMMA - 1.0) * (c->get_U(3, iy, ix, p.N_PTS) - 0.5 * rho * (u * u + v * v));
-                double press_safe = press;
+                double rho  = std::max(1e-12, c->get_U(0, iy, ix, p.N_PTS));
+                double rhou = c->get_U(1, iy, ix, p.N_PTS);
+                double rhov = c->get_U(2, iy, ix, p.N_PTS);
+                double u    = rhou / rho;
+                double v    = rhov / rho;
+                double E    = c->get_U(3, iy, ix, p.N_PTS);
+                double sound_speed = std::sqrt(p.GAMMA * std::max(1e-12, (p.GAMMA - 1.0) * (E - 0.5 * rho * (u*u + v*v))) / rho);
                 if (p.ENABLE_PPR) {
-                    double theta_cfl = (p.PPR_ADAPTIVE_THETA) ? c->theta_avg : p.PPR_THETA;
-                    double p_phan = c->S_field[iy * p.N_PTS + ix] / rho;
-                    double p_reg = press + theta_cfl * (press - p_phan);
-                    press_safe = std::max(press, p_reg);
+                    double S = c->S_field[iy * p.N_PTS + ix];
+                    sound_speed = PPR::get_a_reg(rho, rhou, rhov, E, S, c->theta_avg, p.GAMMA, p.POS_LIMITER_EPS);
                 }
-                if (press_safe < 1e-12) press_safe = 1e-12;
-                double sound_speed = std::sqrt(p.GAMMA * press_safe / rho);
                 max_lambda = std::max({max_lambda, std::abs(u) + sound_speed, std::abs(v) + sound_speed});
-                if (p.ENABLE_PPR) {
-                    double s_wave_x = p.PPR_ADV_MULT * (std::abs(u) + p.PPR_GRAD_ADV_SCALE * sound_speed);
-                    double s_wave_y = p.PPR_ADV_MULT * (std::abs(v) + p.PPR_GRAD_ADV_SCALE * sound_speed);
-                    max_lambda = std::max({max_lambda, s_wave_x, s_wave_y});
-                }
             }
         }
         double h = std::min(c->dx, c->dy);
@@ -860,12 +763,7 @@ void Solver::get_flux_pointwise_cell(const Cell& c, int iy, int ix,
     double press = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (E - 0.5 * rho * (u*u + v*v)));
     if (p.ENABLE_PPR) {
         double P_phan = c.S_field[iy * p.N_PTS + ix] / rho;
-        double theta_cfl = (p.PPR_ADAPTIVE_THETA) ? c.theta_avg : p.PPR_THETA;
-        if (press - P_phan < 0.0) {
-            double theta_safe = (press - p.POS_LIMITER_EPS) / (P_phan - press);
-            theta_cfl = std::min(theta_cfl, std::max(0.0, theta_safe));
-        }
-        double P_reg  = press + theta_cfl * (press - P_phan);
+        double P_reg  = press + c.theta_avg * (press - P_phan);
         press = std::max(p.POS_LIMITER_EPS, P_reg);
     }
 

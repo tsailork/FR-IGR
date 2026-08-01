@@ -135,7 +135,7 @@ Limiters::LimiterStats Limiters::apply_positivity_limiter(std::vector<Cell*>& ce
                 S_avg = eps * r_avg;
             }
             // Clamp average S to ensure P_reg_avg >= eps
-            double max_p_phan_avg = ((1.0 + p.PPR_THETA) * p_avg - eps) / p.PPR_THETA;
+            double max_p_phan_avg = ((1.0 + c->theta_avg) * p_avg - eps) / (c->theta_avg + 1e-12);
             if (p_phan_avg > max_p_phan_avg) {
                 p_phan_avg = max_p_phan_avg;
                 S_avg = max_p_phan_avg * r_avg;
@@ -216,13 +216,13 @@ Limiters::LimiterStats Limiters::apply_positivity_limiter(std::vector<Cell*>& ce
                     if (p_phan < eps) {
                         theta_p = std::min(theta_p, bisect_for_theta_ppr(
                             rho, rhou, rhov, E, S, r_avg, ru_avg, rv_avg, E_avg, S_avg,
-                            p.GAMMA, p.PPR_THETA, eps, false));
+                            p.GAMMA, c->theta_avg, eps, false));
                     }
-                    double p_reg = press + p.PPR_THETA * (press - p_phan);
+                    double p_reg = press + c->theta_avg * (press - p_phan);
                     if (p_reg < eps) {
                         theta_p = std::min(theta_p, bisect_for_theta_ppr(
                             rho, rhou, rhov, E, S, r_avg, ru_avg, rv_avg, E_avg, S_avg,
-                            p.GAMMA, p.PPR_THETA, eps, true));
+                            p.GAMMA, c->theta_avg, eps, true));
                     }
                 }
             }
@@ -246,13 +246,13 @@ Limiters::LimiterStats Limiters::apply_positivity_limiter(std::vector<Cell*>& ce
                 if (p_phan < eps) {
                     theta_p = std::min(theta_p, bisect_for_theta_ppr(
                         rho, rhou, rhov, E, S, r_avg, ru_avg, rv_avg, E_avg, S_avg,
-                        p.GAMMA, p.PPR_THETA, eps, false));
+                        p.GAMMA, c->theta_avg, eps, false));
                 }
-                double p_reg = press + p.PPR_THETA * (press - p_phan);
+                double p_reg = press + c->theta_avg * (press - p_phan);
                 if (p_reg < eps) {
                     theta_p = std::min(theta_p, bisect_for_theta_ppr(
                         rho, rhou, rhov, E, S, r_avg, ru_avg, rv_avg, E_avg, S_avg,
-                        p.GAMMA, p.PPR_THETA, eps, true));
+                        p.GAMMA, c->theta_avg, eps, true));
                 }
             }
         }

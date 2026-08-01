@@ -1,6 +1,6 @@
 #include "../doctest.h"
 #include "../../src/core/solver.hpp"
-#include "../../src/core/parameters.hpp"
+#include "../../src/ppr/ppr.hpp"
 #include <cmath>
 
 TEST_CASE("Euler flux computation") {
@@ -154,11 +154,10 @@ TEST_CASE("3D Euler flux computation") {
     }
 }
 
-TEST_CASE("PPR Effective Acoustic Wave Speed Scaling (sqrt(1+theta))") {
+TEST_CASE("PPR Regularized Acoustic Sound Speed Evaluation") {
     Parameters p;
     p.GAMMA = 1.4;
     p.ENABLE_PPR = true;
-    p.PPR_THETA = 3.0; // sqrt(1+3) = 2.0 boost factor
     p.RIEMANN_SOLVER = "RUSANOV";
 
     Solver solver(p);
@@ -172,15 +171,11 @@ TEST_CASE("PPR Effective Acoustic Wave Speed Scaling (sqrt(1+theta))") {
     solver.solve_riemann(UL, UR, F_comm, 0, SL, SR, thetaL, thetaR);
 
     // Physical sound speed a_phys = sqrt(1.4 * 1.0 / 1.0) = sqrt(1.4) = 1.1832159566
-    // Effective sound speed a_eff = a_phys * sqrt(1 + 3) = 2.0 * a_phys = 2.3664319132
-    double a_phys = std::sqrt(1.4);
-    double a_eff = a_phys * std::sqrt(1.0 + 3.0);
+    double P_phys, P_phan, P_reg, a_reg;
+    PPR::get_thermodynamics(UL[0], UL[1], UL[2], UL[3], SL, thetaL, p.GAMMA, p.POS_LIMITER_EPS, P_phys, P_phan, P_reg, a_reg);
+    CHECK(a_reg >= std::sqrt(1.4));
 
-    // Rusanov max_wave = max(|vnL| + cL_eff, |vnR| + cR_eff) = a_eff
-    // Interface numerical flux F_comm[1] = 0.5*(FL[1] + FR[1]) - 0.5 * max_wave * (UR[1] - UL[1]) = 1.0
-    CHECK(a_eff == doctest::Approx(2.0 * a_phys));
-
-    // Test compute_dt sound speed boost
+    // Test compute_dt sound speed
     Solver solver_dt(p);
     Cell2D* cell = new Cell2D(p.N_PTS, &p);
     cell->dx = 1.0;
@@ -200,9 +195,6 @@ TEST_CASE("PPR Effective Acoustic Wave Speed Scaling (sqrt(1+theta))") {
     solver_dt.cells.push_back(cell);
     double dt = solver_dt.compute_dt();
     
-    // Physical max_lambda = a_phys = sqrt(1.4) = 1.183216
-    // Effective max_lambda = a_eff = 2.0 * a_phys = 2.366432
-    // dt = 0.5 * CFL * h / (max_lambda * (2*P + 1))
     // Verify dt is non-zero and finite
     CHECK(dt > 0.0);
 }

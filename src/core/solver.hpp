@@ -279,7 +279,9 @@ public:
      */
     void solve_riemann(const double* UL, const double* UR, double* F_comm,
                        int dir, double SL = 0.0, double SR = 0.0,
-                       double thetaL = 0.0, double thetaR = 0.0) const;
+                       double thetaL = 0.0, double thetaR = 0.0,
+                       double* aL_reg_out = nullptr, double* aR_reg_out = nullptr,
+                       double* vnL_out = nullptr, double* vnR_out = nullptr) const;
 
     /**
      * @brief Compute the complete interface flux.
@@ -473,7 +475,9 @@ public:
 
     void solve_riemann(const double* UL, const double* UR, double* F_comm,
                        int dir, double SL = 0.0, double SR = 0.0,
-                       double thetaL = 0.0, double thetaR = 0.0) const;
+                       double thetaL = 0.0, double thetaR = 0.0,
+                       double* aL_reg_out = nullptr, double* aR_reg_out = nullptr,
+                       double* vnL_out = nullptr, double* vnR_out = nullptr) const;
 
     void compute_interface_flux(const double* UL, const double* UR,
                                 double sigL, double sigR,

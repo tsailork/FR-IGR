@@ -83,12 +83,47 @@ void VTKWriter::load_existing_pvd() {
               << plot_snapshots.size() << " plot snapshots from existing PVDs\n";
 }
 
+static std::string base64_encode(const unsigned char* data, size_t len) {
+    static const char table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    std::string out;
+    out.reserve(((len + 2) / 3) * 4);
+    for (size_t i = 0; i < len; i += 3) {
+        uint32_t val = (data[i] << 16) | ((i + 1 < len ? data[i + 1] : 0) << 8) | (i + 2 < len ? data[i + 2] : 0);
+        out.push_back(table[(val >> 18) & 0x3F]);
+        out.push_back(table[(val >> 12) & 0x3F]);
+        out.push_back(i + 1 < len ? table[(val >> 6) & 0x3F] : '=');
+        out.push_back(i + 2 < len ? table[val & 0x3F] : '=');
+    }
+    return out;
+}
+
+template<typename T>
+static void write_binary_data_array(std::ostream& os, const std::string& name, int num_components, const std::vector<T>& data) {
+    uint32_t num_bytes = static_cast<uint32_t>(data.size() * sizeof(T));
+    std::vector<unsigned char> raw_buf(sizeof(uint32_t) + num_bytes);
+    std::memcpy(raw_buf.data(), &num_bytes, sizeof(uint32_t));
+    if (num_bytes > 0) {
+        std::memcpy(raw_buf.data() + sizeof(uint32_t), data.data(), num_bytes);
+    }
+    std::string b64 = base64_encode(raw_buf.data(), raw_buf.size());
+    std::string type_str = "Float32";
+    if (std::is_same_v<T, double>) type_str = "Float64";
+    else if (std::is_same_v<T, float>) type_str = "Float32";
+    else if (std::is_same_v<T, int32_t>) type_str = "Int32";
+    else if (std::is_same_v<T, uint64_t>) type_str = "UInt64";
+    else if (std::is_same_v<T, uint8_t>) type_str = "UInt8";
+
+    os << "        <DataArray type=\"" << type_str << "\" Name=\"" << name << "\" NumberOfComponents=\"" << num_components << "\" format=\"binary\">\n";
+    os << "          " << b64 << "\n";
+    os << "        </DataArray>\n";
+}
+
 void VTKWriter::write_checkpoint(Solver& solver, int step, double time) {
     const Parameters& p = solver.p;
     std::string vtu_filename = "sol_" + std::to_string(step) + ".vtu";
     std::string vtu_path = "pv_outputs/" + vtu_filename;
 
-    std::ofstream vtu(vtu_path);
+    std::ofstream vtu(vtu_path, std::ios::binary);
     if (!vtu.is_open()) {
         std::cerr << "Error: Could not open VTU file " << vtu_path << "\n";
         return;
@@ -110,96 +145,115 @@ void VTKWriter::write_checkpoint(Solver& solver, int step, double time) {
 
     // 1. Points
     vtu << "      <Points>\n";
-    vtu << "        <DataArray type=\"Float32\" Name=\"Points\" NumberOfComponents=\"3\" format=\"ascii\">\n";
-    vtu << std::fixed << std::setprecision(6);
+    std::vector<float> pts_data;
+    pts_data.reserve(total_points * 3);
     for (size_t c_idx = 0; c_idx < solver.cells.size(); ++c_idx) {
         Cell* c = solver.cells[c_idx];
         for (int iy = 0; iy < npts; ++iy) {
             for (int ix = 0; ix < npts; ++ix) {
-                double x = c->x_min + 0.5 * (1.0 + solver.basis.z[ix]) * c->dx;
-                double y = c->y_min + 0.5 * (1.0 + solver.basis.z[iy]) * c->dy;
-                vtu << x << " " << y << " 0.0\n";
+                float x = static_cast<float>(c->x_min + 0.5 * (1.0 + solver.basis.z[ix]) * c->dx);
+                float y = static_cast<float>(c->y_min + 0.5 * (1.0 + solver.basis.z[iy]) * c->dy);
+                pts_data.push_back(x);
+                pts_data.push_back(y);
+                pts_data.push_back(0.0f);
             }
         }
     }
-    vtu << "        </DataArray>\n";
+    write_binary_data_array(vtu, "Points", 3, pts_data);
     vtu << "      </Points>\n";
 
-    // 2. Cells (Connectivity)
+    // 2. Cells (Connectivity, Offsets, Types)
     vtu << "      <Cells>\n";
-    vtu << "        <DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
-    for (size_t c_idx = 0; c_idx < solver.cells.size(); ++c_idx) {
-        int point_offset = c_idx * npts2;
-        if (npts > 1) {
+    std::vector<int32_t> conn_data;
+    if (npts > 1) {
+        conn_data.reserve(total_vtk_cells * 4);
+        for (size_t c_idx = 0; c_idx < solver.cells.size(); ++c_idx) {
+            int point_offset = c_idx * npts2;
             for (int iy = 0; iy < npts - 1; ++iy) {
                 for (int ix = 0; ix < npts - 1; ++ix) {
-                    int bl = point_offset + iy * npts + ix;
-                    int br = point_offset + iy * npts + ix + 1;
-                    int tr = point_offset + (iy + 1) * npts + ix + 1;
-                    int tl = point_offset + (iy + 1) * npts + ix;
-                    vtu << bl << " " << br << " " << tr << " " << tl << "\n";
+                    conn_data.push_back(point_offset + iy * npts + ix);
+                    conn_data.push_back(point_offset + iy * npts + ix + 1);
+                    conn_data.push_back(point_offset + (iy + 1) * npts + ix + 1);
+                    conn_data.push_back(point_offset + (iy + 1) * npts + ix);
                 }
             }
-        } else {
-            vtu << point_offset << "\n";
+        }
+    } else {
+        conn_data.reserve(total_vtk_cells);
+        for (size_t c_idx = 0; c_idx < solver.cells.size(); ++c_idx) {
+            conn_data.push_back(c_idx * npts2);
         }
     }
-    vtu << "        </DataArray>\n";
+    write_binary_data_array(vtu, "connectivity", 1, conn_data);
 
-    vtu << "        <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
+    std::vector<int32_t> offset_data;
+    offset_data.reserve(total_vtk_cells);
     int current_offset = 0;
     for (size_t c_idx = 0; c_idx < solver.cells.size(); ++c_idx) {
         for (int j = 0; j < cells_per_element; ++j) {
             current_offset += (npts > 1) ? 4 : 1;
-            vtu << current_offset << " ";
+            offset_data.push_back(current_offset);
         }
-        vtu << "\n";
     }
-    vtu << "        </DataArray>\n";
+    write_binary_data_array(vtu, "offsets", 1, offset_data);
 
-    vtu << "        <DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">\n";
-    for (size_t c_idx = 0; c_idx < solver.cells.size(); ++c_idx) {
-        for (int j = 0; j < cells_per_element; ++j) {
-            vtu << ((npts > 1) ? "9 " : "1 ");
-        }
-        vtu << "\n";
+    std::vector<uint8_t> types_data;
+    types_data.reserve(total_vtk_cells);
+    uint8_t cell_type = (npts > 1) ? 9 : 1;
+    for (int i = 0; i < total_vtk_cells; ++i) {
+        types_data.push_back(cell_type);
     }
-    vtu << "        </DataArray>\n";
+    write_binary_data_array(vtu, "types", 1, types_data);
     vtu << "      </Cells>\n";
 
     // 3. PointData
     vtu << "      <PointData Scalars=\"rho\">\n";
 
-    // Helper lambda to write PointData arrays
-    auto write_point_array = [&](const std::string& name, auto getter) {
-        vtu << "        <DataArray type=\"Float32\" Name=\"" << name << "\" format=\"ascii\">\n";
+    // MortonID (UInt64)
+    std::vector<uint64_t> morton_data;
+    morton_data.reserve(total_points);
+    for (size_t c_idx = 0; c_idx < solver.cells.size(); ++c_idx) {
+        uint64_t mid = solver.cells[c_idx]->morton_id;
+        for (int j = 0; j < npts2; ++j) {
+            morton_data.push_back(mid);
+        }
+    }
+    write_binary_data_array(vtu, "MortonID", 1, morton_data);
+
+    // Write solution state variables in Float64 double precision for exact restart
+    auto write_solution_array_f64 = [&](const std::string& name, auto getter) {
+        std::vector<double> data;
+        data.reserve(total_points);
         for (size_t c_idx = 0; c_idx < solver.cells.size(); ++c_idx) {
             Cell* c = solver.cells[c_idx];
             for (int iy = 0; iy < npts; ++iy) {
                 for (int ix = 0; ix < npts; ++ix) {
-                    vtu << getter(c, iy, ix) << " ";
+                    data.push_back(getter(c, iy, ix));
                 }
             }
-            vtu << "\n";
         }
-        vtu << "        </DataArray>\n";
+        write_binary_data_array(vtu, name, 1, data);
     };
 
-    // MortonID (UInt64)
-    vtu << "        <DataArray type=\"UInt64\" Name=\"MortonID\" format=\"ascii\">\n";
-    for (size_t c_idx = 0; c_idx < solver.cells.size(); ++c_idx) {
-        uint64_t mid = solver.cells[c_idx]->morton_id;
-        for (int j = 0; j < npts2; ++j) {
-            vtu << mid << " ";
+    // Write derived diagnostic variables in Float32 single precision
+    auto write_point_array_f32 = [&](const std::string& name, auto getter) {
+        std::vector<float> data;
+        data.reserve(total_points);
+        for (size_t c_idx = 0; c_idx < solver.cells.size(); ++c_idx) {
+            Cell* c = solver.cells[c_idx];
+            for (int iy = 0; iy < npts; ++iy) {
+                for (int ix = 0; ix < npts; ++ix) {
+                    data.push_back(static_cast<float>(getter(c, iy, ix)));
+                }
+            }
         }
-        vtu << "\n";
-    }
-    vtu << "        </DataArray>\n";
+        write_binary_data_array(vtu, name, 1, data);
+    };
 
-    write_point_array("rho",   [&](Cell* c, int iy, int ix) { return c->get_U(0, iy, ix, npts); });
-    write_point_array("rho_u", [&](Cell* c, int iy, int ix) { return c->get_U(1, iy, ix, npts); });
-    write_point_array("rho_v", [&](Cell* c, int iy, int ix) { return c->get_U(2, iy, ix, npts); });
-    write_point_array("rho_E", [&](Cell* c, int iy, int ix) { return c->get_U(3, iy, ix, npts); });
+    write_solution_array_f64("rho",   [&](Cell* c, int iy, int ix) { return c->get_U(0, iy, ix, npts); });
+    write_solution_array_f64("rho_u", [&](Cell* c, int iy, int ix) { return c->get_U(1, iy, ix, npts); });
+    write_solution_array_f64("rho_v", [&](Cell* c, int iy, int ix) { return c->get_U(2, iy, ix, npts); });
+    write_solution_array_f64("rho_E", [&](Cell* c, int iy, int ix) { return c->get_U(3, iy, ix, npts); });
 
     auto get_prim = [&](Cell* c, int iy, int ix, int var) {
         double r = c->get_U(0, iy, ix, npts);
@@ -217,14 +271,14 @@ void VTKWriter::write_checkpoint(Solver& solver, int step, double time) {
         return 0.0;
     };
 
-    write_point_array("u", [&](Cell* c, int iy, int ix) { return get_prim(c, iy, ix, 0); });
-    write_point_array("v", [&](Cell* c, int iy, int ix) { return get_prim(c, iy, ix, 1); });
-    write_point_array("Pressure", [&](Cell* c, int iy, int ix) { return get_prim(c, iy, ix, 2); });
-    write_point_array("Temperature", [&](Cell* c, int iy, int ix) { return get_prim(c, iy, ix, 3); });
-    write_point_array("Mach", [&](Cell* c, int iy, int ix) { return get_prim(c, iy, ix, 4); });
+    write_point_array_f32("u",           [&](Cell* c, int iy, int ix) { return get_prim(c, iy, ix, 0); });
+    write_point_array_f32("v",           [&](Cell* c, int iy, int ix) { return get_prim(c, iy, ix, 1); });
+    write_point_array_f32("Pressure",    [&](Cell* c, int iy, int ix) { return get_prim(c, iy, ix, 2); });
+    write_point_array_f32("Temperature", [&](Cell* c, int iy, int ix) { return get_prim(c, iy, ix, 3); });
+    write_point_array_f32("Mach",        [&](Cell* c, int iy, int ix) { return get_prim(c, iy, ix, 4); });
 
     if (p.OUTPUT_DIV_ND) {
-        write_point_array("div_nd", [&](Cell* c, int iy, int ix) {
+        write_point_array_f32("div_nd", [&](Cell* c, int iy, int ix) {
             double du_dx = 0.0, dv_dy = 0.0;
             for (int k = 0; k < npts; ++k) {
                 double rk_x = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, k, npts));
@@ -247,26 +301,24 @@ void VTKWriter::write_checkpoint(Solver& solver, int step, double time) {
     }
 
     if (p.ENABLE_IGR) {
-        write_point_array("Sigma", [&](Cell* c, int iy, int ix) {
+        write_solution_array_f64("Sigma", [&](Cell* c, int iy, int ix) {
             return c->sigma_field[iy * npts + ix];
         });
-        write_point_array("Sigma_Source", [&](Cell* c, int iy, int ix) {
+        write_point_array_f32("Sigma_Source", [&](Cell* c, int iy, int ix) {
             return c->S_buf[iy * npts + ix];
         });
     }
 
     if (p.ENABLE_PPR) {
-        // S_field is the raw phantom-pressure state variable (S = rho * P_phan).
-        // Written first so the restart loader can recover it without reading derived fields.
-        write_point_array("S_field", [&](Cell* c, int iy, int ix) {
+        write_solution_array_f64("S_field", [&](Cell* c, int iy, int ix) {
             return c->S_field[iy * npts + ix];
         });
-        write_point_array("P_phan", [&](Cell* c, int iy, int ix) {
+        write_point_array_f32("P_phan", [&](Cell* c, int iy, int ix) {
             double r = c->get_U(0, iy, ix, npts);
             double S = c->S_field[iy * npts + ix];
             return S / std::max(p.POS_LIMITER_EPS, r);
         });
-        write_point_array("P_reg", [&](Cell* c, int iy, int ix) {
+        write_point_array_f32("P_reg", [&](Cell* c, int iy, int ix) {
             double r = c->get_U(0, iy, ix, npts);
             double ru = c->get_U(1, iy, ix, npts);
             double rv = c->get_U(2, iy, ix, npts);
@@ -275,10 +327,9 @@ void VTKWriter::write_checkpoint(Solver& solver, int step, double time) {
             double press = (p.GAMMA - 1.0) * (E - 0.5 * r * (u*u + v*v));
             double S = c->S_field[iy * npts + ix];
             double p_phan = S / std::max(p.POS_LIMITER_EPS, r);
-            double theta_cfl = (p.PPR_ADAPTIVE_THETA) ? c->theta_avg : p.PPR_THETA;
-            return press + theta_cfl * (press - p_phan);
+            return press + c->theta_avg * (press - p_phan);
         });
-        write_point_array("P_diff", [&](Cell* c, int iy, int ix) {
+        write_point_array_f32("P_diff", [&](Cell* c, int iy, int ix) {
             double r = c->get_U(0, iy, ix, npts);
             double ru = c->get_U(1, iy, ix, npts);
             double rv = c->get_U(2, iy, ix, npts);
@@ -290,14 +341,14 @@ void VTKWriter::write_checkpoint(Solver& solver, int step, double time) {
             return press - p_phan;
         });
         if (p.OUTPUT_ADAPTIVE_THETA) {
-            write_point_array("Theta_PPR", [&](Cell* c, int iy, int ix) {
-                return (p.PPR_ADAPTIVE_THETA) ? c->theta_avg : p.PPR_THETA;
+            write_point_array_f32("Theta_PPR", [&](Cell* c, int, int) {
+                return c->theta_avg;
             });
         }
     }
 
     if (p.ENABLE_IB) {
-        write_point_array("phi", [&](Cell* c, int iy, int ix) {
+        write_point_array_f32("phi", [&](Cell* c, int iy, int ix) {
             double x_pt = c->x_min + 0.5 * (1.0 + solver.basis.z[ix]) * c->dx;
             double y_pt = c->y_min + 0.5 * (1.0 + solver.basis.z[iy]) * c->dy;
             return solver.get_ib_mask(x_pt, y_pt, c->dx, c->dy);
@@ -329,7 +380,7 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
     std::string vtu_filename = "plot_" + std::to_string(step) + ".vtu";
     std::string vtu_path = "pv_outputs/" + vtu_filename;
 
-    std::ofstream vtu(vtu_path);
+    std::ofstream vtu(vtu_path, std::ios::binary);
     if (!vtu.is_open()) {
         std::cerr << "Error: Could not open VTU file " << vtu_path << "\n";
         return;
@@ -352,38 +403,42 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
 
     // 1. Points
     vtu << "      <Points>\n";
-    vtu << "        <DataArray type=\"Float32\" Name=\"Points\" NumberOfComponents=\"3\" format=\"ascii\">\n";
-    vtu << std::fixed << std::setprecision(6);
-
+    std::vector<float> pts_data;
+    pts_data.reserve(total_points * 3);
     for (size_t c_idx = 0; c_idx < solver.cells.size(); ++c_idx) {
         Cell* c = solver.cells[c_idx];
         // 1.1 Original vertices
         for (int J = 0; J < npts_local; ++J) {
             double s = -1.0 + 2.0 * J / n_sub;
-            double y = c->y_min + 0.5 * (1.0 + s) * c->dy;
+            float y = static_cast<float>(c->y_min + 0.5 * (1.0 + s) * c->dy);
             for (int I = 0; I < npts_local; ++I) {
                 double r = -1.0 + 2.0 * I / n_sub;
-                double x = c->x_min + 0.5 * (1.0 + r) * c->dx;
-                vtu << x << " " << y << " 0.0\n";
+                float x = static_cast<float>(c->x_min + 0.5 * (1.0 + r) * c->dx);
+                pts_data.push_back(x);
+                pts_data.push_back(y);
+                pts_data.push_back(0.0f);
             }
         }
         // 1.2 Cell centers
         for (int j = 0; j < n_sub; ++j) {
             double s = -1.0 + 2.0 * (j + 0.5) / n_sub;
-            double y = c->y_min + 0.5 * (1.0 + s) * c->dy;
+            float y = static_cast<float>(c->y_min + 0.5 * (1.0 + s) * c->dy);
             for (int i = 0; i < n_sub; ++i) {
                 double r = -1.0 + 2.0 * (i + 0.5) / n_sub;
-                double x = c->x_min + 0.5 * (1.0 + r) * c->dx;
-                vtu << x << " " << y << " 0.0\n";
+                float x = static_cast<float>(c->x_min + 0.5 * (1.0 + r) * c->dx);
+                pts_data.push_back(x);
+                pts_data.push_back(y);
+                pts_data.push_back(0.0f);
             }
         }
     }
-    vtu << "        </DataArray>\n";
+    write_binary_data_array(vtu, "Points", 3, pts_data);
     vtu << "      </Points>\n";
 
-    // 2. Cells (Connectivity)
+    // 2. Cells (Connectivity, Offsets, Types)
     vtu << "      <Cells>\n";
-    vtu << "        <DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
+    std::vector<int32_t> conn_data;
+    conn_data.reserve(total_vtk_cells * 3);
     for (size_t c_idx = 0; c_idx < solver.cells.size(); ++c_idx) {
         int po = c_idx * n_pts_cell;
         for (int j = 0; j < n_sub; ++j) {
@@ -394,35 +449,32 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
                 int v_tl = po + (j + 1) * npts_local + i;
                 int v_c  = po + npts_local * npts_local + j * n_sub + i;
 
-                // 4 triangles per sub-cell
-                vtu << v_bl << " " << v_br << " " << v_c << "\n";
-                vtu << v_br << " " << v_tr << " " << v_c << "\n";
-                vtu << v_tr << " " << v_tl << " " << v_c << "\n";
-                vtu << v_tl << " " << v_bl << " " << v_c << "\n";
+                conn_data.push_back(v_bl); conn_data.push_back(v_br); conn_data.push_back(v_c);
+                conn_data.push_back(v_br); conn_data.push_back(v_tr); conn_data.push_back(v_c);
+                conn_data.push_back(v_tr); conn_data.push_back(v_tl); conn_data.push_back(v_c);
+                conn_data.push_back(v_tl); conn_data.push_back(v_bl); conn_data.push_back(v_c);
             }
         }
     }
-    vtu << "        </DataArray>\n";
+    write_binary_data_array(vtu, "connectivity", 1, conn_data);
 
-    vtu << "        <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
+    std::vector<int32_t> offset_data;
+    offset_data.reserve(total_vtk_cells);
     int current_offset = 0;
     for (size_t c_idx = 0; c_idx < solver.cells.size(); ++c_idx) {
         for (int c = 0; c < n_cells_cell; ++c) {
             current_offset += 3;
-            vtu << current_offset << " ";
+            offset_data.push_back(current_offset);
         }
-        vtu << "\n";
     }
-    vtu << "        </DataArray>\n";
+    write_binary_data_array(vtu, "offsets", 1, offset_data);
 
-    vtu << "        <DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">\n";
-    for (size_t c_idx = 0; c_idx < solver.cells.size(); ++c_idx) {
-        for (int c = 0; c < n_cells_cell; ++c) {
-            vtu << "5 ";
-        }
-        vtu << "\n";
+    std::vector<uint8_t> types_data;
+    types_data.reserve(total_vtk_cells);
+    for (int i = 0; i < total_vtk_cells; ++i) {
+        types_data.push_back(5);
     }
-    vtu << "        </DataArray>\n";
+    write_binary_data_array(vtu, "types", 1, types_data);
     vtu << "      </Cells>\n";
 
     // 3. PointData
@@ -443,7 +495,8 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
     };
 
     auto write_array = [&](const std::string& name, auto getter) {
-        vtu << "        <DataArray type=\"Float32\" Name=\"" << name << "\" format=\"ascii\">\n";
+        std::vector<float> data;
+        data.reserve(total_points);
         for (size_t c_idx = 0; c_idx < solver.cells.size(); ++c_idx) {
             Cell* c = solver.cells[c_idx];
             // 3.1 Vertices
@@ -463,9 +516,8 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
                             val += getter(c, iy, ix) * wy[iy] * wx[ix];
                         }
                     }
-                    vtu << val << " ";
+                    data.push_back(static_cast<float>(val));
                 }
-                vtu << "\n";
             }
             // 3.2 Centers
             for (int j = 0; j < n_sub; ++j) {
@@ -484,12 +536,11 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
                             val += getter(c, iy, ix) * wy[iy] * wx[ix];
                         }
                     }
-                    vtu << val << " ";
+                    data.push_back(static_cast<float>(val));
                 }
-                vtu << "\n";
             }
         }
-        vtu << "        </DataArray>\n";
+        write_binary_data_array(vtu, name, 1, data);
     };
 
     write_array("rho",   [&](Cell* c, int iy, int ix) { return c->get_U(0, iy, ix, p.N_PTS); });
@@ -498,7 +549,8 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
     write_array("rho_E", [&](Cell* c, int iy, int ix) { return c->get_U(3, iy, ix, p.N_PTS); });
 
     auto write_prim_array = [&](const std::string& name, int var) {
-        vtu << "        <DataArray type=\"Float32\" Name=\"" << name << "\" format=\"ascii\">\n";
+        std::vector<float> data;
+        data.reserve(total_points);
         for (size_t c_idx = 0; c_idx < solver.cells.size(); ++c_idx) {
             Cell* c = solver.cells[c_idx];
             // 3.1 Vertices
@@ -537,9 +589,8 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
                     else if (var == 2) val = press;
                     else if (var == 3) val = press / (RGASAIR*r_val);
                     else if (var == 4) val = std::sqrt(u*u + v*v) / std::sqrt(p.GAMMA * std::abs(press) / r_val);
-                    vtu << val << " ";
+                    data.push_back(static_cast<float>(val));
                 }
-                vtu << "\n";
             }
             // 3.2 Centers
             for (int j = 0; j < n_sub; ++j) {
@@ -577,12 +628,11 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
                     else if (var == 2) val = press;
                     else if (var == 3) val = press / (RGASAIR*r_val);
                     else if (var == 4) val = std::sqrt(u*u + v*v) / std::sqrt(p.GAMMA * std::abs(press) / r_val);
-                    vtu << val << " ";
+                    data.push_back(static_cast<float>(val));
                 }
-                vtu << "\n";
             }
         }
-        vtu << "        </DataArray>\n";
+        write_binary_data_array(vtu, name, 1, data);
     };
 
     write_prim_array("u", 0);
@@ -638,8 +688,7 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
             double press = (p.GAMMA - 1.0) * (E - 0.5 * r * (u*u + v*v));
             double S = c->S_field[iy * p.N_PTS + ix];
             double p_phan = S / std::max(p.POS_LIMITER_EPS, r);
-            double theta_cfl = (p.PPR_ADAPTIVE_THETA) ? c->theta_avg : p.PPR_THETA;
-            return press + theta_cfl * (press - p_phan);
+            return press + c->theta_avg * (press - p_phan);
         });
         write_array("P_diff", [&](Cell* c, int iy, int ix) {
             double r = c->get_U(0, iy, ix, p.N_PTS);
@@ -653,8 +702,8 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
             return press - p_phan;
         });
         if (p.OUTPUT_ADAPTIVE_THETA) {
-            write_array("Theta_PPR", [&](Cell* c, int iy, int ix) {
-                return (p.PPR_ADAPTIVE_THETA) ? c->theta_avg : p.PPR_THETA;
+            write_array("Theta_PPR", [&](Cell* c, int, int) {
+                return c->theta_avg;
             });
         }
     }
@@ -685,41 +734,6 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
     if (!duplicate) plot_snapshots.push_back({time, vtu_filename});
 
     write_pvd("plot.pvd", plot_snapshots);
-}
-
-static std::string base64_encode(const unsigned char* data, size_t len) {
-    static const char table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    std::string out;
-    out.reserve(((len + 2) / 3) * 4);
-    for (size_t i = 0; i < len; i += 3) {
-        uint32_t val = (data[i] << 16) | ((i + 1 < len ? data[i + 1] : 0) << 8) | (i + 2 < len ? data[i + 2] : 0);
-        out.push_back(table[(val >> 18) & 0x3F]);
-        out.push_back(table[(val >> 12) & 0x3F]);
-        out.push_back(i + 1 < len ? table[(val >> 6) & 0x3F] : '=');
-        out.push_back(i + 2 < len ? table[val & 0x3F] : '=');
-    }
-    return out;
-}
-
-template<typename T>
-static void write_binary_data_array(std::ostream& os, const std::string& name, int num_components, const std::vector<T>& data) {
-    uint32_t num_bytes = static_cast<uint32_t>(data.size() * sizeof(T));
-    std::vector<unsigned char> raw_buf(sizeof(uint32_t) + num_bytes);
-    std::memcpy(raw_buf.data(), &num_bytes, sizeof(uint32_t));
-    if (num_bytes > 0) {
-        std::memcpy(raw_buf.data() + sizeof(uint32_t), data.data(), num_bytes);
-    }
-    std::string b64 = base64_encode(raw_buf.data(), raw_buf.size());
-    std::string type_str = "Float32";
-    if (std::is_same_v<T, double>) type_str = "Float64";
-    else if (std::is_same_v<T, float>) type_str = "Float32";
-    else if (std::is_same_v<T, int32_t>) type_str = "Int32";
-    else if (std::is_same_v<T, uint64_t>) type_str = "UInt64";
-    else if (std::is_same_v<T, uint8_t>) type_str = "UInt8";
-
-    os << "        <DataArray type=\"" << type_str << "\" Name=\"" << name << "\" NumberOfComponents=\"" << num_components << "\" format=\"binary\">\n";
-    os << "          " << b64 << "\n";
-    os << "        </DataArray>\n";
 }
 
 void VTKWriter::write_checkpoint(SolverDim<3>& solver, int step, double time) {
