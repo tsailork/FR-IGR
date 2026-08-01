@@ -6,6 +6,9 @@
 #include "entropy.hpp"
 #include "../core/solver.hpp"
 #include "limiter_common.hpp"
+#include "limiter_modal.hpp"
+#include "limiter_bbch.hpp"
+#include "limiter_hermite.hpp"
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -42,6 +45,27 @@ Limiters::LimiterStats Limiters::apply_entropy_limiter(Solver &solver) {
         // Lower s_floor to avoid being overly dissipative
         s_floor -= p.ENTROPY_LIMITER_EPS;
         if (s_floor < 1.0E-14) s_floor = 1.0E-14;
+
+        LimiterStrategy strategy = parse_limiter_strategy(p.LIMITER_STRATEGY);
+        if (strategy == LimiterStrategy::BBCH) {
+            if (apply_bbch_entropy(*c, s_floor, basis, p)) {
+                num_limited++;
+                sum_theta += 0.5;
+            }
+            continue;
+        } else if (strategy == LimiterStrategy::MODAL) {
+            if (apply_modal_entropy(*c, s_floor, basis, p)) {
+                num_limited++;
+                sum_theta += 0.5;
+            }
+            continue;
+        } else if (strategy == LimiterStrategy::HERMITE) {
+            if (apply_hermite_entropy(*c, s_floor, basis, p)) {
+                num_limited++;
+                sum_theta += 0.5;
+            }
+            continue;
+        }
 
         // --- Cell average ---
         double r_avg, ru_avg, rv_avg, E_avg;

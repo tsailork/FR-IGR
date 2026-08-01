@@ -173,6 +173,7 @@ void Solver::solve_riemann(const double* UL, const double* UR, double* F_comm,
 
         double num_star = pR_reg - pL_reg + rhoL * vnL * (SL_wave - vnL) - rhoR * vnR * (SR_wave - vnR);
         double den_star = rhoL * (SL_wave - vnL) - rhoR * (SR_wave - vnR);
+        if (std::abs(den_star) < 1e-12) den_star = (den_star >= 0 ? 1e-12 : -1e-12);
         double S_star = num_star / den_star;
 
         double FL[4], FR[4];
@@ -208,7 +209,7 @@ void Solver::solve_riemann(const double* UL, const double* UR, double* F_comm,
                 UR_star[1] = facR * S_star;
                 UR_star[2] = facR * vR;
             } else {
-                UR_star[1] = facR * uL;
+                UR_star[1] = facR * uR;
                 UR_star[2] = facR * S_star;
             }
             UR_star[3] = facR * (UR[3]*inv_rhoR + (S_star - vnR) * (S_star + pR_reg / (rhoR * (SR_wave - vnR))));
@@ -359,6 +360,7 @@ void SolverDim<3>::solve_riemann(const double* UL, const double* UR, double* F_c
 
         double num_star = pR_reg - pL_reg + rhoL * vnL * (SL_wave - vnL) - rhoR * vnR * (SR_wave - vnR);
         double den_star = rhoL * (SL_wave - vnL) - rhoR * (SR_wave - vnR);
+        if (std::abs(den_star) < 1e-12) den_star = (den_star >= 0 ? 1e-12 : -1e-12);
         double S_star = num_star / den_star;
 
         double FL[5], FR[5];

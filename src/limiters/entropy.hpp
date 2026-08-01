@@ -23,8 +23,9 @@ namespace Limiters {
 /**
  * @brief Apply the entropy minimum preservation limiter to the active solver grid.
  *
- * Scans each block element, identifies the local specific entropy floor, and scales 
- * polynomial coefficients toward the cell average where necessary using bisection.
+ * Scans each block element, identifies the local specific entropy floor s_floor, and applies
+ * the selected LIMITER_STRATEGY (ZHANG_SHU, BBCH, MODAL, HERMITE) to enforce specific entropy
+ * s = p / rho^gamma >= s_floor across solution nodes and face checking points.
  *
  * @param[in,out] solver The active solver instance whose state fields will be limited.
  * @return LimiterStats containing the count of modified elements and average scaling parameter.

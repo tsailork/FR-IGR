@@ -8,7 +8,7 @@ This project has also been an exploration of AI-LLM assisted code generation. LL
 - **High-Order Accuracy**: Supports arbitrary polynomial degrees (P=1, P=2, P=3, etc.) using Radau-based correction functions.
 - **Multiblock Support**: Supports complex domain topologies with automated 1-to-1 face connectivity validation.
 - **IGR Regularization**: Advanced artificial viscosity using Helmholtz-smoothed gradient sensors.
-- **Robustness**: Includes Zhang-Shu positivity-preserving limiters and entropy-based stabilization.
+- **Robustness & Limiter Strategies**: Includes 4 modular thermodynamic positivity and entropy limiting strategies (`LIMITER_STRATEGY = ZHANG_SHU | BBCH | MODAL | HERMITE`) supporting 2D/3D conforming/AMR meshes and PPR phantom pressure relaxation, plus `SMOOTH_PLOT_OUTPUTS` post-processing export.
 - **Continuity**: Robust restart system with full VTK timeline (PVD) and diagnostic history preservation.
 
 ## Quick Start

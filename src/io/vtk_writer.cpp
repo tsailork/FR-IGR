@@ -5,6 +5,7 @@
 
 #include "vtk_writer.hpp"
 #include "../core/solver.hpp"
+#include "../limiters/limiter_bbch_plot.hpp"
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -388,6 +389,11 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
 
     if (p.ENABLE_IGR) solver.compute_sensor_source();
 
+    Limiters::SmoothBBPlotField bb_field;
+    if (p.SMOOTH_PLOT_OUTPUTS) {
+        bb_field.build(solver);
+    }
+
     int n_sub = p.PLOT_SUB_DIVISIONS > 0 ? p.PLOT_SUB_DIVISIONS : std::max(1, p.P_DEG);
     int npts_local = n_sub + 1;
     int n_pts_cell = npts_local * npts_local + n_sub * n_sub;
@@ -460,12 +466,8 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
 
     std::vector<int32_t> offset_data;
     offset_data.reserve(total_vtk_cells);
-    int current_offset = 0;
-    for (size_t c_idx = 0; c_idx < solver.cells.size(); ++c_idx) {
-        for (int c = 0; c < n_cells_cell; ++c) {
-            current_offset += 3;
-            offset_data.push_back(current_offset);
-        }
+    for (int i = 1; i <= total_vtk_cells; ++i) {
+        offset_data.push_back(i * 3);
     }
     write_binary_data_array(vtu, "offsets", 1, offset_data);
 
@@ -492,6 +494,57 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
             }
         }
         return numerator / denominator;
+    };
+
+    auto interpolate_conserved = [&](size_t c_idx, Cell* c, double r, double s, double U_interp[4]) {
+        if (p.SMOOTH_PLOT_OUTPUTS) {
+            for (int v = 0; v < 4; ++v) {
+                U_interp[v] = bb_field.eval(c_idx, v, r, s);
+            }
+        } else {
+            std::vector<double> wy(p.N_PTS);
+            std::vector<double> wx(p.N_PTS);
+            for (int iy = 0; iy < p.N_PTS; ++iy) wy[iy] = eval_lagrange(iy, s, solver.basis.z);
+            for (int ix = 0; ix < p.N_PTS; ++ix) wx[ix] = eval_lagrange(ix, r, solver.basis.z);
+            for (int v = 0; v < 4; ++v) U_interp[v] = 0.0;
+            for (int iy = 0; iy < p.N_PTS; ++iy) {
+                for (int ix = 0; ix < p.N_PTS; ++ix) {
+                    double w = wy[iy] * wx[ix];
+                    for (int v = 0; v < 4; ++v) {
+                        U_interp[v] += c->get_U(v, iy, ix, p.N_PTS) * w;
+                    }
+                }
+            }
+        }
+    };
+
+    auto write_cons_array = [&](const std::string& name, int var_idx) {
+        std::vector<float> data;
+        data.reserve(total_points);
+        for (size_t c_idx = 0; c_idx < solver.cells.size(); ++c_idx) {
+            Cell* c = solver.cells[c_idx];
+            // 3.1 Vertices
+            for (int J = 0; J < npts_local; ++J) {
+                double s = -1.0 + 2.0 * J / n_sub;
+                for (int I = 0; I < npts_local; ++I) {
+                    double r = -1.0 + 2.0 * I / n_sub;
+                    double U_interp[4];
+                    interpolate_conserved(c_idx, c, r, s, U_interp);
+                    data.push_back(static_cast<float>(U_interp[var_idx]));
+                }
+            }
+            // 3.2 Centers
+            for (int j = 0; j < n_sub; ++j) {
+                double s = -1.0 + 2.0 * (j + 0.5) / n_sub;
+                for (int i = 0; i < n_sub; ++i) {
+                    double r = -1.0 + 2.0 * (i + 0.5) / n_sub;
+                    double U_interp[4];
+                    interpolate_conserved(c_idx, c, r, s, U_interp);
+                    data.push_back(static_cast<float>(U_interp[var_idx]));
+                }
+            }
+        }
+        write_binary_data_array(vtu, name, 1, data);
     };
 
     auto write_array = [&](const std::string& name, auto getter) {
@@ -543,10 +596,10 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
         write_binary_data_array(vtu, name, 1, data);
     };
 
-    write_array("rho",   [&](Cell* c, int iy, int ix) { return c->get_U(0, iy, ix, p.N_PTS); });
-    write_array("rho_u", [&](Cell* c, int iy, int ix) { return c->get_U(1, iy, ix, p.N_PTS); });
-    write_array("rho_v", [&](Cell* c, int iy, int ix) { return c->get_U(2, iy, ix, p.N_PTS); });
-    write_array("rho_E", [&](Cell* c, int iy, int ix) { return c->get_U(3, iy, ix, p.N_PTS); });
+    write_cons_array("rho",   0);
+    write_cons_array("rho_u", 1);
+    write_cons_array("rho_v", 2);
+    write_cons_array("rho_E", 3);
 
     auto write_prim_array = [&](const std::string& name, int var) {
         std::vector<float> data;
@@ -556,23 +609,10 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
             // 3.1 Vertices
             for (int J = 0; J < npts_local; ++J) {
                 double s = -1.0 + 2.0 * J / n_sub;
-                std::vector<double> wy(p.N_PTS);
-                for (int iy = 0; iy < p.N_PTS; ++iy) wy[iy] = eval_lagrange(iy, s, solver.basis.z);
-
                 for (int I = 0; I < npts_local; ++I) {
                     double r = -1.0 + 2.0 * I / n_sub;
-                    std::vector<double> wx(p.N_PTS);
-                    for (int ix = 0; ix < p.N_PTS; ++ix) wx[ix] = eval_lagrange(ix, r, solver.basis.z);
-
-                    double U_interp[4] = {0.0, 0.0, 0.0, 0.0};
-                    for (int iy = 0; iy < p.N_PTS; ++iy) {
-                        for (int ix = 0; ix < p.N_PTS; ++ix) {
-                            double w = wy[iy] * wx[ix];
-                            for (int v = 0; v < 4; ++v) {
-                                U_interp[v] += c->get_U(v, iy, ix, p.N_PTS) * w;
-                            }
-                        }
-                    }
+                    double U_interp[4];
+                    interpolate_conserved(c_idx, c, r, s, U_interp);
 
                     double r_val = std::max(1e-14, U_interp[0]);
                     double ru = U_interp[1];
@@ -595,23 +635,10 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
             // 3.2 Centers
             for (int j = 0; j < n_sub; ++j) {
                 double s = -1.0 + 2.0 * (j + 0.5) / n_sub;
-                std::vector<double> wy(p.N_PTS);
-                for (int iy = 0; iy < p.N_PTS; ++iy) wy[iy] = eval_lagrange(iy, s, solver.basis.z);
-
                 for (int i = 0; i < n_sub; ++i) {
                     double r = -1.0 + 2.0 * (i + 0.5) / n_sub;
-                    std::vector<double> wx(p.N_PTS);
-                    for (int ix = 0; ix < p.N_PTS; ++ix) wx[ix] = eval_lagrange(ix, r, solver.basis.z);
-
-                    double U_interp[4] = {0.0, 0.0, 0.0, 0.0};
-                    for (int iy = 0; iy < p.N_PTS; ++iy) {
-                        for (int ix = 0; ix < p.N_PTS; ++ix) {
-                            double w = wy[iy] * wx[ix];
-                            for (int v = 0; v < 4; ++v) {
-                                U_interp[v] += c->get_U(v, iy, ix, p.N_PTS) * w;
-                            }
-                        }
-                    }
+                    double U_interp[4];
+                    interpolate_conserved(c_idx, c, r, s, U_interp);
 
                     double r_val = std::max(1e-14, U_interp[0]);
                     double ru = U_interp[1];

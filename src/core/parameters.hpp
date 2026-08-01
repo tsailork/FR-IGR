@@ -164,6 +164,7 @@ struct Parameters {
     bool   OUTPUT_ADAPTIVE_THETA = false;  ///< Output the element-wise adaptive PPR theta field.
     double RESTART_INTERVAL = 0.1;    ///< Periodicity of exact binary restart checkpoints (.vts).
     int    PLOT_SUB_DIVISIONS = 0;    ///< Number of equidistant sub-element visualization intervals per dimension (0 = auto max(1, P_DEG)).
+    bool   SMOOTH_PLOT_OUTPUTS = true;///< Apply BBCH C0 interface smoothing to exported VTK plot files (.vtu).
     
     // New parameters for diagnostics
     double RESIDUAL_INTERVAL = 0.001; ///< Output time interval for tracking global residual norms.
@@ -179,6 +180,7 @@ struct Parameters {
     double POS_LIMITER_EPS        = 1e-10;  ///< Physical cutoff tolerance for density and pressure floors.
     bool   ENABLE_ENTROPY_LIMITER = false;  ///< Toggle high-order specific entropy minimum preservation limiter.
     double ENTROPY_LIMITER_EPS    = 1e-4;   ///< Offset tolerance for specific entropy limiter (relax violation check).
+    std::string LIMITER_STRATEGY  = "ZHANG_SHU"; ///< Limiter strategy: "ZHANG_SHU", "BBCH", "MODAL", "HERMITE".
 
     // -------------------------------------------------------------------------
     // Immersed Boundary (IB)

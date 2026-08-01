@@ -12,6 +12,17 @@
 
 namespace Limiters {
 
+constexpr int MAX_LIM_PTS = 8;
+
+enum class LimiterStrategy { ZHANG_SHU = 0, BBCH = 1, MODAL = 2, HERMITE = 3 };
+
+inline LimiterStrategy parse_limiter_strategy(const std::string& str) {
+    if (str == "BBCH") return LimiterStrategy::BBCH;
+    if (str == "MODAL") return LimiterStrategy::MODAL;
+    if (str == "HERMITE") return LimiterStrategy::HERMITE;
+    return LimiterStrategy::ZHANG_SHU;
+}
+
 /**
  * @struct LimiterStats
  * @brief Structure to track limiter application statistics across the mesh.
@@ -289,6 +300,154 @@ inline int extrapolate_face_values(const Cell3D& c, const Basis& basis, double f
             }
             ++count;
         }
+    }
+    return count;
+}
+
+/**
+ * @brief Extrapolate 3D array U[4][MAX_LIM_PTS][MAX_LIM_PTS] to face checking points.
+ */
+inline int extrapolate_face_values_array(const double U[4][MAX_LIM_PTS][MAX_LIM_PTS], const Basis& basis, double face_pts[][4], int npts) {
+    int count = 0;
+    for (int iy = 0; iy < npts; ++iy) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        for (int ix = 0; ix < npts; ++ix)
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += U[v][iy][ix] * basis.l_L[ix];
+        ++count;
+    }
+    for (int iy = 0; iy < npts; ++iy) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        for (int ix = 0; ix < npts; ++ix)
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += U[v][iy][ix] * basis.l_R[ix];
+        ++count;
+    }
+    for (int ix = 0; ix < npts; ++ix) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        for (int iy = 0; iy < npts; ++iy)
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += U[v][iy][ix] * basis.l_L[iy];
+        ++count;
+    }
+    for (int ix = 0; ix < npts; ++ix) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        for (int iy = 0; iy < npts; ++iy)
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += U[v][iy][ix] * basis.l_R[iy];
+        ++count;
+    }
+    return count;
+}
+
+/**
+ * @brief Check positivity validity including physical pressure, PPR phantom pressure, and regularized pressure.
+ */
+inline bool check_positivity_valid(double r, double ru, double rv, double E, double S, double theta_avg, double gamma, double eps, bool enable_ppr) {
+    if (r < eps) return false;
+    double p_phys = pressure(r, ru, rv, E, gamma);
+    if (p_phys < eps) return false;
+    if (enable_ppr) {
+        double p_phan = S / r;
+        if (p_phan < eps) return false;
+        double p_reg = p_phys + theta_avg * (p_phys - p_phan);
+        if (p_reg < eps) return false;
+    }
+    return true;
+}
+
+/**
+ * @brief Extrapolate cell conservative variables and PPR phantom pressure S to face checking points.
+ */
+inline int extrapolate_face_values_ppr(const Cell& c, const Basis& basis, double face_pts[][4], double face_S[], int npts) {
+    int count = 0;
+    for (int iy = 0; iy < npts; ++iy) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        face_S[count] = 0.0;
+        for (int ix = 0; ix < npts; ++ix) {
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += c.get_U(v, iy, ix, npts) * basis.l_L[ix];
+            face_S[count] += c.S_field[iy * npts + ix] * basis.l_L[ix];
+        }
+        ++count;
+    }
+    for (int iy = 0; iy < npts; ++iy) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        face_S[count] = 0.0;
+        for (int ix = 0; ix < npts; ++ix) {
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += c.get_U(v, iy, ix, npts) * basis.l_R[ix];
+            face_S[count] += c.S_field[iy * npts + ix] * basis.l_R[ix];
+        }
+        ++count;
+    }
+    for (int ix = 0; ix < npts; ++ix) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        face_S[count] = 0.0;
+        for (int iy = 0; iy < npts; ++iy) {
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += c.get_U(v, iy, ix, npts) * basis.l_L[iy];
+            face_S[count] += c.S_field[iy * npts + ix] * basis.l_L[iy];
+        }
+        ++count;
+    }
+    for (int ix = 0; ix < npts; ++ix) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        face_S[count] = 0.0;
+        for (int iy = 0; iy < npts; ++iy) {
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += c.get_U(v, iy, ix, npts) * basis.l_R[iy];
+            face_S[count] += c.S_field[iy * npts + ix] * basis.l_R[iy];
+        }
+        ++count;
+    }
+    return count;
+}
+
+/**
+ * @brief Extrapolate 3D array U[5][MAX_LIM_PTS][MAX_LIM_PTS] to face checking points for PPR.
+ */
+inline int extrapolate_face_values_ppr_array(const double U[5][MAX_LIM_PTS][MAX_LIM_PTS], const Basis& basis, double face_pts[][4], double face_S[], int npts) {
+    int count = 0;
+    for (int iy = 0; iy < npts; ++iy) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        face_S[count] = 0.0;
+        for (int ix = 0; ix < npts; ++ix) {
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += U[v][iy][ix] * basis.l_L[ix];
+            face_S[count] += U[4][iy][ix] * basis.l_L[ix];
+        }
+        ++count;
+    }
+    for (int iy = 0; iy < npts; ++iy) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        face_S[count] = 0.0;
+        for (int ix = 0; ix < npts; ++ix) {
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += U[v][iy][ix] * basis.l_R[ix];
+            face_S[count] += U[4][iy][ix] * basis.l_R[ix];
+        }
+        ++count;
+    }
+    for (int ix = 0; ix < npts; ++ix) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        face_S[count] = 0.0;
+        for (int iy = 0; iy < npts; ++iy) {
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += U[v][iy][ix] * basis.l_L[iy];
+            face_S[count] += U[4][iy][ix] * basis.l_L[iy];
+        }
+        ++count;
+    }
+    for (int ix = 0; ix < npts; ++ix) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        face_S[count] = 0.0;
+        for (int iy = 0; iy < npts; ++iy) {
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += U[v][iy][ix] * basis.l_R[iy];
+            face_S[count] += U[4][iy][ix] * basis.l_R[iy];
+        }
+        ++count;
     }
     return count;
 }

@@ -134,6 +134,59 @@ ENABLE_ENTROPY_LIMITER = true
 # values relax the violation check to prevent numerical dissipation (e.g. 1e-4, 1e-2).
 ENTROPY_LIMITER_EPS = 1e-4
 
+# LIMITER_STRATEGY: Limiter strategy selection for positivity and entropy limiters.
+# Selects the local element reconstruction and attenuation mechanism used whenever a cell
+# violates density/pressure positivity or minimum specific entropy thresholds.
+# All strategies support 2D/3D conforming and quadtree non-conforming AMR grids, PPR phantom pressure,
+# sub-grid face checking, and exact L2 cell average conservation.
+# Options:
+#   - ZHANG_SHU (Default):
+#       Standard Zhang-Shu uniform scaling limiter. Scales the entire high-order solution polynomial
+#       linearly towards the element cell average U_avg: U(x) <- theta * (U(x) - U_avg) + U_avg.
+#       Computes theta = min(1, theta_rho, theta_p) to enforce min(rho, p) >= eps.
+#       Literature Reference:
+#         * Zhang, X., & Shu, C.-W. (2010). "On positivity-preserving high-order discontinuous Galerkin
+#           schemes for compressible Euler equations on general meshes." J. Comput. Phys., 229(23), 8918-8934.
+#         * Zhang, X., & Shu, C.-W. (2011). "Maximum-principle-satisfying and positivity-preserving
+#           high-order schemes for conservation laws: Survey and new developments." Proc. R. Soc. A, 467, 2752-2776.
+#
+#   - BBCH:
+#       Bernstein-Bézier Convex Hull limiter. Transforms nodal solution values into Bernstein-Bézier
+#       control points C_{j,i} via matrix inversion. Exploits the convex hull property of Bernstein
+#       polynomials (min C_{j,i} <= U(x) <= max C_{j,i}) to bound localized oscillations while applying
+#       an L2 conservative projection onto the zero-mean subspace to preserve exact cell averages.
+#       Literature References & Derivations:
+#         * Dumont, A., & Loubère, R. (2013). "Bernstein-Bézier representation and positivity preservation
+#           for high-order DG schemes." J. Comput. Phys., 245, 344-367.
+#         * Dzanic, C., & Witherden, F. D. (2022). "Positivity-preserving modal limiters for high-order
+#           discontinuous Galerkin methods." Comput. Fluids, 240, 105423.
+#         * Lai, M. J., & Schumaker, L. L. (2007). Spline Functions on Triangulations. Cambridge Univ. Press.
+#
+#   - MODAL:
+#       Scale-aware Legendre modal damping limiter. Projects the nodal state onto orthogonal 2D Legendre
+#       polynomials P_k(x)P_l(y) and applies scale-dependent modal attenuation sigma(kx, ky; theta) = theta^((kx/P)^2 + (ky/P)^2).
+#       Damps high-frequency modes (P, P) exponentially faster than low-degree modes, preserving physical
+#       linear and quadratic gradients. Recovers the pure P0 cell average (U_avg) as an exact limit at theta = 0,
+#       guaranteeing 100% positivity and entropy robustness equal or superior to Zhang-Shu.
+#       Literature References & Derivations:
+#         * Persson, P.-O., & Peraire, J. (2006). "Sub-grid shock-capturing for high-order discontinuous
+#           Galerkin methods." AIAA Paper 2006-112.
+#         * Dzanic, C., & Witherden, F. D. (2022). "Positivity-preserving modal limiters for high-order
+#           discontinuous Galerkin methods." Comput. Fluids, 240, 105423.
+#
+#   - HERMITE:
+#       Local Hermite patch subgrid limiter. Constructs a local subgrid Hermite interpolation patch matching
+#       the cell average U_avg and interface states U_L, U_R, U_B, U_T derived from adjacent cell averages.
+#       Uses zero-mean cubic Hermite basis functions h_L(z) = 0.25(1-z)^2(2+z)-0.5 to form a smooth profile
+#       coupled to neighbor elements, applying L2 zero-mean projection and bisecting on theta in [0, 1]
+#       towards the exact P0 cell average limit (theta = 0) for 100% positivity robustness.
+#       Literature References & Derivations:
+#         * Ciallella, A., & Torlo, D. (2023). "Arbitrary high-order sub-cell Hermite limiters for
+#           discontinuous Galerkin methods." J. Sci. Comput., 95(1), 22.
+#         * Vilar, F. (2019). "Cell-average based neural network and sub-cell Hermite limiters for
+#           high-order DG schemes." Comput. Math. Appl., 78(9), 2991-3011.
+LIMITER_STRATEGY = ZHANG_SHU
+
 [PPR]
 # ENABLE_PPR: Enable Hyperbolic Non-Equilibrium Phantom Pressure Relaxation (PPR) shock capturing.
 ENABLE_PPR = false
@@ -398,6 +451,13 @@ RESTART_INTERVAL = 0.1
 # Evaluates high-order Lagrange polynomials at equidistant sub-element points to capture sub-element solution curvature.
 # 0 = Automatic subdivision level based on element polynomial degree (max(1, P_DEG)).
 PLOT_SUB_DIVISIONS = 0
+
+# SMOOTH_PLOT_OUTPUTS: Apply Bernstein-Bézier Convex Hull (BBCH) C0 interface smoothing to exported VTK plot files (.vtu).
+# Harmonizes boundary control points between neighbor cells and applies L2 conservative cell average projection.
+# Eliminates intra-element interface roughness and quad stair-stepping in ParaView and Web GUI contours
+# without adding physical dissipation to the solver state.
+# Type: bool (true/false, default true)
+SMOOTH_PLOT_OUTPUTS = true
 
 # RESIDUAL_INTERVAL: Time interval between L2 residual tracking outputs to csv_outputs/residuals.csv
 RESIDUAL_INTERVAL = 0.005

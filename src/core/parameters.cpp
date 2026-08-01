@@ -297,6 +297,7 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("POS_LIMITER_EPS"))        POS_LIMITER_EPS        = std::stod(kv["POS_LIMITER_EPS"]);
         if (kv.count("ENABLE_ENTROPY_LIMITER")) ENABLE_ENTROPY_LIMITER = (kv["ENABLE_ENTROPY_LIMITER"] == "true" || kv["ENABLE_ENTROPY_LIMITER"] == "1");
         if (kv.count("ENTROPY_LIMITER_EPS"))    ENTROPY_LIMITER_EPS    = std::stod(kv["ENTROPY_LIMITER_EPS"]);
+        if (kv.count("LIMITER_STRATEGY"))       LIMITER_STRATEGY       = kv["LIMITER_STRATEGY"];
     }
 
     // --- [NavierStokes] ---
@@ -328,6 +329,7 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("PRINT_INTERVAL"))    PRINT_INTERVAL    = std::stod(kv["PRINT_INTERVAL"]);
         if (kv.count("RESTART_FILE"))      RESTART_FILE      = kv["RESTART_FILE"];
         if (kv.count("RESTART_TIME") && !kv["RESTART_TIME"].empty())      RESTART_TIME      = std::stod(kv["RESTART_TIME"]);
+        if (kv.count("SMOOTH_PLOT_OUTPUTS")) SMOOTH_PLOT_OUTPUTS = (kv["SMOOTH_PLOT_OUTPUTS"] == "true" || kv["SMOOTH_PLOT_OUTPUTS"] == "1");
     }
 
     // --- [TreeDecomposition] ---

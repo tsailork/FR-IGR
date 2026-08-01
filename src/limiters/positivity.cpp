@@ -4,62 +4,14 @@
  */
 #include "positivity.hpp"
 #include "limiter_common.hpp"
+#include "limiter_modal.hpp"
+#include "limiter_bbch.hpp"
+#include "limiter_hermite.hpp"
 #ifdef _OPENMP
 #include <omp.h>
 #endif
 
 namespace {
-
-static int extrapolate_face_values_ppr(const Cell& c, const Basis& basis,
-                                        double face_pts[][4], double face_S[], int npts) {
-    int count = 0;
-
-    // Left face (ξ = −1): for each iy, sum over ix with l_L[ix]
-    for (int iy = 0; iy < npts; ++iy) {
-        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
-        face_S[count] = 0.0;
-        for (int ix = 0; ix < npts; ++ix) {
-            for (int v = 0; v < 4; ++v)
-                face_pts[count][v] += c.get_U(v, iy, ix, npts) * basis.l_L[ix];
-            face_S[count] += c.S_field[iy * npts + ix] * basis.l_L[ix];
-        }
-        ++count;
-    }
-    // Right face (ξ = +1): for each iy, sum over ix with l_R[ix]
-    for (int iy = 0; iy < npts; ++iy) {
-        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
-        face_S[count] = 0.0;
-        for (int ix = 0; ix < npts; ++ix) {
-            for (int v = 0; v < 4; ++v)
-                face_pts[count][v] += c.get_U(v, iy, ix, npts) * basis.l_R[ix];
-            face_S[count] += c.S_field[iy * npts + ix] * basis.l_R[ix];
-        }
-        ++count;
-    }
-    // Bottom face (η = −1): for each ix, sum over iy with l_L[iy]
-    for (int ix = 0; ix < npts; ++ix) {
-        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
-        face_S[count] = 0.0;
-        for (int iy = 0; iy < npts; ++iy) {
-            for (int v = 0; v < 4; ++v)
-                face_pts[count][v] += c.get_U(v, iy, ix, npts) * basis.l_L[iy];
-            face_S[count] += c.S_field[iy * npts + ix] * basis.l_L[iy];
-        }
-        ++count;
-    }
-    // Top face (η = +1): for each ix, sum over iy with l_R[iy]
-    for (int ix = 0; ix < npts; ++ix) {
-        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
-        face_S[count] = 0.0;
-        for (int iy = 0; iy < npts; ++iy) {
-            for (int v = 0; v < 4; ++v)
-                face_pts[count][v] += c.get_U(v, iy, ix, npts) * basis.l_R[iy];
-            face_S[count] += c.S_field[iy * npts + ix] * basis.l_R[iy];
-        }
-        ++count;
-    }
-    return count;
-}
 
 static double bisect_for_theta_ppr(
     double r, double ru, double rv, double E, double S,
@@ -104,6 +56,27 @@ Limiters::LimiterStats Limiters::apply_positivity_limiter(std::vector<Cell*>& ce
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
         if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+
+        LimiterStrategy strategy = parse_limiter_strategy(p.LIMITER_STRATEGY);
+        if (strategy == LimiterStrategy::BBCH) {
+            if (apply_bbch_positivity(*c, basis, p)) {
+                num_limited++;
+                sum_theta += 0.5;
+            }
+            continue;
+        } else if (strategy == LimiterStrategy::MODAL) {
+            if (apply_modal_positivity(*c, basis, p)) {
+                num_limited++;
+                sum_theta += 0.5;
+            }
+            continue;
+        } else if (strategy == LimiterStrategy::HERMITE) {
+            if (apply_hermite_positivity(*c, basis, p)) {
+                num_limited++;
+                sum_theta += 0.5;
+            }
+            continue;
+        }
 
         // =============================================================
         // 0. Compute cell average
