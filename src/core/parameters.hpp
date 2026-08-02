@@ -89,6 +89,10 @@ struct Parameters {
     double W_INF   = 0.0;             ///< Reference freestream Z-velocity.
     double P_INF   = 1.0;             ///< Reference freestream pressure.
 
+    // Oblique Shock (for IC_TYPE = OBLIQUE_SHOCK or dynamically calculated BCs)
+    double OBLIQUE_SHOCK_M        = 5.0;  ///< Inflow Mach number for oblique shock.
+    double OBLIQUE_SHOCK_BETA_DEG = 32.0; ///< Oblique shock wave angle in degrees.
+
     // Shock-Vortex Interaction (for IC_TYPE = SHOCK_VORTEX)
     double SHOCK_VORTEX_MS = 1.2;     ///< Incident shock Mach number.
     double SHOCK_VORTEX_MV = 0.25;    ///< Vortex Mach number (strength).
@@ -144,15 +148,24 @@ struct Parameters {
     // -------------------------------------------------------------------------
     bool   ENABLE_PPR           = false;    ///< Toggle Phantom Pressure Regularization.
     std::string PPR_WALL_BC     = "EQUILIBRATED"; ///< Wall BC for phantom pressure: EQUILIBRATED, PHYSICAL_DIRICHLET, CONSTANT_DIFFERENCE.
-    double PPR_N_CELLS_SHOCK    = 2.5;      ///< Target shock thickness in cell units (default: 2.0 - 2.5).
-    double PPR_C_TAU            = 0.25;     ///< Time scale ratio for non-equilibrium relaxation (default: 0.25).
+    double PPR_N_CELLS_SHOCK    = 2.5;      ///< Target shock transition width in cell units (default: 2.5; theta_target ~ (N_cells_shock * (N+1))^2).
+    double PPR_C_TAU            = 0.25;     ///< Baseline non-equilibrium relaxation time scale ratio C_tau_base (default: 0.25).
     double PPR_C_POS            = 0.05;     ///< Lower positivity bound coefficient for regularized pressure (default: 0.05).
     double PPR_C_MAX            = 2.5;      ///< Upper bound coefficient for regularized pressure (default: 2.5).
     bool   PPR_USE_SHOCK_NORMAL_MACH   = true;  ///< Use shock-normal Mach number M_n = |u . grad(P)| / a in Master Law.
-    bool   PPR_USE_SOFTMAX_INDICATOR   = true;  ///< Use L_p soft-max norm for indicator I_e instead of hard single-node max.
-    double PPR_SOFTMAX_P               = 4.0;   ///< Exponent p for soft-max norm over quadrature points (default: 4.0).
-    bool   PPR_USE_SUBCELL_LINEAR_THETA= true;  ///< Project theta to 1st-degree Legendre sub-cell modal expansion (zero aliasing).
-    bool   PPR_USE_DYNAMIC_C_TAU       = false; ///< Auto-evaluate C_tau(N, M_n) dynamic guide rule.
+    bool   PPR_USE_DYNAMIC_C_TAU       = false; ///< Legacy toggle for dynamic C_tau guide rule.
+    bool   PPR_USE_DUCROS_SENSOR       = true;  ///< Apply Ducros vorticity shielding to zero out PPR in shear layers.
+    bool   PPR_USE_ENERGY_GUARD        = false; ///< Apply thermodynamic energy guard to zero out theta in expansion regions.
+    bool   PPR_USE_STENCIL_EXPANSION   = true;  ///< Expand theta and C_tau to 1-ring face neighbors for smooth pre-conditioning.
+    bool   PPR_USE_VON_NEUMANN_CEILING = true;  ///< Apply C_tau_vonNeumann ceiling outside shocks to prevent phase-lag ripples.
+    bool   PPR_USE_SPATIAL_CLAMP       = false; ///< Clamp phantom pressure to local 3-element physical pressure min/max.
+    bool   PPR_DEBUG_OUTPUT            = false; ///< Output detailed cell-local timescales and sensor diagnostics.
+    bool   PPR_CONSTANT_MODE           = false; ///< Use spatially-uniform user-specified theta and C_tau everywhere (bypasses all adaptive logic).
+    bool   PPR_USE_LIMITER             = true;  ///< Apply phantom pressure bounds limiter (default true). Set false to disable all P_phan clamping.
+    double PPR_CONSTANT_THETA          = 2.0;   ///< Constant coupling intensity theta when PPR_CONSTANT_MODE = true.
+    double PPR_CONSTANT_C_TAU_VAL      = 0.25;  ///< Constant relaxation timescale ratio C_tau when PPR_CONSTANT_MODE = true.
+    double PPR_SENSOR_NOISE_FLOOR      = 0.05;  ///< Acoustic noise floor for kinematic shock sensor (default: 0.05).
+    double PPR_SENSOR_SATURATION       = 0.50;  ///< Shock saturation threshold for kinematic shock sensor (default: 0.50).
 
     // -------------------------------------------------------------------------
     // Time Stepping & I/O

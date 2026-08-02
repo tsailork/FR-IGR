@@ -27,9 +27,9 @@ inline void get_thermodynamics(double rho, double rhou, double rhov, double E, d
     double e_kin = 0.5 * rho * (u * u + v * v);
     P_phys = std::max(eps, (gamma - 1.0) * (E - e_kin));
     P_phan = S / rho;
-    P_reg  = P_phys + theta * (P_phys - P_phan);
+    P_reg  = std::max(eps, P_phys + theta * (P_phys - P_phan));
 
-    double a2_reg = ((1.0 + theta) / rho) * (P_phys + (gamma - 1.0) * P_reg);
+    double a2_reg = ((1.0 + std::max(0.0, theta)) / rho) * (P_phys + (gamma - 1.0) * P_reg);
     double a2_phys = gamma * P_phys / rho;
     a_reg = std::sqrt(std::max(a2_reg, a2_phys));
 }
@@ -55,9 +55,9 @@ inline void get_thermodynamics_3d(double rho, double rhou, double rhov, double r
     double e_kin = 0.5 * rho * (u * u + v * v + w * w);
     P_phys = std::max(eps, (gamma - 1.0) * (E - e_kin));
     P_phan = S / rho;
-    P_reg  = P_phys + theta * (P_phys - P_phan);
+    P_reg  = std::max(eps, P_phys + theta * (P_phys - P_phan));
 
-    double a2_reg = ((1.0 + theta) / rho) * (P_phys + (gamma - 1.0) * P_reg);
+    double a2_reg = ((1.0 + std::max(0.0, theta)) / rho) * (P_phys + (gamma - 1.0) * P_reg);
     double a2_phys = gamma * P_phys / rho;
     a_reg = std::sqrt(std::max(a2_reg, a2_phys));
 }

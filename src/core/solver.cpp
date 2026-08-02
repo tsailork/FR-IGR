@@ -36,7 +36,28 @@
  * @param[in] bc The boundary condition string to parse.
  * @param[out] ni The NeighborInfo structure to populate.
  */
-static void parse_bc_string(const std::string& bc_in, NeighborInfo& ni) {
+static void compute_oblique_shock_bc(double M1, double beta_deg, double gamma,
+                                     double rho1, double p1,
+                                     double& rho2, double& u2, double& v2, double& p2) {
+    double beta = beta_deg * M_PI / 180.0;
+    double Mn1 = M1 * std::sin(beta);
+    double Mn1_sq = Mn1 * Mn1;
+
+    rho2 = rho1 * ((gamma + 1.0) * Mn1_sq) / ((gamma - 1.0) * Mn1_sq + 2.0);
+    p2 = p1 * (2.0 * gamma * Mn1_sq - (gamma - 1.0)) / (gamma + 1.0);
+
+    double tan_theta = 2.0 * (1.0 / std::tan(beta)) * (Mn1_sq - 1.0) / (M1 * M1 * (gamma + std::cos(2.0 * beta)) + 2.0);
+    double theta = std::atan(tan_theta);
+
+    double a1 = std::sqrt(gamma * p1 / rho1);
+    double V1 = M1 * a1;
+    double V2 = V1 * std::cos(beta) / std::cos(beta - theta);
+
+    u2 = V2 * std::cos(theta);
+    v2 = -V2 * std::sin(theta);
+}
+
+static void parse_bc_string(const std::string& bc_in, NeighborInfo& ni, const Parameters* params_ptr = nullptr) {
     std::string bc = bc_in;
     ni.refine = true;
 
@@ -60,6 +81,31 @@ static void parse_bc_string(const std::string& bc_in, NeighborInfo& ni) {
 
     if (bc == "WALL" || bc == "WALL_SLIP") {
         ni.is_wall = true;
+    } else if (bc == "OBLIQUE_SHOCK_INFLOW" || bc == "OBLIQUE_SHOCK_INFLOW_SUPERSONIC") {
+        ni.is_supersonic_inflow = true;
+        if (params_ptr) {
+            double M1 = params_ptr->OBLIQUE_SHOCK_M;
+            double gamma = params_ptr->GAMMA;
+            double rho1 = params_ptr->RHO_INF;
+            double p1 = params_ptr->P_INF;
+            double a1 = std::sqrt(gamma * p1 / rho1);
+            ni.ref_rho = rho1;
+            ni.ref_u   = M1 * a1;
+            ni.ref_v   = 0.0;
+            ni.ref_p   = p1;
+        }
+    } else if (bc == "OBLIQUE_SHOCK_POST" || bc == "OBLIQUE_SHOCK_STATE") {
+        ni.is_characteristic = true;
+        if (params_ptr) {
+            double rho2, u2, v2, p2;
+            compute_oblique_shock_bc(params_ptr->OBLIQUE_SHOCK_M, params_ptr->OBLIQUE_SHOCK_BETA_DEG,
+                                     params_ptr->GAMMA, params_ptr->RHO_INF, params_ptr->P_INF,
+                                     rho2, u2, v2, p2);
+            ni.ref_rho = rho2;
+            ni.ref_u   = u2;
+            ni.ref_v   = v2;
+            ni.ref_p   = p2;
+        }
     } else if (bc.rfind("INFLOW_SUPERSONIC:", 0) == 0) {
         ni.is_supersonic_inflow = true;
         std::string params = bc.substr(18);
@@ -134,10 +180,10 @@ SolverDim<2>::SolverDim(const Parameters& params)
     
     // Pre-parse connectivity
     for (auto& b : blocks) {
-        parse_bc_string(b.bc_l, b.ni_l);
-        parse_bc_string(b.bc_r, b.ni_r);
-        parse_bc_string(b.bc_b, b.ni_b);
-        parse_bc_string(b.bc_t, b.ni_t);
+        parse_bc_string(b.bc_l, b.ni_l, &p);
+        parse_bc_string(b.bc_r, b.ni_r, &p);
+        parse_bc_string(b.bc_b, b.ni_b, &p);
+        parse_bc_string(b.bc_t, b.ni_t, &p);
     }
 
     initialize_cells();

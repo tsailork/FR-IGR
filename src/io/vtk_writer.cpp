@@ -341,9 +341,24 @@ void VTKWriter::write_checkpoint(Solver& solver, int step, double time) {
             double p_phan = S / std::max(p.POS_LIMITER_EPS, r);
             return press - p_phan;
         });
-        if (p.OUTPUT_ADAPTIVE_THETA) {
+        if (p.OUTPUT_ADAPTIVE_THETA || p.PPR_DEBUG_OUTPUT) {
             write_point_array_f32("Theta_PPR", [&](Cell* c, int, int) {
                 return c->theta_avg;
+            });
+            write_point_array_f32("C_tau_PPR", [&](Cell* c, int, int) {
+                return c->C_tau_cell;
+            });
+            write_point_array_f32("Tau_PPR", [&](Cell* c, int iy, int ix) {
+                double r = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, npts));
+                double ru = c->get_U(1, iy, ix, npts);
+                double rv = c->get_U(2, iy, ix, npts);
+                double E = c->get_U(3, iy, ix, npts);
+                double u = ru / r, v = rv / r;
+                double press = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (E - 0.5 * r * (u*u + v*v)));
+                double a = std::sqrt(p.GAMMA * press / r);
+                double speed = std::sqrt(u*u + v*v);
+                double h_node = std::min(c->dx, c->dy) / (p.P_DEG + 1.0);
+                return c->C_tau_cell * h_node / (a + speed + 1e-12);
             });
         }
     }
@@ -728,9 +743,24 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
             double p_phan = S / std::max(p.POS_LIMITER_EPS, r);
             return press - p_phan;
         });
-        if (p.OUTPUT_ADAPTIVE_THETA) {
+        if (p.OUTPUT_ADAPTIVE_THETA || p.PPR_DEBUG_OUTPUT) {
             write_array("Theta_PPR", [&](Cell* c, int, int) {
                 return c->theta_avg;
+            });
+            write_array("C_tau_PPR", [&](Cell* c, int, int) {
+                return c->C_tau_cell;
+            });
+            write_array("Tau_PPR", [&](Cell* c, int iy, int ix) {
+                double r = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
+                double ru = c->get_U(1, iy, ix, p.N_PTS);
+                double rv = c->get_U(2, iy, ix, p.N_PTS);
+                double E = c->get_U(3, iy, ix, p.N_PTS);
+                double u = ru / r, v = rv / r;
+                double press = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (E - 0.5 * r * (u*u + v*v)));
+                double a = std::sqrt(p.GAMMA * press / r);
+                double speed = std::sqrt(u*u + v*v);
+                double h_node = std::min(c->dx, c->dy) / (p.P_DEG + 1.0);
+                return c->C_tau_cell * h_node / (a + speed + 1e-12);
             });
         }
     }

@@ -91,6 +91,11 @@ struct CellDim<2> {
     double theta_max_tmp = 0.0;        ///< Temporary buffer for smoothing theta.
     double theta_ax = 0.0;             ///< 1st-degree Legendre modal expansion coefficient along X.
     double theta_ay = 0.0;             ///< 1st-degree Legendre modal expansion coefficient along Y.
+    double C_tau_cell = 0.25;          ///< Dynamic element relaxation ratio C_tau_eff.
+
+    // Pre-computed face-averaged velocity scalars for O(1) PPR face jump sensors
+    double face_u_L = 0.0, face_u_R = 0.0;
+    double face_v_B = 0.0, face_v_T = 0.0;
 
     inline double get_theta(double zx, double zy, bool use_subcell) const {
         if (use_subcell) {
@@ -124,6 +129,10 @@ struct CellDim<2> {
      * @brief Construct a Cell with allocated local arrays.
      */
     CellDim(int npts, const Parameters* p = nullptr) {
+        for (int f = 0; f < 4; ++f) {
+            neighbors[f] = nullptr;
+            is_boundary[f] = false;
+        }
         int n_dofs = N_VARS * npts * npts;
         int n_pts = npts * npts;
 
@@ -143,11 +152,9 @@ struct CellDim<2> {
         qx_buf.resize(n_pts, 0.0);
         qy_buf.resize(n_pts, 0.0);
 
-        if (p && p->ENABLE_PPR) {
-            S_field.resize(n_pts, 0.0);
-            S_old.resize(n_pts, 0.0);
-            S_RHS.resize(n_pts, 0.0);
-        }
+        S_field.resize(n_pts, 0.0);
+        S_old.resize(n_pts, 0.0);
+        S_RHS.resize(n_pts, 0.0);
         grad_px_field.resize(n_pts, 0.0);
         grad_py_field.resize(n_pts, 0.0);
         theta_avg = 0.0;
@@ -242,6 +249,12 @@ struct CellDim<3> {
     double theta_ax = 0.0;             ///< 1st-degree Legendre modal expansion coefficient along X.
     double theta_ay = 0.0;             ///< 1st-degree Legendre modal expansion coefficient along Y.
     double theta_az = 0.0;             ///< 1st-degree Legendre modal expansion coefficient along Z.
+    double C_tau_cell = 0.25;          ///< Dynamic element relaxation ratio C_tau_eff.
+
+    // Pre-computed face-averaged velocity scalars for O(1) PPR face jump sensors
+    double face_u_L = 0.0, face_u_R = 0.0;
+    double face_v_B = 0.0, face_v_T = 0.0;
+    double face_w_F = 0.0, face_w_K = 0.0;
 
     inline double get_theta(double zx, double zy, double zz, bool use_subcell) const {
         if (use_subcell) {
@@ -275,6 +288,10 @@ struct CellDim<3> {
      * @brief Construct a Cell with allocated local arrays.
      */
     CellDim(int npts, const Parameters* p = nullptr) {
+        for (int f = 0; f < 6; ++f) {
+            neighbors[f] = nullptr;
+            is_boundary[f] = false;
+        }
         int npts3 = npts * npts * npts;
         int n_dofs = N_VARS * npts3;
 
@@ -295,11 +312,9 @@ struct CellDim<3> {
         qy_buf.resize(npts3, 0.0);
         qz_buf.resize(npts3, 0.0);
 
-        if (p && p->ENABLE_PPR) {
-            S_field.resize(npts3, 0.0);
-            S_old.resize(npts3, 0.0);
-            S_RHS.resize(npts3, 0.0);
-        }
+        S_field.resize(npts3, 0.0);
+        S_old.resize(npts3, 0.0);
+        S_RHS.resize(npts3, 0.0);
         grad_px_field.resize(npts3, 0.0);
         grad_py_field.resize(npts3, 0.0);
         grad_pz_field.resize(npts3, 0.0);

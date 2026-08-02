@@ -225,6 +225,8 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("V_INF"))   V_INF   = std::stod(kv["V_INF"]);
         if (kv.count("W_INF"))   W_INF   = std::stod(kv["W_INF"]);
         if (kv.count("P_INF"))   P_INF   = std::stod(kv["P_INF"]);
+        if (kv.count("OBLIQUE_SHOCK_M"))        OBLIQUE_SHOCK_M        = std::stod(kv["OBLIQUE_SHOCK_M"]);
+        if (kv.count("OBLIQUE_SHOCK_BETA_DEG")) OBLIQUE_SHOCK_BETA_DEG = std::stod(kv["OBLIQUE_SHOCK_BETA_DEG"]);
         if (kv.count("SHOCK_VORTEX_MS")) SHOCK_VORTEX_MS = std::stod(kv["SHOCK_VORTEX_MS"]);
         if (kv.count("SHOCK_VORTEX_MV")) SHOCK_VORTEX_MV = std::stod(kv["SHOCK_VORTEX_MV"]);
         if (kv.count("SHOCK_VORTEX_XS")) SHOCK_VORTEX_XS = std::stod(kv["SHOCK_VORTEX_XS"]);
@@ -284,10 +286,19 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("PPR_C_POS"))         PPR_C_POS         = std::stod(kv["PPR_C_POS"]);
         if (kv.count("PPR_C_MAX"))         PPR_C_MAX         = std::stod(kv["PPR_C_MAX"]);
         if (kv.count("PPR_USE_SHOCK_NORMAL_MACH"))   PPR_USE_SHOCK_NORMAL_MACH   = (kv["PPR_USE_SHOCK_NORMAL_MACH"] == "true" || kv["PPR_USE_SHOCK_NORMAL_MACH"] == "1");
-        if (kv.count("PPR_USE_SOFTMAX_INDICATOR"))   PPR_USE_SOFTMAX_INDICATOR   = (kv["PPR_USE_SOFTMAX_INDICATOR"] == "true" || kv["PPR_USE_SOFTMAX_INDICATOR"] == "1");
-        if (kv.count("PPR_SOFTMAX_P"))               PPR_SOFTMAX_P               = std::stod(kv["PPR_SOFTMAX_P"]);
-        if (kv.count("PPR_USE_SUBCELL_LINEAR_THETA"))PPR_USE_SUBCELL_LINEAR_THETA= (kv["PPR_USE_SUBCELL_LINEAR_THETA"] == "true" || kv["PPR_USE_SUBCELL_LINEAR_THETA"] == "1");
         if (kv.count("PPR_USE_DYNAMIC_C_TAU"))       PPR_USE_DYNAMIC_C_TAU       = (kv["PPR_USE_DYNAMIC_C_TAU"] == "true" || kv["PPR_USE_DYNAMIC_C_TAU"] == "1");
+        if (kv.count("PPR_USE_DUCROS_SENSOR"))       PPR_USE_DUCROS_SENSOR       = (kv["PPR_USE_DUCROS_SENSOR"] == "true" || kv["PPR_USE_DUCROS_SENSOR"] == "1");
+        if (kv.count("PPR_USE_ENERGY_GUARD"))        PPR_USE_ENERGY_GUARD        = (kv["PPR_USE_ENERGY_GUARD"] == "true" || kv["PPR_USE_ENERGY_GUARD"] == "1");
+        if (kv.count("PPR_USE_STENCIL_EXPANSION"))   PPR_USE_STENCIL_EXPANSION   = (kv["PPR_USE_STENCIL_EXPANSION"] == "true" || kv["PPR_USE_STENCIL_EXPANSION"] == "1");
+        if (kv.count("PPR_USE_VON_NEUMANN_CEILING")) PPR_USE_VON_NEUMANN_CEILING = (kv["PPR_USE_VON_NEUMANN_CEILING"] == "true" || kv["PPR_USE_VON_NEUMANN_CEILING"] == "1");
+        if (kv.count("PPR_USE_SPATIAL_CLAMP"))       PPR_USE_SPATIAL_CLAMP       = (kv["PPR_USE_SPATIAL_CLAMP"] == "true" || kv["PPR_USE_SPATIAL_CLAMP"] == "1");
+        if (kv.count("PPR_DEBUG_OUTPUT"))            PPR_DEBUG_OUTPUT            = (kv["PPR_DEBUG_OUTPUT"] == "true" || kv["PPR_DEBUG_OUTPUT"] == "1");
+        if (kv.count("PPR_CONSTANT_MODE"))           PPR_CONSTANT_MODE           = (kv["PPR_CONSTANT_MODE"] == "true" || kv["PPR_CONSTANT_MODE"] == "1");
+        if (kv.count("PPR_USE_LIMITER"))             PPR_USE_LIMITER             = (kv["PPR_USE_LIMITER"] == "true" || kv["PPR_USE_LIMITER"] == "1");
+        if (kv.count("PPR_CONSTANT_THETA"))          PPR_CONSTANT_THETA          = std::stod(kv["PPR_CONSTANT_THETA"]);
+        if (kv.count("PPR_CONSTANT_C_TAU_VAL"))      PPR_CONSTANT_C_TAU_VAL      = std::stod(kv["PPR_CONSTANT_C_TAU_VAL"]);
+        if (kv.count("PPR_SENSOR_NOISE_FLOOR"))      PPR_SENSOR_NOISE_FLOOR      = std::stod(kv["PPR_SENSOR_NOISE_FLOOR"]);
+        if (kv.count("PPR_SENSOR_SATURATION"))       PPR_SENSOR_SATURATION       = std::stod(kv["PPR_SENSOR_SATURATION"]);
     }
 
     // --- [Stabilization] ---

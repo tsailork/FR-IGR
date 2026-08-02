@@ -14,6 +14,10 @@ U_INF = 0.0
 V_INF = 0.0
 P_INF = 1.0
 
+# Oblique Shock parameters (used if IC_TYPE = OBLIQUE_SHOCK or BC = OBLIQUE_SHOCK_INFLOW / OBLIQUE_SHOCK_POST)
+OBLIQUE_SHOCK_M = 5.0
+OBLIQUE_SHOCK_BETA_DEG = 32.0
+
 # Shock-Vortex Interaction parameters (used if IC_TYPE = SHOCK_VORTEX)
 # Benchmark values based on Inoue & Hattori (1999) Case C (Ms=1.2, Mv=0.25)
 SHOCK_VORTEX_MS = 1.2
@@ -202,14 +206,16 @@ ENABLE_PPR = false
 PPR_WALL_BC = EQUILIBRATED
 
 # --- Core PPR Shock Indicator & Relaxation Parameters ---
-# PPR_N_CELLS_SHOCK: Target shock transition width in terms of grid cell counts (N_cells, shock).
-#                    Scales the intra-element velocity divergence shock indicator theta_e.
+# PPR_N_CELLS_SHOCK: Target shock transition width in cell units (N_cells,shock).
+#                    Scales non-equilibrium dissipation theta_e quadratically: theta_target ~ (N_cells_shock * (N+1))^2.
 #                    Default = 2.5 (spans shock transition over 2 to 3 cells).
 PPR_N_CELLS_SHOCK = 2.5
 
-# PPR_C_TAU: Scaling coefficient for the analytical relaxation timescale tau.
-#            tau = PPR_C_TAU * (h_eff / (N+1)) / (a_phys + ||u|| + 1e-12).
-#            Default = 0.25.
+# PPR_C_TAU: Baseline scaling coefficient for the analytical relaxation timescale tau.
+#            tau = C_tau_eff * (h_eff / (N+1)) / (a_phys + ||u|| + 1e-12).
+#            Dynamic Mach-Adaptive PPR automatically adapts C_tau_eff = min(C_tau_base, 0.90 / (theta_target + 1.0))
+#            to hard-guarantee zero Doppler phase-lag growth (C_tau * (theta + 1) <= 0.90) at all Mach numbers.
+#            Default = 0.25 (base baseline).
 PPR_C_TAU = 0.25
 
 # PPR_C_POS: Non-negativity bound factor (c_pos) for regularized pressure (P_reg >= c_pos * P_phys).
@@ -228,19 +234,41 @@ PPR_C_MAX = 2.5
 #                             Prevents tangential velocity along oblique shock flanks from over-inflating theta_e.
 PPR_USE_SHOCK_NORMAL_MACH = true
 
-# PPR_USE_SOFTMAX_INDICATOR: Use L_p soft-max norm over solution points for indicator I_e (default true).
-#                            Filters out isolated single-node truncation noise spikes while strongly responding to shocks.
-PPR_USE_SOFTMAX_INDICATOR = true
-PPR_SOFTMAX_P             = 4.0
 
-# PPR_USE_SUBCELL_LINEAR_THETA: Project theta to 1st-degree Legendre sub-cell modal expansion (default true).
-#                               Achieves sub-cell localized regularized pressure with EXACT ZERO ALIASING ERROR.
-PPR_USE_SUBCELL_LINEAR_THETA = true
+# PPR_USE_DUCROS_SENSOR: Apply Ducros vorticity shielding to zero out PPR in shear layers and boundary layers (default true).
+#                        Multiplies theta_e by Ducros ratio D_e = div(u)^2 / (div(u)^2 + curl(u)^2 + eps).
+PPR_USE_DUCROS_SENSOR = true
 
-# PPR_USE_DYNAMIC_C_TAU: Automatically compute dynamic order & Mach calibrated C_tau(N, M_n) guide rule (default false).
-#                        When true (or when PPR_C_TAU <= 0), C_tau is dynamically evaluated:
-#                        C_tau = (PPR_N_CELLS_SHOCK / (2*(N+1))) * sqrt(1 + M_n^2 / (1 + M_n^2)).
-PPR_USE_DYNAMIC_C_TAU = false
+# PPR_USE_ENERGY_GUARD: Apply Thermodynamic Instant-Thermalization Guard to zero out anti-dissipative states (default true).
+#                       When true, forces P_phan -> P_phys in 1 RK stage if (P_phys - P_phan)*div(u) > 0 or P_phan > P_phys in compression.
+PPR_USE_ENERGY_GUARD = true
+
+# PPR_USE_STENCIL_EXPANSION: Expand theta_e and C_tau_cell to 1-ring face neighbors for smooth shock pre-conditioning (default true).
+PPR_USE_STENCIL_EXPANSION = true
+
+# PPR_USE_VON_NEUMANN_CEILING: Enforce conservative von Neumann ceiling C_tau_vonNeumann outside active shocks (default true).
+#                              Prevents phase-lag ripple growth in smooth flow while bypassing ceiling inside active shocks.
+PPR_USE_VON_NEUMANN_CEILING = true
+
+# PPR_USE_SPATIAL_CLAMP: Clamp phantom pressure to local 3-element physical pressure min/max (default false).
+#                        When false, allows phantom pressure non-equilibrium to diffuse across multiple cells for shock broadening.
+PPR_USE_SPATIAL_CLAMP = false
+
+# PPR_SENSOR_NOISE_FLOOR: Acoustic noise floor threshold for kinematic shock sensor (default 0.05).
+PPR_SENSOR_NOISE_FLOOR = 0.05
+
+# PPR_SENSOR_SATURATION: Full shock compression saturation threshold for kinematic shock sensor (default 0.50).
+PPR_SENSOR_SATURATION = 0.50
+
+# PPR_CONSTANT_MODE: When true, bypasses all adaptive theta/C_tau computation and uses
+#                    spatially-uniform user-specified values everywhere. Useful for manual investigation.
+PPR_CONSTANT_MODE = false
+
+# PPR_CONSTANT_THETA: Coupling intensity theta used when PPR_CONSTANT_MODE = true (default 2.0).
+PPR_CONSTANT_THETA = 2.0
+
+# PPR_CONSTANT_C_TAU_VAL: Relaxation timescale ratio C_tau used when PPR_CONSTANT_MODE = true (default 0.25).
+PPR_CONSTANT_C_TAU_VAL = 0.25
 
 # --- Part A: Gradient-Guided Phantom Pressure Advection ---
 # PPR_GRAD_ADV_SCALE: Acoustic pressure-gradient advection scale (default 0.0 = off).
@@ -260,12 +288,11 @@ PPR_GRAD_EPS = 1e-6
 # --- Part B: Adaptive & Smoothed Theta Shock Indicator ---
 # In the updated PPR scheme, adaptive theta calculation and face-neighbor max-smoothing are
 # built-in core defaults. The indicator theta_e is evaluated dynamically using:
-#   1. Non-dimensional velocity divergence: indicator = div(u) * h_eff / ((N+1) * a_phys)
-#   2. Local Mach number scaling: theta_raw = (PPR_N_CELLS_SHOCK * (N+1) * (gamma+1) / (8 * PPR_C_TAU)) * (1 + M_avg) * max(0, -indicator)
-#   3. Thermodynamic Energy Guard: zeroes theta_raw if anti-dissipative (theta_raw * (P_phys - P_phan) * div(u) > 0)
-#   4. Face-Neighbor Max Smoothing: theta_e = max(theta_raw, max_neighbor theta_raw)
-# Above this value, theta is clamped to PPR_THETA_MAX.
-# Typical range 1.5-5.0 depending on shock strength.
+#   1. Un-Limited Face Riemann Jump Sensor (100% P0-limiter immune): max(0, u_neigh - u_self) / ((N+1) * a_min)
+#   2. Dynamic Mach-Adaptive Scaling: theta_target = ((N_cells_shock * (N+1))^2 / (pi^2 * C_tau_base)) * 0.5 * (gamma+1) * (1 + M_n^2) * shock_val
+#   3. Phase-Lag Safe Relaxation: C_tau_eff = min(C_tau_base, 0.90 / (theta_target + 1.0)) guaranteeing C_tau * (theta + 1) <= 0.90
+#   4. Ducros Vorticity Shielding & Optional Thermodynamic Energy Guard
+#   5. Fast O(1) Pre-Computed Face-Neighbor Max Smoothing: theta_e = max(theta_raw, max_neighbor theta_raw)
 PPR_DIV_ND_MAX = 2.0
 
 # --- Part C: Ducros Schedule Sensor ---

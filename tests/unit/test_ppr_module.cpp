@@ -33,8 +33,10 @@ TEST_CASE("PPR - Thermodynamics & Regularized Wave Speed") {
         PPR::get_thermodynamics(rho, rhou, rhov, E, S, theta, gamma, eps, P_phys, P_phan, P_reg, a_reg);
 
         // P_reg = 3.2 + 1.0 * (3.2 - 1.0) = 5.4
+        // a2_reg = ((1.0 + 1.0) / 1.0) * (3.2 + 0.4 * 5.4) = 2.0 * (3.2 + 2.16) = 10.72
+        double expected_a_reg = std::sqrt(10.72);
         CHECK(P_reg == doctest::Approx(5.4));
-        CHECK(a_reg > std::sqrt(1.4 * 3.2 / 1.0));
+        CHECK(a_reg == doctest::Approx(expected_a_reg));
     }
 }
 
@@ -126,29 +128,15 @@ TEST_CASE("PPR - Multidimensional Feature Switches") {
         CHECK(theta_total >= 0.0);
     }
 
-    SUBCASE("Soft-Max Indicator vs Node-Max Switch") {
-        p.PPR_USE_SOFTMAX_INDICATOR = true;
-        p.PPR_SOFTMAX_P = 4.0;
-        PPR::compute_element_theta_2d(cells, basis, p);
-        double theta_softmax = cell.theta_avg;
 
-        p.PPR_USE_SOFTMAX_INDICATOR = false;
-        PPR::compute_element_theta_2d(cells, basis, p);
-        double theta_nodemax = cell.theta_avg;
-
-        CHECK(theta_softmax >= 0.0);
-        CHECK(theta_nodemax >= 0.0);
-    }
-
-    SUBCASE("Sub-cell Linear Theta Representation Switch") {
-        p.PPR_USE_SUBCELL_LINEAR_THETA = true;
+    SUBCASE("Thermodynamic Energy Guard Switch") {
+        p.PPR_USE_ENERGY_GUARD = true;
         PPR::compute_element_theta_2d(cells, basis, p);
         CHECK(cell.theta_avg >= 0.0);
 
-        p.PPR_USE_SUBCELL_LINEAR_THETA = false;
+        p.PPR_USE_ENERGY_GUARD = false;
         PPR::compute_element_theta_2d(cells, basis, p);
-        CHECK(cell.theta_ax == 0.0);
-        CHECK(cell.theta_ay == 0.0);
+        CHECK(cell.theta_avg >= 0.0);
     }
 
     SUBCASE("Dynamic C_tau Guide Rule Switch") {

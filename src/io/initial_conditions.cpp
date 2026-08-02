@@ -76,6 +76,13 @@ void IC::apply(Solver& solver) {
                     v = p.V_INF;
                     press = p.P_INF;
 
+                } else if (p.IC_TYPE == "OBLIQUE_SHOCK") {
+                    double a1 = std::sqrt(p.GAMMA * p.P_INF / p.RHO_INF);
+                    rho = p.RHO_INF;
+                    u = p.OBLIQUE_SHOCK_M * a1;
+                    v = 0.0;
+                    press = p.P_INF;
+
                 } else if (p.IC_TYPE == "KELVIN_HELMHOLTZ" || p.IC_TYPE == "KHI") {
                     // 2D Kelvin-Helmholtz Shear Layer Instability
                     double y1 = 0.25, y2 = 0.75;
