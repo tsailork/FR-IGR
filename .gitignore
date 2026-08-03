@@ -29,3 +29,5 @@ cases/default_case/out.log
 cases/default_case/pv_outputs
 cases/default_case/.webcontour
 gui_error.log
+cases/*/csv_outputs
+cases/*/pv_outputs

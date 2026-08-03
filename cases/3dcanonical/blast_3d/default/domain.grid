@@ -1,0 +1,16 @@
+[Block_0]
+N_ELEM_X = 32
+N_ELEM_Y = 32
+N_ELEM_Z = 32
+X_MIN = -1.0
+X_MAX = 1.0
+Y_MIN = -1.0
+Y_MAX = 1.0
+Z_MIN = -1.0
+Z_MAX = 1.0
+BC_L = WALL
+BC_R = WALL
+BC_B = WALL
+BC_T = WALL
+BC_F = WALL
+BC_K = WALL

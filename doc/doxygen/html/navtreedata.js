@@ -39,7 +39,7 @@ var NAVTREE =
       [ "Class Members", "functions.html", [
         [ "All", "functions.html", "functions_dup" ],
         [ "Functions", "functions_func.html", null ],
-        [ "Variables", "functions_vars.html", null ]
+        [ "Variables", "functions_vars.html", "functions_vars" ]
       ] ]
     ] ],
     [ "Files", "files.html", [
@@ -57,9 +57,10 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "adi__solver_8cpp.html",
-"struct_block_config.html#a5f006b66f48d143b94b415fcd4d366cc"
+"stability_8cpp.html",
+"structParameters.html#a126294841d3cdfc06d05caca782b3b1a"
 ];
 
-const SYNCONMSG = 'click to disable panel synchronization';
-const SYNCOFFMSG = 'click to enable panel synchronization';
-const LISTOFALLMEMBERS = 'List of all members';
+var SYNCONMSG = 'click to disable panel synchronization';
+var SYNCOFFMSG = 'click to enable panel synchronization';
+var LISTOFALLMEMBERS = 'List of all members';

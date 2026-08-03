@@ -6,6 +6,9 @@
 #include "entropy.hpp"
 #include "../core/solver.hpp"
 #include "limiter_common.hpp"
+#include "limiter_modal.hpp"
+#include "limiter_bbch.hpp"
+#include "limiter_hermite.hpp"
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -18,6 +21,7 @@ Limiters::LimiterStats Limiters::apply_entropy_limiter(Solver &solver) {
     // --- 1. Pre-calculate min entropy for every cell ---
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
+        if (p.ENABLE_MULTIRATE && !cells[i]->element_active) continue;
         cells[i]->s_min_val = min_entropy_in_cell(*cells[i], p, p.N_PTS);
     }
 
@@ -28,6 +32,7 @@ Limiters::LimiterStats Limiters::apply_entropy_limiter(Solver &solver) {
     #pragma omp parallel for schedule(static) reduction(+:num_limited, sum_theta)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
         double s_floor = c->s_min_val;
 
         // Gather neighborhood entropy minimum from conforming neighbors
@@ -38,8 +43,29 @@ Limiters::LimiterStats Limiters::apply_entropy_limiter(Solver &solver) {
         }
 
         // Lower s_floor to avoid being overly dissipative
-        s_floor -= 1.0E-4;
+        s_floor -= p.ENTROPY_LIMITER_EPS;
         if (s_floor < 1.0E-14) s_floor = 1.0E-14;
+
+        LimiterStrategy strategy = parse_limiter_strategy(p.LIMITER_STRATEGY);
+        if (strategy == LimiterStrategy::BBCH) {
+            if (apply_bbch_entropy(*c, s_floor, basis, p)) {
+                num_limited++;
+                sum_theta += 0.5;
+            }
+            continue;
+        } else if (strategy == LimiterStrategy::MODAL) {
+            if (apply_modal_entropy(*c, s_floor, basis, p)) {
+                num_limited++;
+                sum_theta += 0.5;
+            }
+            continue;
+        } else if (strategy == LimiterStrategy::HERMITE) {
+            if (apply_hermite_entropy(*c, s_floor, basis, p)) {
+                num_limited++;
+                sum_theta += 0.5;
+            }
+            continue;
+        }
 
         // --- Cell average ---
         double r_avg, ru_avg, rv_avg, E_avg;
@@ -81,13 +107,110 @@ Limiters::LimiterStats Limiters::apply_entropy_limiter(Solver &solver) {
 
         // --- Apply scaling ---
         if (theta_s < 1.0) {
+            double S_avg = 0.0;
+            if (p.ENABLE_PPR) {
+                for (int iy = 0; iy < p.N_PTS; ++iy) {
+                    for (int ix = 0; ix < p.N_PTS; ++ix) {
+                        double w = (basis.w[iy] * 0.5) * (basis.w[ix] * 0.5);
+                        S_avg += w * c->S_field[iy * p.N_PTS + ix];
+                    }
+                }
+            }
             for (int iy = 0; iy < p.N_PTS; ++iy) {
                 for (int ix = 0; ix < p.N_PTS; ++ix) {
                     c->get_U(0, iy, ix, p.N_PTS) = theta_s * (c->get_U(0, iy, ix, p.N_PTS) - r_avg) + r_avg;
                     c->get_U(1, iy, ix, p.N_PTS) = theta_s * (c->get_U(1, iy, ix, p.N_PTS) - ru_avg) + ru_avg;
                     c->get_U(2, iy, ix, p.N_PTS) = theta_s * (c->get_U(2, iy, ix, p.N_PTS) - rv_avg) + rv_avg;
                     c->get_U(3, iy, ix, p.N_PTS) = theta_s * (c->get_U(3, iy, ix, p.N_PTS) - E_avg) + E_avg;
+                    if (p.ENABLE_PPR) {
+                        c->S_field[iy * p.N_PTS + ix] = theta_s * (c->S_field[iy * p.N_PTS + ix] - S_avg) + S_avg;
+                    }
                 }
+            }
+            num_limited++;
+            sum_theta += theta_s;
+        }
+    }
+
+    LimiterStats stats;
+    stats.num_limited = num_limited;
+    stats.sum_theta = sum_theta;
+    return stats;
+}
+
+Limiters::LimiterStats Limiters::apply_entropy_limiter(SolverDim<3>& solver) {
+    const Parameters& p = solver.p;
+    const Basis& basis = solver.basis;
+    std::vector<Cell3D*>& cells = solver.cells;
+
+    #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < cells.size(); ++i) {
+        if (p.ENABLE_MULTIRATE && !cells[i]->element_active) continue;
+        cells[i]->s_min_val = min_entropy_in_cell(*cells[i], p, p.N_PTS);
+    }
+
+    int num_limited = 0;
+    double sum_theta = 0.0;
+
+    #pragma omp parallel for schedule(static) reduction(+:num_limited, sum_theta)
+    for (size_t i = 0; i < cells.size(); ++i) {
+        Cell3D* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+        double s_floor = c->s_min_val;
+
+        for (int f = 0; f < 6; ++f) {
+            if (c->neighbors[f]) {
+                s_floor = std::min(s_floor, c->neighbors[f]->s_min_val);
+            }
+        }
+
+        s_floor -= p.ENTROPY_LIMITER_EPS;
+        if (s_floor < 1.0E-14) s_floor = 1.0E-14;
+
+        double r_avg, ru_avg, rv_avg, rw_avg, E_avg;
+        compute_cell_average(*c, basis, r_avg, ru_avg, rv_avg, rw_avg, E_avg, p.N_PTS);
+
+        double face_pts[MAX_FACE_PTS_3D][5];
+        int n_face = extrapolate_face_values(*c, basis, face_pts, p.N_PTS);
+
+        double theta_s = 1.0;
+        int npts3 = p.N_PTS * p.N_PTS * p.N_PTS;
+
+        for (int pt = 0; pt < npts3; ++pt) {
+            double r  = c->U[0 * npts3 + pt];
+            double ru = c->U[1 * npts3 + pt];
+            double rv = c->U[2 * npts3 + pt];
+            double rw = c->U[3 * npts3 + pt];
+            double E  = c->U[4 * npts3 + pt];
+            double s = specific_entropy_3d(r, ru, rv, rw, E, p.GAMMA);
+            if (s < s_floor) {
+                theta_s = std::min(theta_s, bisect_for_theta_3d(
+                    r, ru, rv, rw, E, r_avg, ru_avg, rv_avg, rw_avg, E_avg,
+                    p.GAMMA, s_floor, false));
+            }
+        }
+
+        for (int f = 0; f < n_face; ++f) {
+            double r  = face_pts[f][0];
+            double ru = face_pts[f][1];
+            double rv = face_pts[f][2];
+            double rw = face_pts[f][3];
+            double E  = face_pts[f][4];
+            double s = specific_entropy_3d(r, ru, rv, rw, E, p.GAMMA);
+            if (s < s_floor) {
+                theta_s = std::min(theta_s, bisect_for_theta_3d(
+                    r, ru, rv, rw, E, r_avg, ru_avg, rv_avg, rw_avg, E_avg,
+                    p.GAMMA, s_floor, false));
+            }
+        }
+
+        if (theta_s < 1.0) {
+            for (int pt = 0; pt < npts3; ++pt) {
+                c->U[0 * npts3 + pt] = theta_s * (c->U[0 * npts3 + pt] - r_avg) + r_avg;
+                c->U[1 * npts3 + pt] = theta_s * (c->U[1 * npts3 + pt] - ru_avg) + ru_avg;
+                c->U[2 * npts3 + pt] = theta_s * (c->U[2 * npts3 + pt] - rv_avg) + rv_avg;
+                c->U[3 * npts3 + pt] = theta_s * (c->U[3 * npts3 + pt] - rw_avg) + rw_avg;
+                c->U[4 * npts3 + pt] = theta_s * (c->U[4 * npts3 + pt] - E_avg) + E_avg;
             }
             num_limited++;
             sum_theta += theta_s;

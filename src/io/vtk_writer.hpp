@@ -47,6 +47,7 @@ public:
      * @param[in] time Physical simulation time associated with the step
      */
     void write_checkpoint(Solver& solver, int step, double time);
+    void write_checkpoint(SolverDim<3>& solver, int step, double time);
 
     /**
      * @brief Write a high-resolution visualization-friendly plot snapshot.
@@ -59,6 +60,7 @@ public:
      * @param[in] time Physical simulation time associated with the step
      */
     void write_plot(Solver& solver, int step, double time);
+    void write_plot(SolverDim<3>& solver, int step, double time);
 
     /**
      * @brief Scan and parse existing `.pvd` files to restore snapshot histories.

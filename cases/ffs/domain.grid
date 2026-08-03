@@ -1,0 +1,74 @@
+# Forward-Facing Step – 3-block structured domain
+#
+# Literature standard: Woodward & Colella (1984), J. Comput. Phys. 54:115-173
+#   Domain  : x ∈ [0, 3], y ∈ [0, 1]  (L-shaped, step at x=0.6, h=0.2)
+#   Element : dx = dy = 1/60  →  uniform Cartesian spacing throughout
+#
+# Block layout (L-shaped domain split into 3 axis-aligned rectangles):
+#
+#   y
+#   1 ┌────────────────────────────────────────────────────┐
+#     │ Block 0 (36×48)       │ Block 2 (144×48)           │
+#   0.2 ├──────────────────────┼────────────────────────────┤
+#     │ Block 1 (36×12)       │  ←── STEP WALL (solid)      │
+#   0 └──────────────────────┘
+#     0                       0.6                           3
+#                             x
+#
+# Connectivity:
+#   Block 0 right  ←→ Block 2 left   (shared at x=0.6, y∈[0.2,1], 48 elems)
+#   Block 0 bottom ←→ Block 1 top    (shared at y=0.2, x∈[0.0,0.6], 36 elems)
+#   Block 1 right  = WALL            (step face, x=0.6, y∈[0.0,0.2])
+#   Block 2 bottom = WALL            (step top, y=0.2, x∈[0.6,3.0])
+
+# ──────────────────────────────────────────────────
+# Block 0 : Inflow channel, above step level
+#           x ∈ [0.0, 0.6],  y ∈ [0.2, 1.0]
+#           Nx = 0.6 × 60 = 36,  Ny = 0.8 × 60 = 48
+# ──────────────────────────────────────────────────
+[Block0]
+N_ELEM_X = 36
+N_ELEM_Y = 48
+X_MIN = 0.0
+X_MAX = 0.6
+Y_MIN = 0.2
+Y_MAX = 1.0
+BC_L = CHARACTERISTIC:1.4:3.0:0.0:1.0
+BC_R = 2:L
+BC_B = 1:T
+BC_T = WALL
+
+# ──────────────────────────────────────────────────
+# Block 1 : Inflow channel, below step level
+#           x ∈ [0.0, 0.6],  y ∈ [0.0, 0.2]
+#           Nx = 0.6 × 60 = 36,  Ny = 0.2 × 60 = 12
+# ──────────────────────────────────────────────────
+[Block1]
+N_ELEM_X = 36
+N_ELEM_Y = 12
+X_MIN = 0.0
+X_MAX = 0.6
+Y_MIN = 0.0
+Y_MAX = 0.2
+BC_L = CHARACTERISTIC:1.4:3.0:0.0:1.0
+BC_R = WALL
+BC_B = WALL
+BC_T = 0:B
+
+# ──────────────────────────────────────────────────
+# Block 2 : Main post-step region
+#           x ∈ [0.6, 3.0],  y ∈ [0.2, 1.0]
+#           Nx = 2.4 × 60 = 144,  Ny = 0.8 × 60 = 48
+# ──────────────────────────────────────────────────
+[Block2]
+N_ELEM_X = 144
+N_ELEM_Y = 48
+X_MIN = 0.6
+X_MAX = 3.0
+Y_MIN = 0.2
+Y_MAX = 1.0
+BC_L = 0:R
+BC_R = CHARACTERISTIC:1.4:3.0:0.0:1.0
+BC_B = WALL
+BC_T = WALL
+

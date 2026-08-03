@@ -279,4 +279,197 @@ void Diagnostics::update(const Solver& solver, double t, int step) {
         std::cout << "\n";
         next_print_output += params.PRINT_INTERVAL;
     }
+
+    // Trigger Workshop Probe Export at t >= 0.7 for SHOCK_VORTEX_WORKSHOP
+    if ((params.IC_TYPE == "SHOCK_VORTEX_WORKSHOP" || params.IC_TYPE == "SHOCK_VORTEX_HIOCFD") && t >= 0.7) {
+        static bool exported = false;
+        if (!exported) {
+            export_workshop_probes(solver);
+            exported = true;
+        }
+    }
+}
+
+void Diagnostics::export_workshop_probes(const Solver& solver) const {
+    std::cout << "[DIAG] Exporting Workshop Shock-Vortex Line Probes at t = 0.7...\n";
+    std::filesystem::create_directories("csv_outputs");
+
+    auto sample_point = [&](double px, double py, double& rho, double& u, double& v, double& p) {
+        rho = 1.0; u = 0.0; v = 0.0; p = 1.0 / params.GAMMA;
+        for (Cell* c : solver.cells) {
+            if (px >= c->x_min && px <= c->x_min + c->dx &&
+                py >= c->y_min && py <= c->y_min + c->dy) {
+                double xc = c->x_min + 0.5 * c->dx;
+                double yc = c->y_min + 0.5 * c->dy;
+                double xi  = (px - xc) / (0.5 * c->dx);
+                double eta = (py - yc) / (0.5 * c->dy);
+
+                double u_int[4] = {0.0, 0.0, 0.0, 0.0};
+                for (int iy = 0; iy < params.N_PTS; ++iy) {
+                    for (int ix = 0; ix < params.N_PTS; ++ix) {
+                        double L_x = 1.0, L_y = 1.0;
+                        for (int k = 0; k < params.N_PTS; ++k) {
+                            if (ix != k) L_x *= (xi - solver.basis.z[k]) / (solver.basis.z[ix] - solver.basis.z[k]);
+                            if (iy != k) L_y *= (eta - solver.basis.z[k]) / (solver.basis.z[iy] - solver.basis.z[k]);
+                        }
+                        double w = L_x * L_y;
+                        u_int[0] += w * c->get_U(0, iy, ix, params.N_PTS);
+                        u_int[1] += w * c->get_U(1, iy, ix, params.N_PTS);
+                        u_int[2] += w * c->get_U(2, iy, ix, params.N_PTS);
+                        u_int[3] += w * c->get_U(3, iy, ix, params.N_PTS);
+                    }
+                }
+                rho = std::max(1e-12, u_int[0]);
+                u = u_int[1] / rho;
+                v = u_int[2] / rho;
+                p = (params.GAMMA - 1.0) * (u_int[3] - 0.5 * rho * (u*u + v*v));
+                break;
+            }
+        }
+    };
+
+    // 1. Line y = 0.4 (x in [0, 2.0])
+    {
+        std::ofstream f("csv_outputs/probe_y04.csv");
+        if (f.is_open()) {
+            f << "x,y,rho,u,v,press,Mach\n";
+            int npts_line = 400;
+            for (int i = 0; i <= npts_line; ++i) {
+                double px = 0.0 + (2.0 - 0.0) * i / npts_line;
+                double py = 0.4;
+                double rho, u, v, p;
+                sample_point(px, py, rho, u, v, p);
+                double mach = std::sqrt(u*u + v*v) / std::sqrt(params.GAMMA * std::abs(p) / rho);
+                f << std::scientific << std::setprecision(8) << px << "," << py << ","
+                  << rho << "," << u << "," << v << "," << p << "," << mach << "\n";
+            }
+        }
+    }
+
+    // 2. Line x = 0.52 (y in [0, 1.0])
+    {
+        std::ofstream f("csv_outputs/probe_x052.csv");
+        if (f.is_open()) {
+            f << "x,y,rho,u,v,press,Mach\n";
+            int npts_line = 200;
+            for (int i = 0; i <= npts_line; ++i) {
+                double px = 0.52;
+                double py = 0.0 + (1.0 - 0.0) * i / npts_line;
+                double rho, u, v, p;
+                sample_point(px, py, rho, u, v, p);
+                double mach = std::sqrt(u*u + v*v) / std::sqrt(params.GAMMA * std::abs(p) / rho);
+                f << std::scientific << std::setprecision(8) << px << "," << py << ","
+                  << rho << "," << u << "," << v << "," << p << "," << mach << "\n";
+            }
+        }
+    }
+
+    // 3. Line x = 1.05 (y in [0, 1.0])
+    {
+        std::ofstream f("csv_outputs/probe_x105.csv");
+        if (f.is_open()) {
+            f << "x,y,rho,u,v,press,Mach\n";
+            int npts_line = 200;
+            for (int i = 0; i <= npts_line; ++i) {
+                double px = 1.05;
+                double py = 0.0 + (1.0 - 0.0) * i / npts_line;
+                double rho, u, v, p;
+                sample_point(px, py, rho, u, v, p);
+                double mach = std::sqrt(u*u + v*v) / std::sqrt(params.GAMMA * std::abs(p) / rho);
+                f << std::scientific << std::setprecision(8) << px << "," << py << ","
+                  << rho << "," << u << "," << v << "," << p << "," << mach << "\n";
+            }
+        }
+    }
+}
+
+Diagnostics::Diagnostics(const Parameters& p, const SolverDim<3>& solver, double startTime)
+    : params(p), sim_start_time(startTime)
+{
+    start_time = std::chrono::steady_clock::now();
+    last_print_wall_time = start_time;
+
+    // Synchronize interval counters with startTime (same as 2D constructor)
+    next_residual_output = (std::floor(startTime / params.RESIDUAL_INTERVAL) + 1.0) * params.RESIDUAL_INTERVAL;
+    next_probe_output    = (std::floor(startTime / params.PROBE_INTERVAL) + 1.0) * params.PROBE_INTERVAL;
+    next_print_output    = (std::floor(startTime / params.PRINT_INTERVAL) + 1.0) * params.PRINT_INTERVAL;
+
+    std::filesystem::create_directories("csv_outputs");
+
+    bool is_restart = (startTime > 0.0);
+    std::ios_base::openmode mode = is_restart ? (std::ios::out | std::ios::app) : std::ios::out;
+    res_file.open("csv_outputs/residuals.csv", mode);
+    if (!is_restart && res_file.is_open()) {
+        res_file << "Time, L2_Rho, L2_RhoU, L2_RhoV, L2_RhoW, L2_E\n";
+    }
+}
+
+void Diagnostics::update(const SolverDim<3>& solver, double t, int step) {
+    bool need_residual = (t >= next_residual_output && res_file.is_open()) || (t >= next_print_output);
+    std::vector<double> res(5, 0.0);
+
+    if (need_residual) {
+        double l2_rho = 0.0, l2_rhou = 0.0, l2_rhov = 0.0, l2_rhow = 0.0, l2_E = 0.0;
+        int npts3 = params.N_PTS * params.N_PTS * params.N_PTS;
+        long long total_pts = static_cast<long long>(solver.cells.size()) * npts3;
+
+        #pragma omp parallel for reduction(+:l2_rho, l2_rhou, l2_rhov, l2_rhow, l2_E)
+        for (size_t i = 0; i < solver.cells.size(); ++i) {
+            Cell3D* c = solver.cells[i];
+            for (int k = 0; k < npts3; ++k) {
+                l2_rho  += c->RHS[0 * npts3 + k] * c->RHS[0 * npts3 + k];
+                l2_rhou += c->RHS[1 * npts3 + k] * c->RHS[1 * npts3 + k];
+                l2_rhov += c->RHS[2 * npts3 + k] * c->RHS[2 * npts3 + k];
+                l2_rhow += c->RHS[3 * npts3 + k] * c->RHS[3 * npts3 + k];
+                l2_E    += c->RHS[4 * npts3 + k] * c->RHS[4 * npts3 + k];
+            }
+        }
+
+        if (total_pts > 0) {
+            res[0] = std::sqrt(l2_rho / total_pts);
+            res[1] = std::sqrt(l2_rhou / total_pts);
+            res[2] = std::sqrt(l2_rhov / total_pts);
+            res[3] = std::sqrt(l2_rhow / total_pts);
+            res[4] = std::sqrt(l2_E / total_pts);
+        }
+    }
+
+    if (t >= next_residual_output && res_file.is_open()) {
+        res_file << std::scientific << std::setprecision(6) << t << ", "
+                 << res[0] << ", " << res[1] << ", " << res[2] << ", " << res[3] << ", " << res[4] << "\n";
+        res_file.flush();
+        next_residual_output += params.RESIDUAL_INTERVAL;
+    }
+
+    if (t >= next_print_output) {
+        auto now = std::chrono::steady_clock::now();
+        std::chrono::duration<double> total_elapsed = now - start_time;
+        last_print_wall_time = now;
+
+        double l2_sum = res[0] + res[1] + res[2] + res[3] + res[4];
+        double progress = (t / params.T_FINAL) * 100.0;
+
+        double dt_run = t - sim_start_time;
+        double eta = 0.0;
+        if (dt_run > 1e-8) {
+            eta = (total_elapsed.count() / dt_run) * (params.T_FINAL - t);
+        }
+
+        std::cout << std::fixed << std::setprecision(4)
+                  << "[Step " << std::setw(5) << step << "] "
+                  << "t: " << std::setw(6) << t << " | "
+                  << std::setw(5) << progress << "% | "
+                  << "ETA: " << std::setw(5) << eta << "s | "
+                  << std::scientific << std::setprecision(3)
+                  << "L2_Sum: " << l2_sum;
+
+        if (params.ENABLE_POS_LIMITER || params.ENABLE_ENTROPY_LIMITER) {
+            double avg_theta = (solver.current_limiter_stats.num_limited > 0) ? 
+                                solver.current_limiter_stats.sum_theta / solver.current_limiter_stats.num_limited : 0.0;
+            std::cout << " | Lim: " << solver.current_limiter_stats.num_limited 
+                      << " (avg_th: " << std::fixed << std::setprecision(4) << avg_theta << ")";
+        }
+        std::cout << "\n";
+        next_print_output += params.PRINT_INTERVAL;
+    }
 }

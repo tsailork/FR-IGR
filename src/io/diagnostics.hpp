@@ -10,7 +10,8 @@
 #include <chrono>
 #include <vector>
 
-class Solver;
+template<int Dim> class SolverDim;
+using Solver = SolverDim<2>;
 
 /**
  * @class Diagnostics
@@ -22,6 +23,7 @@ public:
      * @brief Constructs the Diagnostics tracker and opens output file streams.
      */
     Diagnostics(const Parameters& p, const Solver& solver, double startTime);
+    Diagnostics(const Parameters& p, const SolverDim<3>& solver, double startTime);
 
     /**
      * @brief Destructor that cleanly flushes and closes active file streams.
@@ -32,6 +34,12 @@ public:
      * @brief Updates all diagnostic metrics and writes to disk if intervals are met.
      */
     void update(const Solver& solver, double t, int step);
+    void update(const SolverDim<3>& solver, double t, int step);
+
+    /**
+     * @brief Exports line probe data (y=0.4, x=0.52, x=1.05) for AIAA Workshop Shock-Vortex Benchmark at t=0.7.
+     */
+    void export_workshop_probes(const Solver& solver) const;
 
 private:
     const Parameters& params;

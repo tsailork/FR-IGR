@@ -14,6 +14,30 @@ U_INF = 0.0
 V_INF = 0.0
 P_INF = 1.0
 
+# Oblique Shock parameters (used if IC_TYPE = OBLIQUE_SHOCK or BC = OBLIQUE_SHOCK_INFLOW / OBLIQUE_SHOCK_POST)
+OBLIQUE_SHOCK_M = 5.0
+OBLIQUE_SHOCK_BETA_DEG = 32.0
+
+# Shock-Vortex Interaction parameters (used if IC_TYPE = SHOCK_VORTEX)
+# Benchmark values based on Inoue & Hattori (1999) Case C (Ms=1.2, Mv=0.25)
+SHOCK_VORTEX_MS = 1.2
+SHOCK_VORTEX_MV = 0.25
+SHOCK_VORTEX_XS = 0.5
+SHOCK_VORTEX_XV = 1.5
+SHOCK_VORTEX_YV = 0.0
+SHOCK_VORTEX_RC = 0.2
+
+# Richtmyer-Meshkov Instability parameters (used if IC_TYPE = RICHTMYER_MESHKOV or RMI)
+# Single-mode benchmark values (Ms=1.5, Atwood A=0.5)
+RMI_MS = 1.5
+RMI_RHO1 = 1.0
+RMI_RHO2 = 3.0
+RMI_XS = 0.2
+RMI_X0 = 0.5
+RMI_AMP = 0.05
+RMI_LY = 1.0
+RMI_SIGMA = 0.01
+
 [Solver]
 # P_DEG: Polynomial degree of elements. 0 = Finite Volume, 1 = Linear, 2 = Quadratic
 P_DEG = 1
@@ -78,8 +102,26 @@ USE_MOMENTUM_DIV = false
 # USE_PRESSURE_SOURCE_CAP: Cap shock sensor source by local pressure (S <= SOURCE_CAP_COEFF * P) to stabilize strong shocks.
 USE_PRESSURE_SOURCE_CAP = true
 
+# USE_PRESSURE_FIELD_CAP: Cap the final resolved entropic pressure field by local pressure (Sigma <= P) downstream of the source term.
+USE_PRESSURE_FIELD_CAP = true
+
 # SOURCE_CAP_COEFF: Tuning coefficient for pressure-bounded source capping.
 SOURCE_CAP_COEFF = 1.0
+
+# IGR_DIVERGENCE_THRESHOLD: Divergence threshold for shock sensor activation. 
+# Regularizer only activates when divergence < IGR_DIVERGENCE_THRESHOLD (must be compressive, e.g., 0.0 or slightly negative like -1e-3).
+# Default of 1.0e99 disables the compression filter.
+IGR_DIVERGENCE_THRESHOLD = 1.0e99
+
+# IGR_SENSOR_THRESHOLD: Minimum value of raw sensor magnitude (tr(Du^2) + tr^2(Du)) to trigger regularizer.
+# Default of -9.0e99 disables the sensor threshold filter.
+IGR_SENSOR_THRESHOLD = -9.0e99
+
+# IGR_SUB_ITER_TOL: Convergence tolerance for IGR sub-iterations.
+# If greater than 0.0, sub-iterations run dynamically until the L1 difference between iterations
+# drops below this tolerance, up to a maximum limit (IGR_SUB_ITERS or fallback 1000).
+# Default of 0.0 disables convergence checking (runs exactly IGR_SUB_ITERS).
+IGR_SUB_ITER_TOL = 0.0
 
 [Stabilization]
 # ENABLE_POS_LIMITER: Zhang-Shu density and pressure positivity limiter.
@@ -90,6 +132,198 @@ POS_LIMITER_EPS = 1e-10
 
 # ENABLE_ENTROPY_LIMITER: Prevents unphysical entropy undershoots.
 ENABLE_ENTROPY_LIMITER = true
+
+# ENTROPY_LIMITER_EPS: Minimum specific entropy violation threshold/offset.
+# Smaller values restrict the specific entropy minimum preservation more tightly, while larger
+# values relax the violation check to prevent numerical dissipation (e.g. 1e-4, 1e-2).
+ENTROPY_LIMITER_EPS = 1e-4
+
+# LIMITER_STRATEGY: Limiter strategy selection for positivity and entropy limiters.
+# Selects the local element reconstruction and attenuation mechanism used whenever a cell
+# violates density/pressure positivity or minimum specific entropy thresholds.
+# All strategies support 2D/3D conforming and quadtree non-conforming AMR grids, PPR phantom pressure,
+# sub-grid face checking, and exact L2 cell average conservation.
+# Options:
+#   - ZHANG_SHU (Default):
+#       Standard Zhang-Shu uniform scaling limiter. Scales the entire high-order solution polynomial
+#       linearly towards the element cell average U_avg: U(x) <- theta * (U(x) - U_avg) + U_avg.
+#       Computes theta = min(1, theta_rho, theta_p) to enforce min(rho, p) >= eps.
+#       Literature Reference:
+#         * Zhang, X., & Shu, C.-W. (2010). "On positivity-preserving high-order discontinuous Galerkin
+#           schemes for compressible Euler equations on general meshes." J. Comput. Phys., 229(23), 8918-8934.
+#         * Zhang, X., & Shu, C.-W. (2011). "Maximum-principle-satisfying and positivity-preserving
+#           high-order schemes for conservation laws: Survey and new developments." Proc. R. Soc. A, 467, 2752-2776.
+#
+#   - BBCH:
+#       Bernstein-Bézier Convex Hull limiter. Transforms nodal solution values into Bernstein-Bézier
+#       control points C_{j,i} via matrix inversion. Exploits the convex hull property of Bernstein
+#       polynomials (min C_{j,i} <= U(x) <= max C_{j,i}) to bound localized oscillations while applying
+#       an L2 conservative projection onto the zero-mean subspace to preserve exact cell averages.
+#       Literature References & Derivations:
+#         * Dumont, A., & Loubère, R. (2013). "Bernstein-Bézier representation and positivity preservation
+#           for high-order DG schemes." J. Comput. Phys., 245, 344-367.
+#         * Dzanic, C., & Witherden, F. D. (2022). "Positivity-preserving modal limiters for high-order
+#           discontinuous Galerkin methods." Comput. Fluids, 240, 105423.
+#         * Lai, M. J., & Schumaker, L. L. (2007). Spline Functions on Triangulations. Cambridge Univ. Press.
+#
+#   - MODAL:
+#       Scale-aware Legendre modal damping limiter. Projects the nodal state onto orthogonal 2D Legendre
+#       polynomials P_k(x)P_l(y) and applies scale-dependent modal attenuation sigma(kx, ky; theta) = theta^((kx/P)^2 + (ky/P)^2).
+#       Damps high-frequency modes (P, P) exponentially faster than low-degree modes, preserving physical
+#       linear and quadratic gradients. Recovers the pure P0 cell average (U_avg) as an exact limit at theta = 0,
+#       guaranteeing 100% positivity and entropy robustness equal or superior to Zhang-Shu.
+#       Literature References & Derivations:
+#         * Persson, P.-O., & Peraire, J. (2006). "Sub-grid shock-capturing for high-order discontinuous
+#           Galerkin methods." AIAA Paper 2006-112.
+#         * Dzanic, C., & Witherden, F. D. (2022). "Positivity-preserving modal limiters for high-order
+#           discontinuous Galerkin methods." Comput. Fluids, 240, 105423.
+#
+#   - HERMITE:
+#       Local Hermite patch subgrid limiter. Constructs a local subgrid Hermite interpolation patch matching
+#       the cell average U_avg and interface states U_L, U_R, U_B, U_T derived from adjacent cell averages.
+#       Uses zero-mean cubic Hermite basis functions h_L(z) = 0.25(1-z)^2(2+z)-0.5 to form a smooth profile
+#       coupled to neighbor elements, applying L2 zero-mean projection and bisecting on theta in [0, 1]
+#       towards the exact P0 cell average limit (theta = 0) for 100% positivity robustness.
+#       Literature References & Derivations:
+#         * Ciallella, A., & Torlo, D. (2023). "Arbitrary high-order sub-cell Hermite limiters for
+#           discontinuous Galerkin methods." J. Sci. Comput., 95(1), 22.
+#         * Vilar, F. (2019). "Cell-average based neural network and sub-cell Hermite limiters for
+#           high-order DG schemes." Comput. Math. Appl., 78(9), 2991-3011.
+LIMITER_STRATEGY = ZHANG_SHU
+
+[PPR]
+# ENABLE_PPR: Enable Hyperbolic Non-Equilibrium Phantom Pressure Relaxation (PPR) shock capturing.
+ENABLE_PPR = false
+
+# PPR_WALL_BC: Boundary condition mode for phantom pressure (S = rho * P_phan) at physical and SBM wall faces.
+#   - EQUILIBRATED: Anti-symmetric pressure difference (P_diff,ghost = -P_diff,face).
+#                   Forces zero average pressure difference at the wall interface (P_diff,avg = 0).
+#                   Best for preserving un-regularized physical boundary layers in smooth flow. (Default)
+#   - PHYSICAL_DIRICHLET: Zero ghost pressure difference (P_phan,ghost = P_phys,ghost, S_ghost = rho_ghost * P_phys,ghost).
+#                         Imposes 50% boundary layer relaxation intensity at the wall interface.
+#   - CONSTANT_DIFFERENCE: Constant pressure difference across wall boundary (P_diff,ghost = P_diff,face).
+#                          Recommended for strong shock reflections off solid walls.
+PPR_WALL_BC = EQUILIBRATED
+
+# --- Core PPR Shock Indicator & Relaxation Parameters ---
+# PPR_N_CELLS_SHOCK: Target shock transition width in cell units (N_cells,shock).
+#                    Scales non-equilibrium dissipation theta_e quadratically: theta_target ~ (N_cells_shock * (N+1))^2.
+#                    Default = 2.5 (spans shock transition over 2 to 3 cells).
+PPR_N_CELLS_SHOCK = 2.5
+
+# PPR_C_TAU: Baseline scaling coefficient for the analytical relaxation timescale tau.
+#            tau = C_tau_eff * (h_eff / (N+1)) / (a_phys + ||u|| + 1e-12).
+#            Dynamic Mach-Adaptive PPR automatically adapts C_tau_eff = min(C_tau_base, 0.90 / (theta_target + 1.0))
+#            to hard-guarantee zero Doppler phase-lag growth (C_tau * (theta + 1) <= 0.90) at all Mach numbers.
+#            Default = 0.25 (base baseline).
+PPR_C_TAU = 0.25
+
+# PPR_C_POS: Non-negativity bound factor (c_pos) for regularized pressure (P_reg >= c_pos * P_phys).
+#            Determines the upper bound on phantom pressure: P_phan <= (1 + (1 - c_pos)/theta) * P_phys.
+#            Default = 0.05.
+PPR_C_POS = 0.05
+
+# PPR_C_MAX: Maximum peak regularization factor (C_max) for regularized pressure (P_reg <= C_max * P_phys).
+#            Determines the lower bound on phantom pressure: P_phan >= (1 - (C_max - 1)/theta) * P_phys.
+#            Default = 2.5.
+PPR_C_MAX = 2.5
+
+# --- Advanced Multidimensional PPR Enhancements & Switches ---
+# PPR_USE_SHOCK_NORMAL_MACH: Use shock-normal Mach number M_n = |u . grad(P)| / a in Master Law (default true).
+#                             When true, projects fluid velocity onto local pressure gradient n_shock = grad(P)/|grad(P)|.
+#                             Prevents tangential velocity along oblique shock flanks from over-inflating theta_e.
+PPR_USE_SHOCK_NORMAL_MACH = true
+
+
+# PPR_USE_DUCROS_SENSOR: Apply Ducros vorticity shielding to zero out PPR in shear layers and boundary layers (default true).
+#                        Multiplies theta_e by Ducros ratio D_e = div(u)^2 / (div(u)^2 + curl(u)^2 + eps).
+PPR_USE_DUCROS_SENSOR = true
+
+# PPR_USE_ENERGY_GUARD: Apply Thermodynamic Instant-Thermalization Guard to zero out anti-dissipative states (default true).
+#                       When true, forces P_phan -> P_phys in 1 RK stage if (P_phys - P_phan)*div(u) > 0 or P_phan > P_phys in compression.
+PPR_USE_ENERGY_GUARD = true
+
+# PPR_USE_STENCIL_EXPANSION: Expand theta_e and C_tau_cell to 1-ring face neighbors for smooth shock pre-conditioning (default true).
+PPR_USE_STENCIL_EXPANSION = true
+
+# PPR_USE_VON_NEUMANN_CEILING: Enforce conservative von Neumann ceiling C_tau_vonNeumann outside active shocks (default true).
+#                              Prevents phase-lag ripple growth in smooth flow while bypassing ceiling inside active shocks.
+PPR_USE_VON_NEUMANN_CEILING = true
+
+# PPR_USE_SPATIAL_CLAMP: Clamp phantom pressure to local 3-element physical pressure min/max (default false).
+#                        When false, allows phantom pressure non-equilibrium to diffuse across multiple cells for shock broadening.
+PPR_USE_SPATIAL_CLAMP = false
+
+# PPR_SENSOR_NOISE_FLOOR: Acoustic noise floor threshold for kinematic shock sensor (default 0.05).
+PPR_SENSOR_NOISE_FLOOR = 0.05
+
+# PPR_SENSOR_SATURATION: Full shock compression saturation threshold for kinematic shock sensor (default 0.50).
+PPR_SENSOR_SATURATION = 0.50
+
+# PPR_CONSTANT_MODE: When true, bypasses all adaptive theta/C_tau computation and uses
+#                    spatially-uniform user-specified values everywhere. Useful for manual investigation.
+PPR_CONSTANT_MODE = false
+
+# PPR_CONSTANT_THETA: Coupling intensity theta used when PPR_CONSTANT_MODE = true (default 2.0).
+PPR_CONSTANT_THETA = 2.0
+
+# PPR_CONSTANT_C_TAU_VAL: Relaxation timescale ratio C_tau used when PPR_CONSTANT_MODE = true (default 0.25).
+PPR_CONSTANT_C_TAU_VAL = 0.25
+
+# --- Part A: Gradient-Guided Phantom Pressure Advection ---
+# PPR_GRAD_ADV_SCALE: Acoustic pressure-gradient advection scale (default 0.0 = off).
+# When > 0, corrects the phantom pressure advection velocity with an acoustic component
+# oriented in the direction of the local pressure gradient:
+#   u_adv = u + PPR_GRAD_ADV_SCALE * a * grad(P) / |grad(P)|
+# The +sign pushes S toward the high-pressure (post-shock) side, evacuating it from
+# the pre-shock region regardless of the sign of the flow velocity relative to the shock.
+# PPR_GRAD_ADV_SCALE = 0.0 recovers classic advection; = 1.0 adds full acoustic magnitude.
+# Values > 1.0 over-correct and may be useful experimentally.
+PPR_GRAD_ADV_SCALE = 0.0
+
+# PPR_GRAD_EPS: Regularization floor on |grad(P)| to prevent division-by-zero in
+# smooth, uniform-pressure regions. Typically kept very small (1e-6 to 1e-8).
+PPR_GRAD_EPS = 1e-6
+
+# --- Part B: Adaptive & Smoothed Theta Shock Indicator ---
+# In the updated PPR scheme, adaptive theta calculation and face-neighbor max-smoothing are
+# built-in core defaults. The indicator theta_e is evaluated dynamically using:
+#   1. Un-Limited Face Riemann Jump Sensor (100% P0-limiter immune): max(0, u_neigh - u_self) / ((N+1) * a_min)
+#   2. Dynamic Mach-Adaptive Scaling: theta_target = ((N_cells_shock * (N+1))^2 / (pi^2 * C_tau_base)) * 0.5 * (gamma+1) * (1 + M_n^2) * shock_val
+#   3. Phase-Lag Safe Relaxation: C_tau_eff = min(C_tau_base, 0.90 / (theta_target + 1.0)) guaranteeing C_tau * (theta + 1) <= 0.90
+#   4. Ducros Vorticity Shielding & Optional Thermodynamic Energy Guard
+#   5. Fast O(1) Pre-Computed Face-Neighbor Max Smoothing: theta_e = max(theta_raw, max_neighbor theta_raw)
+PPR_DIV_ND_MAX = 2.0
+
+# --- Part C: Ducros Schedule Sensor ---
+# PPR_USE_DUCROS_SENSOR: Multiply uncapped non-dimensional divergence sensor by capped Ducros switch [0, 1] (default true).
+PPR_USE_DUCROS_SENSOR = true
+
+# shock_sens_schedule: Colon-separated breakpoints for sensor (x-coordinates).
+shock_sens_schedule = -0.2:0.0:1.0:1.5
+
+# theta_schedule: Colon-separated schedule values for theta (y-coordinates).
+theta_schedule = 1.0:0.0:10.0:50.0
+
+# --- Part D: Mach-Number Filter (Stagnation Region Suppressor) ---
+# PPR_MACH_FILTER: Enable Mach-number filtering of PPR shock sensor/theta (default false).
+#   When true, multiplies theta by a smooth Mach transition filter phi(M):
+#     phi(M) = 0 for M <= PPR_MACH_SUB (stagnation/quiescent flow)
+#     phi(M) = 1 for M >= PPR_MACH_CUT (supersonic shock flow)
+PPR_MACH_FILTER = false
+PPR_MACH_SUB    = 0.10
+PPR_MACH_CUT    = 0.25
+
+# --- Part E: Stagnation Cap Multiplier & Acoustic Speed Scaling ---
+# PPR_STAG_CAP_MULT: Scaling multiplier on total/stagnation pressure cap (default 1.0).
+#   P_reg <= PPR_STAG_CAP_MULT * P_phys * (1 + 0.5*(gamma-1)*M^2)^(gamma/(gamma-1)).
+#   Increase > 1.0 to relax the stagnation pressure cap ceiling.
+PPR_STAG_CAP_MULT = 1.0
+
+# PPR_A_EFF_MULT: Scaling multiplier (kappa) on acoustic speed boost (default 1.0).
+#   a_eff = a_phys * sqrt(1 + PPR_A_EFF_MULT * theta).
+#   Set < 1.0 (e.g. 0.0 or 0.25) to relax CFL time-step restriction when slow regions are stable.
+PPR_A_EFF_MULT = 1.0
 
 [ImmersedBoundary]
 # ENABLE_IB: Toggle the Immersed Boundary Method for solid boundaries
@@ -229,8 +463,28 @@ ZONE_0_LEVEL = 2
 # OUTPUT_INTERVAL: Time interval between full, continuous VTK plotting snapshots (plot_*.vtm).
 OUTPUT_INTERVAL = 0.01
 
+# OUTPUT_DIV_ND: Toggle to output the non-dimensional velocity divergence field (div_nd) in the VTK files.
+# Useful for visualizing shock compression strength directly.
+# Type: bool (true/false)
+OUTPUT_DIV_ND = false
+
+# OUTPUT_ADAPTIVE_THETA: Boolean. If true, outputs the element-wise adaptive PPR theta field.
+OUTPUT_ADAPTIVE_THETA = false
+
 # RESTART_INTERVAL: Time interval between exact, lossless restart checkpoints (sol_*.vtm).
 RESTART_INTERVAL = 0.1
+
+# PLOT_SUB_DIVISIONS: Number of equidistant sub-element visualization intervals per dimension in VTK plot files (plot_*.vtu).
+# Evaluates high-order Lagrange polynomials at equidistant sub-element points to capture sub-element solution curvature.
+# 0 = Automatic subdivision level based on element polynomial degree (max(1, P_DEG)).
+PLOT_SUB_DIVISIONS = 0
+
+# SMOOTH_PLOT_OUTPUTS: Apply Bernstein-Bézier Convex Hull (BBCH) C0 interface smoothing to exported VTK plot files (.vtu).
+# Harmonizes boundary control points between neighbor cells and applies L2 conservative cell average projection.
+# Eliminates intra-element interface roughness and quad stair-stepping in ParaView and Web GUI contours
+# without adding physical dissipation to the solver state.
+# Type: bool (true/false, default true)
+SMOOTH_PLOT_OUTPUTS = true
 
 # RESIDUAL_INTERVAL: Time interval between L2 residual tracking outputs to csv_outputs/residuals.csv
 RESIDUAL_INTERVAL = 0.005
@@ -260,6 +514,10 @@ PROBE_3 = 0.9, 0.5, Mach
 ################################################################################
 # The simulation domain is defined in domain.grid using multiple [BlockN] 
 # sections. Each block is a Cartesian grid with its own resolution and BCs.
+#
+# Constraints (due to 64-bit Morton spatial hashing):
+#   - Maximum total number of blocks: 511
+#   - Maximum block dimensions (N_ELEM_X, N_ELEM_Y): 2047 x 2047
 #
 # Example [Block0] configuration:
 # [Block0]

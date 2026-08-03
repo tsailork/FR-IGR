@@ -114,6 +114,10 @@ TEST_CASE("Non-conforming: Neighbor Connectivity and 2:1 Limit") {
         return a->morton_id < b->morton_id;
     });
 
+    for (size_t idx = 0; idx < solver.cells.size(); ++idx) {
+        solver.cells[idx]->cell_index = idx;
+    }
+
     // Run setup_cell_connectivity
     CHECK_NOTHROW(solver.setup_cell_connectivity());
 
@@ -207,6 +211,12 @@ TEST_CASE("Non-conforming: Conservation Verification") {
 
     // Run setup_cell_connectivity
     solver.setup_cell_connectivity();
+
+    for (size_t idx = 0; idx < solver.cells.size(); ++idx) {
+        solver.cells[idx]->cell_index = idx;
+    }
+    solver.global_grad_Ux.assign(4 * solver.cells.size() * p.N_PTS * p.N_PTS, 0.0);
+    solver.global_grad_Uy.assign(4 * solver.cells.size() * p.N_PTS * p.N_PTS, 0.0);
 
     // Set non-uniform state to trigger non-zero flux gradients
     auto init_state = [&](Cell* c, double center_x, double center_y) {

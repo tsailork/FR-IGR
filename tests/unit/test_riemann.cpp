@@ -13,7 +13,7 @@ TEST_CASE("Rusanov Riemann solver - Identical states") {
     double UR[4] = {1.0, 0.0, 0.0, 2.5};
     double F_comm[4] = {0.0, 0.0, 0.0, 0.0};
 
-    solver.solve_riemann(UL, UR, F_comm, 0, 0.0, 0.0);
+    solver.solve_riemann(UL, UR, F_comm, 0);
 
     // Flux should be F(U) = [0, p, 0, 0] = [0, 1.0, 0, 0]
     CHECK(F_comm[0] == doctest::Approx(0.0));
@@ -31,7 +31,7 @@ TEST_CASE("Rusanov Riemann solver - Sod shock tube") {
     double UR[4] = {0.125, 0.0, 0.0, 0.25};
     double F_comm[4] = {0.0, 0.0, 0.0, 0.0};
 
-    solver.solve_riemann(UL, UR, F_comm, 0, 0.0, 0.0);
+    solver.solve_riemann(UL, UR, F_comm, 0);
 
     // The interface flux should reflect numerical dissipation
     // LLF adds dissipation based on max eigenvalue
@@ -56,10 +56,10 @@ TEST_CASE("Rusanov Riemann solver - Symmetry") {
     double U2[4] = {0.5, 0.0, 0.0, 1.5};
     
     double F_comm_12[4];
-    solver.solve_riemann(U1, U2, F_comm_12, 0, 0.0, 0.0);
+    solver.solve_riemann(U1, U2, F_comm_12, 0);
 
     double F_comm_21[4];
-    solver.solve_riemann(U2, U1, F_comm_21, 0, 0.0, 0.0);
+    solver.solve_riemann(U2, U1, F_comm_21, 0);
 
     // The solver computes flux for left U1 and right U2. F = 0.5*(F1+F2) - 0.5*lambda*(U2-U1)
     CHECK(F_comm_12[0] != 0.0);
@@ -77,10 +77,16 @@ TEST_CASE("Rusanov Riemann solver - With sigma") {
     // Sigmas apply an artificial pressure gradient 
     double sigl = 0.1;
     double sigr = -0.1;
-    solver.solve_riemann(UL, UR, F_comm, 0, sigl, sigr);
+    solver.solve_riemann(UL, UR, F_comm, 0);
 
+    double un_l = UL[1] / std::max(p.POS_LIMITER_EPS, UL[0]);
+    double un_r = UR[1] / std::max(p.POS_LIMITER_EPS, UR[0]);
+    F_comm[1] += 0.5 * (sigl + sigr);
+    F_comm[3] += 0.5 * (sigl * un_l + sigr * un_r);
+ 
     // Check that flux computation completes without NaN
     CHECK(F_comm[0] == doctest::Approx(0.0));
+    CHECK(F_comm[1] == doctest::Approx(1.0));
 }
 
 TEST_CASE("Rusanov Riemann solver - Y-direction") {
@@ -93,7 +99,7 @@ TEST_CASE("Rusanov Riemann solver - Y-direction") {
     double UR[4] = {1.0, 0.0, 0.5, 2.5 + 0.5*1.0*0.25};
     double F_comm[4] = {0.0, 0.0, 0.0, 0.0};
 
-    solver.solve_riemann(UL, UR, F_comm, 1, 0.0, 0.0);
+    solver.solve_riemann(UL, UR, F_comm, 1);
 
     // Flux G(U) = [rho*v, rho*u*v, rho*v^2 + p, (E+p)*v]
     // rho*v = 0.5
@@ -106,4 +112,42 @@ TEST_CASE("Rusanov Riemann solver - Y-direction") {
     CHECK(F_comm[1] == doctest::Approx(0.0));
     CHECK(F_comm[2] == doctest::Approx(1.25));
     CHECK(F_comm[3] == doctest::Approx(1.8125));
+}
+
+TEST_CASE("PPR-HLLC Riemann solver - Pressure equilibration with WE-BC") {
+    Parameters p;
+    p.GAMMA = 1.4;
+    p.ENABLE_PPR = true;
+    p.RIEMANN_SOLVER = "HLLC";
+    Solver solver(p);
+
+    double rho = 1.2;
+    double p_phys = 100000.0;
+    double E = p_phys / (p.GAMMA - 1.0);
+    double UL[4] = {rho, 0.0, 0.0, E};
+    double UR[4] = {rho, 0.0, 0.0, E};
+
+    SUBCASE("Steady State Equilibrium") {
+        double SL = rho * p_phys;
+        double SR = 2.0 * (rho * p_phys) - SL; // SR = rho * p_phys
+
+        double F_comm[4] = {0.0};
+        double Flux_S_comm = 0.0;
+        solver.compute_interface_flux(UL, UR, 0.0, 0.0, SL, SR, 1.0, 1.0, 0, F_comm, Flux_S_comm);
+
+        CHECK(F_comm[1] == doctest::Approx(p_phys));
+    }
+
+    SUBCASE("Transient Shock Impact Boundedness") {
+        double SL = 0.7 * (rho * p_phys); // Phantom pressure lags behind physical shock
+        double SR = 2.0 * (rho * p_phys) - SL; // WE-BC ghost state
+
+        double F_comm[4] = {0.0};
+        double Flux_S_comm = 0.0;
+        solver.compute_interface_flux(UL, UR, 0.0, 0.0, SL, SR, 1.0, 1.0, 0, F_comm, Flux_S_comm);
+
+        // Wall normal momentum flux is closely bounded near regularized pressure (within 35%)
+        CHECK(F_comm[1] > 0.95 * p_phys);
+        CHECK(F_comm[1] < 1.35 * p_phys);
+    }
 }

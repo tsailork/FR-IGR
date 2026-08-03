@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['neighborinfo_0',['NeighborInfo',['../struct_neighbor_info.html',1,'']]]
+  ['limiterstats_0',['LimiterStats',['../structLimiters_1_1LimiterStats.html',1,'Limiters']]]
 ];

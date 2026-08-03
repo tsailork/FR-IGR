@@ -6,6 +6,7 @@
 #include "../core/solver.hpp"
 #include "../limiters/entropy.hpp"
 #include "../limiters/positivity.hpp"
+#include "../ppr/ppr.hpp"
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -13,7 +14,9 @@
 void Solver::step_rk3(double dt) {
     if (p.ENABLE_MULTIRATE) {
         compute_local_dt();
-        for (Cell* c : cells) {
+        #pragma omp parallel for schedule(static)
+        for (size_t i = 0; i < cells.size(); ++i) {
+            Cell* c = cells[i];
             double dt_elem = c->element_dt;
             int m = 0;
             if (dt > 1e-15) {
@@ -27,8 +30,10 @@ void Solver::step_rk3(double dt) {
             }
         }
     } else {
-        for (Cell* c : cells) {
-            c->element_active = true;
+        #pragma omp parallel for schedule(static)
+        for (size_t i = 0; i < cells.size(); ++i) {
+            cells[i]->element_active = true;
+            cells[i]->element_dt = dt;
         }
     }
 
@@ -36,9 +41,31 @@ void Solver::step_rk3(double dt) {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
         c->U_old = c->U;
         c->sigma_old = c->sigma_field;
+        if (p.ENABLE_PPR) {
+            c->S_old = c->S_field;
+        }
     }
+
+    auto relax_phantom_pressure = [&](double dt_stage_ratio, double alpha, double beta) {
+        if (!p.ENABLE_PPR) return;
+        #pragma omp parallel for schedule(static)
+        for (size_t i = 0; i < cells.size(); ++i) {
+            Cell* c = cells[i];
+            if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+            double dt_stage = dt_stage_ratio * c->element_dt;
+            
+            // 1. Explicit advection update for S
+            for (size_t k = 0; k < c->S_field.size(); ++k) {
+                c->S_field[k] = alpha * c->S_old[k] + beta * (c->S_field[k] + dt_stage * c->S_RHS[k]);
+            }
+            
+            // 2. Analytical relaxation step
+            PPR::relax_phantom_pressure_2d(*c, dt_stage, basis, p);
+        }
+    };
 
     if (p.ENABLE_IB && p.ib_is_dynamic) {
         update_ib_mask_field(current_time);
@@ -51,10 +78,16 @@ void Solver::step_rk3(double dt) {
             n_sub = p.IGR_SUB_ITERS;
         } else {
             double alpha_safe = std::max(1e-10, p.ALPHA_SCALE);
-            double dt_diff  = 0.5 * p.IGR_TAU_R / (alpha_safe * (2 * p.P_DEG + 1) * (2 * p.P_DEG + 1));
+            double dt_diff  = 0.5 * p.IGR_TAU_R / (alpha_safe * (1.0 + p.IGR_BR2_ETA) * (2 * p.P_DEG + 1) * (2 * p.P_DEG + 1));
             double dt_relax = 0.5 * p.IGR_TAU_R;
             double dt_limit = std::min(dt_diff, dt_relax);
-            n_sub = static_cast<int>(std::ceil(dt / dt_limit));
+            double max_dt_active = dt;
+            if (p.ENABLE_MULTIRATE) {
+                for (Cell* c : cells) {
+                    if (c->element_active) max_dt_active = std::max(max_dt_active, c->element_dt);
+                }
+            }
+            n_sub = static_cast<int>(std::ceil(max_dt_active / dt_limit));
             if (n_sub < 1) n_sub = 1;
         }
     }
@@ -71,6 +104,7 @@ void Solver::step_rk3(double dt) {
         #pragma omp parallel for schedule(static)
         for (size_t i = 0; i < cells.size(); ++i) {
             Cell* c = cells[i];
+            if (p.ENABLE_MULTIRATE && !c->element_active) continue;
             for (int iy = 0; iy < p.N_PTS; ++iy) {
                 for (int ix = 0; ix < p.N_PTS; ++ix) {
                     int idx = iy * p.N_PTS + ix;
@@ -78,56 +112,125 @@ void Solver::step_rk3(double dt) {
                         c->sigma_field[idx] = 0.0;
                         continue;
                     }
-                    double rho = std::max(1e-14, c->get_U(0, iy, ix, p.N_PTS));
-                    double rhou = c->get_U(1, iy, ix, p.N_PTS);
-                    double rhov = c->get_U(2, iy, ix, p.N_PTS);
-                    double E = c->get_U(3, iy, ix, p.N_PTS);
-                    double press = (p.GAMMA - 1.0) *
-                                   (E - 0.5 * (rhou * rhou + rhov * rhov) / rho);
-                    if (press < 1e-14)
-                        press = 1e-14;
+                    if (p.USE_PRESSURE_FIELD_CAP) {
+                        double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
+                        double rhou = c->get_U(1, iy, ix, p.N_PTS);
+                        double rhov = c->get_U(2, iy, ix, p.N_PTS);
+                        double E = c->get_U(3, iy, ix, p.N_PTS);
+                        double press = (p.GAMMA - 1.0) *
+                                       (E - 0.5 * (rhou * rhou + rhov * rhov) / rho);
+                        if (press < p.POS_LIMITER_EPS)
+                            press = p.POS_LIMITER_EPS;
 
-                    c->sigma_field[idx] = std::min(c->sigma_field[idx], press);
+                        c->sigma_field[idx] = std::min(c->sigma_field[idx], press);
+                    }
                 }
             }
         }
     };
 
     auto sub_iterate_sigma_all = [&](double alpha, double beta) {
-        if (n_sub == 1) {
+        if (p.IGR_SUB_ITER_TOL > 0.0) {
             #pragma omp parallel for schedule(static)
             for (size_t i = 0; i < cells.size(); ++i) {
                 Cell* c = cells[i];
+                if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+                double dt_sub_c = c->element_dt / n_sub;
                 const size_t N_sig = c->sigma_field.size();
                 for (size_t k = 0; k < N_sig; ++k) {
                     c->sigma_field[k] = alpha * c->sigma_old[k] +
-                                        beta * (c->sigma_field[k] + dt * c->sigma_RHS[k]);
-                }
-            }
-            clamp_sigma_all();
-        } else {
-            #pragma omp parallel for schedule(static)
-            for (size_t i = 0; i < cells.size(); ++i) {
-                Cell* c = cells[i];
-                const size_t N_sig = c->sigma_field.size();
-                for (size_t k = 0; k < N_sig; ++k) {
-                    c->sigma_field[k] = alpha * c->sigma_old[k] +
-                                        beta * (c->sigma_field[k] + dt_sub * c->sigma_RHS[k]);
+                                        beta * (c->sigma_field[k] + dt_sub_c * c->sigma_RHS[k]);
                 }
             }
             clamp_sigma_all();
 
-            for (int sub = 1; sub < n_sub; ++sub) {
+            double diff = 1e20;
+            int sub = 1;
+            const int max_sub = (p.IGR_SUB_ITERS > 0) ? p.IGR_SUB_ITERS : 1000;
+
+            while (diff > p.IGR_SUB_ITER_TOL && sub < max_sub) {
                 compute_igr_parabolic_rhs();
+
+                double total_diff = 0.0;
+                long total_pts = 0;
+
+                #pragma omp parallel for reduction(+:total_diff,total_pts)
+                for (size_t i = 0; i < cells.size(); ++i) {
+                    Cell* c = cells[i];
+                    if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+                    double dt_sub_c = c->element_dt / n_sub;
+                    const size_t N_sig = c->sigma_field.size();
+                    total_pts += N_sig;
+                    for (size_t k = 0; k < N_sig; ++k) {
+                        double old_sig = c->sigma_field[k];
+                        double new_sig = old_sig + dt_sub_c * c->sigma_RHS[k];
+
+                        if (new_sig < 0.0) {
+                            new_sig = 0.0;
+                        } else {
+                            if (p.USE_PRESSURE_FIELD_CAP) {
+                                int iy = k / p.N_PTS;
+                                int ix = k % p.N_PTS;
+                                double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
+                                double rhou = c->get_U(1, iy, ix, p.N_PTS);
+                                double rhov = c->get_U(2, iy, ix, p.N_PTS);
+                                double E = c->get_U(3, iy, ix, p.N_PTS);
+                                double press = (p.GAMMA - 1.0) * (E - 0.5 * (rhou * rhou + rhov * rhov) / rho);
+                                if (press < p.POS_LIMITER_EPS) press = p.POS_LIMITER_EPS;
+                                if (new_sig > press) new_sig = press;
+                            }
+                        }
+
+                        total_diff += std::abs(new_sig - old_sig);
+                        c->sigma_field[k] = new_sig;
+                    }
+                }
+
+                diff = total_pts > 0 ? (total_diff / total_pts) : 0.0;
+                sub++;
+            }
+        } else {
+            if (n_sub == 1) {
                 #pragma omp parallel for schedule(static)
                 for (size_t i = 0; i < cells.size(); ++i) {
                     Cell* c = cells[i];
+                    if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+                    const double dt_c = c->element_dt;
                     const size_t N_sig = c->sigma_field.size();
                     for (size_t k = 0; k < N_sig; ++k) {
-                        c->sigma_field[k] += dt_sub * c->sigma_RHS[k];
+                        c->sigma_field[k] = alpha * c->sigma_old[k] +
+                                            beta * (c->sigma_field[k] + dt_c * c->sigma_RHS[k]);
                     }
                 }
                 clamp_sigma_all();
+            } else {
+                #pragma omp parallel for schedule(static)
+                for (size_t i = 0; i < cells.size(); ++i) {
+                    Cell* c = cells[i];
+                    if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+                    double dt_sub_c = c->element_dt / n_sub;
+                    const size_t N_sig = c->sigma_field.size();
+                    for (size_t k = 0; k < N_sig; ++k) {
+                        c->sigma_field[k] = alpha * c->sigma_old[k] +
+                                            beta * (c->sigma_field[k] + dt_sub_c * c->sigma_RHS[k]);
+                    }
+                }
+                clamp_sigma_all();
+
+                for (int sub = 1; sub < n_sub; ++sub) {
+                    compute_igr_parabolic_rhs();
+                    #pragma omp parallel for schedule(static)
+                    for (size_t i = 0; i < cells.size(); ++i) {
+                        Cell* c = cells[i];
+                        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+                        double dt_sub_c = c->element_dt / n_sub;
+                        const size_t N_sig = c->sigma_field.size();
+                        for (size_t k = 0; k < N_sig; ++k) {
+                            c->sigma_field[k] += dt_sub_c * c->sigma_RHS[k];
+                        }
+                    }
+                    clamp_sigma_all();
+                }
             }
         }
     };
@@ -139,29 +242,23 @@ void Solver::step_rk3(double dt) {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
-        if (p.ENABLE_MULTIRATE) {
-            if (c->element_active) {
-                for (size_t k = 0; k < c->U.size(); ++k) {
-                    c->U[k] = c->U_old[k] + dt * c->RHS[k];
-                }
-            } else {
-                for (size_t k = 0; k < c->U.size(); ++k) {
-                    c->U[k] = c->U_old[k];
-                    c->U_accum[k] += (1.0 / 6.0) * dt * c->RHS[k];
-                }
-            }
-        } else {
-            for (size_t k = 0; k < c->U.size(); ++k) {
-                c->U[k] = c->U_old[k] + dt * c->RHS[k];
-            }
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+        const double dt_stage = c->element_dt;
+        for (size_t k = 0; k < c->U.size(); ++k) {
+            c->U[k] = c->U_old[k] + dt_stage * c->RHS[k];
         }
+    }
+
+    relax_phantom_pressure(1.0, 0.0, 1.0);
+    if (p.ENABLE_PPR) {
+        PPR::apply_phantom_pressure_limiter_2d(cells, basis, p);
     }
 
     if (is_parabolic)
         sub_iterate_sigma_all(0.0, 1.0);
 
     if (p.ENABLE_IB && p.IB_METHOD == "VPM_ANALYTICAL") {
-        apply_ib_analytical(dt);
+        apply_ib_analytical(1.0);
     }
 
     if (p.ENABLE_POS_LIMITER) {
@@ -181,29 +278,23 @@ void Solver::step_rk3(double dt) {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
-        if (p.ENABLE_MULTIRATE) {
-            if (c->element_active) {
-                for (size_t k = 0; k < c->U.size(); ++k) {
-                    c->U[k] = 0.75 * c->U_old[k] + 0.25 * (c->U[k] + dt * c->RHS[k]);
-                }
-            } else {
-                for (size_t k = 0; k < c->U.size(); ++k) {
-                    c->U[k] = c->U_old[k];
-                    c->U_accum[k] += (1.0 / 6.0) * dt * c->RHS[k];
-                }
-            }
-        } else {
-            for (size_t k = 0; k < c->U.size(); ++k) {
-                c->U[k] = 0.75 * c->U_old[k] + 0.25 * (c->U[k] + dt * c->RHS[k]);
-            }
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+        const double dt_stage = c->element_dt;
+        for (size_t k = 0; k < c->U.size(); ++k) {
+            c->U[k] = 0.75 * c->U_old[k] + 0.25 * (c->U[k] + dt_stage * c->RHS[k]);
         }
+    }
+
+    relax_phantom_pressure(0.25, 0.75, 0.25);
+    if (p.ENABLE_PPR) {
+        PPR::apply_phantom_pressure_limiter_2d(cells, basis, p);
     }
 
     if (is_parabolic)
         sub_iterate_sigma_all(0.75, 0.25);
 
     if (p.ENABLE_IB && p.IB_METHOD == "VPM_ANALYTICAL") {
-        apply_ib_analytical(0.25 * dt);
+        apply_ib_analytical(0.25);
     }
 
     if (p.ENABLE_POS_LIMITER) {
@@ -223,30 +314,23 @@ void Solver::step_rk3(double dt) {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
-        if (p.ENABLE_MULTIRATE) {
-            if (c->element_active) {
-                for (size_t k = 0; k < c->U.size(); ++k) {
-                    c->U[k] = (1.0 / 3.0) * c->U_old[k] + (2.0 / 3.0) * (c->U[k] + dt * c->RHS[k]);
-                }
-            } else {
-                for (size_t k = 0; k < c->U.size(); ++k) {
-                    c->U[k] = c->U_old[k];
-                    c->U_accum[k] += (2.0 / 3.0) * dt * c->RHS[k];
-                }
-            }
-        } else {
-            for (size_t k = 0; k < c->U.size(); ++k) {
-                c->U[k] = (1.0 / 3.0) * c->U_old[k] +
-                          (2.0 / 3.0) * (c->U[k] + dt * c->RHS[k]);
-            }
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+        const double dt_stage = c->element_dt;
+        for (size_t k = 0; k < c->U.size(); ++k) {
+            c->U[k] = (1.0 / 3.0) * c->U_old[k] + (2.0 / 3.0) * (c->U[k] + dt_stage * c->RHS[k]);
         }
+    }
+
+    relax_phantom_pressure(2.0 / 3.0, 1.0 / 3.0, 2.0 / 3.0);
+    if (p.ENABLE_PPR) {
+        PPR::apply_phantom_pressure_limiter_2d(cells, basis, p);
     }
 
     if (is_parabolic)
         sub_iterate_sigma_all(1.0 / 3.0, 2.0 / 3.0);
 
     if (p.ENABLE_IB && p.IB_METHOD == "VPM_ANALYTICAL") {
-        apply_ib_analytical((2.0 / 3.0) * dt);
+        apply_ib_analytical(2.0 / 3.0);
     }
 
     if (p.ENABLE_POS_LIMITER) {
@@ -264,10 +348,6 @@ void Solver::step_rk3(double dt) {
         for (size_t i = 0; i < cells.size(); ++i) {
             Cell* c = cells[i];
             if (c->element_active) {
-                for (size_t k = 0; k < c->U.size(); ++k) {
-                    c->U[k] += c->U_accum[k];
-                    c->U_accum[k] = 0.0;
-                }
                 c->element_time += c->element_dt;
             }
         }
@@ -285,4 +365,96 @@ void Solver::step_rk3(double dt) {
     if (p.ENABLE_IB && p.ib_is_dynamic) {
         update_ib_mask_field(current_time);
     }
+}
+
+void SolverDim<3>::step_rk3(double dt) {
+    current_limiter_stats.num_limited = 0;
+    current_limiter_stats.sum_theta = 0.0;
+    auto add_stats = [&](const Limiters::LimiterStats& s) {
+        current_limiter_stats.num_limited += s.num_limited;
+        current_limiter_stats.sum_theta += s.sum_theta;
+    };
+
+    #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < cells.size(); ++i) {
+        cells[i]->element_active = true;
+        cells[i]->element_dt = dt;
+    }
+
+    #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < cells.size(); ++i) {
+        Cell3D* c = cells[i];
+        c->U_old = c->U;
+        c->sigma_old = c->sigma_field;
+        if (p.ENABLE_PPR) {
+            c->S_old = c->S_field;
+        }
+    }
+
+    auto execute_stage = [&](double alpha, double beta, double dt_stage_ratio) {
+        #pragma omp parallel for schedule(static)
+        for (size_t i = 0; i < cells.size(); ++i) {
+            std::fill(cells[i]->RHS.begin(), cells[i]->RHS.end(), 0.0);
+            if (p.ENABLE_PPR) {
+                std::fill(cells[i]->S_RHS.begin(), cells[i]->S_RHS.end(), 0.0);
+            }
+        }
+
+        if (p.ENABLE_PPR) {
+            PPR::compute_element_theta_3d(cells, basis, p);
+        }
+
+        sweep_x();
+        sweep_y();
+        sweep_z();
+
+        if (p.ENABLE_NS) {
+            compute_gradients();
+            viscous_sweep_x();
+            viscous_sweep_y();
+            viscous_sweep_z();
+        }
+
+        if (p.ENABLE_IB && p.IB_METHOD == "VPM") {
+            apply_ib_explicit();
+        }
+
+        #pragma omp parallel for schedule(static)
+        for (size_t i = 0; i < cells.size(); ++i) {
+            Cell3D* c = cells[i];
+            double dt_stage = dt_stage_ratio * c->element_dt;
+            size_t n_dofs = c->U.size();
+            for (size_t k = 0; k < n_dofs; ++k) {
+                c->U[k] = alpha * c->U_old[k] + beta * (c->U[k] + dt_stage * c->RHS[k]);
+            }
+            if (p.ENABLE_PPR) {
+                for (size_t k = 0; k < c->S_field.size(); ++k) {
+                    c->S_field[k] = alpha * c->S_old[k] + beta * (c->S_field[k] + dt_stage * c->S_RHS[k]);
+                }
+                PPR::relax_phantom_pressure_3d(*c, dt_stage, basis, p);
+            }
+        }
+
+        if (p.ENABLE_PPR) {
+            PPR::apply_phantom_pressure_limiter_3d(cells, basis, p);
+        }
+
+        if (p.ENABLE_IGR) {
+            compute_sensor_source();
+            step_parabolic_igr(dt_stage_ratio);
+        }
+
+        if (p.ENABLE_POS_LIMITER) {
+            add_stats(Limiters::apply_positivity_limiter(cells, basis, p));
+        }
+        if (p.ENABLE_ENTROPY_LIMITER) {
+            add_stats(Limiters::apply_entropy_limiter(*this));
+        }
+    };
+
+    execute_stage(1.0, 0.0, 1.0);
+    execute_stage(0.75, 0.25, 0.25);
+    execute_stage(1.0 / 3.0, 2.0 / 3.0, 2.0 / 3.0);
+
+    current_time += dt;
 }

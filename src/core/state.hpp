@@ -1,43 +1,27 @@
 /**
  * @file state.hpp
- * @brief Storage and accessor class for the 2D Euler equations conserved variables.
+ * @brief Storage and accessor class for the Euler equations conserved variables in 2D and 3D.
  *
- * Implements a flattened, row-major and variable-major memory layout to represent 
- * the conservative state vector \f$ U \f$:
- * \f[ \text{Layout: } [Variable][E_y][E_x][I_y][I_x] \f]
- * 
- * Variable indexing convention:
- *  - 0: Density \f$ \rho \f$
- *  - 1: X-momentum \f$ \rho u \f$
- *  - 2: Y-momentum \f$ \rho v \f$
- *  - 3: Total energy density \f$ E \f$
+ * Implements a flattened, row-major and variable-major memory layout.
  *
- * Utilizes a single contiguous `std::vector` to ensure hardware cache-locality and high-performance access 
- * during spatial sweeps.
- * 
  * @see Solver
- * @see Block
+ * @see Cell
  */
 
 #pragma once
 #include <vector>
 #include "parameters.hpp"
 
-/**
- * @brief Number of conserved variables in the 2D Euler system (density, x-momentum, y-momentum, total energy).
- */
-constexpr int N_VARS = 4;
+template<int Dim>
+struct StateDim;
 
 /**
- * @struct State
- * @brief Represents the conservative state field of a computational block.
- *
- * Manages the raw data storage for the 2D Euler equations and provides multi-index 
- * accessor interfaces for the tensor-product operations.
- * 
- * @note The use of a flat `std::vector` is critical for OpenMP SIMD vectorization.
+ * @struct StateDim<2>
+ * @brief Represents the conservative state field of a computational block in 2D.
  */
-struct State {
+template<>
+struct StateDim<2> {
+    static constexpr int N_VARS = 4;
     std::vector<double> data;  ///< Contiguous array of conserved variables across all degrees of freedom.
     int nx;                    ///< Number of elements along the X coordinate direction.
     int ny;                    ///< Number of elements along the Y coordinate direction.
@@ -46,12 +30,8 @@ struct State {
 
     /**
      * @brief Construct a zero-initialized state representation for a given element block topology.
-     *
-     * @param nx Number of elements in the X-direction.
-     * @param ny Number of elements in the Y-direction.
-     * @param npts Number of solution points per direction within each element (\f$ P_{deg} + 1 \f$).
      */
-    explicit State(int nx, int ny, int npts) : nx(nx), ny(ny), npts(npts) {
+    explicit StateDim(int nx, int ny, int npts) : nx(nx), ny(ny), npts(npts) {
         n_dofs_per_var = nx * ny * npts * npts;
         data.resize(N_VARS * n_dofs_per_var, 0.0);
     }
@@ -59,19 +39,10 @@ struct State {
     /**
      * @brief Default constructor. Constructs an unallocated state representation.
      */
-    State() : nx(0), ny(0), npts(0), n_dofs_per_var(0) {}
+    StateDim() : nx(0), ny(0), npts(0), n_dofs_per_var(0) {}
 
     /**
      * @brief 5-index accessor for reading/writing conserved variables.
-     *
-     * Maps multi-dimensional indexes into a flattened row-major/variable-major index.
-     *
-     * @param v Conserved variable index (0 to 3).
-     * @param ey Element Y coordinate index (\f$ 0 \le ey < ny \f$).
-     * @param ex Element X coordinate index (\f$ 0 \le ex < nx \f$).
-     * @param iy Solution point Y index within the element (\f$ 0 \le iy < npts \f$).
-     * @param ix Solution point X index within the element (\f$ 0 \le ix < npts \f$).
-     * @return Reference to the specific double value in the data array.
      */
     inline double& operator()(int v, int ey, int ex, int iy, int ix) {
         return data[v * n_dofs_per_var +
@@ -82,13 +53,6 @@ struct State {
 
     /**
      * @brief Const version of the 5-index accessor.
-     *
-     * @param v Conserved variable index (0 to 3).
-     * @param ey Element Y coordinate index.
-     * @param ex Element X coordinate index.
-     * @param iy Solution point Y index within the element.
-     * @param ix Solution point X index within the element.
-     * @return Read-only copy of the specific double value.
      */
     inline double operator()(int v, int ey, int ex, int iy, int ix) const {
         return data[v * n_dofs_per_var +
@@ -97,3 +61,59 @@ struct State {
                     iy * npts + ix];
     }
 };
+
+/**
+ * @struct StateDim<3>
+ * @brief Represents the conservative state field of a computational block in 3D.
+ */
+template<>
+struct StateDim<3> {
+    static constexpr int N_VARS = 5;
+    std::vector<double> data;  ///< Contiguous array of conserved variables across all degrees of freedom.
+    int nx;                    ///< Number of elements along the X coordinate direction.
+    int ny;                    ///< Number of elements align the Y coordinate direction.
+    int nz;                    ///< Number of elements along the Z coordinate direction.
+    int npts;                  ///< Number of solution points per coordinate direction within each element.
+    int n_dofs_per_var;        ///< Number of spatial degrees of freedom (solution points) per conserved variable.
+
+    /**
+     * @brief Construct a zero-initialized state representation for a given element block topology.
+     */
+    explicit StateDim(int nx, int ny, int nz, int npts) : nx(nx), ny(ny), nz(nz), npts(npts) {
+        n_dofs_per_var = nx * ny * nz * npts * npts * npts;
+        data.resize(N_VARS * n_dofs_per_var, 0.0);
+    }
+
+    /**
+     * @brief Default constructor. Constructs an unallocated state representation.
+     */
+    StateDim() : nx(0), ny(0), nz(0), npts(0), n_dofs_per_var(0) {}
+
+    /**
+     * @brief 7-index accessor for reading/writing conserved variables in 3D.
+     */
+    inline double& operator()(int v, int ez, int ey, int ex, int iz, int iy, int ix) {
+        return data[v * n_dofs_per_var +
+                    ez * (ny * nx * npts * npts * npts) +
+                    ey * (nx * npts * npts * npts) +
+                    ex * (npts * npts * npts) +
+                    iz * (npts * npts) +
+                    iy * npts + ix];
+    }
+
+    /**
+     * @brief Const version of the 7-index accessor.
+     */
+    inline double operator()(int v, int ez, int ey, int ex, int iz, int iy, int ix) const {
+        return data[v * n_dofs_per_var +
+                    ez * (ny * nx * npts * npts * npts) +
+                    ey * (nx * npts * npts * npts) +
+                    ex * (npts * npts * npts) +
+                    iz * (npts * npts) +
+                    iy * npts + ix];
+    }
+};
+
+using State2D = StateDim<2>;
+using State3D = StateDim<3>;
+using State = State2D;

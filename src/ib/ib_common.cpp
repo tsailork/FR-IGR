@@ -275,6 +275,16 @@ double get_parabola_sdf(double px, double py, const ParabolaShape& poly, double 
     return phi;
 }
 
+double get_quadratic_bump_sdf(double x, double y, double xc, double yc, double w, double h_max) {
+    if (x >= xc - w && x <= xc + w) {
+        double rel_x = (x - xc) / w;
+        double y_bump = yc + h_max * (1.0 - rel_x * rel_x);
+        return y - y_bump;
+    } else {
+        return y - yc;
+    }
+}
+
 } // namespace ImmersedBoundary
 
 /**
@@ -346,6 +356,24 @@ double Solver::get_ib_mask_at_time(double x, double y, double time, double dx, d
             x, y, p.IB_CENTER_X, p.IB_CENTER_Y, p.IB_RADIUS,
             p.IB_NACA_CODE, p.IB_AOA, p.IB_SHARP, p.IB_SMOOTH_WIDTH, dx, dy
         );
+    } else if (p.IB_SHAPE == "QUADRATIC_BUMP" || p.IB_SHAPE == "PARABOLA") {
+        double phi = ImmersedBoundary::get_quadratic_bump_sdf(
+            x, y, p.IB_CENTER_X, p.IB_CENTER_Y, p.IB_RADIUS, p.IB_L_SCALE
+        );
+        if (p.IB_SHARP) {
+            return (phi <= 0.0) ? 1.0 : 0.0;
+        } else {
+            double h_size = std::max(dx, dy);
+            double epsilon = p.IB_SMOOTH_WIDTH * h_size;
+            if (phi < -epsilon) return 1.0;
+            else if (phi > epsilon) return 0.0;
+            else {
+                double ratio = phi / epsilon;
+                static const double PI = 3.14159265358979323846;
+                double H = 0.5 * (1.0 + ratio + (1.0 / PI) * std::sin(PI * ratio));
+                return 1.0 - H;
+            }
+        }
     } else if (p.IB_SHAPE == "MULTI") {
         double phi = 1e20; // Default outside fluid state
 
@@ -406,6 +434,10 @@ double Solver::get_ib_sdf_at_time(double x, double y, double time) const {
         return ImmersedBoundary::get_naca_sdf(
             x, y, p.IB_CENTER_X, p.IB_CENTER_Y, p.IB_RADIUS, // actually used as chord and x_le,y_le
             p.IB_NACA_CODE, p.IB_AOA
+        );
+    } else if (p.IB_SHAPE == "QUADRATIC_BUMP" || p.IB_SHAPE == "PARABOLA") {
+        return ImmersedBoundary::get_quadratic_bump_sdf(
+            x, y, p.IB_CENTER_X, p.IB_CENTER_Y, p.IB_RADIUS, p.IB_L_SCALE
         );
     } else if (p.IB_SHAPE == "MULTI") {
         double phi = 1e20;

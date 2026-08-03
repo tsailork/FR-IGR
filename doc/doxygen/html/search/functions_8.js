@@ -1,5 +1,9 @@
 var searchData=
 [
-  ['main_0',['main',['../main_8cpp.html#ae66f6b31b5ad750f1fe042a706a4e3d4',1,'main.cpp']]],
-  ['min_5fentropy_5fin_5fcell_1',['min_entropy_in_cell',['../namespace_limiters.html#a1e0bd3a264b1a5e302d2a16b625882de',1,'Limiters']]]
+  ['legendre_0',['legendre',['../basis_8hpp.html#a14aaca423ec40f09b5741c3b644265af',1,'basis.hpp']]],
+  ['legendre_5fprime_1',['legendre_prime',['../basis_8hpp.html#a780888a40f8e742b75e9cb63f652b0ab',1,'basis.hpp']]],
+  ['load_5fdomain_2',['load_domain',['../structParameters.html#a77e7361d29cb7817629931185bdbc1ad',1,'Parameters']]],
+  ['load_5fexisting_5fpvd_3',['load_existing_pvd',['../classVTKWriter.html#aa3d1d737c12be349275ee78e9efcb87a',1,'VTKWriter']]],
+  ['load_5finputs_4',['load_inputs',['../structParameters.html#a84427f37ae1b1329ed1e6b027c90e854',1,'Parameters']]],
+  ['load_5frestart_5',['load_restart',['../namespaceRestart.html#a492feab4e904564b66b5f9bf0d441ae8',1,'Restart']]]
 ];

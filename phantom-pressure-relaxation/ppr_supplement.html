@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supplementary Manual: HLLC & AUSM+ Integration for PPR</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root {
+            --primary: #8a1c14; /* Crimson to distinguish from the main manual */
+            --primary-light: #fdf2f1;
+            --dark: #2c3e50;
+            --light: #f8f9fa;
+            --border: #e1e4e8;
+            --code-bg: #1e1e1e;
+            --code-text: #d4d4d4;
+            --highlight: #fff3cd;
+            --highlight-border: #ffc107;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--dark);
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background-color: #fdfdfd;
+        }
+        header {
+            text-align: center;
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+        }
+        header h1 {
+            color: var(--primary);
+            margin: 0 0 10px 0;
+            font-size: 2.3rem;
+        }
+        header p {
+            font-size: 1.1rem;
+            color: #666;
+            margin: 0;
+        }
+        .nav-btn {
+            display: inline-block;
+            background-color: var(--primary);
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            transition: background-color 0.2s;
+        }
+        .nav-btn:hover {
+            background-color: #b82b20;
+        }
+        h2 {
+            color: var(--primary);
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 8px;
+            margin-top: 40px;
+        }
+        h3 {
+            color: var(--dark);
+            margin-top: 25px;
+            border-left: 4px solid var(--primary);
+            padding-left: 10px;
+        }
+        p, li {
+            font-size: 1.05rem;
+            text-align: justify;
+        }
+        ul, ol {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .code-block {
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            padding: 18px;
+            border-radius: 8px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            white-space: pre;
+            line-height: 1.5;
+            margin: 20px 0;
+            border: 1px solid #333;
+        }
+        .keyword { color: #569cd6; }
+        .comment { color: #6a9955; font-style: italic; }
+        .variable { color: #9cdcfe; }
+        .number { color: #b5cea8; }
+        .string { color: #ce9178; }
+        .builtin { color: #4ec9b0; }
+        .call { color: #dcdcaa; }
+        .link-comment { color: #ff8c00; font-weight: bold; } /* Highlights navigation paths in code */
+        
+        .alert {
+            background-color: var(--highlight);
+            border-left: 5px solid var(--highlight-border);
+            padding: 15px 20px;
+            margin: 25px 0;
+            border-radius: 4px;
+        }
+        .alert strong {
+            color: #856404;
+        }
+        .math-box {
+            background-color: var(--primary-light);
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid var(--primary);
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Advanced Riemann Solvers for PPR</h1>
+        <p>Implementation Manual for HLLC and AUSM-type Interface Fluxes with Phantom Pressure Regularization</p>
+    </header>
+
+    <a href="ppr_manual.html" class="nav-btn">&larr; Back to Main Implementation Manual</a>
+
+    <h2>1. The Core Implementation Rules for HLLC & AUSM</h2>
+    <p>
+        When transitioning from a simple Rusanov (Lax-Friedrichs) flux to multi-wave solvers like <b>HLLC</b> or flux-splitting schemes like <b>AUSM+</b>, the introduction of Phantom Pressure Regularization requires strict separation of concerns between two distinct pressure fields:
+    </p>
+    <div class="math-box">
+        $$\text{Acoustic Boundary Estimation (Wave Speeds): } \bar{P} = \max(P_{reg}, P_{phys})$$
+        $$\text{Flux & Enthalpy Transformations (Conservation): } P_{reg} = P_{phys} + \theta (P_{phys} - P_{phan})$$
+    </div>
+    <p>
+        <b>Rule 1:</b> The safe pressure \(\bar{P}\) is used <i>strictly</i> to compute local speeds of sound \(a = \sqrt{\gamma \bar{P}/\rho}\) at the left and right states. This prevents imaginary sound speeds or overly slow waves from collapsing the Riemann fan in expansion regions.
+    </p>
+    <p>
+        <b>Rule 2:</b> The regularized pressure \(P_{reg}\) <i>must</i> be used to compute total enthalpy, energy-associated star states, and pressure-flux splittings. Using \(P_{phys}\) here violates the underlying hyperbolic bulk-viscosity momentum transfer, generating massive spurious oscillations at shocks.
+    </p>
+
+    <h2>2. Complete HLLC Formulation with PPR</h2>
+    <p>
+        The HLLC Riemann solver defines three wave speeds: the left wave (\(S_L\)), the right wave (\(S_R\)), and the intermediate contact wave (\(S_*\)). Because PPR adds a 6th variable (\(S = \rho P_{phan}\)), we must determine its behavior in the star states (\(\mathbf{U}_{*L}\) and \(\mathbf{U}_{*R}\)).
+    </p>
+
+    
+
+    <p>
+        Since the phantom pressure state is a passive scalar advecting strictly with the fluid velocity, it travels at the contact wave speed \(S_*\). Therefore, the 6th variable's star-state value is computed dynamically by scaling the advected scalar fraction by the star-state density.
+    </p>
+
+    <h3>Acoustic Wave Speed Bounds</h3>
+    <p>
+        The outer wave speeds \(S_L\) and \(S_R\) are computed using Einfeldt's pressure-velocity bounds based on safe acoustic properties:
+    </p>
+    <div class="math-box">
+        $$a_L = \sqrt{\gamma \frac{\max(P_{reg,L}, P_{phys,L})}{\rho_L}}, \quad a_R = \sqrt{\gamma \frac{\max(P_{reg,R}, P_{phys,R})}{\rho_R}}$$
+    </div>
+    <div class="math-box">
+        $$S_L = \min(q_L - a_L, \, \tilde{q} - \tilde{a}), \quad S_R = \max(q_R + a_R, \, \tilde{q} + \tilde{a})$$
+    </div>
+    <p>
+        where \(q = \mathbf{u} \cdot \mathbf{n}\), and \(\tilde{q}, \tilde{a}\) represent the standard Roe-averaged velocity and speed of sound.
+    </p>
+
+    <h3>The Contact Wave Speed (\(S_*\))</h3>
+    <p>
+        The contact wave speed \(S_*\) must use the regularized pressure to ensure momentum conservation across the bulk-viscous shock:
+    </p>
+    <div class="math-box">
+        $$S_* = \frac{P_{reg,R} - P_{reg,L} + \rho_L q_L (S_L - q_L) - \rho_R q_R (S_R - q_R)}{\rho_L (S_L - q_L) - \rho_R (S_R - q_R)}$$
+    </div>
+
+    <h3>The 6D Star State Vector (\(\mathbf{U}_{*K}\))</h3>
+    <p>
+        For \(K = L\) or \(R\), the intermediate state \(\mathbf{U}_{*K}\) is written as:
+    </p>
+    <div class="math-box">
+        $$\mathbf{U}_{*K} = \rho_K \left(\frac{S_K - q_K}{S_K - S_*}\right) \begin{bmatrix}
+        1 \\
+        u_K + (S_* - q_K)n_x \\
+        v_K + (S_* - q_K)n_y \\
+        w_K + (S_* - q_K)n_z \\
+        \frac{E_K}{\rho_K} + (S_* - q_K)\left( S_* + \frac{P_{reg,K}}{\rho_K (S_K - q_K)} \right) \\
+        \frac{S_K}{\rho_K}
+        \end{bmatrix}$$
+    </div>
+    <p>
+        Notice that the 6th element is simply the advected phantom scalar fraction \(\frac{S_K}{\rho_K}\) multiplied by the intermediate star density \(\rho_{*K}\).
+    </p>
+
+    <h2>3. Complete AUSM+ Formulation with PPR</h2>
+    <p>
+        The Advection Upstream Splitting Method (AUSM+) separates the convective and pressure components of the flux vector.
+    </p>
+
+    
+
+    <p>
+        To accommodate PPR, we redefine the normal flux splitting on the interface as:
+    </p>
+    <div class="math-box">
+        $$\mathbf{F}^{AUSM} = \dot{m}_{1/2} \mathbf{\Psi}_{1/2} + \mathbf{P}_{1/2}$$
+    </div>
+
+    <h3>Convective and Pressure Vectors with Regularized Enthalpy</h3>
+    <p>
+        The convective transport vector \(\mathbf{\Psi}\) must utilize the **regularized total enthalpy** \(H_{reg}\) to ensure regularized energy dissipation across shocks:
+    </p>
+    <div class="math-box">
+        $$H_{reg} = \frac{E + P_{reg}}{\rho}$$
+    </div>
+    <div class="math-box">
+        $$\mathbf{\Psi} = \begin{bmatrix} 1 & u & v & w & H_{reg} & \frac{S}{\rho} \end{bmatrix}^T$$
+    </div>
+    <p>The pressure vector \(\mathbf{P}\) is populated strictly by the regularized pressure \(P_{reg}\):</p>
+    <div class="math-box">
+        $$\mathbf{P} = \begin{bmatrix} 0 & P_{reg}n_x & P_{reg}n_y & P_{reg}n_z & 0 & 0 \end{bmatrix}^T$$
+    </div>
+
+    <h3>Interface Mass Flux (\(\dot{m}_{1/2}\)) using Safe Speed of Sound</h3>
+    <p>
+        The interface Mach number is evaluated using the average local speed of sound \(a_{1/2}\), computed using the safe pressure bounds to prevent non-physical wave speeds:
+    </p>
+    <div class="math-box">
+        $$a_L = \sqrt{\gamma \frac{\max(P_{reg,L}, P_{phys,L})}{\rho_L}}, \quad a_R = \sqrt{\gamma \frac{\max(P_{reg,R}, P_{phys,R})}{\rho_R}}$$
+    </div>
+    <div class="math-box">
+        $$a_{1/2} = \frac{1}{2}(a_L + a_R), \quad M_L = \frac{\mathbf{u}_L \cdot \mathbf{n}}{a_{1/2}}, \quad M_R = \frac{\mathbf{u}_R \cdot \mathbf{n}}{a_{1/2}}$$
+    </div>
+    <p>The split Mach number \(M_{1/2}\) and pressure \(P_{1/2}\) are computed using standard AUSM+ polynomial definitions:</p>
+    <div class="math-box">
+        $$M_{1/2} = \mathcal{M}^+(M_L) + \mathcal{M}^-(M_R)$$
+        $$P_{1/2} = \mathcal{P}^+(M_L)P_{reg,L} + \mathcal{P}^-(M_R)P_{reg,R}$$
+    </div>
+    <p>Finally, the interface mass flux is defined as:</p>
+    <div class="math-box">
+        $$\dot{m}_{1/2} = a_{1/2} M_{1/2} \begin{cases} \rho_L & \text{if } M_{1/2} \ge 0 \\ \rho_R & \text{if } M_{1/2} < 0 \end{cases}$$
+    </div>
+
+    <h2>4. Code Implementation: Linked Reference Code</h2>
+    <p>
+        The Python code below shows how both HLLC and AUSM+ are modified. This script includes explicit cross-references back to your primary manual file for rapid development.
+    </p>
+
+    <div class="code-block"><span class="keyword">import</span> numpy <span class="keyword">as</span> np
+
+<span class="keyword">def</span> <span class="call">get_ppr_pressures</span>(<span class="variable">U</span>, <span class="variable">theta</span>, <span class="variable">gamma</span>):
+    <span class="comment"># <span class="link-comment">[LINK: ppr_manual.html#subsystem-2]</span> Reference: Subsection 2 on Regularized Pressure</span>
+    <span class="variable">rho</span> = <span class="variable">U</span>[<span class="number">0</span>]
+    <span class="variable">ke</span> = <span class="number">0.5</span> * (U[<span class="number">1</span>]**<span class="number">2</span> + U[<span class="number">2</span>]**<span class="number">2</span> + U[<span class="number">3</span>]**<span class="number">2</span>) / <span class="variable">rho</span>
+    <span class="variable">P_phys</span> = (<span class="variable">gamma</span> - <span class="number">1.0</span>) * (<span class="variable">U</span>[<span class="number">4</span>] - <span class="variable">ke</span>)
+    <span class="variable">P_phan</span> = <span class="variable">U</span>[<span class="number">5</span>] / <span class="variable">rho</span>
+    <span class="variable">P_reg</span> = <span class="variable">P_phys</span> + <span class="variable">theta</span> * (<span class="variable">P_phys</span> - <span class="variable">P_phan</span>)
+    <span class="keyword">return</span> <span class="variable">P_phys</span>, <span class="variable">P_reg</span>
+
+
+<span class="keyword">def</span> <span class="call">compute_ppr_hllc_flux</span>(<span class="variable">U_L</span>, <span class="variable">U_R</span>, <span class="variable">normal</span>, <span class="variable">theta</span>, <span class="variable">gamma</span>):
+    <span class="comment">"""
+    Robust 3D HLLC Riemann solver modified to support Phantom Pressure Regularization.
+    """</span>
+    <span class="variable">nx</span>, <span class="variable">ny</span>, <span class="variable">nz</span> = <span class="variable">normal</span>
+    
+    <span class="comment"># 1. Evaluate normal velocities</span>
+    <span class="variable">q_L</span> = (U_L[<span class="number">1</span>]*<span class="variable">nx</span> + U_L[<span class="number">2</span>]*<span class="variable">ny</span> + U_L[<span class="number">3</span>]*<span class="variable">nz</span>) / <span class="variable">U_L</span>[<span class="number">0</span>]
+    <span class="variable">q_R</span> = (U_R[<span class="number">1</span>]*<span class="variable">nx</span> + U_R[<span class="number">2</span>]*<span class="variable">ny</span> + U_R[<span class="number">3</span>]*<span class="variable">nz</span>) / <span class="variable">U_R</span>[<span class="number">0</span>]
+    
+    <span class="comment"># 2. Extract standard and regularized pressure profiles</span>
+    <span class="variable">Pp_L</span>, <span class="variable">Pr_L</span> = get_ppr_pressures(<span class="variable">U_L</span>, <span class="variable">theta</span>, <span class="variable">gamma</span>)
+    <span class="variable">Pp_R</span>, <span class="variable">Pr_R</span> = get_ppr_pressures(<span class="variable">U_R</span>, <span class="variable">theta</span>, <span class="variable">gamma</span>)
+    
+    <span class="comment"># 3. Compute safe acoustic boundaries (Safe Speed of Sound)</span>
+    <span class="variable">a_L</span> = np.sqrt(<span class="variable">gamma</span> * max(<span class="variable">Pp_L</span>, <span class="variable">Pr_L</span>) / <span class="variable">U_L</span>[<span class="number">0</span>])
+    <span class="variable">a_R</span> = np.sqrt(<span class="variable">gamma</span> * max(<span class="variable">Pp_R</span>, <span class="variable">Pr_R</span>) / <span class="variable">U_R</span>[<span class="number">0</span>])
+    
+    <span class="comment"># 4. Define Left and Right wave speed estimates</span>
+    <span class="variable">S_L</span> = min(<span class="variable">q_L</span> - <span class="variable">a_L</span>, <span class="variable">q_R</span> - <span class="variable">a_R</span>) <span class="comment"># Fast Einfeldt approximation</span>
+    <span class="variable">S_R</span> = max(<span class="variable">q_L</span> + <span class="variable">a_L</span>, <span class="variable">q_R</span> + <span class="variable">a_R</span>)
+    
+    <span class="comment"># Check for trivial supersonic cases</span>
+    <span class="keyword">if</span> <span class="number">0.0</span> &lt;= <span class="variable">S_L</span>:
+        <span class="keyword">return</span> compute_pointwise_normal_flux(<span class="variable">U_L</span>, <span class="variable">Pr_L</span>, <span class="variable">normal</span>)
+    <span class="keyword">if</span> <span class="variable">S_R</span> &lt;= <span class="number">0.0</span>:
+        <span class="keyword">return</span> compute_pointwise_normal_flux(<span class="variable">U_R</span>, <span class="variable">Pr_R</span>, <span class="variable">normal</span>)
+        
+    <span class="comment"># 5. Compute Contact Wave Speed (S_star) utilizing Regularized Pressure</span>
+    <span class="variable">num</span> = <span class="variable">Pr_R</span> - <span class="variable">Pr_L</span> + <span class="variable">U_L</span>[<span class="number">0</span>]*<span class="variable">q_L</span>*(<span class="variable">S_L</span> - <span class="variable">q_L</span>) - <span class="variable">U_R</span>[<span class="number">0</span>]*<span class="variable">q_R</span>*(<span class="variable">S_R</span> - <span class="variable">q_R</span>)
+    <span class="variable">den</span> = <span class="variable">U_L</span>[<span class="number">0</span>]*(<span class="variable">S_L</span> - <span class="variable">q_L</span>) - <span class="variable">U_R</span>[<span class="number">0</span>]*(<span class="variable">S_R</span> - <span class="variable">q_R</span>)
+    <span class="variable">S_star</span> = <span class="variable">num</span> / <span class="variable">den</span>
+    
+    <span class="comment"># 6. Evaluate HLLC Star States</span>
+    <span class="keyword">if</span> <span class="number">0.0</span> &lt; <span class="variable">S_star</span>:
+        <span class="comment"># Left Star State</span>
+        <span class="variable">factor</span> = <span class="variable">U_L</span>[<span class="number">0</span>] * ((<span class="variable">S_L</span> - <span class="variable">q_L</span>) / (<span class="variable">S_L</span> - <span class="variable">S_star</span>))
+        <span class="variable">U_star</span> = np.zeros(<span class="number">6</span>)
+        <span class="variable">U_star</span>[<span class="number">0</span>] = <span class="variable">factor</span>
+        <span class="variable">U_star</span>[<span class="number">1</span>] = <span class="variable">factor</span> * (U_L[<span class="number">1</span>]/U_L[<span class="number">0</span>] + (<span class="variable">S_star</span> - <span class="variable">q_L</span>)*<span class="variable">nx</span>)
+        <span class="variable">U_star</span>[<span class="number">2</span>] = <span class="variable">factor</span> * (U_L[<span class="number">2</span>]/U_L[<span class="number">0</span>] + (<span class="variable">S_star</span> - <span class="variable">q_L</span>)*<span class="variable">ny</span>)
+        <span class="variable">U_star</span>[<span class="number">3</span>] = <span class="variable">factor</span> * (U_L[<span class="number">3</span>]/U_L[<span class="number">0</span>] + (<span class="variable">S_star</span> - <span class="variable">q_L</span>)*<span class="variable">nz</span>)
+        <span class="variable">U_star</span>[<span class="number">4</span>] = <span class="variable">factor</span> * (U_L[<span class="number">4</span>]/U_L[<span class="number">0</span>] + (<span class="variable">S_star</span> - <span class="variable">q_L</span>)*(<span class="variable">S_star</span> + <span class="variable">Pr_L</span>/(<span class="variable">U_L</span>[<span class="number">0</span>]*(<span class="variable">S_L</span> - <span class="variable">q_L</span>))))
+        <span class="variable">U_star</span>[<span class="number">5</span>] = <span class="variable">factor</span> * (U_L[<span class="number">5</span>] / <span class="variable">U_L</span>[<span class="number">0</span>]) <span class="comment"># Passive Scalar Advection</span>
+        
+        <span class="variable">F_L</span> = compute_pointwise_normal_flux(<span class="variable">U_L</span>, <span class="variable">Pr_L</span>, <span class="variable">normal</span>)
+        <span class="keyword">return</span> <span class="variable">F_L</span> + <span class="variable">S_L</span> * (<span class="variable">U_star</span> - <span class="variable">U_L</span>)
+    <span class="keyword">else</span>:
+        <span class="comment"># Right Star State</span>
+        <span class="variable">factor</span> = <span class="variable">U_R</span>[<span class="number">0</span>] * ((<span class="variable">S_R</span> - <span class="variable">q_R</span>) / (<span class="variable">S_R</span> - <span class="variable">S_star</span>))
+        <span class="variable">U_star</span> = np.zeros(<span class="number">6</span>)
+        <span class="variable">U_star</span>[<span class="number">0</span>] = <span class="variable">factor</span>
+        <span class="variable">U_star</span>[<span class="number">1</span>] = <span class="variable">factor</span> * (U_R[<span class="number">1</span>]/U_R[<span class="number">0</span>] + (<span class="variable">S_star</span> - <span class="variable">q_R</span>)*<span class="variable">nx</span>)
+        <span class="variable">U_star</span>[<span class="number">2</span>] = <span class="variable">factor</span> * (U_R[<span class="number">2</span>]/U_R[<span class="number">0</span>] + (<span class="variable">S_star</span> - <span class="variable">q_R</span>)*<span class="variable">ny</span>)
+        <span class="variable">U_star</span>[<span class="number">3</span>] = <span class="variable">factor</span> * (U_R[<span class="number">3</span>]/U_R[<span class="number">0</span>] + (<span class="variable">S_star</span> - <span class="variable">q_R</span>)*<span class="variable">nz</span>)
+        <span class="variable">U_star</span>[<span class="number">4</span>] = <span class="variable">factor</span> * (U_R[<span class="number">4</span>]/U_R[<span class="number">0</span>] + (<span class="variable">S_star</span> - <span class="variable">q_R</span>)*(<span class="variable">S_star</span> + <span class="variable">Pr_R</span>/(<span class="variable">U_R</span>[<span class="number">0</span>]*(<span class="variable">S_R</span> - <span class="variable">q_R</span>))))
+        <span class="variable">U_star</span>[<span class="number">5</span>] = <span class="variable">factor</span> * (U_R[<span class="number">5</span>] / <span class="variable">U_R</span>[<span class="number">0</span>]) <span class="comment"># Passive Scalar Advection</span>
+        
+        <span class="variable">F_R</span> = compute_pointwise_normal_flux(<span class="variable">U_R</span>, <span class="variable">Pr_R</span>, <span class="variable">normal</span>)
+        <span class="keyword">return</span> <span class="variable">F_R</span> + <span class="variable">S_R</span> * (<span class="variable">U_star</span> - <span class="variable">U_R</span>)
+
+
+<span class="keyword">def</span> <span class="call">compute_pointwise_normal_flux</span>(<span class="variable">U</span>, <span class="variable">P_reg</span>, <span class="variable">normal</span>):
+    <span class="comment"># Helper to evaluate normal spatial flux. </span>
+    <span class="comment"># <span class="link-comment">[LINK: ppr_manual.html#subsystem-2]</span> Reference: Subsection 2 on 3D Flux construction</span>
+    <span class="variable">nx</span>, <span class="variable">ny</span>, <span class="variable">nz</span> = <span class="variable">normal</span>
+    <span class="variable">u</span>, <span class="variable">v</span>, <span class="variable">w</span> = <span class="variable">U</span>[<span class="number">1</span>]/<span class="variable">U</span>[<span class="number">0</span>], <span class="variable">U</span>[<span class="number">2</span>]/<span class="variable">U</span>[<span class="number">0</span>], <span class="variable">U</span>[<span class="number">3</span>]/<span class="variable">U</span>[<span class="number">0</span>]
+    <span class="variable">qn</span> = <span class="variable">u</span>*<span class="variable">nx</span> + <span class="variable">v</span>*<span class="variable">ny</span> + <span class="variable">w</span>*<span class="variable">nz</span>
+    <span class="keyword">return</span> np.array([
+        <span class="variable">U</span>[<span class="number">0</span>]*<span class="variable">qn</span>,
+        <span class="variable">U</span>[<span class="number">1</span>]*<span class="variable">qn</span> + <span class="variable">P_reg</span>*<span class="variable">nx</span>,
+        <span class="variable">U</span>[<span class="number">2</span>]*<span class="variable">qn</span> + <span class="variable">P_reg</span>*<span class="variable">ny</span>,
+        <span class="variable">U</span>[<span class="number">3</span>]*<span class="variable">qn</span> + <span class="variable">P_reg</span>*<span class="variable">nz</span>,
+        (<span class="variable">U</span>[<span class="number">4</span>] + <span class="variable">P_reg</span>)*<span class="variable">qn</span>,
+        <span class="variable">U</span>[<span class="number">5</span>]*<span class="variable">qn</span>
+    ])
+    </div>
+
+</body>
+</html>

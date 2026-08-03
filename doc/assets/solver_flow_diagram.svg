@@ -10,7 +10,7 @@
 <title>SolverFlow</title>
 <g id="clust1" class="cluster">
 <title>cluster_pre</title>
-<path fill="transparent" stroke="#134e4a" stroke-dasharray="5,2" d="M43.911,-312C43.911,-312 884.911,-312 884.911,-312 890.911,-312 896.911,-318 896.911,-324 896.911,-324 896.911,-413.2 896.911,-413.2 896.911,-419.2 890.911,-425.2 884.911,-425.2 884.911,-425.2 43.911,-425.2 43.911,-425.2 37.911,-425.2 31.911,-419.2 31.911,-413.2 31.911,-413.2 31.911,-324 31.911,-324 31.911,-318 37.911,-312 43.911,-312"/>
+<path fill="transparent" stroke="#134e4a" stroke-dasharray="5,2" d="M43.911,-312C43.911,-312 1737.911,-312 1737.911,-312 1743.911,-312 1749.911,-318 1749.911,-324 1749.911,-324 1749.911,-413.2 1749.911,-413.2 1749.911,-419.2 1743.911,-425.2 1737.911,-425.2 1737.911,-425.2 43.911,-425.2 43.911,-425.2 37.911,-425.2 31.911,-419.2 31.911,-413.2 31.911,-413.2 31.911,-324 31.911,-324 31.911,-318 37.911,-312 43.911,-312"/>
 <text text-anchor="middle" x="85.0036" y="-408.6" font-family="Inter, sans-serif" font-size="14.00" fill="#0f766e">1. Pre&#45;Iterations</text>
 </g>
 <g id="clust3" class="cluster">
@@ -44,67 +44,106 @@
 <polygon fill="#94a3b8" stroke="#94a3b8" stroke-width="2" points="267.5419,-347.3001 277.5419,-343.8 267.5418,-340.3001 267.5419,-347.3001"/>
 </g>
 <!-- stop_check -->
-<g id="node5" class="node">
+<g id="node8" class="node">
 <title>stop_check</title>
 <path fill="#4338ca" stroke="#818cf8" stroke-width="2" d="M153.3154,-215.4017C153.3154,-215.4017 48.5065,-215.4017 48.5065,-215.4017 42.5065,-215.4017 36.5065,-209.4017 36.5065,-203.4017 36.5065,-203.4017 36.5065,-180.1983 36.5065,-180.1983 36.5065,-174.1983 42.5065,-168.1983 48.5065,-168.1983 48.5065,-168.1983 153.3154,-168.1983 153.3154,-168.1983 159.3154,-168.1983 165.3154,-174.1983 165.3154,-180.1983 165.3154,-180.1983 165.3154,-203.4017 165.3154,-203.4017 165.3154,-209.4017 159.3154,-215.4017 153.3154,-215.4017"/>
 <text text-anchor="middle" x="100.911" y="-196" font-family="Inter, sans-serif" font-size="14.00" fill="#eef2ff">Check STOP File</text>
 <text text-anchor="middle" x="100.911" y="-179.2" font-family="Inter, sans-serif" font-size="14.00" fill="#eef2ff">(Exists? &#45;&gt; break)</text>
 </g>
 <!-- load_params&#45;&gt;stop_check -->
-<!-- init_state -->
+<!-- init_cells -->
 <g id="node3" class="node">
-<title>init_state</title>
-<path fill="#0f766e" stroke="#2dd4bf" stroke-width="2" d="M632.6588,-367.4017C632.6588,-367.4017 523.1631,-367.4017 523.1631,-367.4017 517.1631,-367.4017 511.1631,-361.4017 511.1631,-355.4017 511.1631,-355.4017 511.1631,-332.1983 511.1631,-332.1983 511.1631,-326.1983 517.1631,-320.1983 523.1631,-320.1983 523.1631,-320.1983 632.6588,-320.1983 632.6588,-320.1983 638.6588,-320.1983 644.6588,-326.1983 644.6588,-332.1983 644.6588,-332.1983 644.6588,-355.4017 644.6588,-355.4017 644.6588,-361.4017 638.6588,-367.4017 632.6588,-367.4017"/>
-<text text-anchor="middle" x="577.911" y="-348" font-family="Inter, sans-serif" font-size="14.00" fill="#f0fdfa">Initialize State</text>
-<text text-anchor="middle" x="577.911" y="-331.2" font-family="Inter, sans-serif" font-size="14.00" fill="#f0fdfa">(IC::apply/Restart)</text>
+<title>init_cells</title>
+<path fill="#0f766e" stroke="#2dd4bf" stroke-width="2" d="M640.2867,-367.4017C640.2867,-367.4017 523.5353,-367.4017 523.5353,-367.4017 517.5353,-367.4017 511.5353,-361.4017 511.5353,-355.4017 511.5353,-355.4017 511.5353,-332.1983 511.5353,-332.1983 511.5353,-326.1983 517.5353,-320.1983 523.5353,-320.1983 523.5353,-320.1983 640.2867,-320.1983 640.2867,-320.1983 646.2867,-320.1983 652.2867,-326.1983 652.2867,-332.1983 652.2867,-332.1983 652.2867,-355.4017 652.2867,-355.4017 652.2867,-361.4017 646.2867,-367.4017 640.2867,-367.4017"/>
+<text text-anchor="middle" x="581.911" y="-348" font-family="Inter, sans-serif" font-size="14.00" fill="#f0fdfa">Cell Decomposition</text>
+<text text-anchor="middle" x="581.911" y="-331.2" font-family="Inter, sans-serif" font-size="14.00" fill="#f0fdfa">(initialize_cells)</text>
 </g>
-<!-- setup_solver&#45;&gt;init_state -->
+<!-- setup_solver&#45;&gt;init_cells -->
 <g id="edge2" class="edge">
-<title>setup_solver&#45;&gt;init_state</title>
-<path fill="none" stroke="#94a3b8" stroke-width="2" d="M396.2196,-343.8C430.9941,-343.8 465.7687,-343.8 500.5432,-343.8"/>
-<polygon fill="#94a3b8" stroke="#94a3b8" stroke-width="2" points="500.8413,-347.3001 510.8413,-343.8 500.8412,-340.3001 500.8413,-347.3001"/>
+<title>setup_solver&#45;&gt;init_cells</title>
+<path fill="none" stroke="#94a3b8" stroke-width="2" d="M396.2469,-343.8C431.2317,-343.8 466.2165,-343.8 501.2014,-343.8"/>
+<polygon fill="#94a3b8" stroke="#94a3b8" stroke-width="2" points="501.5617,-347.3001 511.5617,-343.8 501.5617,-340.3001 501.5617,-347.3001"/>
+</g>
+<!-- bfs_wall -->
+<g id="node4" class="node">
+<title>bfs_wall</title>
+<path fill="#0f766e" stroke="#2dd4bf" stroke-width="2" d="M950.2747,-367.4017C950.2747,-367.4017 779.5472,-367.4017 779.5472,-367.4017 773.5472,-367.4017 767.5472,-361.4017 767.5472,-355.4017 767.5472,-355.4017 767.5472,-332.1983 767.5472,-332.1983 767.5472,-326.1983 773.5472,-320.1983 779.5472,-320.1983 779.5472,-320.1983 950.2747,-320.1983 950.2747,-320.1983 956.2747,-320.1983 962.2747,-326.1983 962.2747,-332.1983 962.2747,-332.1983 962.2747,-355.4017 962.2747,-355.4017 962.2747,-361.4017 956.2747,-367.4017 950.2747,-367.4017"/>
+<text text-anchor="middle" x="864.911" y="-348" font-family="Inter, sans-serif" font-size="14.00" fill="#f0fdfa">BFS Wall Tracking</text>
+<text text-anchor="middle" x="864.911" y="-331.2" font-family="Inter, sans-serif" font-size="14.00" fill="#f0fdfa">(flag_refinement_coarsening)</text>
+</g>
+<!-- init_cells&#45;&gt;bfs_wall -->
+<g id="edge3" class="edge">
+<title>init_cells&#45;&gt;bfs_wall</title>
+<path fill="none" stroke="#94a3b8" stroke-width="2" d="M652.1082,-343.8C687.163,-343.8 722.2177,-343.8 757.2724,-343.8"/>
+<polygon fill="#94a3b8" stroke="#94a3b8" stroke-width="2" points="757.6535,-347.3001 767.6535,-343.8 757.6534,-340.3001 757.6535,-347.3001"/>
+</g>
+<!-- connectivity -->
+<g id="node5" class="node">
+<title>connectivity</title>
+<path fill="#0f766e" stroke="#2dd4bf" stroke-width="2" d="M1236.1988,-367.4017C1236.1988,-367.4017 1089.6231,-367.4017 1089.6231,-367.4017 1083.6231,-367.4017 1077.6231,-361.4017 1077.6231,-355.4017 1077.6231,-355.4017 1077.6231,-332.1983 1077.6231,-332.1983 1077.6231,-326.1983 1083.6231,-320.1983 1089.6231,-320.1983 1089.6231,-320.1983 1236.1988,-320.1983 1236.1988,-320.1983 1242.1988,-320.1983 1248.1988,-326.1983 1248.1988,-332.1983 1248.1988,-332.1983 1248.1988,-355.4017 1248.1988,-355.4017 1248.1988,-361.4017 1242.1988,-367.4017 1236.1988,-367.4017"/>
+<text text-anchor="middle" x="1162.911" y="-348" font-family="Inter, sans-serif" font-size="14.00" fill="#f0fdfa">Tree Connectivity</text>
+<text text-anchor="middle" x="1162.911" y="-331.2" font-family="Inter, sans-serif" font-size="14.00" fill="#f0fdfa">(setup_cell_connectivity)</text>
+</g>
+<!-- bfs_wall&#45;&gt;connectivity -->
+<g id="edge4" class="edge">
+<title>bfs_wall&#45;&gt;connectivity</title>
+<path fill="none" stroke="#94a3b8" stroke-width="2" d="M962.1102,-343.8C997.0916,-343.8 1032.073,-343.8 1067.0544,-343.8"/>
+<polygon fill="#94a3b8" stroke="#94a3b8" stroke-width="2" points="1067.4138,-347.3001 1077.4138,-343.8 1067.4137,-340.3001 1067.4138,-347.3001"/>
+</g>
+<!-- init_state -->
+<g id="node6" class="node">
+<title>init_state</title>
+<path fill="#0f766e" stroke="#2dd4bf" stroke-width="2" d="M1485.6588,-367.4017C1485.6588,-367.4017 1376.1631,-367.4017 1376.1631,-367.4017 1370.1631,-367.4017 1364.1631,-361.4017 1364.1631,-355.4017 1364.1631,-355.4017 1364.1631,-332.1983 1364.1631,-332.1983 1364.1631,-326.1983 1370.1631,-320.1983 1376.1631,-320.1983 1376.1631,-320.1983 1485.6588,-320.1983 1485.6588,-320.1983 1491.6588,-320.1983 1497.6588,-326.1983 1497.6588,-332.1983 1497.6588,-332.1983 1497.6588,-355.4017 1497.6588,-355.4017 1497.6588,-361.4017 1491.6588,-367.4017 1485.6588,-367.4017"/>
+<text text-anchor="middle" x="1430.911" y="-348" font-family="Inter, sans-serif" font-size="14.00" fill="#f0fdfa">Initialize State</text>
+<text text-anchor="middle" x="1430.911" y="-331.2" font-family="Inter, sans-serif" font-size="14.00" fill="#f0fdfa">(IC::apply/Restart)</text>
+</g>
+<!-- connectivity&#45;&gt;init_state -->
+<g id="edge5" class="edge">
+<title>connectivity&#45;&gt;init_state</title>
+<path fill="none" stroke="#94a3b8" stroke-width="2" d="M1248.2313,-343.8C1283.3032,-343.8 1318.3752,-343.8 1353.4471,-343.8"/>
+<polygon fill="#94a3b8" stroke="#94a3b8" stroke-width="2" points="1353.8333,-347.3001 1363.8333,-343.8 1353.8332,-340.3001 1353.8333,-347.3001"/>
 </g>
 <!-- init_igr -->
-<g id="node4" class="node">
+<g id="node7" class="node">
 <title>init_igr</title>
-<path fill="#0f766e" stroke="#2dd4bf" stroke-width="2" d="M877.2073,-367.4017C877.2073,-367.4017 772.6146,-367.4017 772.6146,-367.4017 766.6146,-367.4017 760.6146,-361.4017 760.6146,-355.4017 760.6146,-355.4017 760.6146,-332.1983 760.6146,-332.1983 760.6146,-326.1983 766.6146,-320.1983 772.6146,-320.1983 772.6146,-320.1983 877.2073,-320.1983 877.2073,-320.1983 883.2073,-320.1983 889.2073,-326.1983 889.2073,-332.1983 889.2073,-332.1983 889.2073,-355.4017 889.2073,-355.4017 889.2073,-361.4017 883.2073,-367.4017 877.2073,-367.4017"/>
-<text text-anchor="middle" x="824.911" y="-348" font-family="Inter, sans-serif" font-size="14.00" fill="#f0fdfa">Initial IGR Setup</text>
-<text text-anchor="middle" x="824.911" y="-331.2" font-family="Inter, sans-serif" font-size="14.00" fill="#f0fdfa">(compute_sensor)</text>
+<path fill="#0f766e" stroke="#2dd4bf" stroke-width="2" d="M1730.2073,-367.4017C1730.2073,-367.4017 1625.6146,-367.4017 1625.6146,-367.4017 1619.6146,-367.4017 1613.6146,-361.4017 1613.6146,-355.4017 1613.6146,-355.4017 1613.6146,-332.1983 1613.6146,-332.1983 1613.6146,-326.1983 1619.6146,-320.1983 1625.6146,-320.1983 1625.6146,-320.1983 1730.2073,-320.1983 1730.2073,-320.1983 1736.2073,-320.1983 1742.2073,-326.1983 1742.2073,-332.1983 1742.2073,-332.1983 1742.2073,-355.4017 1742.2073,-355.4017 1742.2073,-361.4017 1736.2073,-367.4017 1730.2073,-367.4017"/>
+<text text-anchor="middle" x="1677.911" y="-348" font-family="Inter, sans-serif" font-size="14.00" fill="#f0fdfa">Initial IGR Setup</text>
+<text text-anchor="middle" x="1677.911" y="-331.2" font-family="Inter, sans-serif" font-size="14.00" fill="#f0fdfa">(compute_sensor)</text>
 </g>
 <!-- init_state&#45;&gt;init_igr -->
-<g id="edge3" class="edge">
+<g id="edge6" class="edge">
 <title>init_state&#45;&gt;init_igr</title>
-<path fill="none" stroke="#94a3b8" stroke-width="2" d="M644.9676,-343.8C680.0473,-343.8 715.1271,-343.8 750.2068,-343.8"/>
-<polygon fill="#94a3b8" stroke="#94a3b8" stroke-width="2" points="750.5953,-347.3001 760.5953,-343.8 750.5952,-340.3001 750.5953,-347.3001"/>
+<path fill="none" stroke="#94a3b8" stroke-width="2" d="M1497.9676,-343.8C1533.0473,-343.8 1568.1271,-343.8 1603.2068,-343.8"/>
+<polygon fill="#94a3b8" stroke="#94a3b8" stroke-width="2" points="1603.5953,-347.3001 1613.5953,-343.8 1603.5952,-340.3001 1603.5953,-347.3001"/>
 </g>
 <!-- init_igr&#45;&gt;stop_check -->
-<g id="edge13" class="edge">
+<g id="edge16" class="edge">
 <title>init_igr&#45;&gt;stop_check</title>
-<path fill="none" stroke="#94a3b8" stroke-width="2" d="M760.4972,-330.0521C729.8389,-323.8705 692.5973,-316.8835 658.911,-312 485.6486,-286.8824 435.2972,-321.1252 266.911,-273.2 224.7239,-261.193 180.2755,-238.8104 148.0007,-220.5505"/>
-<polygon fill="#94a3b8" stroke="#94a3b8" stroke-width="2" points="149.6483,-217.4607 139.2324,-215.5217 146.1657,-223.5329 149.6483,-217.4607"/>
+<path fill="none" stroke="#94a3b8" stroke-width="2" d="M1613.6316,-328.9958C1583.0027,-322.5828 1545.747,-315.7061 1511.911,-312 1236.7556,-281.8622 535.4967,-340.1363 266.911,-273.2 223.7809,-262.4512 178.7382,-239.5124 146.4726,-220.717"/>
+<polygon fill="#94a3b8" stroke="#94a3b8" stroke-width="2" points="148.1116,-217.62 137.7231,-215.5392 144.5465,-223.6442 148.1116,-217.62"/>
 </g>
 <!-- dt -->
-<g id="node6" class="node">
+<g id="node9" class="node">
 <title>dt</title>
 <path fill="#4338ca" stroke="#818cf8" stroke-width="2" d="M416.663,-215.4017C416.663,-215.4017 293.159,-215.4017 293.159,-215.4017 287.159,-215.4017 281.159,-209.4017 281.159,-203.4017 281.159,-203.4017 281.159,-180.1983 281.159,-180.1983 281.159,-174.1983 287.159,-168.1983 293.159,-168.1983 293.159,-168.1983 416.663,-168.1983 416.663,-168.1983 422.663,-168.1983 428.663,-174.1983 428.663,-180.1983 428.663,-180.1983 428.663,-203.4017 428.663,-203.4017 428.663,-209.4017 422.663,-215.4017 416.663,-215.4017"/>
 <text text-anchor="middle" x="354.911" y="-196" font-family="Inter, sans-serif" font-size="14.00" fill="#eef2ff">Compute Time Step</text>
 <text text-anchor="middle" x="354.911" y="-179.2" font-family="Inter, sans-serif" font-size="14.00" fill="#eef2ff">(Solver::compute_dt)</text>
 </g>
 <!-- stop_check&#45;&gt;dt -->
-<g id="edge4" class="edge">
+<g id="edge7" class="edge">
 <title>stop_check&#45;&gt;dt</title>
 <path fill="none" stroke="#94a3b8" stroke-width="2" d="M165.4031,-191.8C200.4385,-191.8 235.4738,-191.8 270.5092,-191.8"/>
 <polygon fill="#94a3b8" stroke="#94a3b8" stroke-width="2" points="270.8845,-195.3001 280.8845,-191.8 270.8844,-188.3001 270.8845,-195.3001"/>
 </g>
 <!-- finish -->
-<g id="node14" class="node">
+<g id="node17" class="node">
 <title>finish</title>
 <path fill="#be123c" stroke="#fb7185" stroke-width="2" d="M162.7993,-63.4017C162.7993,-63.4017 39.0226,-63.4017 39.0226,-63.4017 33.0226,-63.4017 27.0226,-57.4017 27.0226,-51.4017 27.0226,-51.4017 27.0226,-28.1983 27.0226,-28.1983 27.0226,-22.1983 33.0226,-16.1983 39.0226,-16.1983 39.0226,-16.1983 162.7993,-16.1983 162.7993,-16.1983 168.7993,-16.1983 174.7993,-22.1983 174.7993,-28.1983 174.7993,-28.1983 174.7993,-51.4017 174.7993,-51.4017 174.7993,-57.4017 168.7993,-63.4017 162.7993,-63.4017"/>
 <text text-anchor="middle" x="100.911" y="-44" font-family="Inter, sans-serif" font-size="14.00" fill="#fff1f2">Simulation Complete</text>
 <text text-anchor="middle" x="100.911" y="-27.2" font-family="Inter, sans-serif" font-size="14.00" fill="#fff1f2">(Clean exit)</text>
 </g>
 <!-- stop_check&#45;&gt;finish -->
-<g id="edge14" class="edge">
+<g id="edge17" class="edge">
 <title>stop_check&#45;&gt;finish</title>
 <path fill="none" stroke="#ef4444" stroke-width="2" d="M36.4754,-172.9434C24.3058,-166.3883 13.1145,-157.6383 5.8016,-146 -12.133,-117.4579 15.9348,-89.2267 46.1335,-69.0541"/>
 <polygon fill="#ef4444" stroke="#ef4444" stroke-width="2" points="48.1389,-71.9261 54.6711,-63.5845 44.3628,-66.0319 48.1389,-71.9261"/>
@@ -112,105 +151,105 @@
 </g>
 <!-- stop_check&#45;&gt;finish -->
 <!-- ib -->
-<g id="node7" class="node">
+<g id="node10" class="node">
 <title>ib</title>
 <path fill="#0369a1" stroke="#38bdf8" stroke-width="2" d="M643.6019,-215.4017C643.6019,-215.4017 556.22,-215.4017 556.22,-215.4017 550.22,-215.4017 544.22,-209.4017 544.22,-203.4017 544.22,-203.4017 544.22,-180.1983 544.22,-180.1983 544.22,-174.1983 550.22,-168.1983 556.22,-168.1983 556.22,-168.1983 643.6019,-168.1983 643.6019,-168.1983 649.6019,-168.1983 655.6019,-174.1983 655.6019,-180.1983 655.6019,-180.1983 655.6019,-203.4017 655.6019,-203.4017 655.6019,-209.4017 649.6019,-215.4017 643.6019,-215.4017"/>
 <text text-anchor="middle" x="599.911" y="-196" font-family="Inter, sans-serif" font-size="14.00" fill="#f0f9ff">Update IB</text>
 <text text-anchor="middle" x="599.911" y="-179.2" font-family="Inter, sans-serif" font-size="14.00" fill="#f0f9ff">(update_mask)</text>
 </g>
 <!-- dt&#45;&gt;ib -->
-<g id="edge5" class="edge">
+<g id="edge8" class="edge">
 <title>dt&#45;&gt;ib</title>
 <path fill="none" stroke="#94a3b8" stroke-width="2" d="M429.0809,-191.8C464.0036,-191.8 498.9263,-191.8 533.8491,-191.8"/>
 <polygon fill="#94a3b8" stroke="#94a3b8" stroke-width="2" points="534.191,-195.3001 544.191,-191.8 534.191,-188.3001 534.191,-195.3001"/>
 </g>
 <!-- igr -->
-<g id="node8" class="node">
+<g id="node11" class="node">
 <title>igr</title>
 <path fill="#0369a1" stroke="#38bdf8" stroke-width="2" d="M896.2429,-215.4017C896.2429,-215.4017 783.5791,-215.4017 783.5791,-215.4017 777.5791,-215.4017 771.5791,-209.4017 771.5791,-203.4017 771.5791,-203.4017 771.5791,-180.1983 771.5791,-180.1983 771.5791,-174.1983 777.5791,-168.1983 783.5791,-168.1983 783.5791,-168.1983 896.2429,-168.1983 896.2429,-168.1983 902.2429,-168.1983 908.2429,-174.1983 908.2429,-180.1983 908.2429,-180.1983 908.2429,-203.4017 908.2429,-203.4017 908.2429,-209.4017 902.2429,-215.4017 896.2429,-215.4017"/>
 <text text-anchor="middle" x="839.911" y="-196" font-family="Inter, sans-serif" font-size="14.00" fill="#f0f9ff">Calculate IGR</text>
 <text text-anchor="middle" x="839.911" y="-179.2" font-family="Inter, sans-serif" font-size="14.00" fill="#f0f9ff">(entropic_pressure)</text>
 </g>
 <!-- ib&#45;&gt;igr -->
-<g id="edge6" class="edge">
+<g id="edge9" class="edge">
 <title>ib&#45;&gt;igr</title>
 <path fill="none" stroke="#94a3b8" stroke-width="2" d="M655.6922,-191.8C690.8413,-191.8 725.9904,-191.8 761.1396,-191.8"/>
 <polygon fill="#94a3b8" stroke="#94a3b8" stroke-width="2" points="761.5486,-195.3001 771.5485,-191.8 761.5485,-188.3001 761.5486,-195.3001"/>
 </g>
 <!-- fluxes -->
-<g id="node9" class="node">
+<g id="node12" class="node">
 <title>fluxes</title>
 <path fill="#0369a1" stroke="#38bdf8" stroke-width="2" d="M1133.6105,-215.4017C1133.6105,-215.4017 1036.2114,-215.4017 1036.2114,-215.4017 1030.2114,-215.4017 1024.2114,-209.4017 1024.2114,-203.4017 1024.2114,-203.4017 1024.2114,-180.1983 1024.2114,-180.1983 1024.2114,-174.1983 1030.2114,-168.1983 1036.2114,-168.1983 1036.2114,-168.1983 1133.6105,-168.1983 1133.6105,-168.1983 1139.6105,-168.1983 1145.6105,-174.1983 1145.6105,-180.1983 1145.6105,-180.1983 1145.6105,-203.4017 1145.6105,-203.4017 1145.6105,-209.4017 1139.6105,-215.4017 1133.6105,-215.4017"/>
 <text text-anchor="middle" x="1084.911" y="-196" font-family="Inter, sans-serif" font-size="14.00" fill="#f0f9ff">Calculate Fluxes</text>
 <text text-anchor="middle" x="1084.911" y="-179.2" font-family="Inter, sans-serif" font-size="14.00" fill="#f0f9ff">(euler/viscous)</text>
 </g>
 <!-- igr&#45;&gt;fluxes -->
-<g id="edge7" class="edge">
+<g id="edge10" class="edge">
 <title>igr&#45;&gt;fluxes</title>
 <path fill="none" stroke="#94a3b8" stroke-width="2" d="M908.3387,-191.8C943.389,-191.8 978.4393,-191.8 1013.4897,-191.8"/>
 <polygon fill="#94a3b8" stroke="#94a3b8" stroke-width="2" points="1013.8694,-195.3001 1023.8694,-191.8 1013.8693,-188.3001 1013.8694,-195.3001"/>
 </g>
 <!-- update_state -->
-<g id="node10" class="node">
+<g id="node13" class="node">
 <title>update_state</title>
 <path fill="#0369a1" stroke="#38bdf8" stroke-width="2" d="M1364.6171,-215.4017C1364.6171,-215.4017 1273.2048,-215.4017 1273.2048,-215.4017 1267.2048,-215.4017 1261.2048,-209.4017 1261.2048,-203.4017 1261.2048,-203.4017 1261.2048,-180.1983 1261.2048,-180.1983 1261.2048,-174.1983 1267.2048,-168.1983 1273.2048,-168.1983 1273.2048,-168.1983 1364.6171,-168.1983 1364.6171,-168.1983 1370.6171,-168.1983 1376.6171,-174.1983 1376.6171,-180.1983 1376.6171,-180.1983 1376.6171,-203.4017 1376.6171,-203.4017 1376.6171,-209.4017 1370.6171,-215.4017 1364.6171,-215.4017"/>
 <text text-anchor="middle" x="1318.911" y="-196" font-family="Inter, sans-serif" font-size="14.00" fill="#f0f9ff">Update State</text>
 <text text-anchor="middle" x="1318.911" y="-179.2" font-family="Inter, sans-serif" font-size="14.00" fill="#f0f9ff">(State + dt*dU)</text>
 </g>
 <!-- fluxes&#45;&gt;update_state -->
-<g id="edge8" class="edge">
+<g id="edge11" class="edge">
 <title>fluxes&#45;&gt;update_state</title>
 <path fill="none" stroke="#94a3b8" stroke-width="2" d="M1145.6961,-191.8C1180.6958,-191.8 1215.6955,-191.8 1250.6952,-191.8"/>
 <polygon fill="#94a3b8" stroke="#94a3b8" stroke-width="2" points="1251.0599,-195.3001 1261.0599,-191.8 1251.0599,-188.3001 1251.0599,-195.3001"/>
 </g>
 <!-- limiters -->
-<g id="node11" class="node">
+<g id="node14" class="node">
 <title>limiters</title>
 <path fill="#0369a1" stroke="#38bdf8" stroke-width="2" d="M1593.843,-215.4017C1593.843,-215.4017 1503.9789,-215.4017 1503.9789,-215.4017 1497.9789,-215.4017 1491.9789,-209.4017 1491.9789,-203.4017 1491.9789,-203.4017 1491.9789,-180.1983 1491.9789,-180.1983 1491.9789,-174.1983 1497.9789,-168.1983 1503.9789,-168.1983 1503.9789,-168.1983 1593.843,-168.1983 1593.843,-168.1983 1599.843,-168.1983 1605.843,-174.1983 1605.843,-180.1983 1605.843,-180.1983 1605.843,-203.4017 1605.843,-203.4017 1605.843,-209.4017 1599.843,-215.4017 1593.843,-215.4017"/>
 <text text-anchor="middle" x="1548.911" y="-196" font-family="Inter, sans-serif" font-size="14.00" fill="#f0f9ff">Apply Limiters</text>
 <text text-anchor="middle" x="1548.911" y="-179.2" font-family="Inter, sans-serif" font-size="14.00" fill="#f0f9ff">(positivity)</text>
 </g>
 <!-- update_state&#45;&gt;limiters -->
-<g id="edge9" class="edge">
+<g id="edge12" class="edge">
 <title>update_state&#45;&gt;limiters</title>
 <path fill="none" stroke="#94a3b8" stroke-width="2" d="M1376.8602,-191.8C1411.7266,-191.8 1446.593,-191.8 1481.4595,-191.8"/>
 <polygon fill="#94a3b8" stroke="#94a3b8" stroke-width="2" points="1481.7848,-195.3001 1491.7847,-191.8 1481.7847,-188.3001 1481.7848,-195.3001"/>
 </g>
 <!-- diag -->
-<g id="node12" class="node">
+<g id="node15" class="node">
 <title>diag</title>
 <path fill="#4338ca" stroke="#818cf8" stroke-width="2" d="M1857.9307,-215.4017C1857.9307,-215.4017 1733.8912,-215.4017 1733.8912,-215.4017 1727.8912,-215.4017 1721.8912,-209.4017 1721.8912,-203.4017 1721.8912,-203.4017 1721.8912,-180.1983 1721.8912,-180.1983 1721.8912,-174.1983 1727.8912,-168.1983 1733.8912,-168.1983 1733.8912,-168.1983 1857.9307,-168.1983 1857.9307,-168.1983 1863.9307,-168.1983 1869.9307,-174.1983 1869.9307,-180.1983 1869.9307,-180.1983 1869.9307,-203.4017 1869.9307,-203.4017 1869.9307,-209.4017 1863.9307,-215.4017 1857.9307,-215.4017"/>
 <text text-anchor="middle" x="1795.911" y="-196" font-family="Inter, sans-serif" font-size="14.00" fill="#eef2ff">Update Diagnostics</text>
 <text text-anchor="middle" x="1795.911" y="-179.2" font-family="Inter, sans-serif" font-size="14.00" fill="#eef2ff">(Diagnostics::update)</text>
 </g>
 <!-- limiters&#45;&gt;diag -->
-<g id="edge10" class="edge">
+<g id="edge13" class="edge">
 <title>limiters&#45;&gt;diag</title>
 <path fill="none" stroke="#94a3b8" stroke-width="2" d="M1606.3192,-191.8C1641.37,-191.8 1676.4209,-191.8 1711.4718,-191.8"/>
 <polygon fill="#94a3b8" stroke="#94a3b8" stroke-width="2" points="1711.8517,-195.3001 1721.8517,-191.8 1711.8516,-188.3001 1711.8517,-195.3001"/>
 </g>
 <!-- output -->
-<g id="node13" class="node">
+<g id="node16" class="node">
 <title>output</title>
 <path fill="#4338ca" stroke="#818cf8" stroke-width="2" d="M2117.8016,-215.4017C2117.8016,-215.4017 1998.0203,-215.4017 1998.0203,-215.4017 1992.0203,-215.4017 1986.0203,-209.4017 1986.0203,-203.4017 1986.0203,-203.4017 1986.0203,-180.1983 1986.0203,-180.1983 1986.0203,-174.1983 1992.0203,-168.1983 1998.0203,-168.1983 1998.0203,-168.1983 2117.8016,-168.1983 2117.8016,-168.1983 2123.8016,-168.1983 2129.8016,-174.1983 2129.8016,-180.1983 2129.8016,-180.1983 2129.8016,-203.4017 2129.8016,-203.4017 2129.8016,-209.4017 2123.8016,-215.4017 2117.8016,-215.4017"/>
 <text text-anchor="middle" x="2057.911" y="-196" font-family="Inter, sans-serif" font-size="14.00" fill="#eef2ff">Checkpoints &amp; Plots</text>
 <text text-anchor="middle" x="2057.911" y="-179.2" font-family="Inter, sans-serif" font-size="14.00" fill="#eef2ff">(VTKWriter::write)</text>
 </g>
 <!-- diag&#45;&gt;output -->
-<g id="edge11" class="edge">
+<g id="edge14" class="edge">
 <title>diag&#45;&gt;output</title>
 <path fill="none" stroke="#94a3b8" stroke-width="2" d="M1870.1102,-191.8C1905.2751,-191.8 1940.44,-191.8 1975.6048,-191.8"/>
 <polygon fill="#94a3b8" stroke="#94a3b8" stroke-width="2" points="1976.0185,-195.3001 1986.0185,-191.8 1976.0184,-188.3001 1976.0185,-195.3001"/>
 </g>
 <!-- output&#45;&gt;stop_check -->
-<g id="edge12" class="edge">
+<g id="edge15" class="edge">
 <title>output&#45;&gt;stop_check</title>
 <path fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5,2" d="M2020.1644,-215.5304C1986.2428,-235.3654 1934.3061,-262.1329 1884.911,-273.2 1797.1967,-292.8526 354.4639,-293.5591 266.911,-273.2 223.331,-263.0662 177.993,-239.8339 145.7325,-220.7723"/>
 <polygon fill="#94a3b8" stroke="#94a3b8" stroke-width="2" points="147.3669,-217.6711 136.9925,-215.5208 143.7616,-223.6713 147.3669,-217.6711"/>
 <text text-anchor="middle" x="1074.911" y="-285.4" font-family="Inter, sans-serif" font-size="14.00" fill="#f8fafc"> t &lt; T_FINAL</text>
 </g>
 <!-- output&#45;&gt;finish -->
-<g id="edge15" class="edge">
+<g id="edge18" class="edge">
 <title>output&#45;&gt;finish</title>
 <path fill="none" stroke="#94a3b8" stroke-width="2" d="M1985.8091,-176.6395C1954.871,-170.6304 1918.2425,-164.1724 1884.911,-160 1233.6197,-78.4726 441.1577,-49.6205 185.0363,-42.047"/>
 <polygon fill="#94a3b8" stroke="#94a3b8" stroke-width="2" points="184.7948,-38.5385 174.6966,-41.7442 184.5899,-45.5355 184.7948,-38.5385"/>

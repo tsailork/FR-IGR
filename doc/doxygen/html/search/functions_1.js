@@ -1,8 +1,8 @@
 var searchData=
 [
-  ['basis_0',['Basis',['../struct_basis.html#ab7b312b41ca56c92b0aba4ee8d5c4b90',1,'Basis']]],
-  ['bisect_5ffor_5ftheta_1',['bisect_for_theta',['../namespace_limiters.html#a807a435d6b38e9e2a392cad50f899e70',1,'Limiters']]],
-  ['block_2',['Block',['../struct_block.html#ac9c4eed91f39deb149c30e1f1dea15b3',1,'Block']]],
+  ['basis_0',['Basis',['../structBasis.html#ab7b312b41ca56c92b0aba4ee8d5c4b90',1,'Basis']]],
+  ['bisect_5ffor_5ftheta_1',['bisect_for_theta',['../namespaceLimiters.html#a807a435d6b38e9e2a392cad50f899e70',1,'Limiters']]],
+  ['block_2',['Block',['../structBlock.html#ac9c4eed91f39deb149c30e1f1dea15b3',1,'Block']]],
   ['build_5fcharacteristic_5fghost_3',['build_characteristic_ghost',['../boundary_8hpp.html#ac1d39dff6d77a4513e858f8ab09f2e4f',1,'build_characteristic_ghost(const double *face_state, const double *ref_state, double n_x, double n_y, double gamma, double *neigh_state):&#160;boundary_characteristic.cpp'],['../boundary__characteristic_8cpp.html#ac1d39dff6d77a4513e858f8ab09f2e4f',1,'build_characteristic_ghost(const double *face_state, const double *ref_state, double n_x, double n_y, double gamma, double *neigh_state):&#160;boundary_characteristic.cpp']]],
   ['build_5fstatic_5fpressure_5fghost_4',['build_static_pressure_ghost',['../boundary_8hpp.html#a6c4341788ea8fcb3f7cbab255f5beb98',1,'build_static_pressure_ghost(const double *face_state, double P_target, double gamma, double *neigh_state):&#160;boundary_backpressure.cpp'],['../boundary__backpressure_8cpp.html#a6c4341788ea8fcb3f7cbab255f5beb98',1,'build_static_pressure_ghost(const double *face_state, double P_target, double gamma, double *neigh_state):&#160;boundary_backpressure.cpp']]],
   ['build_5ftotal_5fpressure_5fcomp_5fghost_5',['build_total_pressure_comp_ghost',['../boundary_8hpp.html#a657e8d76d6166225d9d1f70f371f8fed',1,'build_total_pressure_comp_ghost(const double *face_state, double Pt_target, double gamma, double *neigh_state):&#160;boundary_backpressure.cpp'],['../boundary__backpressure_8cpp.html#a657e8d76d6166225d9d1f70f371f8fed',1,'build_total_pressure_comp_ghost(const double *face_state, double Pt_target, double gamma, double *neigh_state):&#160;boundary_backpressure.cpp']]],

@@ -1,0 +1,32 @@
+Job 183807.pbs06a.hsn.ath.nas.nasa.gov started on Mon Jul 27 14:00:21 PDT 2026
+The job requested the following resources:
+    walltime = 06:00:00
+    ncpus = 256
+    place = scatter:excl
+
+PBS set the following environment variables:
+        FORT_BUFFERED = 1
+                   TZ = PST8PDT
+
+Warning: no access to tty (Inappropriate ioctl for device).
+Thus no job control in this shell.
+/nobackupp27/tkoeplin/gfr/FR-IGR/cases/2dcanonical/shock_vortex_workshop/rq500 
+Current directory is /nobackupp27/tkoeplin/gfr/FR-IGR/cases/2dcanonical/shock_vortex_workshop/rq500
+running do_mom
+
+____________________________________________________________________
+Job Resource Usage Summary for 183807.pbs06a.hsn.ath.nas.nasa.gov
+
+   CPU Time Used            : 524:10:57
+   Real Memory Used         : 2310256kb
+   Walltime Used            : 02:17:07
+   Exit Status              : 0
+
+   Number of CPUs requested : 256
+   Walltime Requested       : 06:00:00
+
+   Execution Queue          : normal
+   Charged To               : a1462
+
+   Job Stopped              : Mon Jul 27 16:17:31 2026
+____________________________________________________________________

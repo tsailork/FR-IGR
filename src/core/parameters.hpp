@@ -30,6 +30,7 @@
 struct ProbeDef {
     double x;              ///< Physical X coordinate of the probe location.
     double y;              ///< Physical Y coordinate of the probe location.
+    double z = 0.0;        ///< Physical Z coordinate of the probe location.
     std::string variable;  ///< Target variable name to probe (e.g. "Density", "Pressure", "Mach", "Sigma").
 };
 
@@ -43,14 +44,19 @@ struct BlockConfig {
     int id;                ///< Unique identifier for the computational block.
     int N_ELEM_X;          ///< Number of elements along the X direction.
     int N_ELEM_Y;          ///< Number of elements along the Y direction.
+    int N_ELEM_Z = 1;      ///< Number of elements along the Z direction.
     double X_MIN;          ///< Minimum physical X coordinate of the block.
     double X_MAX;          ///< Maximum physical X coordinate of the block.
     double Y_MIN;          ///< Minimum physical Y coordinate of the block.
     double Y_MAX;          ///< Maximum physical Y coordinate of the block.
+    double Z_MIN = 0.0;    ///< Minimum physical Z coordinate of the block.
+    double Z_MAX = 1.0;    ///< Maximum physical Z coordinate of the block.
     std::string BC_L;      ///< Boundary condition type on the left edge.
     std::string BC_R;      ///< Boundary condition type on the right edge.
     std::string BC_B;      ///< Boundary condition type on the bottom edge.
     std::string BC_T;      ///< Boundary condition type on the top edge.
+    std::string BC_F = "TRANSMISSIVE"; ///< Boundary condition type on the front edge.
+    std::string BC_K = "TRANSMISSIVE"; ///< Boundary condition type on the back edge.
 };
 
 /**
@@ -74,12 +80,37 @@ struct Parameters {
     double CFL   = 0.5;               ///< Courant-Friedrichs-Lewy stability safety factor.
     double GAMMA = 1.4;               ///< Specific heat ratio for the ideal gas.
     std::string IC_TYPE = "RIEMANN_2D_C3"; ///< Target physical initial condition profile name.
+    std::string RIEMANN_SOLVER = "HLLC";   ///< Unified Riemann numerical flux solver ("HLLC" or "RUSANOV").
 
     // Freestream (for IC_TYPE = FREESTREAM)
     double RHO_INF = 1.0;             ///< Reference freestream density.
     double U_INF   = 0.0;             ///< Reference freestream X-velocity.
     double V_INF   = 0.0;             ///< Reference freestream Y-velocity.
+    double W_INF   = 0.0;             ///< Reference freestream Z-velocity.
     double P_INF   = 1.0;             ///< Reference freestream pressure.
+
+    // Oblique Shock (for IC_TYPE = OBLIQUE_SHOCK or dynamically calculated BCs)
+    double OBLIQUE_SHOCK_M        = 5.0;  ///< Inflow Mach number for oblique shock.
+    double OBLIQUE_SHOCK_BETA_DEG = 32.0; ///< Oblique shock wave angle in degrees.
+
+    // Shock-Vortex Interaction (for IC_TYPE = SHOCK_VORTEX)
+    double SHOCK_VORTEX_MS = 1.2;     ///< Incident shock Mach number.
+    double SHOCK_VORTEX_MV = 0.25;    ///< Vortex Mach number (strength).
+    double SHOCK_VORTEX_XS = 0.5;     ///< Initial shock X location.
+    double SHOCK_VORTEX_XV = 1.5;     ///< Initial vortex core X location.
+    double SHOCK_VORTEX_YV = 0.0;     ///< Initial vortex core Y location.
+    double SHOCK_VORTEX_RC = 0.2;     ///< Vortex core radius scale.
+
+    // Richtmyer-Meshkov Instability (for IC_TYPE = RICHTMYER_MESHKOV or RMI)
+    double RMI_MS    = 1.5;           ///< Incident shock Mach number.
+    double RMI_RHO1  = 1.0;           ///< Light fluid density (unshocked region 1).
+    double RMI_RHO2  = 3.0;           ///< Heavy fluid density (unshocked region 2).
+    double RMI_XS    = 0.2;           ///< Initial shock X location.
+    double RMI_X0    = 0.5;           ///< Mean interface X location.
+    double RMI_AMP   = 0.05;          ///< Initial perturbation amplitude a0.
+    double RMI_LY    = 1.0;           ///< Perturbation wavelength / domain height Ly.
+    double RMI_SIGMA = 0.01;          ///< Smooth interface transition width.
+
 
     // -------------------------------------------------------------------------
     // Navier-Stokes (Viscous Fluxes)
@@ -106,7 +137,33 @@ struct Parameters {
     bool   USE_PRESSURE_SENSOR = false;      ///< Use local pressure-jump sensor instead of density-gradient.
     bool   USE_MOMENTUM_DIV   = false;       ///< Use divergence of momentum for shock sensor.
     bool   USE_PRESSURE_SOURCE_CAP = true;   ///< Cap the sensor source term by local pressure.
+    bool   USE_PRESSURE_FIELD_CAP  = true;   ///< Cap the resolved entropic pressure field by local pressure.
     double SOURCE_CAP_COEFF   = 1.0;         ///< Tuning coefficient C for pressure-bounded source capping.
+    double IGR_DIVERGENCE_THRESHOLD = 1.0e99; ///< Divergence threshold under which regularizer activates (must be compressive).
+    double IGR_SENSOR_THRESHOLD     = -9.0e99;///< Cutoff threshold for raw sensor magnitude to activate.
+    double IGR_SUB_ITER_TOL         = 0.0;    ///< Convergence tolerance for IGR sub-iterations (0 = inactive, runs lock-step).
+
+    // -------------------------------------------------------------------------
+    // PPR (Phantom Pressure Regularization) & APSR (Anisotropic Phantom Stress)
+    // -------------------------------------------------------------------------
+    bool   ENABLE_PPR                 = false;  ///< Toggle Phantom Pressure Regularization.
+    bool   ENABLE_APSR                = false;  ///< Toggle Anisotropic Phantom Stress Relaxation (APSR-R).
+    std::string PPR_WALL_BC           = "EQUILIBRATED"; ///< Wall BC for phantom pressure: EQUILIBRATED.
+    double PPR_N_CELLS_SHOCK          = 2.5;    ///< Target shock transition width in cell units.
+    double PPR_C_TAU                  = 0.25;   ///< Baseline non-equilibrium relaxation time scale ratio C_tau_base.
+    double PPR_C_POS                  = 0.05;   ///< Lower positivity bound coefficient for regularized pressure.
+    double PPR_C_MAX                  = 2.5;    ///< Upper bound coefficient for regularized pressure.
+    bool   PPR_USE_DUCROS             = true;   // Apply Ducros vorticity shielding in shear layers.
+    bool   PPR_USE_STENCIL_EXPANSION   = true;   ///< Expand theta and C_tau to 1-ring face neighbors.
+    bool   PPR_USE_VON_NEUMANN_CEILING = true;   ///< Apply C_tau_vonNeumann ceiling outside shocks.
+    bool   PPR_USE_LIMITER            = true;   ///< Apply phantom pressure bounds limiter.
+    bool   PPR_CONSTANT_MODE          = false;  ///< Use spatially-uniform user-specified theta and C_tau everywhere.
+    double PPR_CONSTANT_THETA         = 2.0;    ///< Constant coupling intensity theta when PPR_CONSTANT_MODE = true.
+    double PPR_CONSTANT_C_TAU_VAL     = 0.25;   ///< Constant relaxation timescale ratio C_tau when PPR_CONSTANT_MODE = true.
+    double PPR_SENSOR_NOISE_FLOOR     = 0.05;   ///< Acoustic noise floor for kinematic shock sensor.
+    double PPR_SENSOR_SATURATION      = 0.50;   ///< Shock saturation threshold for kinematic shock sensor.
+    double APSR_ALPHA                 = 0.02;   ///< Transverse-to-normal dissipation ratio alpha in [0, 1].
+    double APSR_ETA_BR2               = 2.0;    ///< Penalty factor for APSR BR2 face gradient lifting.
 
     // -------------------------------------------------------------------------
     // Time Stepping & I/O
@@ -114,7 +171,11 @@ struct Parameters {
     double T_FINAL   = 0.3;           ///< Target end time of the simulation.
     double OUTPUT_DT = 0.01;          ///< Deprecated, maps to OUTPUT_INTERVAL.
     double OUTPUT_INTERVAL  = 0.01;   ///< Periodicity of structured grid visual output snapshots (.vts).
+    bool   OUTPUT_DIV_ND    = false;  ///< Output the non-dimensional velocity divergence (div*).
+    bool   OUTPUT_ADAPTIVE_THETA = false;  ///< Output the element-wise adaptive PPR theta field.
     double RESTART_INTERVAL = 0.1;    ///< Periodicity of exact binary restart checkpoints (.vts).
+    int    PLOT_SUB_DIVISIONS = 0;    ///< Number of equidistant sub-element visualization intervals per dimension (0 = auto max(1, P_DEG)).
+    bool   SMOOTH_PLOT_OUTPUTS = true;///< Apply BBCH C0 interface smoothing to exported VTK plot files (.vtu).
     
     // New parameters for diagnostics
     double RESIDUAL_INTERVAL = 0.001; ///< Output time interval for tracking global residual norms.
@@ -129,6 +190,8 @@ struct Parameters {
     bool   ENABLE_POS_LIMITER     = false;  ///< Toggle density/pressure positivity-preserving limiter (Zhang-Shu).
     double POS_LIMITER_EPS        = 1e-10;  ///< Physical cutoff tolerance for density and pressure floors.
     bool   ENABLE_ENTROPY_LIMITER = false;  ///< Toggle high-order specific entropy minimum preservation limiter.
+    double ENTROPY_LIMITER_EPS    = 1e-4;   ///< Offset tolerance for specific entropy limiter (relax violation check).
+    std::string LIMITER_STRATEGY  = "ZHANG_SHU"; ///< Limiter strategy: "ZHANG_SHU", "BBCH", "MODAL", "HERMITE".
 
     // -------------------------------------------------------------------------
     // Immersed Boundary (IB)

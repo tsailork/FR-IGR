@@ -24,6 +24,21 @@ static inline void trim(std::string &s) {
     s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), s.end());
 }
 
+static inline std::vector<double> parse_colon_vector(const std::string& str) {
+    std::vector<double> res;
+    std::stringstream ss(str);
+    std::string token;
+    while (std::getline(ss, token, ':')) {
+        trim(token);
+        if (!token.empty()) {
+            try {
+                res.push_back(std::stod(token));
+            } catch (...) {}
+        }
+    }
+    return res;
+}
+
 std::map<std::string, std::map<std::string, std::string>> Parameters::parse_ini(const std::string& filename) {
     std::map<std::string, std::map<std::string, std::string>> ini;
     std::ifstream file(filename);
@@ -73,21 +88,31 @@ void Parameters::load_domain(const std::string& filename) {
         if (section.find("Block") == 0) {
             BlockConfig b;
             try {
-                b.id = std::stoi(section.substr(5));
+                size_t num_pos = section.find_first_of("0123456789");
+                if (num_pos != std::string::npos) {
+                    b.id = std::stoi(section.substr(num_pos));
+                } else {
+                    continue;
+                }
             } catch (...) {
                 continue; // Skip sections that don't match [BlockN]
             }
 
             b.N_ELEM_X = kv.count("N_ELEM_X") ? std::stoi(kv.at("N_ELEM_X")) : 0;
             b.N_ELEM_Y = kv.count("N_ELEM_Y") ? std::stoi(kv.at("N_ELEM_Y")) : 0;
+            b.N_ELEM_Z = kv.count("N_ELEM_Z") ? std::stoi(kv.at("N_ELEM_Z")) : 1;
             b.X_MIN    = kv.count("X_MIN")    ? std::stod(kv.at("X_MIN"))    : 0.0;
             b.X_MAX    = kv.count("X_MAX")    ? std::stod(kv.at("X_MAX"))    : 1.0;
             b.Y_MIN    = kv.count("Y_MIN")    ? std::stod(kv.at("Y_MIN"))    : 0.0;
             b.Y_MAX    = kv.count("Y_MAX")    ? std::stod(kv.at("Y_MAX"))    : 1.0;
+            b.Z_MIN    = kv.count("Z_MIN")    ? std::stod(kv.at("Z_MIN"))    : 0.0;
+            b.Z_MAX    = kv.count("Z_MAX")    ? std::stod(kv.at("Z_MAX"))    : 1.0;
             b.BC_L     = kv.count("BC_L")     ? kv.at("BC_L")                : "TRANSMISSIVE";
             b.BC_R     = kv.count("BC_R")     ? kv.at("BC_R")                : "TRANSMISSIVE";
             b.BC_B     = kv.count("BC_B")     ? kv.at("BC_B")                : "TRANSMISSIVE";
             b.BC_T     = kv.count("BC_T")     ? kv.at("BC_T")                : "TRANSMISSIVE";
+            b.BC_F     = kv.count("BC_F")     ? kv.at("BC_F")                : "TRANSMISSIVE";
+            b.BC_K     = kv.count("BC_K")     ? kv.at("BC_K")                : "TRANSMISSIVE";
             
             blocks.push_back(b);
         }
@@ -97,6 +122,27 @@ void Parameters::load_domain(const std::string& filename) {
     std::sort(blocks.begin(), blocks.end(), [](const BlockConfig& a, const BlockConfig& b){
         return a.id < b.id;
     });
+
+    if (blocks.size() > 511) {
+        std::cerr << "[Error] Number of blocks (" << blocks.size() << ") exceeds the maximum supported by Morton scheme (511).\n";
+        std::exit(EXIT_FAILURE);
+    }
+
+    for (const auto& b : blocks) {
+        if (b.N_ELEM_Z > 1) {
+            if (b.N_ELEM_X > 63 || b.N_ELEM_Y > 63 || b.N_ELEM_Z > 63) {
+                std::cerr << "[Error] Block " << b.id << " dimensions (" << b.N_ELEM_X << "x" << b.N_ELEM_Y << "x" << b.N_ELEM_Z
+                          << ") exceed the maximum supported by 3D Morton scheme (63x63x63).\n";
+                std::exit(EXIT_FAILURE);
+            }
+        } else {
+            if (b.N_ELEM_X > 2047 || b.N_ELEM_Y > 2047) {
+                std::cerr << "[Error] Block " << b.id << " dimensions (" << b.N_ELEM_X << "x" << b.N_ELEM_Y 
+                          << ") exceed the maximum supported by 2D Morton scheme (2047x2047).\n";
+                std::exit(EXIT_FAILURE);
+            }
+        }
+    }
 
     // Validation pass
     for (const auto& b : blocks) {
@@ -177,7 +223,24 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("RHO_INF")) RHO_INF = std::stod(kv["RHO_INF"]);
         if (kv.count("U_INF"))   U_INF   = std::stod(kv["U_INF"]);
         if (kv.count("V_INF"))   V_INF   = std::stod(kv["V_INF"]);
+        if (kv.count("W_INF"))   W_INF   = std::stod(kv["W_INF"]);
         if (kv.count("P_INF"))   P_INF   = std::stod(kv["P_INF"]);
+        if (kv.count("OBLIQUE_SHOCK_M"))        OBLIQUE_SHOCK_M        = std::stod(kv["OBLIQUE_SHOCK_M"]);
+        if (kv.count("OBLIQUE_SHOCK_BETA_DEG")) OBLIQUE_SHOCK_BETA_DEG = std::stod(kv["OBLIQUE_SHOCK_BETA_DEG"]);
+        if (kv.count("SHOCK_VORTEX_MS")) SHOCK_VORTEX_MS = std::stod(kv["SHOCK_VORTEX_MS"]);
+        if (kv.count("SHOCK_VORTEX_MV")) SHOCK_VORTEX_MV = std::stod(kv["SHOCK_VORTEX_MV"]);
+        if (kv.count("SHOCK_VORTEX_XS")) SHOCK_VORTEX_XS = std::stod(kv["SHOCK_VORTEX_XS"]);
+        if (kv.count("SHOCK_VORTEX_XV")) SHOCK_VORTEX_XV = std::stod(kv["SHOCK_VORTEX_XV"]);
+        if (kv.count("SHOCK_VORTEX_YV")) SHOCK_VORTEX_YV = std::stod(kv["SHOCK_VORTEX_YV"]);
+        if (kv.count("SHOCK_VORTEX_RC")) SHOCK_VORTEX_RC = std::stod(kv["SHOCK_VORTEX_RC"]);
+        if (kv.count("RMI_MS"))    RMI_MS    = std::stod(kv["RMI_MS"]);
+        if (kv.count("RMI_RHO1"))  RMI_RHO1  = std::stod(kv["RMI_RHO1"]);
+        if (kv.count("RMI_RHO2"))  RMI_RHO2  = std::stod(kv["RMI_RHO2"]);
+        if (kv.count("RMI_XS"))    RMI_XS    = std::stod(kv["RMI_XS"]);
+        if (kv.count("RMI_X0"))    RMI_X0    = std::stod(kv["RMI_X0"]);
+        if (kv.count("RMI_AMP"))   RMI_AMP   = std::stod(kv["RMI_AMP"]);
+        if (kv.count("RMI_LY"))    RMI_LY    = std::stod(kv["RMI_LY"]);
+        if (kv.count("RMI_SIGMA")) RMI_SIGMA = std::stod(kv["RMI_SIGMA"]);
     }
 
     // --- [Solver] ---
@@ -189,6 +252,7 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("NUM_THREADS")) NUM_THREADS = std::stoi(kv["NUM_THREADS"]);
         if (kv.count("ENABLE_MULTIRATE")) ENABLE_MULTIRATE = (kv["ENABLE_MULTIRATE"] == "true" || kv["ENABLE_MULTIRATE"] == "1");
         if (kv.count("MAX_MULTIRATE_LEVEL")) MAX_MULTIRATE_LEVEL = std::stoi(kv["MAX_MULTIRATE_LEVEL"]);
+        if (kv.count("RIEMANN_SOLVER")) RIEMANN_SOLVER = kv["RIEMANN_SOLVER"];
     }
 
     // --- [Regularization] ---
@@ -205,7 +269,42 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("USE_PRESSURE_SENSOR")) USE_PRESSURE_SENSOR = (kv["USE_PRESSURE_SENSOR"] == "true" || kv["USE_PRESSURE_SENSOR"] == "1");
         if (kv.count("USE_MOMENTUM_DIV"))  USE_MOMENTUM_DIV  = (kv["USE_MOMENTUM_DIV"] == "true" || kv["USE_MOMENTUM_DIV"] == "1");
         if (kv.count("USE_PRESSURE_SOURCE_CAP")) USE_PRESSURE_SOURCE_CAP = (kv["USE_PRESSURE_SOURCE_CAP"] == "true" || kv["USE_PRESSURE_SOURCE_CAP"] == "1");
+        if (kv.count("USE_PRESSURE_FIELD_CAP"))  USE_PRESSURE_FIELD_CAP  = (kv["USE_PRESSURE_FIELD_CAP"] == "true" || kv["USE_PRESSURE_FIELD_CAP"] == "1");
         if (kv.count("SOURCE_CAP_COEFF"))  SOURCE_CAP_COEFF  = std::stod(kv["SOURCE_CAP_COEFF"]);
+        if (kv.count("IGR_DIVERGENCE_THRESHOLD")) IGR_DIVERGENCE_THRESHOLD = std::stod(kv["IGR_DIVERGENCE_THRESHOLD"]);
+        if (kv.count("IGR_SENSOR_THRESHOLD"))     IGR_SENSOR_THRESHOLD     = std::stod(kv["IGR_SENSOR_THRESHOLD"]);
+        if (kv.count("IGR_SUB_ITER_TOL"))         IGR_SUB_ITER_TOL         = std::stod(kv["IGR_SUB_ITER_TOL"]);
+    }
+
+    // --- [PPR] / [APSR] ---
+    if (ini.count("PPR")) {
+        auto& kv = ini["PPR"];
+        if (kv.count("ENABLE_PPR"))        ENABLE_PPR        = (kv["ENABLE_PPR"] == "true" || kv["ENABLE_PPR"] == "1");
+        if (kv.count("ENABLE_APSR"))       ENABLE_APSR       = (kv["ENABLE_APSR"] == "true" || kv["ENABLE_APSR"] == "1");
+        if (kv.count("PPR_N_CELLS_SHOCK")) PPR_N_CELLS_SHOCK = std::stod(kv["PPR_N_CELLS_SHOCK"]);
+        if (kv.count("PPR_C_TAU"))         PPR_C_TAU         = std::stod(kv["PPR_C_TAU"]);
+        if (kv.count("PPR_C_POS"))         PPR_C_POS         = std::stod(kv["PPR_C_POS"]);
+        if (kv.count("PPR_C_MAX"))         PPR_C_MAX         = std::stod(kv["PPR_C_MAX"]);
+        if (kv.count("PPR_USE_DUCROS"))    PPR_USE_DUCROS    = (kv["PPR_USE_DUCROS"] == "true" || kv["PPR_USE_DUCROS"] == "1");
+        if (kv.count("PPR_USE_DUCROS_SENSOR")) PPR_USE_DUCROS = (kv["PPR_USE_DUCROS_SENSOR"] == "true" || kv["PPR_USE_DUCROS_SENSOR"] == "1");
+        if (kv.count("PPR_USE_STENCIL_EXPANSION"))   PPR_USE_STENCIL_EXPANSION   = (kv["PPR_USE_STENCIL_EXPANSION"] == "true" || kv["PPR_USE_STENCIL_EXPANSION"] == "1");
+        if (kv.count("PPR_USE_VON_NEUMANN_CEILING")) PPR_USE_VON_NEUMANN_CEILING = (kv["PPR_USE_VON_NEUMANN_CEILING"] == "true" || kv["PPR_USE_VON_NEUMANN_CEILING"] == "1");
+        if (kv.count("PPR_USE_LIMITER"))             PPR_USE_LIMITER             = (kv["PPR_USE_LIMITER"] == "true" || kv["PPR_USE_LIMITER"] == "1");
+        if (kv.count("PPR_CONSTANT_MODE"))           PPR_CONSTANT_MODE           = (kv["PPR_CONSTANT_MODE"] == "true" || kv["PPR_CONSTANT_MODE"] == "1");
+        if (kv.count("PPR_CONSTANT_THETA"))          PPR_CONSTANT_THETA          = std::stod(kv["PPR_CONSTANT_THETA"]);
+        if (kv.count("PPR_CONSTANT_C_TAU_VAL"))      PPR_CONSTANT_C_TAU_VAL      = std::stod(kv["PPR_CONSTANT_C_TAU_VAL"]);
+        if (kv.count("PPR_SENSOR_NOISE_FLOOR"))      PPR_SENSOR_NOISE_FLOOR      = std::stod(kv["PPR_SENSOR_NOISE_FLOOR"]);
+        if (kv.count("PPR_SENSOR_SATURATION"))       PPR_SENSOR_SATURATION       = std::stod(kv["PPR_SENSOR_SATURATION"]);
+        if (kv.count("APSR_ALPHA"))                  APSR_ALPHA                  = std::stod(kv["APSR_ALPHA"]);
+        if (kv.count("APSR_ETA_BR2"))                APSR_ETA_BR2                = std::stod(kv["APSR_ETA_BR2"]);
+    }
+
+    if (ini.count("APSR")) {
+        auto& kv = ini["APSR"];
+        if (kv.count("ENABLE_APSR"))                 ENABLE_APSR                 = (kv["ENABLE_APSR"] == "true" || kv["ENABLE_APSR"] == "1");
+        if (kv.count("APSR_ALPHA"))                  APSR_ALPHA                  = std::stod(kv["APSR_ALPHA"]);
+        if (kv.count("APSR_ETA_BR2"))                APSR_ETA_BR2                = std::stod(kv["APSR_ETA_BR2"]);
+        if (kv.count("APSR_USE_DUCROS"))             PPR_USE_DUCROS              = (kv["APSR_USE_DUCROS"] == "true" || kv["APSR_USE_DUCROS"] == "1");
     }
 
     // --- [Stabilization] ---
@@ -214,6 +313,8 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("ENABLE_POS_LIMITER"))     ENABLE_POS_LIMITER     = (kv["ENABLE_POS_LIMITER"] == "true" || kv["ENABLE_POS_LIMITER"] == "1");
         if (kv.count("POS_LIMITER_EPS"))        POS_LIMITER_EPS        = std::stod(kv["POS_LIMITER_EPS"]);
         if (kv.count("ENABLE_ENTROPY_LIMITER")) ENABLE_ENTROPY_LIMITER = (kv["ENABLE_ENTROPY_LIMITER"] == "true" || kv["ENABLE_ENTROPY_LIMITER"] == "1");
+        if (kv.count("ENTROPY_LIMITER_EPS"))    ENTROPY_LIMITER_EPS    = std::stod(kv["ENTROPY_LIMITER_EPS"]);
+        if (kv.count("LIMITER_STRATEGY"))       LIMITER_STRATEGY       = kv["LIMITER_STRATEGY"];
     }
 
     // --- [NavierStokes] ---
@@ -236,12 +337,16 @@ void Parameters::load_inputs(const std::string& filename) {
             OUTPUT_INTERVAL = OUTPUT_DT;
         }
         if (kv.count("OUTPUT_INTERVAL"))   OUTPUT_INTERVAL  = std::stod(kv["OUTPUT_INTERVAL"]);
+        if (kv.count("OUTPUT_DIV_ND"))     OUTPUT_DIV_ND    = (kv["OUTPUT_DIV_ND"] == "true" || kv["OUTPUT_DIV_ND"] == "1");
+        if (kv.count("OUTPUT_ADAPTIVE_THETA")) OUTPUT_ADAPTIVE_THETA = (kv["OUTPUT_ADAPTIVE_THETA"] == "true" || kv["OUTPUT_ADAPTIVE_THETA"] == "1");
         if (kv.count("RESTART_INTERVAL"))  RESTART_INTERVAL = std::stod(kv["RESTART_INTERVAL"]);
+        if (kv.count("PLOT_SUB_DIVISIONS") && !kv["PLOT_SUB_DIVISIONS"].empty()) PLOT_SUB_DIVISIONS = std::stoi(kv["PLOT_SUB_DIVISIONS"]);
         if (kv.count("RESIDUAL_INTERVAL")) RESIDUAL_INTERVAL = std::stod(kv["RESIDUAL_INTERVAL"]);
         if (kv.count("PROBE_INTERVAL"))    PROBE_INTERVAL    = std::stod(kv["PROBE_INTERVAL"]);
         if (kv.count("PRINT_INTERVAL"))    PRINT_INTERVAL    = std::stod(kv["PRINT_INTERVAL"]);
         if (kv.count("RESTART_FILE"))      RESTART_FILE      = kv["RESTART_FILE"];
-        if (kv.count("RESTART_TIME"))      RESTART_TIME      = std::stod(kv["RESTART_TIME"]);
+        if (kv.count("RESTART_TIME") && !kv["RESTART_TIME"].empty())      RESTART_TIME      = std::stod(kv["RESTART_TIME"]);
+        if (kv.count("SMOOTH_PLOT_OUTPUTS")) SMOOTH_PLOT_OUTPUTS = (kv["SMOOTH_PLOT_OUTPUTS"] == "true" || kv["SMOOTH_PLOT_OUTPUTS"] == "1");
     }
 
     // --- [TreeDecomposition] ---
@@ -398,10 +503,18 @@ void Parameters::load_inputs(const std::string& filename) {
                 trim(token);
                 tokens.push_back(token);
             }
-            if (tokens.size() == 3) {
+            if (tokens.size() == 4) {
                 ProbeDef p;
                 p.x = std::stod(tokens[0]);
                 p.y = std::stod(tokens[1]);
+                p.z = std::stod(tokens[2]);
+                p.variable = tokens[3];
+                probes.push_back(p);
+            } else if (tokens.size() == 3) {
+                ProbeDef p;
+                p.x = std::stod(tokens[0]);
+                p.y = std::stod(tokens[1]);
+                p.z = 0.0;
                 p.variable = tokens[2];
                 probes.push_back(p);
             } else {

@@ -1,6 +1,5 @@
 var searchData=
 [
-  ['w_0',['w',['../struct_basis.html#af3c486aa4edda272bf361774fabde8d7',1,'Basis']]],
-  ['wall_5ftemperature_1',['wall_temperature',['../struct_neighbor_info.html#ab2fa29f3d8da28ef4c816e1bcecebe89',1,'NeighborInfo']]],
-  ['wall_5fvelocity_2',['wall_velocity',['../struct_neighbor_info.html#a90b39b33e66c00c91be1e3aa5a8e8e37',1,'NeighborInfo']]]
+  ['v_5finf_0',['V_INF',['../structParameters.html#ac91504e4c85d6033e19e2d6202f9f66e',1,'Parameters']]],
+  ['variable_1',['variable',['../structProbeDef.html#a2daf3432aac4181d8d3866fd9f598098',1,'ProbeDef']]]
 ];

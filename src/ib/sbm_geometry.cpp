@@ -191,32 +191,12 @@ void initialize_sbm_geometry(Solver& solver) {
         //   - Their state is set to the freestream conserved variables.
         //   - compute_rhs() will zero their RHS so they are never updated.
         // ----------------------------------------------------------------
-        b.solid_mask.assign(b.ny * b.nx, false);
-
         // Freestream conserved state
         const double gm1   = solver.p.GAMMA - 1.0;
         const double rho_f = solver.p.RHO_INF;
-        const double rhou_f = rho_f * solver.p.U_INF;
-        const double rhov_f = rho_f * solver.p.V_INF;
         const double E_f   = solver.p.P_INF / gm1
                            + 0.5 * rho_f * (solver.p.U_INF * solver.p.U_INF
                                            + solver.p.V_INF * solver.p.V_INF);
-
-        for (int ey = 0; ey < b.ny; ++ey) {
-            for (int ex = 0; ex < b.nx; ++ex) {
-                if (fully_solid[ey][ex]) {
-                    b.solid_mask[ey * b.nx + ex] = true;
-                    // Override all DOFs to freestream
-                    for (int iy = 0; iy < solver.p.N_PTS; ++iy)
-                        for (int ix = 0; ix < solver.p.N_PTS; ++ix) {
-                            b.U(0, ey, ex, iy, ix) = rho_f;
-                            b.U(1, ey, ex, iy, ix) = 0.0;
-                            b.U(2, ey, ex, iy, ix) = 0.0;
-                            b.U(3, ey, ex, iy, ix) = E_f;
-                        }
-                }
-            }
-        }
 
         // Map solid mask and freestream override to cells
         for (Cell* c : solver.cells) {
@@ -578,6 +558,39 @@ void compute_sbm_state(const Solver& solver, const SurrogateFluxPoint* sfp, doub
         #pragma omp atomic
         current_sbm_diags.limiter_count++;
         u_sb[3] = solver.p.POS_LIMITER_EPS / (solver.p.GAMMA - 1.0) + 0.5 * (u_sb[1]*u_sb[1] + u_sb[2]*u_sb[2]) / u_sb[0];
+    }
+}
+
+void initialize_sbm_geometry(SolverDim<3>& solver) {
+    if (!solver.p.ENABLE_IB || solver.p.IB_METHOD != "SBM") {
+        sbm_registry.clear();
+        return;
+    }
+    sbm_registry.clear();
+}
+
+void compute_sbm_state(const SolverDim<3>& solver, const SurrogateFluxPoint* sfp, double u_sb[5]) {
+    for (int v = 0; v < 5; ++v) u_sb[v] = 0.0;
+    if (!sfp) return;
+
+    for (size_t k = 0; k < sfp->donor_points.size(); ++k) {
+        const auto& dp = sfp->donor_points[k];
+        double w = (k < sfp->l_weights.size()) ? sfp->l_weights[k] : 0.0;
+        if (dp.b_id >= 0 && dp.b_id < (int)solver.block_cells.size()) {
+            Cell3D* c = solver.find_leaf_cell(dp.b_id, dp.xi, dp.eta, 0.0);
+            if (c) {
+                int npts3 = solver.p.N_PTS * solver.p.N_PTS * solver.p.N_PTS;
+                for (int v = 0; v < 5; ++v) {
+                    u_sb[v] += w * c->U[v * npts3];
+                }
+            }
+        }
+    }
+
+    if (u_sb[0] < solver.p.POS_LIMITER_EPS) u_sb[0] = solver.p.POS_LIMITER_EPS;
+    double press = (solver.p.GAMMA - 1.0) * (u_sb[4] - 0.5 * (u_sb[1]*u_sb[1] + u_sb[2]*u_sb[2] + u_sb[3]*u_sb[3]) / u_sb[0]);
+    if (press < solver.p.POS_LIMITER_EPS) {
+        u_sb[4] = solver.p.POS_LIMITER_EPS / (solver.p.GAMMA - 1.0) + 0.5 * (u_sb[1]*u_sb[1] + u_sb[2]*u_sb[2] + u_sb[3]*u_sb[3]) / u_sb[0];
     }
 }
 

@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['limiters_0',['Limiters',['../namespace_limiters.html',1,'']]]
+  ['ic_0',['IC',['../namespaceIC.html',1,'']]],
+  ['immersedboundary_1',['ImmersedBoundary',['../namespaceImmersedBoundary.html',1,'']]]
 ];

@@ -1,14 +1,20 @@
 var searchData=
 [
-  ['s_5fbuf_0',['S_buf',['../struct_block.html#aa0111727bd1bbe7ae9b07d7c899e48db',1,'Block']]],
-  ['sbm_5flookup_1',['sbm_lookup',['../namespace_immersed_boundary.html#a83eb068a9933290602e1f98d149042f9',1,'ImmersedBoundary']]],
-  ['sbm_5fnonphysical_5fcount_2',['sbm_nonphysical_count',['../class_solver.html#a362c7a4078357ccb8c12955014f9728e',1,'Solver']]],
-  ['sbm_5fregistry_3',['sbm_registry',['../namespace_immersed_boundary.html#ad50c2243453f27d54b776be5cfaeda60',1,'ImmersedBoundary']]],
-  ['side_4',['side',['../struct_immersed_boundary_1_1_parabola_shape.html#a23d8d25d634d3e53c1fc3c0943921c71',1,'ImmersedBoundary::ParabolaShape']]],
-  ['sigma_5ffield_5',['sigma_field',['../struct_block.html#a76f30c9ca05674b0be2ed97ec2e0ff15',1,'Block']]],
-  ['sigma_5frhs_6',['sigma_RHS',['../struct_block.html#aa77cebd04f58e4e812607addabea9be4',1,'Block']]],
-  ['sigma_5fxy_5fbuf_7',['sigma_xy_buf',['../struct_block.html#af4673c26fd13770f0eef76834e82f3b6',1,'Block']]],
-  ['sigma_5fyx_5fbuf_8',['sigma_yx_buf',['../struct_block.html#ab6cb334f76a64fe54a0640205042843d',1,'Block']]],
-  ['solid_5fmask_9',['solid_mask',['../struct_block.html#a47b88c2d44c22cbc97df90206704ceb9',1,'Block']]],
-  ['sum_5ftheta_10',['sum_theta',['../struct_limiters_1_1_limiter_stats.html#a4ed9a2b36630d9cfa09308a6d04c2c02',1,'Limiters::LimiterStats']]]
+  ['r_0',['r',['../structGeometry_1_1Circle.html#a91dfaeec6e9350eb42ed4f073e15ab41',1,'Geometry::Circle']]],
+  ['r1_1',['R1',['../structBasis.html#ac79a58d8fb22ad7f87fd5a9fdcf93d31',1,'Basis']]],
+  ['r2_2',['R2',['../structBasis.html#a6207c1727841033df0655d4c05a89666',1,'Basis']]],
+  ['radius_3',['radius',['../structParameters_1_1RefinementZone.html#a5fbb4a67c89a7d08b7ade8577cb1a896',1,'Parameters::RefinementZone']]],
+  ['re_4',['RE',['../structParameters.html#a199a831da1cf52741dca28db20e4d943',1,'Parameters']]],
+  ['ref_5fp_5',['ref_p',['../structNeighborInfo.html#acab04aa270e900dd495e61b9a529d2c3',1,'NeighborInfo']]],
+  ['ref_5frho_6',['ref_rho',['../structNeighborInfo.html#a78e9c359b249166b9277289e03048903',1,'NeighborInfo']]],
+  ['ref_5fu_7',['ref_u',['../structNeighborInfo.html#a60cb009de6683144ef8b74b1da2f5102',1,'NeighborInfo']]],
+  ['ref_5fv_8',['ref_v',['../structNeighborInfo.html#a43430107ebefd7aba9114d26b89d62c6',1,'NeighborInfo']]],
+  ['refine_9',['refine',['../structNeighborInfo.html#a23972c6865c38ce0a9926436be1b353e',1,'NeighborInfo']]],
+  ['refinement_5fzones_10',['refinement_zones',['../structParameters.html#a17e30a5b5b6682f342b059de51de2f8e',1,'Parameters']]],
+  ['residual_5finterval_11',['RESIDUAL_INTERVAL',['../structParameters.html#a5e043aac29119176d9530e16bd4f1715',1,'Parameters']]],
+  ['restart_5ffile_12',['RESTART_FILE',['../structParameters.html#a79c0ab15579a822794e725e8d71836a2',1,'Parameters']]],
+  ['restart_5finterval_13',['RESTART_INTERVAL',['../structParameters.html#a2bce3891bb00d5a544f7f59a8b7194b9',1,'Parameters']]],
+  ['restart_5ftime_14',['RESTART_TIME',['../structParameters.html#a44fc90cac9242bb8bed48e4762654f21',1,'Parameters']]],
+  ['rho_5finf_15',['RHO_INF',['../structParameters.html#a73d295d61fd23756f5857f09c745a4dd',1,'Parameters']]],
+  ['rhs_16',['RHS',['../structCell.html#a929882fd5ddc15aa4e37188affeda9f2',1,'Cell::RHS'],['../structBlock.html#a6e0f9d07ecc510d0a643c034430b91da',1,'Block::RHS']]]
 ];

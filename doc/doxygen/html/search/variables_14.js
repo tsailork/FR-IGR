@@ -1,8 +1,9 @@
 var searchData=
 [
-  ['x_0',['x',['../struct_probe_def.html#a3bd10cca1dc52bf3596c794cb6fd6665',1,'ProbeDef::x'],['../struct_immersed_boundary_1_1_quad_shape.html#aa65fb865f770037a894f91c152fdbb4e',1,'ImmersedBoundary::QuadShape::x']]],
-  ['x_5fmax_1',['X_MAX',['../struct_block_config.html#a4ab9f23176dcc49b361ef36c5e66220f',1,'BlockConfig']]],
-  ['x_5fmin_2',['X_MIN',['../struct_block_config.html#a8581eec8c8669de74b0e214484f0dadd',1,'BlockConfig']]],
-  ['x_5fmin_3',['x_min',['../struct_block.html#a0d61068c06302f46b4f32422cb15bcff',1,'Block']]],
-  ['xi_4',['xi',['../struct_immersed_boundary_1_1_donor_point.html#abdc508c5c71fbe997df19a3966180d1b',1,'ImmersedBoundary::DonorPoint']]]
+  ['w_0',['w',['../structBasis.html#af3c486aa4edda272bf361774fabde8d7',1,'Basis']]],
+  ['wall_5frefinement_5fcells_1',['WALL_REFINEMENT_CELLS',['../structParameters.html#ae8d9eaadc1f2564de54ecff5aa50a768',1,'Parameters']]],
+  ['wall_5frefinement_5flevel_2',['WALL_REFINEMENT_LEVEL',['../structParameters.html#a04992a23800aebd1c800bda17c8866c0',1,'Parameters']]],
+  ['wall_5ftemperature_3',['wall_temperature',['../structNeighborInfo.html#ab2fa29f3d8da28ef4c816e1bcecebe89',1,'NeighborInfo']]],
+  ['wall_5fvelocity_4',['wall_velocity',['../structNeighborInfo.html#a90b39b33e66c00c91be1e3aa5a8e8e37',1,'NeighborInfo']]],
+  ['width_5',['width',['../structParameters_1_1RefinementZone.html#aab7d8fbf25fe48fdc6433de8e4f5ac0e',1,'Parameters::RefinementZone']]]
 ];

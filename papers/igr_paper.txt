@@ -1,0 +1,2361 @@
+INFORMATION GEOMETRIC REGULARIZATION
+OF THE BAROTROPIC EULER EQUATION
+
+arXiv:2308.14127v5 [math.NA] 1 Mar 2026
+
+RUIJIA CAO∗ AND FLORIAN SCHÄFER†
+Abstract. Shock waves in gas dynamics feature jump discontinuities that hinder numerical simulations. Viscous regularizations are prone to excessive dissipation of ne-scale structures. In this
+work, we propose the rst inviscid regularization of the multidimensional Euler equation based on
+ideas from semidenite programming, information geometry, geometric hydrodynamics, and nonlinear elasticity. The Lagrangian ow maps of Euler solutions are a dynamical system on the manifold
+of dieomorphisms. We observe that shock formation arises from the manifold’s geodesic incompleteness. Our regularization embeds it into an ambient space equipped with the information geometry
+of the logarithmic barrier function. Thus, the dieomorphism manifold inherits a geodesically complete geometry. The resulting regularized conservation law replaces shocks with smooth proles
+without aecting oscillatory structures. One and two-dimensional numerical experiments show its
+practical potential to enable higher-order methods without explicit shock capturing. While we focus
+on the barotropic Euler equations for concreteness and simplicity of exposition, our regularization
+easily extends to more general Euler and Navier-Stokes-type equations. Our approach regularizes
+the Wasserstein geometry of the mass density with its information geometry. The former captures
+the natural trajectories of physical particles and the latter that of statistical estimators. Information
+geometric regularization accounts for the mass density’s dual nature as a statistical/computational
+tool summarizing the motion of physical particles. Thus, our work is a starting point for 
+  that views solutions of continuum mechanical PDEs as parameters of statistical
+models for unresolved scales and uses their information geometry to evolve them in time.
+Key words. Compressible ow, shock waves, interior point methods, information geometry,
+inviscid regularization, geometric hydrodynamics, nonlinear elasticity
+MSC codes. 35L65, 76L05, 65M25, 76J20, 58B20
+
+1. Introduction.
+1.1. The problem. This work is concerned with the treatment of shocks in
+computational gas dynamics. Virtually all high-speed gas ows experience a steepening of wavefronts over time, due to faster upstream gas particles catching up to slower
+downstream ones. Viscous forces ensure the smoothness wavefronts on microscopic
+scales of the order of the mean free path of the gas particles [59]. But on the scale
+of any practical computational mesh, wave steepening results in discontinuities of the
+velocity and density elds, known as shocks. This work addresses the fundamental
+challenge of shock capturing by designing a regularized PDE model that coarse-grains
+the eect of the shock while minimizing dissipative and dispersive errors.
+The barotropic Euler equation of gas dynamics serves as our model problem
+→
+ρu
+ρu ⊗ u + P ρI
+f
+) = ( ).
+(1.1)
+∂t ( ) + div (
+ρ
+ρu
+0
+→
+
+Here, div denotes the row-wise divergence, ux, t the velocity of a gas particle passing
+through a point x at time t, and ρx, t the gas density in x at t. Thus, the momentum
+density in a point x ∈ d at time t is µx, t = ρx, tux, t . The pressure P depends
+only on the density and f denotes external forces acting on the gas. We choose (1.1)
+for simplicity of exposition, but our approach is not limited to it.
+Vanishing viscosity solutions and entropy conditions. Shock formation in
+Euler’s equations was proved for a wide range of ows [82, 30, 28, 31, 29]. Shock waves
+∗
+†
+
+Center for Applied Mathematics, Cornell University (rc948@cornell.edu).
+Courant Institute of Mathematical Sciences, New York University (orian.schaefer@nyu.edu).
+1
+
+2
+
+RUIJIA CAO AND FLORIAN SCHÄFER
+
+Low Viscosity
+
+Medium Viscosity
+
+u
+
+High Viscosity
+
+0
+
+→
+time
+
+Fig. 1: Vanishing viscosity solutions. Solutions with shocks are dened by vanishing viscosity limits. For nite viscosity, the solution smoothes out over time.
+preclude long-time existence of classical solutions to (1.1). The canonical solution
+concept are limits of solutions with vanishing viscous regularization [49](see Figure 1).
+They are also characterized by entropy conditions (see, e.g. [62]).
+1.2. Existing approaches.
+Localized viscosity. Naive approaches for computing vanishing viscosity solutions require a mesh width proportional to the viscosity, causing excessive computational cost or energy dissipation. Instead, numerous methods add viscosity adaptively,
+governed by so-called shock sensors [85, 75, 34, 41, 67, 11, 48, 20, 38].
+Purely numerical remedies emphasize the avoidance of Gibbs oscillations encountered by high-order schemes near shocks using limiters that reduce the approximation order at the shock [84, 77, 65, 51, 81]. The numerical dissipation of low-order
+methods result in behavior similar to localized viscosity. However, a downside of
+these methods is the absence of a well-dened PDE. For instance, stencil-switching
+and slope limiters introduce errors in the derivatives of the solution with respect to
+problem parameters [17, 66].
+Inviscid PDE-based regularization. A third line of work searches for invsicid
+PDE-based regularizations. First attempts based on [61] failed to capture the correct
+shock speeds of the Euler equations, making them unsuitable for most applications
+[16, 15, 14]. The inviscid regularizations of [32, 46] maintain the correct shock speed
+but are limited to unidimensional problems and can still form singularities [74, 47].
+1.3. This work presents the rst inviscid regularization of Euler-like equations.
+Interior point methods for Euler. For vanishing P, f , (1.1) is solvable by
+tracking characteristic curves — trajectories of uid particles. Shocks form when particles collide and merge inelastically. Equivalently, particle trajectories are minimizers
+of a variational problem with a non-crossing constraint. This work modies characteristics to follow solution paths of interior point methods dened by a barrier ψ [69].
+This ensures strict feasibility (shock avoidance) while preserving long-time behavior.
+Information geometry on dieomorphism manifolds. To make this idea
+precise, we use the fact that solution paths of interior point methods are dual geodesics
+in the information geometry dened by ψ [2, 1]. Collectively, characteristics describe
+geodesics on dieomorphism manifolds [8, 39, 57, 58]. Our regularization replaces
+them with dual geodesics in the information geometry of ψ (see (3.2) and (5.2) for the
+denition of ψ). Adding forces due to f , P and returning to a Eulerian description
+
+3
+
+INFORMATION GEOMETRIC REGULARIZATION
+
+Perspective
+
+Trajectories,
+Subsection 2.2
+
+Shock
+formation
+
+Particles
+collide.
+
+Entropy
+condition
+
+Particles stick
+to each other
+
+Dieomorphism,
+Subsection 2.3
+Flow maps reach
+the manifold’s
+boundary.
+Flow maps stick
+to the manifold’s
+boundary
+
+Transport,
+Subsection 2.4
+Pushforward
+measure
+forms atoms.
+Formation of
+atoms is never
+undone.
+
+Optimization,
+Subsection 2.5
+Monotonicity
+constraint
+activates.
+Firstorder/KKT
+conditions.
+
+Table 1: Four perspectives on unidimensional pressureless shock formation.
+
+yields the regularized Euler equation (dening the Jacobian matrix Duij ∶= ∂j ui ),
+
+⎧
+⎛ρu⎞ → ⎛ρu ⊗ u + P ρ + Σ I⎞ ⎛f ⎞
+⎪
+⎪
+⎪
+=
++ div
+⎪∂t
+⎨ ⎝ρ⎠
+(1.2)
+⎠ ⎝0⎠
+⎝
+ρu
+⎪
+⎪
+⎪
+−1
+−1
+2
+2
+⎪
+⎩ρ Σ − α divρ ∇Σ = α tr Du + tr Du  .
+This work focuses on the barotropic Euler equations for concreteness and to simplify
+the exposition. But one can easily derive extensions to general Euler and NavierStokes-type equations by adding the entropic pressure Σ to the mechanical pressure
+P . This has recently enabled compressible
+ow simulations at unprecedented scale
+√
+[86]. By choosing the parameter α proportional to the mesh size, the elliptic problem
+dening Σ in (1.2) is solvable by a constant number of Jacobi or Gauss-Seidel sweeps.
+Two sweeps per ux computation suce in practice, at negligible computational cost.
+2. Background: Four perspectives on shock formation.
+2.1. Model problem: The unidimensional pressureless case. The unidimensional pressureless case of (1.1), with P, f ≡ 0 and domain , is
+
+ρu
+ρu2
+0
+(2.1) ∂t ( ) + ∂x (
+) = ( ) , with initial conditions ρ⋅, 0 ≡ 1 and u⋅, 0 ≡ u0 ⋅.
+ρ
+ρu
+0
+
+Smooth solutions of (2.1) describe the inertial movement of noninteracting particles.
+We will now discuss four closely related perspectives on shock formation in this system
+as summarized in Table 1. We solve (2.1) by tracking particle trajectories. This approach coincides with the method of characteristics [40]. For initial conditions u⋅, 0
+we dene a family of curves indexed by x ∈ as t ↦ Φt x ∶= x + tu0 x⟫x∈ . Without
+particle interactions, t ↦ Φt x is the position at time t of the particle initially located
+at x, and Φ̇t x is its derivative. We obtain the velocity uy, t in position x at time t
+by tracing the particle passing through y at time t back to its initial position x at time
+0. Likewise, we determine the density ρy, t by measuring whether nearby particles
+tend to disperse or accumulate, which is reected by the spatial derivative ∂x Φt x.
+This yields the explicit solution
+(Φt (x), t)
+(Φt (x), t)
+t
+t
+(2.2)
+uΦt x, t
+u0 x
+(
+) ∶= (
+).
+ρΦt x, t
+∂x Φt x−1
+Fig. 2: Solution by particletracing. Tracing trajectories to
+the initial condition provides u.
+Computing their dispersion or
+convervence yields ρ.
+
+x
+
+Φt (x)
+
+x
+
+Φt (x) ∶= x + tu0 (x)
+
+Φt (x)
+
+4
+
+u, t
+
+RUIJIA CAO AND FLORIAN SCHÄFER
+
+0
+x, Φt (x)
+
+→
+time
+
+Fig. 3: Perspective I: Shock formation and characteristics. The plot overlays
+particle trajectories x ↦ Φt x with the velocity of a solution of (2.1), at four dierent
+time steps. As the trajectories approach each other, the prole steepens. In the
+rightmost plot, the trajectories cross and the ow develops a shock.
+
+t
+
+Φt (x2 )
+
+2.2. Perspective I: Particle trajectories. So long as the particle trajectories
+do not cross, the closed form solution (2.2) is well-dened, as there is at most one
+particle passing through each point. But for the vast majority of initial conditions,
+there exists a time T at which two trajectories cross, meaning that for x1 ≠ x2 , we
+have ΦT x1  = ΦT x2 . Since the two particles have dierent velocities, the values of
+u to the left and right of ΦT x1  = ΦT x2  dier. A shock discontinuity has formed,
+as illustrated in Figure 3. Starting at T , (2.1) ceases to have classical solutions. Considering vanishing viscosity solutions amounts to assuming that particles are sticky
+and merge upon collision, as shown in Figure 4. The velocity of the combined particles
+is chosen such as to conserve linear momentum. E.g. [24, 37, 19, 23, 83, 52, 53, 71]
+study this system.
+
+0
+
+x1
+
+x2
+
+Φt (x)
+
+x1
+
+x2
+
+Φt (x)
+
+Φt (x1 )
+
+Φt (x1 )
+
+Fig. 4: Perspective II: The boundary of dieomorphism manifolds. Instead
+of tracking particle trajectories, we can view t ↦ Φt as a geodesic on a dieomorphism
+manifold. Shock form when the geodesic reaches the manifold’s boundary. Vanishing
+viscosity solutions continue to evolve on the boundary.
+2.3. Perspective II: Dieomorphism manifolds. Instead of the trajectories t ↦ Φt x of individual particles, we can consider the function-valued trajectory
+t ↦ Φt of the so-called ow maps. In [8], Arnold observed that ow maps of solutions to the incompressible Euler solutions are geodesic curves on the manifold of
+volume-preserving dieomorphisms, using the L2 inner product of vector elds as
+a Riemannian metric. In the compressible Euler equations, the ow maps instead
+
+5
+
+INFORMATION GEOMETRIC REGULARIZATION
+
+evolve on the manifold of general dieomorphisms [58]. Smooth solutions of pressureless Euler equations are L2 -geodesics of the form Φt = Φ0 + tv for a vector eld v. The
+L2 -geometry of the manifold of general dieomorphisms is not geodesically complete,
+meaning that geodesic curves do not continue indenitely. When two particle trajectories cross, Φt loses injectivity and ceases to be a dieomorphism. By tracking, as
+in Figure 4, the trajectories of just two particles, we can visualize two-dimensional
+projections of the dieomorphism manifold. The merging of particles in vanishing
+viscosity solutions corresponds to the ow map moving along the boundary of the
+dieomorphism manifold.
+
+→
+
+Φ(x2 ) − Φ(x1 )
+x2 − x1
+
+Φ(x2 ) − Φ(x1 )
+
+→x −x
+2
+
+0
+
+Φ(x2 ) + Φ(x1 )
+
+1
+
+Φ(x2 ) + Φ(x1 )
+
+Fig. 5: Geodesically complete submanifolds. The lateral surface of a cylinder is
+not geodesically complete. But the circle, a submanifold of it, is. Similarly, the manifold of unidimensional dieomorphisms (where Φx2  − Φx1  > 0) is not geodesically
+complete. But its volume-preserving submanifold (where Φx2  − Φx1  = x2 − x1 ) is.
+
+log(ρ), t
+
+Remark 2.1. Geodesic completeness of volume preserving dieomorphism manifolds implies the existence of global solutions of the incompressible Euler equations
+[39]. The recent breakthrough of [25, 26] provides a counterexample on bounded domains. But this singularity formation is unrelated to shocks and lacks a geometric
+interpretation like Figure 4. The diculty of proving these results suggests that the
+question of geodesic (in)completeness of manifolds of volume-preserving dieomorphisms is much more subtle than that of general dieomorphism manifolds. Figure 5
+shows the geometric principle by which incompressibility prevents shock formation.
+
+0
+x, Φt (x)
+
+→
+time
+
+Fig. 6: Perspective III: Shock formation and mass transport. Shock formation
+in the pressureless Euler equation amounts to the formation of atoms in the pushforward measure. Vanishing viscosity solutions continue to transport the resulting
+singular distributions.
+
+6
+
+RUIJIA CAO AND FLORIAN SCHÄFER
+
+Nominal, t = 0.45
+
+Reg., t = 0.05
+
+Reg., t = 0.45
+
+∂x Φt
+
+Nominal, t = 0.05
+
+0
+
+Φt
+
+Φt
+
+Φt
+
+Φt
+
+Fig. 7: Perspective IV: Activation of inequality constraints. Pressureless Euler
+equations amount to solving the constrained optimization problem (2.3) (rst panel).
+Shocks form when the constraint becomes active (second panel). Adding a logarithmic
+barrier function ensures strict feasibility while closely tracking the nominal solution
+path (third, fourth panel).
+
+2.4. Perspective III: Mass transport. By (2.2), the mass density ρ satises ρΦt x, t = ∂x Φt x−1 before shock formation. It is the pushforward of the
+Φ x 
+x
+Lebesgue measure by Φt , meaning that Φttx12 ρy, t dy = x12 dx for any x1 , x2 ∈ .
+Curves t ↦ Φt on dieomorphism manifolds dene a curve on the manifold of positive
+measures. Pushforwards of L2 geodesics on dieomorphism manifolds correspond to
+L2 Wasserstein geodesics on the manifold of positive measures [12, 72, 7]. Optimal
+transport focuses on computing geodesics between endpoints. Instead, (2.1) computes L2 (Wasserstein) geodesics starting in ρ⋅, 0 in an initial direction prescribed
+by u⋅, 0. At shock formation there exist x1 ≜ x2 such that ΦT x1  = ΦT x2 , meaning that the pushforward of the Lebesgue measure under ΦT has a point mass of
+x
+weight x12 dx at ΦT x1  = ΦT x2 , as illustrated in Figure 6. Shock formation arises
+from the geodesic incompleteness of the manifold of absolutely continuous measures.
+The analog of particles sticking together and ow maps Φt sticking to the dieomorphism manifold’s boundary is the fact that pushforwards of positive measures create
+or merge, but never remove atoms.
+2.5. Perspective IV: Optimization. We conclude by revisiting (2.1) from an
+optimization perspective. In the unidimensional pressureless case and for suciently
+regular u0 , the ow map is the minimizer of ([68])
+(2.3)
+
+min −t  u0 x Φx − x dx +
+
+∂x Φ≥0
+
+1
+2
+ ∥Φx − x∥ dx.
+2
+
+Φt minimizes a linear objective that rewards following the initial velocity, subject
+to a quadratic regularization. As t increases, the relative weight of the regularizer
+decreases, as in homotopy interior point methods [69]. Φt is strictly increasing at
+rst and thus in the interior of the feasible set. In this regime, it has the closedform solution Φt x = x + tu0 x. As t increases, Φt approaches the boundary of the
+feasible set, the conic constraint becomes active, and a shock forms (c.f. Figure 7).
+As t increases further, Φt slides along the boundary of the feasible set. The rst-order
+optimality conditions of inequality constrained optimization problems require that
+descent directions point out of the feasible set. As t increases, Φt pushes against the
+boundary of the feasible set — another perspective on the entropy conditions.
+
+7
+
+INFORMATION GEOMETRIC REGULARIZATION
+
+α = 10−5
+
+α = 10−4
+
+t
+
+∂x Φt
+
+Nominal (α = 0.0)
+
+0
+
+x1
+
+α = 10−3
+
+infeasible set
+
+0
+
+x2
+
+Φt
+Φt
+Φt (x)
+Φt (x)
+Fig. 8: Geometric regularization. Regularizing the geometry of ow maps with
+α− log∂x Φ avoids singularities and preserves the long-time behavior.
+
+3. Information geometric regularization.
+Interior point methods for Euler. The optimization problem (2.3) resembles
+homotopy interior point methods of the form
+(3.1)
+
+min −  u0 x Φx − x dx +
+
+∂x Φ≥0
+
+1
+ψΦ − ψId − ∇ψId, Φ − Id,
+t                                                                                                 
+Dψ Φ ∥ Id∶=
+
+with the choice ψ0 Φ =  Φx − x /2 dx [69]. These methods solve constrained
+optimization problems by regularizing them with Bregman divergences Dψ ⋅1 ∥ ⋅2 
+generated by barrier functions ψ. Repeatedly solving the problem for decreasing
+regularization weights t−1 yields the central path that converges to the solution of
+the unregularized problem [69]. Choosing a barrier function ψ that is singular at the
+boundary of the feasible set enforces strict feasibility of the minimizer for every nite
+t. Shock formation in the unidimensional pressureless Euler equation arises from ψ0
+lacking this property. This motivates regularizing it by adding the popular log-barrier
+function [50] to ψ, resulting in the augmented barrier with weight α ≥ 0,
+2
+
+(3.2)
+
+ψα Φ ∶=  Φx − x /2 dx + α  − log∂x Φx dx.
+2
+
+Figure 7 shows that the resulting barrier becomes singular as ∂x Φ approaches zero and
+thus produces strictly feasible central paths. Figure 8 illustrates how α modulates the
+regularization and thus the rate at which the central path approaches the boundary
+of the feasible set. Translating the central paths into particle trajectories shows that
+in the regularized system, particles never collide but instead approach each other
+asymptotically. Thus, they avoid singularities while maintaining nominal long-time
+behavior (i.e. in shocks, regularized paths converge to nominal ones as t → ∞).
+
+Information geometric regularization. The variational form (2.3) is limited
+to the unidimensional pressureless case. In general, Euler-type equations are merely
+dynamical systems on dieomorphism manifolds. To extend Figure 8 to this case,
+we exploit the information-geometric interpretation of interior point methods [6, 1, 9]
+described in [1, Chapter 13.5]. Interpreting ψ as the entropy of a family of probability
+distributions, the central path of homotopy interior point method with barrier ψ, such
+as (3.1), is a dual geodesic. Dual geodesics are ordinary (Euclidean) straight lines in
+
+8
+
+RUIJIA CAO AND FLORIAN SCHÄFER
+
+the space of gradients ∇ψ of the barrier, with general form t ↦ ∇ψ −1 θ0 + tv. The
+gradients of the barrier ψα have singularities at the boundary of the feasible set. Thus,
+their dual geodesics never reach the boundary (c.f. Figure 8). Information geometric
+regularization replaces Euclidean geodesics (2.2) with dual geodesics generated by ψα .
+extends to posThe multidimensional case. Positive ∂x Φ for equations on
+itive Jacobian determinant detDΦ for equations on d , suggesting the barrier
+ψ̂α Φ ∶=  ∥Φx − x∥ /2 dx + α  − log detDΦ dx,
+2
+
+d
+
+d
+
+mirroring the transition from linear to positive-semidenite programming. Since
+− log det is convex only on symmetric-positive matrices, ψ̂ is non-convex and does
+not generate a dual geodesic in the sense of [2]. The deeper reason for this problem
+is that in dimension d > 1, connected components of dieomorphism manifolds are
+not convex. This problem has a long history in nonlinear elasticity, where it prevented the use of convexity in proving the existence of minimizers for realistic energy
+functionals. Ball [10] overcame this problem by introducing so-called polyconvex energy functionals that are convex functions of minors of the gradient. Motivated by
+Ball’s polyconvexity, we view multivariate dieomorphism manifolds as a submanifold of the space E of pairs Φ, Φ′  of ow maps and (formally independent) Jacobian
+determinants, via the embedding Φ ↦ ξΦ ∶= Φ, detDΦ.
+ψα Φ, Φ′  ∶=  ∥Φx − x∥ /2 dx + α  − log Φ′  dx
+2
+
+d
+
+d
+
+is a strongly convex barrier on E. The inner product dened by the Hessian of ψ
+allows deriving an induced dual geodesic on the dieomorphism submanifold from
+that on the ambient Φ, Φ′ -space, enabling us to treat non-convex problems.
+
+Pressure and external forces. The pressureless Euler equations are geodesic
+equations on the dieomorphism manifold. More complicated equations like the compressible Euler and Navier-Stokes equations arise by adding forces to the geodesic
+equations [58] due to, for instance, pressure, viscosity, and external forces. Adding
+these forces to dual geodesic equations yields regularizations of the Euler and Navier
+Stokes equations and numerous other systems including those listed in [58, Table 1].
+For the sake of concreteness and simpler exposition, this work focuses on the case of
+the barotropic Euler equation. For nonzero pressure, shock waves of entropy solutions
+have nite density and are thus not on the boundary of the dieomorphism manifold.
+But jump discontinuities in the velocity cause the ow to leave the manifold instantaneously. Thus, the geodesically complete geometry dened by ψ also prevents the
+formation of jump discontinuities.
+Eulerian description. The nal regularization (1.2) arises from converting the
+Lagrangian representation in terms of the deformation map Φ to an Eulerian descrip−1
+tion in terms of ρ and ρu by u Φx ∶= Φ̇x and ρΦx ∶= det DΦ . Crucially,
+this equation can be cast in conservation form, enabling the use of discretely conservative numerics that ensure the correct shock propagation speed [62, Section 12.3].
+Information geometry? Information geometry views ψ as the entropy of a
+family of probability distributions. Instead, our derivation of ψ viewed it as the barrier function of a homotopy interior point method. To reconcile these perspectives, we
+observe that  d − log detDΦ dx =  d logρρ dx is the negative Shannon entropy
+
+INFORMATION GEOMETRIC REGULARIZATION
+
+9
+
+of the mass density ρ. The Euclidean geometry of ψ0 on the other hand corresponds
+to the Wasserstein distance of the pushforward [12]. Wasserstein geometry, capturing
+the motion of individual uid particles, is insensitive to singularity formation. Information geometry, capturing statistical inference of particle distributions, is highly
+sensitive to it. Thus, from the perspective of subsection 2.4, our regularization prevents singularity formation by blending Wasserstein with information geometry. This
+amounts to viewing ρ as a hybrid between a physical object (Wasserstein geometry)
+and statistical estimator (information geometry). As described in subsection 7.3, this
+motivates the broader research program of information geometric mechanics.
+4. Derivation in the unidimensional case, using at geometry.
+Notation and Setting. We begin by deriving unidimensional information geometric regularization for general barrier functions ψ. A formal derivation is sucient
+to obtain the regularized PDE. Thus, we will not discuss the technical complications
+that arise in the treatment of innite-dimensional manifolds [80]. We consider probdecaying at innity and postpone the treatment of bounded domains and
+lems on
+boundary values to future work. To this end, we use the Schwartz space S of smooth
+functions with all derivatives decaying superpolynomially at innity. Using the ambient space A ∶= I + S  ;  with I the identity function on , M ⊂ A denotes
+the dieomorphism manifold. Capital Greek letters denote points on M and capital
+Roman letters denote tangent vectors.
+4.1. Derivation for abstract barrier ψ.
+
+4.1.1. Exponential maps. Dierential geometry distinguishes points Φ ∈ M
+on a manifold from directions U ∈ TΦ M in the tangent space of M at Φ. These two
+notions are connected by the exponential map ExpΦ U  ∈ M that returns a new
+point in M obtained by traveling, for a unit time interval, with initial velocity U ,
+starting in Φ. For instance, we can use the Euclidean structure of A to dene the
+Exponential map ExpΦ U  = Φ + U . But any given manifold admits a multitude of
+exponential maps corresponding to dierent ways of continuing an initial velocity U to
+a path t ↦ ExpΦ tU . Paths of this form are called geodesics. Riemannian manifolds
+possess a so-called Levi-Civita exponential map generating locally length-minimizing
+geodesics. But geodesics of general exponential maps need not be length-minimizing.
+4.1.2. The dual exponential map. A strictly convex barrier ψ denes a dual
+exponential map on M given by
+U  ∶= ∇ψ −1 ∇ψΦ + D2 ψ Φ U .
+Expψ
+Φ
+
+As shown in Figure 9, Expψ
+U  is obtained from the Euclidean exponential map
+Φ
+in the coordinate system given by ∇ψ. It plays an important role in mirror descent
+[70, 76, 79] and information geometry [6]. The dual exponential map on the probability simplex induced by the negative Shannon entropy ψp = ∑ni=1 logpi pi arises as
+the unique exponential map that is invariant under sucient statistics, geodesically
+complete, and at [27]. Many other barriers and their geometries arise from parametric families of probability distributions that are (at least formally) submanifolds
+of innite-dimensional probability simplices [6, 42]. For instance, ψΘ ∶= log det Θ is
+the entropy of the family N 0, Θ ∶ Θ is s.p.d.⟫ of centered Gaussian distributions.
+
+Remark 4.1. In this work, we follow the common practice of considering the gradient ∇ rather than the dierential D for dening dual geodesics. This is because the
+
+10
+
+RUIJIA CAO AND FLORIAN SCHÄFER
+
+∇ψ
+
+∂x Φ
+
+→
+Φ
+
+(∇ψ)−1
+
+→
+
+∂x Φ
+
+∂(∂x Φ) ψ(Φ)
+
+Expψ
+(U ) ∶= ∇ψ −1 ∇ψ(Φ)+D2 ψ (Φ) U 
+(Φ)
+
+Φ
+
+∂Φ ψ(Φ)
+
+Fig. 9: The barrier function ψ denes a dual exponential map on M through the
+Euclidean exponential map in the coordinate system given by ∇ψ.
+functional-valued dierentials appearing in our setting are most conveniently written
+as inner products with suitable functions. But we emphasize that the dual exponential
+map can equally well be formulated in the dual space by replacing ∇ψ with Dψ.
+
+4.1.3. The dual equations of motion. Solution paths of interior point methods with barrier ψ are geodesics of Expψ . We extend interior point methods to
+dynamical systems by replacing Euclidean geodesics
+Φt ∶= ExpΦ0  tΦ̇0 
+
+with dual geodesics
+
+tΦ̇0  .
+Φt ∶= Expψ
+Φ0 
+
+We still need to account for forces due to, for instance, pressure or gravity. To this
+end, we take the second time derivative to deduce the equations of dual inertial motion
+(4.1)
+
+−1
+
+Φ̈t + D2 ψ Φt 
+
+D3 ψ Φt  Φ̇t , Φ̇t  = 0.
+
+In the Euclidean case, ψ is quadratic and the curvature term D3 ψ vanishes, yielding
+Newton’s rst law. For forces Kt, Φt , Φ̇t  the dual version of Newton’s rst law is
+(4.2)
+
+−1
+
+Φ̈t + D2 ψ Φt 
+
+D3 ψ Φt  Φ̇t , Φ̇t  = K t, Φt , Φ̇t  .
+
+4.2. Deriving the regularized PDE in the unidimensional case.
+4.2.1. The logarithmic barrier function. We regularize the squared Euclidean norm with the negative logarithm applied to the derivatives of Φ, yielding
+(4.3)
+
+ψΦ = ψα Φ =
+
+1
+2
+ Φx − x dx + α  − log ∂x Φxdx.
+2
+
+The parameter α determines the strength of the regularization. The negative
+logarithm is a popular barrier function for optimization on the positive cone. It
+enforces positivity of the iterates and its self-concordance ensures rapid convergence
+of damped Newton minimization algorithms [69]. It is also the negative Shannon
+−1
+entropy of the Eulerian mass density ρΦx ∶= det DΦx . Thus, it induces
+the unique Markov-invariant geometry on the manifold of mass distributions [27, 42].
+We believe that these connections of ψ to mathematical programming and information
+geometry will aid the analysis of information geometric regularization in future work.
+[22] is a rst example.
+
+11
+
+INFORMATION GEOMETRIC REGULARIZATION
+
+4.2.2. The modied equation in Lagrangian coordinates. We derive the
+modied equation by specializing (4.2) to the barrier function ψ of (4.3). This amounts
+to a function-valued version of computing
+(
+
+x − 12
+− α logx)
+2
+
+′′′
+
+1 ′′
+1 ′
+2
+= x − 1 − α  = 1 + α 2  = −α 3  .
+x
+x
+x
+
+Taking the variation in direction U at Φ yields
+
+DψΦU  =  Φx − xU x dx + α  −
+
+∂x U x
+dx
+∂x Φx
+
+Computing the gradient with respect to the L2 inner product yields
+∇ψΦ = Φ − x + α∂x 
+
+1
+.
+∂x Φ
+
+Likewise, the second variation is given by
+
+∂x U x ⋅ ∂x V x
+
+D2 ψΦ U, V  =  U x ⋅ V x dx + α 
+
+∂x Φx
+
+dx,
+
+2
+
+and by using the L2 inner product we obtain the linear map
+D2 ψΦ ∶ U ↦ U − α ⋅ ∂x (
+
+Finally, we compute the third variation as
+D3 ψΦ U, V, W  = −2α 
+
+∂x U
+
+∂x Φ
+
+2
+
+).
+
+∂x U x ⋅ ∂x V x ⋅ ∂x W x
+∂x Φx
+
+3
+
+dx.
+
+Again using the L2 inner product, we obtain the quadratic map
+D3 ψΦ ∶ U, V  ↦ 2α∂x (
+
+∂x U ⋅ ∂x V
+)
+∂x Φ3
+
+Plugging the above into (4.2) results in the modied equation
+Φ̈t + ⋅ − α∂x ∂x Φt 
+
+−2
+
+Equivalently we can write
+
+−2
+
+(4.4) ⋅ − α∂x ∂x Φt 
+
+−1
+
+∂x ⋅
+
+−3
+
+2α∂x ∂x Φt 
+
+∂x Φ̇t 2  = K t, Φt , Φ̇t  .
+−3
+
+∂x ⋅ Φ̈t − K t, Φt , Φ̇t  = −2α∂x ∂x Φt 
+
+∂x Φ̇t 2  .
+
+4.2.3. The modied equations in Eulerian coordinates. We write the Eulerian velocity eld u as
+Φ̇t x =∶ u Φt x
+
+⇒
+
+Φ̈t x = ∂x uΦt x u Φt x + ∂t uΦt x
+−1
+
+and the Eulerian density ρ as ρΦt x = ∂x Φt x . For V ∶= Φ̈t − Kt, Φt , Φ̇t  we
+integrate both sides of (4.4) against a vector eld U , obtaining
+−2
+
+ U ⋅ V − α∂x ∂x Φt 
+
+−3
+
+∂x V  dx = −  2αU ⋅ ∂x ∂x Φt 
+
+∂x Φ̇t 2  dx.
+
+12
+
+RUIJIA CAO AND FLORIAN SCHÄFER
+
+Integrating by parts, we obtain
+−2
+
+ U ⋅ V + α ∂x U  ∂x Φt 
+
+∂x V  dx =  2α ∂x U  ∂x Φt 
+
+−3
+
+We now perform a change of variables
+
+ U ⋅ V + α ∂x U  ∂x Φt 
+−3
+
+=  2α ∂x U  ∂x Φt 
+
+−2
+
+∂x Φ̇t 2 dx.
+
+−1
+∂x V  ○ Φ−1
+t ⋅ ∂x Φt  dx
+
+−1
+∂x Φ̇t 2  ○ Φ−1
+t ⋅ ∂x Φt  dx.
+
+Noting that ∂x Φ̇t  = ∂x u ○ Φt ∂x Φt  and writing U = Ũ ○ Φ and V = Ṽ ○ Φ yields
+2
+ Ũ ⋅ Ṽ + α∂x Ũ ∂x Ṽ  ρ dx =  2α∂x Ũ ∂x u ρ dx.
+
+Integrating by part once more, we obtain as before
+
+2
+ Ũ ⋅ Ṽ ρ − Ũ ⋅ α∂x ∂x Ṽ ρ dx = −  2αŨ ⋅ ∂x ∂x u ρ dx.
+
+Using the fact that U and thus Ũ was chosen fully general, we obtain
+−1
+
+∂t u + ∂x uu + ⋅ρ − α∂x ρ∂x ⋅
+
+2α∂x ρ∂x u2  = ρKt, Φt , Φ̇t  ○ Φ−1
+t ,
+
+which we combine with the transport equation ∂t ρ + ∂x uρ = 0.
+
+4.2.4. A regularized conservation law. To express the regularized equation
+in conservation form, we multiply with ρ and use the equation for mass conservation,
+−1
+
+∂t ρu + ∂x ρ u2 + uρ∂x u + ρ ∂x u u + 2αρ ρ − α∂x ρ∂x 
+
+∂x ρ ∂x u =ρK ○ Φ−1
+t .
+2
+
+We now use the identity ∂x ρu ⋅ u = ∂x ρuu + ρu∂x u to conclude
+−1
+
+∂t ρu + ∂x ρu2  + 2αρ ρ − α∂x ρ∂x 
+−1
+
+We now use the identity AB
+−1
+
+2αρ ρ − α∂x ρ∂x 
+
+= B −1 A−1 for linear operators A and B to obtain
+−1
+
+2
+
+∂x ρ ∂x u 
+2
+
+−1
+
+ρ ∂x u  = 2α∂x Id − αρ∂x ρ−1 ∂x 
+2
+
+−1
+
+=2α∂x ρ−1 − α∂x ρ−1 ∂x 
+−1
+
+2
+
+∂x ρ ∂x u  = 2α Id − α∂x ρ∂x ρ−1 
+
+−1
+
+=2α ∂x−1 − αρ∂x ρ−1 
+
+∂x ρ ∂x u  = ρKt, Φt , Φ̇t  ○ Φ−1
+t .
+
+∂x u  =∶ ∂x Σ.
+2
+
+ρ ∂x u 
+2
+
+Here, ρ, ρ−1 inside ⋅ are understood as the linear multiplication-by-ρ, ρ−1 operators. The inverse derivative ∂x−1 is understood as a mapping from S to S. Setting
+Kt, Φt , Φ̇t  ○ Φ−1
+t = ∂x P ρ − f , the regularized Euler equation becomes
+(4.5)
+
+⎧
+∂t ρu + ∂x ρu2 + P ρ + Σ
+⎪
+⎪
+⎪
+⎪
+⎨∂t ρ + ∂x ρu
+⎪
+⎪
+−1
+−1
+⎪
+⎪
+⎩Σρ − α∂x ρ ∂x Σ
+
+=f
+=0
+= 2α∂x u2 .
+
+INFORMATION GEOMETRIC REGULARIZATION
+
+13
+
+5. Derivation in the multivariate case, using a nonlinear embedding.
+5.1. The need for non-convex information geometry.
+5.1.1. Shock formation in multidimensional problems. In the univariate
+setting, the only scenario for shock formation is the vanishing of the derivative ∂x Φt
+of the deformation map. In d > 1 dimensions, any loss of invertibility of DΦt results
+in shock formation. The dimension of the null space of DΦt determines the dimension
+of the resulting shock singularity. The most common situation, a d − 1-dimensional
+shock front, arises from DΦt having a one-dimensional null space normal to the shock
+front. Thus, our barrier function ψ needs to prevent any loss of invertibility of DΦt .
+5.1.2. The log determinantal barrier function. In mathematical programming, the natural generalization of the logarithmic barrier function to semidenite
+programming is the log determinant barrier function [50]. Just like the logarithmic
+barrier function on the positive cone, it is convex and self-concordant on the cone
+of symmetric and positive-denite matrices, enabling the ecient implementation of
+homotopy methods. This suggests generalizing section 4 by using the barrier
+(5.1)
+
+ψ̂Φ = ψ̂α Φ ∶=
+
+1
+2
+ ∥Φ − Id∥ dx + α  − log detDΦ dx.
+2 d
+d
+
+5.1.3. Nonconvexity of ψ̂. The problem with this approach is that the Jacobians of dieomorphisms are generally not symmetric and thus ψ̂ is not convex on
+M and does not dene a dually at information geometry in the sense of [6]. Likewise, in mathematical elasticity, no convex energy functional can simultaneously be
+rotationally invariant and prevent the collapse of deformation maps [33]. The seminal
+work [10] overcomes this problem by introducing polyconvex energy functionals: convex functions of Jacobian determinants. The determinant’s weak continuity allows
+applying the direct method of the calculus of variations to polyconvex problems [36].
+5.1.4. Regularization by embedding. Inspired by polyconvexity, we introduce ξ∶ Φ ↦ Φ, det DΦ that embeds the dieomorphism manifold M into the
+extended ambient space E consisting of pairs Φ, Φ′  of deformation and Jacobiandeterminant degrees of freedom. We dene the barrier function ψ on E as
+(5.2)
+
+ψΦ, Φ′  = ψα Φ, Φ′  ∶=
+
+1
+2
+′
+ ∥Φ − Id∥ dx + α  − logΦ  dx.
+2 d
+d
+
+This barrier function is strictly convex and thus denes a dually at information geometry on E. The Riemannian metric dened by the Hessian of ψ and the embedding
+ξ induce an exponential map on M that avoids the formation of shock singularities.
+We think that the weak continuity of ξ will aid the rigorous analysis of the resulting
+PDE in future work, extending the unidimensional results by [22].
+5.2. Derivation for general embedding and potential.
+Notation and setting. We now derive information geometric regularization in
+the multidimensional setting. To this end, we consider the extended ambient space
+E ∶= I + S  d ; d  × 1 + S  d , denoting as S the Schwartz space S of smooth
+functions with all derivatives decaying superpolynomially at innity. We consider
+the dieomorphism manifold M ↪ E as a submanifold of E, through the embedding
+ξ∶ Φ ↦ Φ, det DΦ. Our potential ψ will be dened on the extended ambient space
+
+14
+
+RUIJIA CAO AND FLORIAN SCHÄFER
+
+2
+
+y
+
+S
+x
+
+1
+
+E
+ξ(X) to ξ(X + εV )
+′
+tangent vector U at ξ(X) Φ = ∂x Φ
+parallel transport in 2 , E
+projection onto TS 1 , TE
+parallel transport in S 1 , E
+
+Φ
+
+M
+
+Fig. 10: Parallel transport on submanifolds. Parallel transport on a submanifold
+is parallel transport in the ambient manifold, followed by projection on the tangent
+space of the submanifold. For S 1 ↪ 2 , the dierence between parallel transport
+on ambient and submanifold arises from the nonlinearity of the embedding ξ. In
+unidimensional IGR, ξ is ane but the parallel transport on the ambient space does
+not respect its linear structure, causing parallel transport on M and E to dier. In
+multidimensional IGR, ξ is nonlinear and both of the above eects contribute.
+E. We denote by capital Greek letters points on the manifolds M and E and by
+capital Roman letters the elements of their tangent spaces. We denote elements of E
+or its tangent spaces as Φ, Φ′  or U, U ′  to distinguish the two degrees of freedom.
+
+5.2.1. Exponential maps, geodesics, and parallel transport. In section 4,
+we derived dual equations of inertial motion (4.1) by taking derivatives of the dual
+exponential map. Equivalently, they can be dened via the dual ane connection
+−1
+
+ΓΦψ̂ U, V  ∶= D2 ψ̂ Φ
+
+D3 ψ̂ Φ U, V  .
+
+The ane connection ΓΦψ̂ U, ⋅ denes a correspondence between the tangent spaces
+TΦ M and TΦ+εU M in innitesimally nearby base points Φ and Φ + εU . It identies
+the vector V + εΓΦψ̂ U, V  as the tangent vector in TΦ M corresponding to the tangent
+
+vector V in TΦ+εU M. Equivalently, we can think of the map V ↦ V − εΓΦψ̂ U, V 
+from TΦ M to TΦ+εU M as transporting a tangent vector V ∈ TΦ M an innitesimal
+distance in the direction εU , resulting in an element of TΦ+εU M. This operation is
+called parallel transport. Solutions of dual equations of motion or geodesic equations
+Φ̈t + ΓΦψ̂ Φ̇t , Φ̇t  = 0
+
+are therefore curves with velocities that are parallel transported along themselves.
+5.2.2. Parallel transport on submanifolds. In more than one spatial dimension, the barrier function ψ̂ dened in (5.1) is not convex on M and thus does not
+dene an ane connection on M. Instead, we use the parallel transport on E induced
+by ψ (which is always convex) to induce a parallel transport on the submanifold
+M ↪ E through the embedding ξ. As outlined in [1, Section 5.10], we proceed in
+three steps to transport a tangent vector V from TΦ M to TΦ+εU M. We use the embedding ξ to identify V with the element DξΦV of the tangent space TξΦ E of the
+ambient manifold E. We then parallel transport DξΦV in the ambient manifold
+E to the point ξΦ + εU , obtaining W, W ′  ∈ TξΦ+εU  E. Finally, we project W, W ′ 
+
+INFORMATION GEOMETRIC REGULARIZATION
+
+15
+
+onto TΦ+εU M via the Riemannian metric on E given by the Hessian of ψ,
+⟪U, U ′  , V, V ′ Φ,Φ′  ∶= D2 ψΦ, Φ′  U, U ′  , V, V ′  .
+
+This is the Fisher-Rao metric of a family of probability distributions with entropy ψ,
+the unique Riemannian metric invariant under Markov isomorphisms [27, 42].
+5.2.3. Computing the induced parallel transport. Transporting DξΦV
+to ξΦ + εU  yields, to leading order in ε,
+−1
+
+W, W ′  ≈ DξΦV − ε D2 ψ ξ Φ
+
+D3 ψ ξ Φ DξΦU, DξΦV  .
+
+The projection X of W, W ′  onto TΦ+εU M satises, for all Y ∈ TΦ+εU M,
+
+⟪Dξ Φ + εU Y, Dξ Φ + εU XξΦ+εU  = ⟪Dξ Φ + εU Y, W, W ′ ξΦ+εU  .
+
+Using the L2 inner product on TΦ,Φ′  E, we can view D2 ψ Φ, Φ′  as a linear map
+from TΦ,Φ′  E to itself, with
+⟪U, U ′  , V, V ′ Φ,Φ′  = U, U ′  , D2 ψΦ, Φ′  V, V ′ L2 .
+
+Denoting the L2 -adjoint of Dξ Φ + εU  as Dξ Φ + εU ∗ , we obtain
+−1
+
+X ≈ Dξ Φ + εU ∗ D2 ψ ξ Φ + εU  Dξ Φ + εU 
+Dξ Φ + εU ∗ D2 ψ ξ Φ + εU 
+−1
+
+DξΦV − ε D2 ψ ξ Φ
+
+D3 ψ ξ Φ DξΦU, DξΦV  .
+
+To order ε0 , we have X = V . In order to compute the rst-order approximation of X
+in ε, we compute the derivative of the right-hand side. To simplify the notation, we
+dene βΦ ∶= Dξ Φ and γΦ ∶= D2 ψ ξ Φ. We compute
+d
+−1 ∗
+γΦ+εU βΦ+εU  βΦ+εU
+γΦ+εU βΦ V − εγΦ−1 D3 ψ ξ Φ βΦ U, βΦ V 
+∣ β ∗
+dε ε=0 Φ+εU
+−1
+
+= − βΦ∗ γΦ βΦ 
+
+−1
+
++ βΦ∗ γΦ βΦ 
+
+−1
+
+− βΦ∗ γΦ βΦ 
+
+−1
+
+= − βΦ∗ γΦ βΦ 
+
+[
+[
+
+d
+−1
+γΦ+εU βΦ+εU ] βΦ∗ γΦ βΦ  βΦ∗ γΦ βΦ V
+∣ β ∗
+dε ε=0 Φ+εU
+d
+γΦ+εU ] βΦ V
+∣ β∗
+dε ε=0 Φ+εU
+
+βΦ∗ γΦ γΦ−1 D3 ψ ξ Φ βΦ U, βΦ V 
+
+βΦ∗ γΦ D2 ξ Φ U, V  + βΦ∗ γΦ γΦ−1 D3 ψ ξ Φ βΦ U, βΦ V 
+
+In summary, we obtain to rst order in ε that
+
+−1
+
+X ≈ V − ε Dξ Φ∗ D2 ψ ξ Φ Dξ Φ
+−1
+
+D2 ξ Φ U, V  + D2 ψ ξ Φ
+
+Dξ Φ∗ D2 ψ ξ Φ
+
+D3 ψ ξ Φ Dξ Φ U, Dξ Φ V  .
+
+Rewriting this result in terms of an ane connection, we obtain
+−1
+
+ΓΦψ,ξ U,V  = Dξ Φ∗ D2 ψ ξ Φ Dξ Φ
+
+Dξ Φ∗ D2 ψ ξ Φ
+
+16
+
+RUIJIA CAO AND FLORIAN SCHÄFER
+−1
+
+D2 ξ Φ U, V  + D2 ψ ξ Φ
+
+D3 ψ ξ Φ Dξ Φ U, Dξ Φ V  .
+
+Note that the two summands in the above formula correspond to the two separate
+contributions to the ane connection, as illustrated in Figure 10. The rst summand
+arises from the nonlinearity (with respect to the vector space structure of E) of the
+embedding ξ. This is akin to the curvature of a d − 1-sphere arising from the
+nonlinearity of its embedding into d . The second summand arises from the dual
+parallel transport on E not respecting the vector space structure of E. It induces a
+nontrivial parallel transport even for d = 1, where ξ is linear. In this case, it gives rise
+to the equations derived in section 4.
+5.3. The geodesic equation in Lagrangian form. We now plug in ξ and ψ
+and compute Γ ψ,ξ , in order to derive the equation of inertial motion. The quadratic
+form associated with D2 ψ is given by
+U ′V ′
+
+D2 ψΦ, Φ′  U, U ′  , V, V ′  =  U, V  dx + α 
+d
+
+Φ′ 
+
+2
+
+d
+
+dx
+
+and using the L2 inner product on TΦ,Φ′  E, we obtain the linear map
+D2 ψΦ, Φ′  U, U ′  = (U, α
+
+U′
+
+Φ′ 
+
+2
+
+).
+
+Similarly, we obtain the cubic form of the third derivative as
+D3 ψΦ, Φ′  U, U ′  , V, V ′  , W, W ′  = −2α 
+
+U ′V ′W ′
+Φ′ 
+
+3
+
+d
+
+and the resulting quadratic map
+
+D3 ψΦ, Φ′  U, U ′  , V, V ′  = (0, −2α
+
+U ′V ′
+
+Φ′ 
+
+3
+
+Similarly, using Jacobi’s formula, we can compute the map
+
+dx
+
+).
+
+Dξ Φ U = U, det DΦ tr DΦ−1 DU  .
+
+To compute its adjoint, we multiply with W, W ′  and integrate
+
+W, W ′ , Dξ Φ U L2 =  U, W  dx +  W ′ det DΦ tr DΦ−1 DU  dx.
+d
+
+d
+
+↓
+
+Letting V ∶= DξΦ∗ W, W ′ , we have, for div the column-wise divergence,
+′
+−1
+ V , U  dx =  U, W  dx +  W det DΦ tr DΦ DU  dx
+d
+
+d
+
+d
+
+↓
+
+−1
+
+=  ⟨U, W − div W ′ detDΦ DΦ ⟩ dx,
+d
+
+resulting in
+
+↓
+
+−1
+
+DξΦ∗ W, W ′  = W − div W ′ det DΦ DΦ  .
+
+17
+
+INFORMATION GEOMETRIC REGULARIZATION
+
+This allows computing the second derivative Dξ Φ U, V  of ξ as
+D2 ξ Φ U, V  =
+=
+
+d
+∣ Dξ Φ + εV  U
+dε ε=0
+
+0, detDΦ tr DΦ−1 DU  tr DΦ−1 DV 
+
+− 0, detDΦ tr DΦ−1 DU DΦ−1 DV  .
+
+Φ̇t , Φ̇t  = 0 in the form
+We now derive the dual equations of inertial motion Φ̈t + ΓΦψ,ξ
+t
+Dξ Φ∗ D2 ψ ξ Φ Dξ ΦΦ̈ = Dξ Φ∗ D2 ψ ξ Φ
+−1
+
+D2 ξ Φ Φ̇, Φ̇ + D2 ψ ξ Φ
+
+D3 ψ ξ Φ Dξ Φ Φ̇, Dξ Φ Φ̇ .
+
+We stop tracking the t dependence explicitly to simplify notation. We rst compute
+Dξ Φ∗ D2 ψ ξ Φ Dξ ΦΦ̈
+
+=Dξ Φ∗ D2 ψ ξ Φ Φ̈, det DΦ tr DΦ−1 DΦ̈
+=Dξ Φ∗ Φ̈, α tr DΦ−1 DΦ̈ / det DΦ 
+↓
+
+−1
+
+=Φ̈ − αdiv tr DΦ−1 DΦ̈ DΦ  .
+
+Here, the operator acting on Φ̈ is self-adjoint and strictly positive denite, since
+↓
+
+−1
+
+−1
+−1
+−1
+ ⟨−div tr DΦ DU  DΦ  , V ⟩ dx = tr DΦ DU  tr DΦ DV  dx.
+d
+
+d
+
+We next compute
+
+−1
+
+D2 ξ Φ Φ̇, Φ̇ + D2 ψ ξ Φ
+
+D3 ψ ξ Φ Dξ Φ Φ̇, Dξ Φ Φ̇
+
+= 0, detDΦ tr DΦ−1 DΦ̇ tr DΦ−1 DΦ̇
+− 0, detDΦ tr DΦ−1 DΦ̇DΦ−1 DΦ̇
+
+− 0, 2 det DΦ tr DΦ−1 DΦ̇ tr DΦ−1 DΦ̇
+
+= − 0, detDΦ tr DΦ−1 DΦ̇DΦ−1 DΦ̇
+
+− 0, det DΦ tr DΦ−1 DΦ̇ tr DΦ−1 DΦ̇ .
+
+Plugging this into the dual equations of inertial motion yields, for tr2 ⋅ the squared
+trace,
+↓
+
+−1
+
+↓
+
+Φ̈ − αdiv tr DΦ−1 DΦ̈ DΦ  = − αdiv tr DΦ−1 DΦ̇  DΦ−1 
+2
+
+↓
+
+− αdiv tr2 DΦ−1 DΦ̇ DΦ−1  .
+
+5.4. In Eulerian coordinates. We now write the Eulerian velocity eld u as
+Φ̇x =∶ u Φx
+
+⇒
+
+Φ̈x = DuΦx u Φ x + ∂t uΦx
+
+18
+
+RUIJIA CAO AND FLORIAN SCHÄFER
+−1
+
+and the Eulerian density ρ as ρΦx = det DΦx . We integrate both sides of
+the dual equations of motion against a vector eld V , obtaining
+↓
+
+−1
+−1
+ ⟨V, (Φ̈ − αdiv tr DΦ DΦ̈ DΦ )⟩ dx
+d
+
+↓
+
+= −α  ⟨V, div tr DΦ−1 DΦ̇  DΦ−1 + tr2 DΦ̇DΦ−1  DΦ−1 ⟩ dx
+2
+
+d
+
+Integrating by parts, we obtain
+
+−1
+−1
+ V, Φ̈ + α tr DV DΦ  tr DΦ DΦ̈ dx
+d
+
+= α  tr DV DΦ−1  tr DΦ−1 DΦ̇  + tr2 DΦ̇DΦ−1  dx.
+2
+
+d
+
+We now plug in the denition of u, replacing Φ̇ and Φ̈ to obtain
+
+−1
+ V, Du u + ∂t u ○ Φ + α tr DV DΦ  tr D Du u + ∂t u ○ Φ dx
+d
+
+= α  tr DV DΦ−1  tr Du2 ○ Φ + tr2 Du ○ Φ dx.
+d
+
+We now write V x = Ṽ Φx to obtain
+
+ Ṽ ○ Φ, Du u + ∂t u ○ Φ + α tr DṼ  ○ Φ tr D Du u + ∂t u ○ Φ dx
+d
+
+= α  tr DṼ  ○ Φ tr Du2 ○ Φ + tr2 Du ○ Φ dx.
+d
+
+We now perform a transformation of variables with Φ−1 , resulting in multiplication
+with its Jacobian determinant det DΦ−1  = detDΦ−1 ○ Φ−1 x = ρx,
+ Ṽ , Du u + ∂t u ρ + α tr DṼ  tr D Du u + ∂t u ρ dx
+d
+
+= α  tr DṼ  tr Du2  + tr2 Du ρ dx.
+d
+
+We again integrate by parts, obtaining
+
+↓
+
+ ⟨Ṽ , Du u + ∂t u ρ − αdiv tr D Du u + ∂t u ρI⟩
+d
+
+↓
+
+= −α  ⟨Ṽ , div tr Du2  ρI + tr2 Du ρI⟩ dx.
+d
+
+The general choice of Ṽ and the fundamental lemma of the calculus of variations yield
+↓
+
+↓
+
+(⋅ρ − αdiv ρ tr D ⋅ I) Du u + ∂t u = −αdiv tr Du2  ρI + tr2 Du ρI .
+
+INFORMATION GEOMETRIC REGULARIZATION
+
+19
+
+All matrix divergences above are taken over multiples of the identity matrix. Thus,
+we can safely replace them with row-wise divergences, obtaining
+→
+
+Du u + ∂t u = −α ⋅ρ − αdiv ρ tr D ⋅ I
+
+−1 →
+
+div tr Du2  ρI + tr2 Du ρI .
+
+We multiply both sides with ρ and apply the conservation of mass to obtain
+→
+
+−1
+
+→
+
+∂t ρu + div ρu ⊗ u = −αρ⋅ρ−αdiv ρ tr D ⋅ I 
+→
+
+div tr Du2  ρI + tr2 Du ρI .
+
+5.4.1. In conservation form. We now want to bring the regularized equations
+into conservation form. As in subsection 4.2.4, we pull divergences and multiplications
+with ρ through the inverse to obtain
+→
+
+− αρ ⋅ρ − αdiv ρ tr D ⋅ I
+→
+
+−1 →
+
+div tr Du2  ρI + tr2 Du ρI
+−1 →
+
+= − α ⋅ − αdiv ρ tr D ρ−1 ⋅ I
+→ −1
+
+= − α (div ⋅ − αρ tr D ρ−1 ⋅ I)
+→
+
+→
+
+−1
+
+= − αdiv ⋅ − αρ tr D ρ−1 div ⋅ I
+→
+
+→
+
+div tr Du2  ρI + tr2 Du ρI
+
+tr Du2  ρI + tr2 Du ρI
+
+−1
+
+= − αdiv ρ−1 ⋅ − α tr D ρ−1 div ⋅ I
+
+tr Du2  ρI + tr2 Du ρI
+
+−1
+
+tr Du2  I + tr2 Du I .
+
+In other words, the additional momentum ux satises
+→
+
+ρ−1 F − α tr D ρ−1 divF  I = α tr Du2  I + tr2 Du I .
+
+It follows that F is a multiple of the identity of the form F = ΣI, resulting in
+ρ−1 Σ − α tr D ρ−1 ∇Σ = α tr Du2  + tr2 Du .
+
+The trace of the Jacobian is just the (vector) divergence, resulting in
+ρ−1 Σ − α div ρ−1 ∇Σ = α tr Du2  + tr2 Du .
+
+After adding the pressure and external forces, this yields the information geometric
+regularization of the multidimensional barotropic Euler equation
+
+(5.3)
+
+⎧
+⎛ρu⎞ → ⎛ρu ⊗ u + P ρ + Σ I⎞ ⎛f ⎞
+⎪
+⎪
+⎪
+=
++ div
+⎪∂t
+⎨ ⎝ρ⎠
+⎝
+⎠ ⎝0⎠
+ρu
+⎪
+⎪
+⎪
+−1
+−1
+2
+2
+⎪
+⎩ρ Σ − α divρ ∇Σ = α tr Du + tr Du  .
+
+To rigorously justify the above manipulations, it is easiest to rst establish the existence of a solution Σ of the scalar elliptic PDE in (5.3) and then trace the arguments
+backwards to show that F = ΣI satises the equations above.
+
+20
+
+RUIJIA CAO AND FLORIAN SCHÄFER
+
+Reference solution
+
+t = 0.0875
+
+LF
+1
+
+LW
+
+LW + IGR
+
+t = 0.75
+
+2
+0.5
+u(x, t)
+
+1
+0
+
+0
+−1
+
+−0.5
+
+−2
+
+−1
+0.5
+0.55
+0.45
+0.5
+0.55
+x
+x
+Fig. 11: IGR on Euler: Lax-Wendro (LW) with information geometric regularization (IGR) avoids oscillations in LW and the oversmoothing of Lax-Friedrichs (LF).
+0.45
+
+ρ(x, 2)
+
+4
+
+4
+
+3
+3.8
+2
+3.6
+
+1
+
+4
+5
+6
+7
+6
+7
+8
+x
+x
+Fig. 12: Interaction of shock and sound waves: Information geometric regularization (IGR) with Lax-Wendro (LW) correctly predicts the magnitude of the sound
+waves. Plain LW overestimates them while Lax-Friedrichs (LF) underestimates them.
+4
+
+5
+
+6. Numerical experiments.
+6.1. Overview. This section illustrates the behavior of solutions to the modied
+equations and provides proof of the concept of using them for numerical purposes.
+We emphasize that the results in this section are not yet fair comparisons to the
+state-of-the-art in simulating compressible ows. Such would require stronger baselines and the consideration of practical aspects like computational cost, memory, and
+robustness. This is beyond the scope of this work and will be addressed in the future. We focus on Lax-Friedrichs and Lax-Wendro methods as classical examples
+of the tradeo between dissipation and Gibbs oscillations that is at the heart of all
+
+21
+
+INFORMATION GEOMETRIC REGULARIZATION
+
+shock capturing. We use explicit methods and do not observe any additional CFL
+restrictions due to IGR. The code used to generate this section’s results is available at
+https://github.com/f-t-s/information geometric regularization of barotropic euler.
+Remark 6.1 (Boundary conditions). We derive IGR in d but practical computation requires imposing boundary conditions. In the numerical experiments of this
+section, we use periodic boundary conditions that are implemented by periodic extension (instead of the value at xN +k we use that at xk ). Preliminary results suggest that
+our regularization also applies to other cases like Dirichlet and Neumann conditions.
+This requires Neumann boundary conditions for the elliptic problem dening Σ.
+6.2. The unidimensional case. We begin with an application to the unidimensional Euler equation. We use the pressure P ρ = ρ1.4 and compare the solutions obtained by the Lax-Friedrichs (LF) scheme, the Richtmyer Lax-Wendro (LW)
+scheme [62], and LW applied to (4.5) with α = 20∆x2 (denoted as LW + IGR). In
+terms of the function F mapping the state vector q to the ux, the LF scheme is
+qik+1 =
+
+1 k
+∆t
+k
+k
+k
+−
+ − F qi−1
+
+q + qi−1
+F qi+1
+2 i+1
+2∆x
+
+and the LW scheme has the form
+
+∆t
+1 k
+k
+ − F qik 
+qi+1 + qik  −
+F qi+1
+2
+2∆x
+∆t
+k+1/2
+k+1/2
+F qi+1/2  − F qi−1/2  .
+qik+1 = qik −
+∆x
+
+qi+1/2 =
+k+1/2
+
+Evaluating the function F in the case (1.2) requires computing Σ. We discretize the
+elliptic problem dening it using a tridiagonal Laplacian stencil, compute the righthand side using central dierences, and use sparse Gaussian elimination to solve for
+Σ, at cost linear in the size of the mesh. As is well known, the viscous regularization
+of LF causes excessive smoothness and the dispersive errors of LW cause spurious
+Gibbs oscillations near shocks. We are testing the hypothesis that IGR avoids
+these Gibbs oscillations by ensuring that the underlying continuous problem has a
+regular solution, without adding excessive smoothing. IGR tames shock formation
+and insures that the regularity of the initial condition is maintained, it does not aid
+in problems with irregular initial conditions, like the advection of a step function.
+Initial conditions with step functions can be handled by smearing the singularity over
+a few grid points. For the sake of comparability across grid sizes, we do so by replacing
+jumps in the initial condition with sigmoidal blending or smooth cuto functions. In
+practical applications, it is easier to instead apply a few iterations of heat kernel
+smoothing to the initial and boundary conditions.
+6.2.1. Sine wave initial condition. For our rst experiment, we choose initial
+conditions ux, 0 = 3 sin2πx, ρx, 0 ≡ 1, discretize the domain 0, 1 with 500 grid
+points and use periodic boundary conditions. As shown in Figure 11, LW + IGR
+avoids both the excessive dissipation of LF and the Gibbs oscillations of LW. We
+compare to a reference solution obtained by Lax-Friedrichs with 2 × 104 grid points.
+6.2.2. Interaction of shock and sound waves. We next consider the problem
+⎧
+⎪
+⎪3,
+ux, 0 ≈ ⎨
+⎪
+0,
+⎪
+⎩
+
+if x ≜ 2,
+else,
+
+⎧
+⎪
+⎪2,
+ρx, 0 ≈ ⎨
+⎪
+1 + 0.2 sin2π25x/8,
+⎪
+⎩
+
+if x ≜ 2
+if 2 ≤ x ≤ 10
+
+RUIJIA CAO AND FLORIAN SCHÄFER
+
+2
+1
+0
+−1
+−2
+
+Smooth Reference
+Smooth u
+Shocked Reference
+Shocked u
+t = 0.1
+t = 0.055
+
+log10 (relative  ⋅ 1 error)
+
+u(x, t)
+
+22
+
+−1
+
+Slope −2
+Slope −1
+t = 0.1
+
+Smooth ρ
+Shocked ρ
+t = 0.055
+
+−3
+
+0.25 0.5 0.75
+x
+
+0.25 0.5 0.75
+x
+
+−5
+
+1
+
+2
+
+4
+√
+− log10  α
+
+1
+
+2
+
+4
+√
+− log10  α
+
+4
+Fig. 13: Convergence study. We solve the
+√ problem of subsection 6.2.1 with 8 ⋅ 10
+grid points, for varying α. As a function of α, we observe rst order convergence in
+the presence of shocks and second order otherwise.
+
+that features the interaction of a right-moving shock wave and a left-moving sound
+wave. We discretize the domain 0, 10 using 500 points and add boundary padding
+equal to u⋅, 0, ρ⋅, 0. We use smooth cut-o functions for the transitions at x = 2
+and at the wraparound of our periodic boundary conditions. We compare LF, LW,
+and LW + IGR to a reference solution computed with LF using 4 × 104 points on
+0, 10. As shown in Figure 12, once the two waves interact, LF damps out the sound
+wave while LW greatly overestimates its magnitude. LW + IGR estimates it correctly.
+6.2.3. Convergence study. We study the convergence of highly resolved IGR
+solutions to those of the nominal equation, using the sine √
+initial condition from subsection 6.2.1. As illustrated in Figure 11, as a function of α, IGR shows rst-order
+accuracy in the presence
+of shocks and second-order accuracy, otherwise. Second or√
+der convergence in α (and thus, in practice, in ∆x) might seem disappointing given
+that methods of arbitrary order of convergence exist. But the order of accuracy of a
+numerical method only captures its asymptotic behavior when progressively overresolving a given solution. In our opinion, the concept of resolution that measures the
+number of grid points required for a reasonable approximation of a given solution is
+the more meaningful measure of quality [60]. As shown in Figure 20, IGR is much
+less prone to damping out oscillatory solutions than equivalent viscous regularization.
+We believe that this property will make it prove useful in simulating complex ows.
+6.3. The multidimensional case. We now investigate the two-dimensional
+version of (5.3). We use the pressure P ρ = ρ1.4 and multidimensional variants of
+the Lax-Friedrichs (LF) and Richtmyer Lax-Wendro (LW) schemes. For Fx , Fy the
+uxes in the x and y directions, respectively, the LF scheme is given by
+k+1
+=
+qi,j
+
+1 k
+∆t
+k
+k
+k
+k
+k
+−
+ − Fx qi−1,j
+
+q
+Fx qi+1,j
++ qi−1,j
++ qi,j+1
++ qi,j−1
+4 i+1,j
+2∆x
+∆t
+k
+k
+ − Fy qi,j−1
+
+Fy qi,j+1
+−
+2∆y
+
+23
+
+INFORMATION GEOMETRIC REGULARIZATION
+
+t = 0.2
+
+t = 0.3
+
+t = 0.4
+
+Reference Solution
+
+LW + IGR + RK2
+
+LF + RK4
+
+t = 0.1
+
+1
+
+6
+
+11
+
+16
+
+Fig. 14: Blast waves. Density plots of Lax-Friedrichs (LF) and Lax-Wendro with
+IGR on a 432 × 720 grid to a reference solution computed by LF on a 4320 × 7200 grid.
+and the LW scheme is given by
+1 k
+k+1/2
+k
+k
+k
+
++ qi+1,j
++ qi,j+1
++ qi,j
+qi+1/2,j+1/2 = qi+1,j+1
+2
+∆t
+k
+k
+k
+k
+ + Fx qi+1,j+1
+ − Fx qi,j
+ − Fx qi,j+1
+
+Fx qi+1,j
+−
+4∆x
+∆t
+k
+k
+k
+k
+ + Fy qi+1,j+1
+ − Fy qi,j
+ − Fy qi+1,j
+ ,
+Fy qi,j+1
+−
+4∆y
+
+24
+
+RUIJIA CAO AND FLORIAN SCHÄFER
+
+t = 0.25
+
+t = 0.35
+
+Reference Solution
+
+LW + IGR + RK2
+
+LF + RK4
+
+t = 0.15
+
+1
+
+2
+
+3
+
+4
+
+Fig. 15: Shock collision.We plot densities for Lax-Friedrichs and Lax-Wendro with
+IGR on a 600 × 500 grid and a reference solution (Lax-Friedrichs, 1.2 ⋅ 104 × 104 grid).
+k+1
+qi,j
+= qik −
+
+∆t
+k+1/2
+k+1/2
+k+1/2
+k+1/2
+Fx qi+1/2,j+1/2  + Fx qi+1/2,j  − Fx qi−1/2,j  − Fx qi−1/2,j−1/2 
+4∆x
+∆t
+k+1/2
+k+1/2
+k+1/2
+k+1/2
+−
+Fy qi+1/2,j+1/2  + Fy qi,j+1/2  − Fy qi,j−1/2  − Fy qi−1/2,j−1/2  .
+4∆x
+
+LW without IGR broke down with negative densities. Thus, we only show LW +
+IGR. To improve the eciency of LF and LW + IGR, we integrate them into fourth
+(for LF) and second-order Runge-Kutta (RK) methods, respectively. We discretize the
+elliptic problem dening Σ using a ve-point Laplacian stencil and central dierences
+for the u-derivatives appearing in the right-hand side. At each ux computation, we
+solve it via Gauss-Seidel iteration [78], with the previous solution as a warm start.
+Except for Figure 19 that explores impractically large α, all results in this section are
+computed using a single Gauss-Seidel sweep per ux computation.
+6.3.1. Blast wave interaction. We simulate the interaction of three blast
+waves in 0, 0.72 × 0, 1.2, with periodic boundary conditions. The initial conditions are ux, y, 0 ≡ 0 and ρx, y, 0 = 1 + 0.6η1 x, y + 1.2η2 x, y + 0.5η3 x, y, where
+the ηi are Gaussian densities with means 0.2, 0.2, 0.4, 0.7, 0.3, 1.05 and standard deviations 0.05, 0.075, 0.03. Figure 14 compares LF + RK4 and LW + RK2
+on a 432 × 720 grid to a reference solution computed with LF + RK4 on a 4320 × 7200
+
+25
+
+INFORMATION GEOMETRIC REGULARIZATION
+
+LF + RK4
+Reference solution
+Potential Energy
+Kinetic Energy
+
+LW + IGR + RK2
+Total Energy
+
+Energy
+
+1.5
+1
+0.5
+0
+0
+
+0.1
+
+0.2 0.3 0.4 0 0.1 0.2 0.3 0.4 0 0.1 0.2 0.3 0.4
+t
+t
+t
+Fig. 16: Inviscid regularization. We plot the energy dissipation of Lax-Friedrichs
+and Lax-Wendro with IGR on a 600 × 500 grid, and a reference solution computed
+by Lax-Friedrichs on a 104 × 1.2 ⋅ 104 grid. Contrary to the Lax-Friedrichs solution,
+the IGR solution shows no dissipative bias. (Remember that Ekin = 12  ρu2 dx,
+Epot =  aργ /γ − 1 dx −  a/γ − 1 dx, and Etotal = Ekin + Epot .)
+t = 2.0
+
+t = 3.0
+
+LW + IGR + RK2
+
+LF + RK4
+
+t = 1.0
+
+0.5
+
+1.0
+
+1.5
+
+Fig. 17: Preservation of density gradients. When simulating the problem in
+Figure 15 over long time horizons, viscous regularization eventually loses the sharpness
+of the density gradients. In contrast, IGR maintains the steepness of density gradients.
+
+grid. LW + RK2, with α = 3.6∆x2 = ∆y2 , preserves the ne details at later
+time steps while the viscous regularization of LF + RK4 smoothes them out.
+6.3.2. Shear shocks. We investigate the shear-like collision of two shock waves
+on 0.0, 1.2 × 0.0, 1.0, with periodic boundary conditions. We use initial conditions
+ux, y ≤ 0.5, 0 ≈ 2.5 sin2πx−1/1.2+1, ux, y ≥ 0.5, 0 ≈ −1.5 sin2πx−0.9/1.2−1,
+
+26
+
+RUIJIA CAO AND FLORIAN SCHÄFER
+
+Δx = Δy = 0.002
+
+Δx = Δy = 0.001
+
+LW + IGR + RK2
+
+Δx = Δy = 0.004
+
+Fig. 18: Mesh convergence. With increasing spatial resolution and for constant
+α = 5 ⋅ 10−5 , the solutions appear to converge to a well-dened PDE solution.
+ = 1.25 ⋅ 10 − 5
+
+ = 0.3125 ⋅ 10 − 5
+
+LW + IGR + RK2
+
+ = 5 ⋅ 10 − 5
+
+Fig. 19: Convergence for α → 0. As α → 0, the density gradients sharpen and the
+regularized solutions converge to the nominal solution (plots with ∆x = ∆y = 5 ⋅ 10−4 ).
+and ρx, y, 0 ≡ 1, ensuring a gradual transition at y = 0 and y = 1 using a smooth cuto
+function. The layers y ≤ 0.5 and y ≥ 0.5 form shocks moving in opposite directions
+that collide in the shear layers causing interactions of shock waves with strong vortical
+ow. In Figure 15, we compare LF + RK4 and LW + RK2 on 600 × 500 grid to a
+reference solution computed with LF + RK4 on a 1.2 ⋅ 104 × 104 grid. LW + IGR
++ RK2, computed with α = 5∆x2 = ∆y2 , preserves the ne details while the
+viscous regularization of LF + RK4 smoothes them out. As shown in Figure 16, LW +
+IGR + RK2 avoids the systematic loss of energy exhibited by LF + RK4. In Figure 17
+we show that LW + IGR + RK2 preserves sharp density gradients for much longer
+time horizons. In Figure 18, we provide evidence that rening the mesh for constant
+α results in convergence to a well-dened solution of (5.3). Finally, in Figure 19 we
+illustrate the convergence to the reference solution under decreasing α.
+7. Comparison, conclusion, and outlook.
+7.1. Comparison to related work. The earliest work proposing inviscid regularization in a spirit similar to ours is a series of papers by Bhat and Fetecau
+[16, 15, 14], motivated by ideas of Leray [61]. In the case of Burgers’ equation shows
+promising results. But its generalization to the Euler equation fails to maintain the
+shock speed of the nominal equation, greatly limiting its usefulness for numerical
+purposes [14]. Recently, [46] proposed a family of inviscid and nondispersive regularizations for the unidimensional Euler equation, based on a similar regularization
+for the shallow water equation [32]. The members of this family can be written in
+
+27
+
+INFORMATION GEOMETRIC REGULARIZATION
+
+x
+
+α
+IGR with (∆x)
+2 = 2.5
+α
+IGR with (∆x)2 = 250
+
+u(x, 0)
+
+Energy
+
+α
+LAD with (∆x)
+2 = 2.5
+α
+LAD with (∆x)2 = 250
+
+ρ(x, T )
+
+ρ(x, T )
+
+Unregularized
+
+x
+
+x
+
+t
+
+Fig. 20: IGR versus localized articial diusivity (LAD). The nonlocality
+of IGR reduces oscillations of dispersive schemes like Lax-Wendro at shocks (rst
+two panels, initial condition is a 1-d Riemann problem). In high-frequency, lowamplitude sound waves (third panel), LAD loses energy (as dened in Figure 16) as
+each downward slope of u incurs dissipation. The antidissipation of IGR in upward
+slopes prevents this, even for 100 times larger α. (fourth panel)
+
+conservation form and thus maintain the correct shock speed. They are parametrized
+by a function A ∶ → of the density. In the special case of P ≡ 0 and Aρ ∶= ρ,
+this regularization coincides with (4.5) with 2α replaced by α in the right-hand side
+of the elliptic problem dening Σ. This amounts to using the Levi-Civita connection
+of the Fisher-Rao metric, instead of the dual connection in this work. Levi-Civita
+geodesics move at constant speed, as measured by the Riemannian metric. This
+translates to smooth solutions of the associated PDE conserving the energy given
+by the squared Riemannian norm. Thus, they need to form singularities to model
+irreversible behavior like the dissipation in shocks. This is the likely cause for the unphysical cusp singularities in the regularized solutions of [46], as studied by [74, 64].
+Numerous existing works apply viscous regularization adaptively, based on shock indicators [85, 75, 34, 41, 67, 11, 48, 20, 38, 13, 55]. In the unidimensional case, a
+prototypical form of this localized articial diusivity (LAD) amounts to removing
+the elliptic operator and using only the negative part of ∂x u in (4.5), yielding
+⎧
+⎛ρu⎞
+⎛ρu2 + P ρ + Σ ⎞ ⎛f ⎞
+⎪
+⎪
+⎪
+=
++ ∂x
+⎪∂t
+⎨ ⎝ρ⎠
+⎠ ⎝0⎠
+⎝
+ρu
+⎪
+
+⎪
+⎪
+−1
+−1
+⎪
+−α∂
+ρ
+∂x Σ = 2α∂x u- ∂x u.
+x
+⎩ρ Σ
+
+Thus, the regularization term Σ of (4.5) mimics a nonlocal and sign-indenite diusion. As shown in Figure 20, the nonlocality due to the elliptic problem in IGR reduces
+spurious oscillations in dispersive numerical schemes for a given parameter α. Where
+LAD can impose limits on the time step sizes due to the quadratic scaling of parabolic CFL numbers [55], our experiments suggest that increasing α in IGR imposes
+no such restrictions, although it may increase the number of Jacobi or Gauss-Seidel
+sweeps per time steps needed to compute Σ. A striking dierence between IGR and
+LAD is that the IGR diusion tensor is sign-indenite. As shown in Figure 20, this
+overcomes LAD’s systematic dissipative bias in high-frequency sound waves that otherwise requires specialized treatment [55]. In the multivariate case, IGR avoids energy
+dissipation due to shear motion, dierent from diusive regularization. Similar con-
+
+28
+
+RUIJIA CAO AND FLORIAN SCHÄFER
+
+siderations have motivated dierent variants of adaptive bulk viscosity (ABV) [34, 67]
+in the numerical solution of Navier Stokes problems. Indeed, the variant proposed by
+[67] (with parameter r = 0, C = 2α) amounts to using Σ = 2α tr Du− tr Du in
+IGR. But we nd that without the tr Du2  term, both IGR and ABV are prone to
+vanishing density in strongly rotational ows. The Riemannian geometry induced by
+the squared L2 -distance in the original Euler equation is closely related to the Wasserstein geometry on the space of mass densities [18, 58] and the logdet regularization
+equals the negative Shannon entropy of the mass density. Information geometric regularization compromises between them. Similarly, [54, 3, 4, 73, 35, 63, 5, 21] combine
+optimal transport with entropic terms and information geometry and [56] use entropic
+regularization to solve explicitly inequality-constrained PDEs. In providing a geometric approach to modeling the energy dissipation in a shock our work is also related to
+the geometric treatment of thermodynamic systems in [43, 44, 45, 87].
+7.2. Conclusion. In this work, we have proposed an information geometric regularization of the barotropic compressible Euler equation and provided a proof of
+concept for its numerical application. To the best of our knowledge, this is the rst
+work that regularizes continuum mechanical equations by modifying the geometry of
+the manifold of deformation maps. It thus opens up numerous directions for future
+work, including the application to other systems of PDEs, the use of dierent geometries, as well as the theoretical and numerical study of the resulting equations. For the
+sake of concreteness and conciseness, we have restricted this work to the case of the
+barotropic Euler equation and the information geometry induced by the logarithmic
+barrier. But generalizations to dierent geometries and equations like Navier Stokes
+and general Euler equations are straightforward to derive. An improved theoretical
+understanding of our approach will help identify its most promising applications.
+7.3. Outlook: Toward information geometric mechanics. Our work combines the geometry governing the inertial movement of individual particles with the
+information geometry of distributions of particles. It thus takes the rst step toward developing information geometric mechanics that accounts for the geometries
+not just of fundamental physical laws governing microscopic behavior, but also of the
+statistical summaries describing their emergent macroscopic behavior.
+Acknowledgments. The authors gratefully acknowledge support from the Air
+Force Oce of Scientic Research under award number FA9550-23-1-0668 (Information Geometric Regularization for Simulation and Optimization of Supersonic Flow).
+RC acknowledges support through a PURA travel award from the Georgia Tech Ofce of Undergraduate Education. This work was produced using Microsoft Copilot for
+autocompletion and spelling/grammar checking. We thank the anonymous reviewers
+for their constructive comments that helped us to improve this manuscript.
+REFERENCES
+[1] S.-i. Amari, I    , vol. 194, Springer, 2016.
+[2] S.-i. Amari and A. Cichocki, I    , Bulletin of the
+polish academy of sciences. Technical sciences, 58 (2010), pp. 183–195.
+[3] S.-i. Amari, R. Karakida, and M. Oizumi, I   W
+  K–L    -  ,
+Information Geometry, 1 (2018), pp. 13–37.
+[4] S.-i. Amari, R. Karakida, M. Oizumi, and M. Cuturi, I   
+     , Neural computation, 31 (2019), pp. 827–848.
+
+INFORMATION GEOMETRIC REGULARIZATION
+
+29
+
+[5] S.-i. Amari and T. Matsuda, I   W    
+ , arXiv preprint arXiv:2307.12508, (2023).
+[6] S.-i. Amari and H. Nagaoka, M   , vol. 191, American Mathematical Soc., 2000.
+[7] L. Ambrosio, N. Gigli, and G. Savaré, G :        
+ , Springer Science & Business Media, 2008.
+[8] V. Arnold, S  ́́ ́           
+ ’   , in Annales de l’institut Fourier, vol. 16,
+1966, pp. 319–361.
+, and L. Schwachhöfer, I , vol. 64, Springer,
+[9] N. Ay, J. Jost, H. V 
+an Le
+2017.
+[10] J. M. Ball, C       , Archive for
+rational mechanics and Analysis, 63 (1976), pp. 337–403.
+[11] G. E. Barter and D. L. Darmofal, S   PDE-   
+DGFEM: P I. , Journal of Computational Physics, 229 (2010), pp. 1810–
+1827.
+[12] J.-D. Benamou and Y. Brenier, A          , Numerische Mathematik, 84 (2000), pp. 375–393.
+[13] A. Bhagatwala and S. K. Lele, A      
+ , Journal of computational physics, 228 (2009), pp. 4965–4969.
+[14] H. Bhat and R. Fetecau, O      E   
+ , Journal of mathematical analysis and applications, 358 (2009), pp. 168–
+181.
+[15] H. Bhat and R. Fetecau, T R    L–B , Journal of
+Dierential Equations, 246 (2009), pp. 3957–3979.
+[16] H. S. Bhat and R. C. Fetecau, A H    B , Journal
+of Nonlinear Science, 16 (2006), pp. 615–638.
+[17] D. Bodony and A. Fikl, A-   - , in Proceedings of the
+2022 CTR summer program, 2022.
+[18] Y. Brenier, T              , Journal of the American Mathematical Society, 2 (1989), pp. 225–
+255.
+[19] Y. Brenier, W. Gangbo, G. Savaré, and M. Westdickenberg, S  
+ , Journal de Mathématiques Pures et Appliquées, 99 (2013), pp. 577–617.
+[20] O. P. Bruno, J. S. Hesthaven, and D. V. Leibovici, FC- -  
+-  - , Journal of Computational Physics:
+X, 15 (2022), p. 100110.
+[21] M. Burger, M. Erbar, F. Hoffmann, D. Matthes, and A. Schlichting, C     , arXiv preprint arXiv:2302.07773, (2023).
+[22] R. Cao and F. Schäfer, I     
+E     , arXiv preprint arXiv:2411.15121, (2024).
+[23] J. A. Carrillo and S. T. Galtung, E       
+ 1 E , arXiv preprint arXiv:2312.04932, (2023).
+[24] F. Cavalletti, M. Sedjro, and M. Westdickenberg, A      
+ 1    , SIAM Journal on Mathematical Analysis, 47
+(2015), pp. 66–79.
+[25] J. Chen and T. Y. Hou, S  -    2   3 
+    : A, arXiv preprint arXiv:2210.07191, (2022).
+[26] J. Chen and T. Y. Hou, S  -    2   3 
+    :  , arXiv preprint arXiv:2305.05660, (2023).
+[27] N. N. Chentsov, S     , no. 53, American Mathematical Soc., 2000.
+[28] D. Christodoulou, T     3- , vol. 2, European Mathematical Society, 2007.
+[29] D. Christodoulou, T   , 2019.
+[30] D. Christodoulou and S. Klainerman, T      M
+, Séminaire Équations aux dérivées partielles (Polytechnique) dit aussi” Séminaire
+Goulaouic-Schwartz”, (1993), pp. 1–29.
+[31] D. Christodoulou and S. Miao, C   E’ , vol. 9, International
+Press Somerville, MA, 2014.
+[32] D. Clamond and D. Dutykh, N-       (  E ), Communications in Nonlinear Science and
+
+30
+
+RUIJIA CAO AND FLORIAN SCHÄFER
+
+Numerical Simulation, 55 (2018), pp. 237–247.
+[33] B. D. Coleman and W. Noll, O     , Archive for rational
+mechanics and analysis, 4 (1959), pp. 97–128.
+[34] A. W. Cook and W. H. Cabot, H  - , Journal of
+Computational Physics, 203 (2005), pp. 379–385.
+[35] J. Cui, L. Dieci, and H. Zhou, T   – , Mathematics of Computation, 91 (2022), pp. 1019–1075.
+[36] B. Dacorogna, D      , vol. 78, Springer Science & Business Media, 2007.
+[37] A. Dermoune, P     , The Annals of Probability,
+27 (1999), pp. 1357–1367.
+[38] V. Dolej
+sı́, M. Feistauer, and C. Schwab, O      G
+     , Mathematics and Computers in Simulation,
+61 (2003), pp. 333–346.
+[39] D. G. Ebin and J. Marsden, G        
+, Annals of Mathematics, (1970), pp. 102–163.
+[40] L. C. Evans, P  , vol. 19, American Mathematical Society, 2022.
+[41] B. Fiorina and S. K. Lele, A       
+  , Journal of Computational Physics, 222 (2007), pp. 246–264.
+[42] A. Fujiwara, H  C’ , Information Geometry, (2022), pp. 1–20.
+[43] F. Gay-Balmaz and H. Yoshimura, A L    
+.  :  , Journal of Geometry and Physics, 111 (2017),
+pp. 169–193.
+[44] F. Gay-Balmaz and H. Yoshimura, A L    
+.  :  , Journal of Geometry and Physics, 111 (2017),
+pp. 194–212.
+[45] F. Gay-Balmaz and H. Yoshimura, F L    :   , Entropy, 21 (2018), p. 8.
+[46] B. Guelmame, D. Clamond, and S. Junca, H      E , Nonlinear Analysis: Real World Applications, 64 (2022),
+p. 103455.
+[47] B. Guelmame, S. Junca, D. Clamond, and R. L. Pego, G     H  B , Journal of Dynamics and Dierential Equations, (2022),
+pp. 1–29.
+[48] J.-L. Guermond, R. Pasquetti, and B. Popov, E      , Journal of Computational Physics, 230 (2011), pp. 4248–4267.
+[49] J.-L. Guermond and B. Popov, V    E   
+, SIAM Journal on Applied Mathematics, 74 (2014), pp. 284–305.
+[50] O. Güler, B     , Mathematics of Operations Research,
+21 (1996), pp. 860–885.
+[51] A. Harten, B. Engquist, S. Osher, and S. R. Chakravarthy, U   
+ - , III, Journal of computational physics, 131 (1997),
+pp. 3–47.
+[52] R. Hynd, L      , SIAM Journal on Mathematical
+Analysis, 51 (2019), pp. 3769–3795.
+[53] R. Hynd, A      E , Transactions of the American
+Mathematical Society, 373 (2020), pp. 6777–6815.
+[54] R. Jordan, D. Kinderlehrer, and F. Otto, T     F–
+P , SIAM journal on mathematical analysis, 29 (1998), pp. 1–17.
+[55] S. Kawai, S. K. Shankar, and S. K. Lele, A     
+ -     , Journal of computational physics,
+229 (2010), pp. 1739–1762.
+[56] B. Keith and T. M. Surowiec, P G: A -  
+    , arXiv preprint arXiv:2307.12444, (2023).
+[57] B. Khesin and G. Misiolek, S    B      , Proceedings of the Steklov Institute of Mathematics, 259 (2007), p. 73.
+[58] B. Khesin, G. Misiolek, and K. Modin, G   -
+’ , Bulletin of the American Mathematical Society, 58 (2021), pp. 377–442.
+[59] J. Koreeda, H. Yanagisawa, K. Maeno, H. Honma, S. Bystrov, V. Ivanov, and
+F. Shugaev, F       , in Shock Waves@ Marseille
+II: Physico-Chemical Processes and Nonequilibrium Flow, Springer, 1995, pp. 263–268.
+[60] P. D. Lax, A           
+
+INFORMATION GEOMETRIC REGULARIZATION
+
+31
+
+, in Recent advances in numerical analysis, Elsevier, 1978, pp. 107–117.
+[61] J. Leray, E    ’    ’, Acta Math., 63
+(1934), pp. 193–248.
+[62] R. J. LeVeque and R. J. Leveque, N    , vol. 214,
+Springer, 1992.
+[63] W. Li and J. Zhao, W  , Information Geometry, (2023), pp. 1–53.
+[64] J.-G. Liu, R. L. Pego, and Y. Pu, W-   -   
+   , Nonlinearity, 32 (2019), p. 4346.
+[65] X.-D. Liu, S. Osher, and T. Chan, W  - , Journal of
+computational physics, 115 (1994), pp. 200–212.
+[66] C. Lozano, W  ! L       ,
+AIAA Journal, 57 (2019), pp. 3991–4006.
+[67] A. Mani, J. Larsson, and P. Moin, S      -      , Journal of Computational Physics, 228 (2009),
+pp. 7368–7374.
+[68] L. Natile and G. Savaré, A W    -  
+, SIAM journal on mathematical analysis, 41 (2009), pp. 1340–1365.
+[69] A. S. Nemirovski and M. J. Todd, I-   , Acta Numerica,
+17 (2008), pp. 191–234.
+[70] A. S. Nemirovskij and D. B. Yudin, P      , (1983).
+[71] T. Nguyen and A. Tudorascu, P E/E–P        , SIAM journal on mathematical analysis, 40 (2008),
+pp. 754–775.
+[72] F. Otto, T     :    , (2001).
+[73] G. Peyré, M. Cuturi, et al., C  : W   
+, Foundations and Trends® in Machine Learning, 11 (2019), pp. 355–607.
+[74] Y. Pu, R. L. Pego, D. Dutykh, and D. Clamond, W     
+-   - , Communications in Mathematical Sciences, 16 (2018).
+[75] G. Puppo, N     , SIAM Journal on Scientic
+Computing, 25 (2004), pp. 1382–1415.
+[76] G. Raskutti and S. Mukherjee, T     , IEEE Transactions on Information Theory, 61 (2015), pp. 1451–1457.
+[77] D. Ray and J. S. Hesthaven, A      - , Journal
+of computational physics, 367 (2018), pp. 166–191.
+[78] Y. Saad, I     , SIAM, 2003.
+[79] F. Schäfer, A. Anandkumar, and H. Owhadi, C  , arXiv preprint
+arXiv:2006.10179, (2020).
+[80] A. Schmeding, A I  I-D D G, Cambridge
+Studies in Advanced Mathematics, Cambridge University Press, 2022, https://doi.org/10.
+1017/9781009091251.
+[81] C.-W. Shu, A      ,   -    -   
+ , 1998.
+[82] T. C. Sideris, F    -  , Communications in mathematical physics, 101 (1985), pp. 475–485.
+[83] M. D. Suder, O  L      - P E , West Virginia University, 2021.
+[84] B. Van Leer, T     . V.  - 
+ G’ , Journal of computational Physics, 32 (1979), pp. 101–136.
+[85] J. Von Neumann and R. D. Richtmyer, A        , Journal of applied physics, 21 (1950), pp. 232–237.
+[86] B. Wilfong, A. Radhakrishnan, H. Le Berre, D. Vickers, T. Prathi, N. Tselepidis,
+B. Dorschner, R. Budiardja, B. Cornille, S. Abbott, et al., S -
+: E 1        , in Proceedings of the International Conference for High Performance Computing,
+Networking, Storage and Analysis, 2025, pp. 14–24.
+[87] H. Yoshimura and F. Gay-Balmaz, H    -  , in International Conference on Geometric Science of Information,
+Springer, 2023, pp. 221–230.
+
+

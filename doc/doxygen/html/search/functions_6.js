@@ -1,4 +1,23 @@
 var searchData=
 [
-  ['initialize_5fsbm_5fgeometry_0',['initialize_sbm_geometry',['../namespace_immersed_boundary.html#a14762f1b73a225fef97f558de2c2898d',1,'ImmersedBoundary']]]
+  ['get_5fcircle_5fsdf_0',['get_circle_sdf',['../namespaceImmersedBoundary.html#a932b28838fc6ccf2335149794c1bb5fd',1,'ImmersedBoundary']]],
+  ['get_5fflat_5fidx_1',['get_flat_idx',['../structBlock.html#ae73558cffedd2b557b3193e0a1711914',1,'Block']]],
+  ['get_5fflux_5fpointwise_2',['get_flux_pointwise',['../classSolver.html#ae2762c40de9c1eed36c98d8e112b021f',1,'Solver']]],
+  ['get_5fflux_5fpointwise_5fcell_3',['get_flux_pointwise_cell',['../classSolver.html#ad27be2704ca2210212354439959a86fc',1,'Solver']]],
+  ['get_5fib_5fmask_4',['get_ib_mask',['../classSolver.html#a58a9ba3ae35742d3cdf3555b09acdb2f',1,'Solver']]],
+  ['get_5fib_5fmask_5fat_5ftime_5',['get_ib_mask_at_time',['../classSolver.html#ae2c81076753bbbed33f630f6c8d89a4d',1,'Solver']]],
+  ['get_5fib_5fsdf_5fat_5ftime_6',['get_ib_sdf_at_time',['../classSolver.html#aa0104f2993f9b705b6cba1148f5608e4',1,'Solver']]],
+  ['get_5fib_5fsdf_5fgradient_5fat_5ftime_7',['get_ib_sdf_gradient_at_time',['../classSolver.html#a0d5b90d23533793d3631ec0bb323d982',1,'Solver']]],
+  ['get_5fmorton_5fid_8',['get_morton_id',['../classSolver.html#aa7c69ca478d2c9ba9045511abbb53b2e',1,'Solver']]],
+  ['get_5fnaca_5fsdf_9',['get_naca_sdf',['../namespaceImmersedBoundary.html#af62bc6ef9fb1d42b0408bd121270c236',1,'ImmersedBoundary']]],
+  ['get_5fneigh_5fstate_5fcell_10',['get_neigh_state_cell',['../classSolver.html#a16374d8c3a230fac49e1915fddfecdb4',1,'Solver']]],
+  ['get_5fneigh_5fstate_5fx_11',['get_neigh_state_x',['../classSolver.html#a1212fd5e6e6c518488082124db7fe1a9',1,'Solver']]],
+  ['get_5fneigh_5fstate_5fy_12',['get_neigh_state_y',['../classSolver.html#a09fd68470bff71377becf36b6ead1c6b',1,'Solver']]],
+  ['get_5fparabola_5fsdf_13',['get_parabola_sdf',['../namespaceImmersedBoundary.html#a08694a4986d857953e941c4b04a26e40',1,'ImmersedBoundary']]],
+  ['get_5fquad_5fsdf_14',['get_quad_sdf',['../namespaceImmersedBoundary.html#af718a4a31f425036821f093cc10ec01b',1,'ImmersedBoundary']]],
+  ['get_5frhs_15',['get_RHS',['../structCell.html#ab6002a870f3fe270f628ce79a5bdbb58',1,'Cell::get_RHS(int v, int iy, int ix, int npts)'],['../structCell.html#ae1f01b8537de9bc8f2a499a3184c1890',1,'Cell::get_RHS(int v, int iy, int ix, int npts) const']]],
+  ['get_5fsbm_5fdiagnostics_16',['get_sbm_diagnostics',['../namespaceImmersedBoundary.html#ac21babb545c74e73b2ab556ddb0c9b9f',1,'ImmersedBoundary']]],
+  ['get_5fsbm_5fface_17',['get_sbm_face',['../namespaceImmersedBoundary.html#a81e78f4f2f8dce33856d3f29f5c4bfeb',1,'ImmersedBoundary']]],
+  ['get_5fsbm_5fhash_18',['get_sbm_hash',['../namespaceImmersedBoundary.html#ac760bf2b14bc99f1cfab9003bc673516',1,'ImmersedBoundary']]],
+  ['get_5fu_19',['get_U',['../structCell.html#a3aa4a5c9fb5903d9a8107d65997c4f0e',1,'Cell::get_U(int v, int iy, int ix, int npts)'],['../structCell.html#aaaa40217883a615ec7f2c906e34d5f38',1,'Cell::get_U(int v, int iy, int ix, int npts) const']]]
 ];

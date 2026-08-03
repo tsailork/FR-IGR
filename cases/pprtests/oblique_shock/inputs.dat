@@ -1,0 +1,75 @@
+[Physics]
+GAMMA = 1.4
+IC_TYPE = OBLIQUE_SHOCK
+OBLIQUE_SHOCK_M = 5.0
+OBLIQUE_SHOCK_BETA_DEG = 30.0
+RHO_INF = 1.0
+P_INF = 1.0
+
+[Solver]
+P_DEG = 3
+CFL = 0.5
+T_FINAL = 1.0
+NUM_THREADS = 18
+ENABLE_MULTIRATE = false
+RIEMANN_SOLVER = RUSANOV
+
+[NavierStokes]
+ENABLE_NS = false
+
+[Regularization]
+ENABLE_IGR = false
+
+[PPR]
+ENABLE_PPR           = true
+PPR_WALL_BC          = CONSTANT_DIFFERENCE
+PPR_N_CELLS_SHOCK    = 6.0
+PPR_C_TAU            = 0.25
+PPR_C_POS            = 0.001
+PPR_C_MAX            = 1000.0
+PPR_SENSOR_NOISE_FLOOR      = 0.25
+PPR_SENSOR_SATURATION       = 3.0
+
+PPR_DEBUG_OUTPUT              = true
+PPR_USE_STENCIL_EXPANSION     = true
+PPR_USE_VON_NEUMANN_CEILING = false
+PPR_USE_SHOCK_NORMAL_MACH   = false
+PPR_USE_DUCROS_SENSOR       = false
+PPR_USE_ENERGY_GUARD        = false
+PPR_USE_SPATIAL_CLAMP       = false
+PPR_USE_LIMITER             = false
+
+PPR_CONSTANT_MODE      = true    # Bypass all adaptive logic
+PPR_CONSTANT_THETA     = 30.0    # Uniform theta everywhere
+PPR_CONSTANT_C_TAU_VAL = 0.5     # Uniform C_tau everywhere
+
+[APSR]
+ENABLE_APSR = true
+APSR_ALPHA = 0.02
+APSR_ETA_BR2 = 2.0
+APSR_USE_DUCROS = true
+
+[Stabilization]
+ENABLE_POS_LIMITER = true
+POS_LIMITER_EPS = 1e-8
+ENABLE_ENTROPY_LIMITER = false
+ENTROPY_LIMITER_EPS = 2E-3
+LIMITER_STRATEGY = MODAL
+
+[ImmersedBoundary]
+ENABLE_IB = false
+
+[TreeDecomposition]
+
+[IO]
+RESTART_FILE = 
+RESTART_TIME = 0.0
+OUTPUT_INTERVAL = 0.05
+PRINT_INTERVAL = 0.001
+RESIDUAL_INTERVAL = 0.01
+RESTART_INTERVAL = 0.5
+
+OUTPUT_DIV_ND = true
+OUTPUT_ADAPTIVE_THETA = true
+
+SMOOTH_PLOT_OUTPUTS = true

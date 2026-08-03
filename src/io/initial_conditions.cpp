@@ -76,6 +76,204 @@ void IC::apply(Solver& solver) {
                     v = p.V_INF;
                     press = p.P_INF;
 
+                } else if (p.IC_TYPE == "OBLIQUE_SHOCK") {
+                    double a1 = std::sqrt(p.GAMMA * p.P_INF / p.RHO_INF);
+                    rho = p.RHO_INF;
+                    u = p.OBLIQUE_SHOCK_M * a1;
+                    v = 0.0;
+                    press = p.P_INF;
+
+                } else if (p.IC_TYPE == "KELVIN_HELMHOLTZ" || p.IC_TYPE == "KHI") {
+                    // 2D Kelvin-Helmholtz Shear Layer Instability
+                    double y1 = 0.25, y2 = 0.75;
+                    double sigma = 0.025;
+                    double U0 = 0.5;
+                    double eps = 0.05;
+
+                    double k_wave = 3.0; // 3 disturbance cycles across domain x in [0, 1]
+                    u = U0 * (std::tanh((y - y1) / sigma) - std::tanh((y - y2) / sigma) - 1.0);
+                    v = eps * U0 * std::sin(2.0 * M_PI * k_wave * x) * 
+                        (std::exp(-std::pow((y - y1) / sigma, 2)) + std::exp(-std::pow((y - y2) / sigma, 2)));
+                    rho = 1.0 + 0.5 * (std::tanh((y - y1) / sigma) - std::tanh((y - y2) / sigma));
+                    press = 2.5;
+
+                } else if (p.IC_TYPE == "SHOCK_VORTEX") {
+                    // 2D Shock-Vortex Interaction (Inoue & Hattori 1999 benchmark)
+                    double xs    = p.SHOCK_VORTEX_XS; // Shock initial position
+                    double xv    = p.SHOCK_VORTEX_XV; // Vortex center X position
+                    double yv    = p.SHOCK_VORTEX_YV; // Vortex center Y position
+                    double Mv    = p.SHOCK_VORTEX_MV; // Vortex Mach number
+                    double rc    = p.SHOCK_VORTEX_RC; // Core radius scale
+                    double Ms    = p.SHOCK_VORTEX_MS; // Shock Mach number
+                    double gamma = p.GAMMA;
+
+                    double rx = x - xv;
+                    double ry = y - yv;
+                    double r = std::sqrt(rx * rx + ry * ry);
+                    double r_norm = r / rc;
+                    double v_theta = Mv * r_norm * std::exp(0.5 * (1.0 - r_norm * r_norm));
+
+                    double u_vort = (r > 1e-12) ? -v_theta * (ry / r) : 0.0;
+                    double v_vort = (r > 1e-12) ?  v_theta * (rx / r) : 0.0;
+                    double T_r = 1.0 - 0.5 * (gamma - 1.0) * Mv * Mv * std::exp(1.0 - r_norm * r_norm);
+                    if (T_r < 1e-4) T_r = 1e-4;
+
+                    double rho_R = std::pow(T_r, 1.0 / (gamma - 1.0));
+                    double p_R = (1.0 / gamma) * std::pow(T_r, gamma / (gamma - 1.0));
+
+                    // Rankine-Hugoniot post-shock state for Ms moving in +x direction
+                    double p0 = 1.0 / gamma;
+                    double a0 = 1.0; // sqrt(gamma * p0 / rho0) = 1.0
+                    double rho_L = 1.0 * ((gamma + 1.0) * Ms * Ms) / ((gamma - 1.0) * Ms * Ms + 2.0);
+                    double p_L = p0 * (1.0 + (2.0 * gamma / (gamma + 1.0)) * (Ms * Ms - 1.0));
+                    double u_L = (2.0 * a0 / (gamma + 1.0)) * (Ms - 1.0 / Ms);
+
+                    double w = sigmoid(x, xs, delta);
+                    rho   = (1.0 - w) * rho_L + w * rho_R;
+                    u     = (1.0 - w) * u_L   + w * u_vort;
+                    v     = (1.0 - w) * 0.0   + w * v_vort;
+                    press = (1.0 - w) * p_L   + w * p_R;
+
+                } else if (p.IC_TYPE == "SHOCK_VORTEX_WORKSHOP" || p.IC_TYPE == "SHOCK_VORTEX_HIOCFD") {
+                    // 2D Shock-Vortex Interaction (HiOCFD Case CI2 / Inoue & Hattori 1999)
+                    const double xs    = 0.5;   // Standing shock position
+                    const double xv    = 0.25;  // Vortex center X
+                    const double yv    = 0.5;   // Vortex center Y
+                    const double ra    = 0.075; // Inner core radius
+                    const double rb    = 0.175; // Outer core radius
+                    const double Mv    = 0.9;   // Max tangential Mach number
+                    const double Ms    = 1.5;   // Upstream shock Mach number
+                    const double gamma = p.GAMMA;
+
+                    double rx = x - xv;
+                    double ry = y - yv;
+                    double r  = std::sqrt(rx * rx + ry * ry);
+
+                    // Compute tangential velocity and temperature profile
+                    double v_theta = 0.0;
+                    double T_r     = 1.0;
+
+                    const double C = Mv * ra / (ra * ra - rb * rb);
+
+                    if (r <= ra) {
+                        v_theta = Mv * (r / ra);
+                        
+                        // Temperature at r_a
+                        double T_ra = 1.0 - (gamma - 1.0) * C * C * 
+                                      (2.0 * rb * rb * std::log(ra / rb) - 0.5 * ra * ra + 0.5 * std::pow(rb, 4) / (ra * ra));
+                        
+                        // Inner core temperature profile
+                        T_r = T_ra - 0.5 * (gamma - 1.0) * Mv * Mv * (1.0 - (r * r) / (ra * ra));
+
+                    } else if (r < rb) {
+                        v_theta = C * (r - (rb * rb) / r);
+
+                        // Outer region temperature profile
+                        T_r = 1.0 - (gamma - 1.0) * C * C * 
+                              (2.0 * rb * rb * std::log(r / rb) - 0.5 * r * r + 0.5 * std::pow(rb, 4) / (r * r));
+                    }
+
+                    double u_vort = (r > 1e-12) ? -v_theta * (ry / r) : 0.0;
+                    double v_vort = (r > 1e-12) ?  v_theta * (rx / r) : 0.0;
+
+                    // Upstream vortex thermodynamic fields
+                    double rho_vort = std::pow(T_r, 1.0 / (gamma - 1.0));
+                    double p_vort   = (1.0 / gamma) * std::pow(T_r, gamma / (gamma - 1.0));
+
+                    // Rankine-Hugoniot standing shock jump across x = xs
+                    double p1   = 1.0 / gamma;
+                    double rho1 = 1.0;
+                    double u1   = Ms * std::sqrt(gamma * p1 / rho1); // u1 = 1.5
+
+                    double rho2 = rho1 * ((gamma + 1.0) * Ms * Ms) / ((gamma - 1.0) * Ms * Ms + 2.0);
+                    double p2   = p1 * (1.0 + (2.0 * gamma / (gamma + 1.0)) * (Ms * Ms - 1.0));
+                    double u2   = u1 * (rho1 / rho2);
+
+                    // Exact Heaviside step jump across shock front
+                    double w = sigmoid(x, xs, delta);
+                    rho =   (1-w)*(rho1*rho_vort) + w*rho2;
+                    u =     (1-w)*(u1 + u_vort)   + w*u2;
+                    v =     (1-w)*v_vort;
+                    press = (1-w)*p_vort          + w*p2;
+
+                    // 
+                    /*
+                    if (x < xs) {
+                        rho   = rho1 * rho_vort;
+                        u     = u1 + u_vort;
+                        v     = v_vort;
+                        press = p_vort;
+                    } else {
+                        rho   = rho2;
+                        u     = u2;
+                        v     = 0.0;
+                        press = p2;
+                    } */ 
+                    
+                } else if (p.IC_TYPE == "DECAYING_TURBULENCE") {
+                    // 2D Decaying Isotropic Solenoidal Compressible Turbulence
+                    double x_tilde = 2.0 * M_PI * x;
+                    double y_tilde = 2.0 * M_PI * y;
+                    double u_sum = 0.0, v_sum = 0.0;
+                    double kp = 4.0;
+                    double U0 = 0.2; // Solenoidal turbulent Mach scale ~0.4
+
+                    for (int kx = 1; kx <= 6; ++kx) {
+                        for (int ky = 1; ky <= 6; ++ky) {
+                            double k = std::sqrt((double)(kx * kx + ky * ky));
+                            double A_k = (k / kp) * (k / kp) * std::exp(1.0 - (k / kp) * (k / kp));
+                            double phi_x = std::sin(kx * 12.345 + ky * 67.89);
+                            double phi_y = std::cos(kx * 54.321 + ky * 98.76);
+
+                            u_sum += -A_k * (ky / k) * std::sin(kx * x_tilde + phi_x) * std::cos(ky * y_tilde + phi_y);
+                            v_sum +=  A_k * (kx / k) * std::cos(kx * x_tilde + phi_x) * std::sin(ky * y_tilde + phi_y);
+                        }
+                    }
+                    rho = 1.0;
+                    u = U0 * u_sum;
+                    v = U0 * v_sum;
+                    press = 1.0 / p.GAMMA;
+
+                } else if (p.IC_TYPE == "RICHTMYER_MESHKOV" || p.IC_TYPE == "RMI") {
+                    // 2D Richtmyer-Meshkov Instability (Single-mode benchmark)
+                    double xs      = p.RMI_XS;    // Incident shock position
+                    double x0      = p.RMI_X0;    // Mean density interface position
+                    double amp     = p.RMI_AMP;   // Perturbation amplitude
+                    double Ly      = p.RMI_LY;    // Domain height / wavelength
+                    double sigma_i = p.RMI_SIGMA; // Interface smoothing thickness
+                    double Ms      = p.RMI_MS;    // Shock Mach number
+                    double rho1    = p.RMI_RHO1;  // Light fluid density
+                    double rho2    = p.RMI_RHO2;  // Heavy fluid density (Atwood number A = (rho2-rho1)/(rho2+rho1))
+                    double gamma   = p.GAMMA;
+
+                    // Cosine perturbation profile (satisfies dxi/dy = 0 at y = 0 and y = Ly)
+                    double xi = x0 + amp * std::cos(2.0 * M_PI * y / Ly);
+
+                    double rho_unshocked = rho1 + 0.5 * (rho2 - rho1) * (1.0 + std::tanh((x - xi) / sigma_i));
+                    double p_unshocked = 1.0 / gamma;
+
+                    double a1 = 1.0; // sqrt(gamma * p_unshocked / rho1) = 1.0
+                    double rho_L = rho1 * ((gamma + 1.0) * Ms * Ms) / ((gamma - 1.0) * Ms * Ms + 2.0);
+                    double p_L = p_unshocked * (1.0 + (2.0 * gamma / (gamma + 1.0)) * (Ms * Ms - 1.0));
+                    double u_L = (2.0 * a1 / (gamma + 1.0)) * (Ms - 1.0 / Ms);
+
+                    double w = sigmoid(x, xs, delta);
+                    rho   = (1.0 - w) * rho_L + w * rho_unshocked;
+                    u     = (1.0 - w) * u_L   + w * 0.0;
+                    v     = 0.0;
+                    press = (1.0 - w) * p_L   + w * p_unshocked;
+
+                } else if (p.IC_TYPE == "ORSZAG_TANG") {
+                    // 2D Compressible Hydrodynamic Orszag-Tang Vortex
+                    double xt = 2.0 * M_PI * x;
+                    double yt = 2.0 * M_PI * y;
+                    double gamma = p.GAMMA;
+
+                    rho = gamma * gamma;
+                    u = -std::sin(yt);
+                    v =  std::sin(xt);
+                    press = gamma + 0.25 * gamma * (std::cos(2.0 * xt) + 2.0 * std::cos(yt));
+
                 } else if (p.IC_TYPE == "LID_DRIVEN_CAVITY") {
                     rho = p.RHO_INF;
                     u = 0.0;
@@ -94,6 +292,92 @@ void IC::apply(Solver& solver) {
                 c->get_U(1, iy, ix, npts) = rho * u;
                 c->get_U(2, iy, ix, npts) = rho * v;
                 c->get_U(3, iy, ix, npts) = press / (p.GAMMA - 1.0) + 0.5 * rho * (u * u + v * v);
+                if (p.ENABLE_PPR) {
+                    c->S_field[iy * npts + ix] = rho * press;
+                }
+            }
+        }
+    }
+}
+
+void IC::apply(SolverDim<3>& solver) {
+    const Parameters& p = solver.p;
+    const Basis& basis = solver.basis;
+
+    for (Cell3D* c : solver.cells) {
+        if (p.ENABLE_IB && c->solid_mask) continue;
+
+        int npts = p.N_PTS;
+        int npts3 = npts * npts * npts;
+
+        for (int iz = 0; iz < npts; ++iz) {
+            for (int iy = 0; iy < npts; ++iy) {
+                for (int ix = 0; ix < npts; ++ix) {
+                    double x = c->x_min + 0.5 * (1.0 + basis.z[ix]) * c->dx;
+                    double y = c->y_min + 0.5 * (1.0 + basis.z[iy]) * c->dy;
+                    double z = c->z_min + 0.5 * (1.0 + basis.z[iz]) * c->dz;
+
+                    double rho = 1.0, u = 0.0, v = 0.0, w = 0.0, press = 1.0;
+
+                    if (p.IC_TYPE == "TAYLOR_GREEN_3D" || p.IC_TYPE == "TGV") {
+                        // 3D Taylor-Green Vortex
+                        double u0 = 1.0;
+                        double p0 = 100.0; // Mach ~ 0.1 for quasi-incompressible compressible Navier-Stokes
+                        rho = 1.0;
+                        u = u0 * std::sin(x) * std::cos(y) * std::cos(z);
+                        v = -u0 * std::cos(x) * std::sin(y) * std::cos(z);
+                        w = 0.0;
+                        press = p0 + (1.0 / 16.0) * (std::cos(2.0 * x) + std::cos(2.0 * y)) * (std::cos(2.0 * z) + 2.0);
+
+                    } else if (p.IC_TYPE == "ABC_FLOW_3D" || p.IC_TYPE == "ABC") {
+                        // 3D Arnold-Beltrami-Childress (ABC) Flow
+                        double A = 1.0, B = 1.0, C = 1.0;
+                        rho = 1.0;
+                        u = A * std::sin(z) + C * std::cos(y);
+                        v = B * std::sin(x) + A * std::cos(z);
+                        w = C * std::sin(y) + B * std::cos(x);
+                        press = 100.0;
+
+                    } else if (p.IC_TYPE == "ISENTROPIC_VORTEX_3D") {
+                        // 3D Isentropic Euler Vortex
+                        double x0 = 5.0, y0 = 5.0, z0 = 5.0;
+                        double beta = 5.0;
+                        double r2 = (x - x0)*(x - x0) + (y - y0)*(y - y0) + (z - z0)*(z - z0);
+                        double dT = - ((p.GAMMA - 1.0) * beta * beta / (8.0 * p.GAMMA * M_PI * M_PI)) * std::exp(1.0 - r2);
+                        double T = 1.0 + dT;
+                        rho = std::pow(T, 1.0 / (p.GAMMA - 1.0));
+                        press = std::pow(rho, p.GAMMA);
+                        u = 1.0 - (beta / (2.0 * M_PI)) * (y - y0) * std::exp(0.5 * (1.0 - r2));
+                        v = 1.0 + (beta / (2.0 * M_PI)) * (x - x0) * std::exp(0.5 * (1.0 - r2));
+                        w = 0.0;
+
+                    } else if (p.IC_TYPE == "SPHERE_FLOW_3D" || p.IC_TYPE == "FREESTREAM_3D") {
+                        rho = 1.0;
+                        u = 1.0;
+                        v = 0.0;
+                        w = 0.0;
+                        press = 1.0 / p.GAMMA;
+
+                    } else if (p.IC_TYPE == "BLAST_3D") {
+                        double r = std::sqrt(x*x + y*y + z*z);
+                        if (r <= 0.4) {
+                            rho = 1.0; press = 1.0;
+                        } else {
+                            rho = 0.125; press = 0.1;
+                        }
+                        u = 0.0; v = 0.0; w = 0.0;
+                    }
+
+                    int idx = iz * npts * npts + iy * npts + ix;
+                    c->U[0 * npts3 + idx] = rho;
+                    c->U[1 * npts3 + idx] = rho * u;
+                    c->U[2 * npts3 + idx] = rho * v;
+                    c->U[3 * npts3 + idx] = rho * w;
+                    c->U[4 * npts3 + idx] = press / (p.GAMMA - 1.0) + 0.5 * rho * (u*u + v*v + w*w);
+                    if (p.ENABLE_PPR) {
+                        c->S_field[idx] = rho * press;
+                    }
+                }
             }
         }
     }

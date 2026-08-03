@@ -16,23 +16,35 @@ void Solver::sweep_y() {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
         for (int ix = 0; ix < p.N_PTS; ++ix) {
 
             // --- 1. Pointwise Y-flux ---
             double G_sol[MAX_PTS][4];
+            double G_sol_S[MAX_PTS] = {};
             for (int iy = 0; iy < p.N_PTS; ++iy) {
                 get_flux_pointwise_cell(*c, iy, ix,
                                         nullptr, G_sol[iy],
                                         c->sigma_field[iy * p.N_PTS + ix]);
+                if (p.ENABLE_PPR) {
+                    double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iy, ix, p.N_PTS));
+                    double v   = c->get_U(2, iy, ix, p.N_PTS) / rho;
+                    G_sol_S[iy] = v * c->S_field[iy * p.N_PTS + ix];
+                }
             }
 
             // --- 2. Face-extrapolated states ---
             double UB_face[4] = {}, UT_face[4] = {};
             double sig_B_face = 0.0, sig_T_face = 0.0;
+            double S_B_face = 0.0, S_T_face = 0.0;
             for (int iy = 0; iy < p.N_PTS; ++iy) {
                 double s = c->sigma_field[iy * p.N_PTS + ix];
                 sig_B_face += s * basis.l_L[iy];
                 sig_T_face += s * basis.l_R[iy];
+                if (p.ENABLE_PPR) {
+                    S_B_face += c->S_field[iy * p.N_PTS + ix] * basis.l_L[iy];
+                    S_T_face += c->S_field[iy * p.N_PTS + ix] * basis.l_R[iy];
+                }
             }
             for (int v = 0; v < 4; ++v) {
                 for (int iy = 0; iy < p.N_PTS; ++iy) {
@@ -43,77 +55,83 @@ void Solver::sweep_y() {
 
             // --- 3. Common Riemann fluxes (Local, Conforming & Boundary) ---
             double Flux_B_local[4] = {}, Flux_T_local[4] = {};
+            double Flux_S_B_comm = 0.0, Flux_S_T_comm = 0.0;
             double U_neigh[4];
             double sig_neigh;
 
             // Bottom Face (2)
-            const ImmersedBoundary::SurrogateFluxPoint* sfp_B = ImmersedBoundary::get_sbm_face(c->block_id, c->ey, c->ex, 2, ix);
+            const ImmersedBoundary::SurrogateFluxPoint* sfp_B = (p.ENABLE_IB && p.IB_METHOD == "SBM") ? ImmersedBoundary::get_sbm_face(c->block_id, c->ey, c->ex, 2, ix) : nullptr;
             if (sfp_B) {
                 double u_sb[4];
                 ImmersedBoundary::compute_sbm_state(*this, sfp_B, u_sb);
-                double Flux_B_comm[4];
-                solve_riemann(u_sb, UB_face, Flux_B_comm, 1, sig_B_face, sig_B_face);
-                for (int v = 0; v < 4; ++v) Flux_B_local[v] = Flux_B_comm[v];
+                double S_sb = compute_wall_phantom_pressure(UB_face, u_sb, S_B_face, p.PPR_WALL_BC, 2, p.POS_LIMITER_EPS, p.GAMMA);
+                compute_interface_flux(u_sb, UB_face, sig_B_face, sig_B_face, S_sb, S_B_face, c->theta_avg, c->theta_avg, 1, Flux_B_local, Flux_S_B_comm);
             } else if (c->neighbors[2] && c->neighbors[2]->level == c->level) {
                 Cell* nc = c->neighbors[2];
                 char nface = c->neighbor_faces[2];
                 const double* weights = (nface == 'B') ? basis.l_L.data() : basis.l_R.data();
                 sig_neigh = 0.0;
+                double S_neigh = 0.0;
                 for (int v = 0; v < 4; ++v) U_neigh[v] = 0.0;
                 for (int k = 0; k < p.N_PTS; ++k) {
                     for (int v = 0; v < 4; ++v)
                         U_neigh[v] += nc->get_U(v, k, ix, p.N_PTS) * weights[k];
                     sig_neigh += nc->sigma_field[k * p.N_PTS + ix] * weights[k];
+                    if (p.ENABLE_PPR) {
+                        S_neigh += nc->S_field[k * p.N_PTS + ix] * weights[k];
+                    }
                 }
-                double Flux_B_comm[4];
-                solve_riemann(U_neigh, UB_face, Flux_B_comm, 1, sig_neigh, sig_B_face);
-                for (int v = 0; v < 4; ++v) Flux_B_local[v] = Flux_B_comm[v];
+                compute_interface_flux(U_neigh, UB_face, sig_neigh, sig_B_face, S_neigh, S_B_face, nc->theta_avg, c->theta_avg, 1, Flux_B_local, Flux_S_B_comm);
             } else if (c->is_boundary[2]) {
+                double S_neigh = S_B_face;
                 get_neigh_state_cell(*c, ix, false,
-                                     UB_face, sig_B_face, U_neigh, sig_neigh, 1);
-                double Flux_B_comm[4];
-                solve_riemann(U_neigh, UB_face, Flux_B_comm, 1,
-                              sig_neigh, sig_B_face);
-                for (int v = 0; v < 4; ++v) Flux_B_local[v] = Flux_B_comm[v];
+                                     UB_face, sig_B_face, U_neigh, sig_neigh, 1, S_B_face, &S_neigh);
+                compute_interface_flux(U_neigh, UB_face, sig_neigh, sig_B_face, S_neigh, S_B_face, c->theta_avg, c->theta_avg, 1, Flux_B_local, Flux_S_B_comm);
             }
 
             // Top Face (3)
-            const ImmersedBoundary::SurrogateFluxPoint* sfp_T = ImmersedBoundary::get_sbm_face(c->block_id, c->ey, c->ex, 3, ix);
+            const ImmersedBoundary::SurrogateFluxPoint* sfp_T = (p.ENABLE_IB && p.IB_METHOD == "SBM") ? ImmersedBoundary::get_sbm_face(c->block_id, c->ey, c->ex, 3, ix) : nullptr;
             if (sfp_T) {
                 double u_sb[4];
                 ImmersedBoundary::compute_sbm_state(*this, sfp_T, u_sb);
-                double Flux_T_comm[4];
-                solve_riemann(UT_face, u_sb, Flux_T_comm, 1, sig_T_face, sig_T_face);
-                for (int v = 0; v < 4; ++v) Flux_T_local[v] = Flux_T_comm[v];
+                double S_sb = compute_wall_phantom_pressure(UT_face, u_sb, S_T_face, p.PPR_WALL_BC, 2, p.POS_LIMITER_EPS, p.GAMMA);
+                compute_interface_flux(UT_face, u_sb, sig_T_face, sig_T_face, S_T_face, S_sb, c->theta_avg, c->theta_avg, 1, Flux_T_local, Flux_S_T_comm);
             } else if (c->neighbors[3] && c->neighbors[3]->level == c->level) {
                 Cell* nc = c->neighbors[3];
                 char nface = c->neighbor_faces[3];
                 const double* weights = (nface == 'B') ? basis.l_L.data() : basis.l_R.data();
                 sig_neigh = 0.0;
+                double S_neigh = 0.0;
                 for (int v = 0; v < 4; ++v) U_neigh[v] = 0.0;
                 for (int k = 0; k < p.N_PTS; ++k) {
                     for (int v = 0; v < 4; ++v)
                         U_neigh[v] += nc->get_U(v, k, ix, p.N_PTS) * weights[k];
                     sig_neigh += nc->sigma_field[k * p.N_PTS + ix] * weights[k];
+                    if (p.ENABLE_PPR) {
+                        S_neigh += nc->S_field[k * p.N_PTS + ix] * weights[k];
+                    }
                 }
-                double Flux_T_comm[4];
-                solve_riemann(UT_face, U_neigh, Flux_T_comm, 1, sig_T_face, sig_neigh);
-                for (int v = 0; v < 4; ++v) Flux_T_local[v] = Flux_T_comm[v];
+                compute_interface_flux(UT_face, U_neigh, sig_T_face, sig_neigh, S_T_face, S_neigh, c->theta_avg, nc->theta_avg, 1, Flux_T_local, Flux_S_T_comm);
             } else if (c->is_boundary[3]) {
+                double S_neigh = S_T_face;
                 get_neigh_state_cell(*c, ix, true,
-                                     UT_face, sig_T_face, U_neigh, sig_neigh, 1);
-                double Flux_T_comm[4];
-                solve_riemann(UT_face, U_neigh, Flux_T_comm, 1,
-                              sig_T_face, sig_neigh);
-                for (int v = 0; v < 4; ++v) Flux_T_local[v] = Flux_T_comm[v];
+                                     UT_face, sig_T_face, U_neigh, sig_neigh, 1, S_T_face, &S_neigh);
+                compute_interface_flux(UT_face, U_neigh, sig_T_face, sig_neigh, S_T_face, S_neigh, c->theta_avg, c->theta_avg, 1, Flux_T_local, Flux_S_T_comm);
             }
 
             // --- 4. Interior flux at faces ---
             double G_B[4] = {}, G_T[4] = {};
+            double G_S_B = 0.0, G_S_T = 0.0;
             for (int v = 0; v < 4; ++v) {
                 for (int iy = 0; iy < p.N_PTS; ++iy) {
                     G_B[v] += G_sol[iy][v] * basis.l_L[iy];
                     G_T[v] += G_sol[iy][v] * basis.l_R[iy];
+                }
+            }
+            if (p.ENABLE_PPR) {
+                for (int iy = 0; iy < p.N_PTS; ++iy) {
+                    G_S_B += G_sol_S[iy] * basis.l_L[iy];
+                    G_S_T += G_sol_S[iy] * basis.l_R[iy];
                 }
             }
 
@@ -131,6 +149,19 @@ void Solver::sweep_y() {
                         * (2.0 / c->dy);
                 }
             }
+            if (p.ENABLE_PPR) {
+                for (int iy = 0; iy < p.N_PTS; ++iy) {
+                    double dg_S = 0.0;
+                    for (int k = 0; k < p.N_PTS; ++k)
+                        dg_S += basis.D[iy][k] * G_sol_S[k];
+
+                    c->S_RHS[iy * p.N_PTS + ix] -=
+                        (dg_S
+                         + (Flux_S_B_comm - G_S_B) * basis.dgl[iy]
+                         + (Flux_S_T_comm - G_S_T) * basis.dgr[iy])
+                        * (2.0 / c->dy);
+                }
+            }
         }
     }
 
@@ -140,6 +171,7 @@ void Solver::sweep_y() {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
 
         // Bottom Face (2) non-conforming coarser neighbor
         if (c->neighbors[2] && c->neighbors[2]->level < c->level) {
@@ -153,9 +185,13 @@ void Solver::sweep_y() {
             for (int ix = 0; ix < p.N_PTS; ++ix) {
                 double UB_face[4] = {};
                 double sig_B_face = 0.0;
+                double S_B_face = 0.0;
                 for (int iy = 0; iy < p.N_PTS; ++iy) {
                     double s = c->sigma_field[iy * p.N_PTS + ix];
                     sig_B_face += s * basis.l_L[iy];
+                    if (p.ENABLE_PPR) {
+                        S_B_face += c->S_field[iy * p.N_PTS + ix] * basis.l_L[iy];
+                    }
                     for (int v = 0; v < 4; ++v) {
                         UB_face[v] += c->get_U(v, iy, ix, p.N_PTS) * basis.l_L[iy];
                     }
@@ -163,6 +199,7 @@ void Solver::sweep_y() {
 
                 double U_coarse_face[4][MAX_PTS] = {};
                 double sig_coarse_face[MAX_PTS] = {};
+                double S_coarse_face[MAX_PTS] = {};
                 const double* weights = (nface == 'B') ? basis.l_L.data() : basis.l_R.data();
                 for (int kx = 0; kx < p.N_PTS; ++kx) {
                     for (int ky = 0; ky < p.N_PTS; ++ky) {
@@ -170,26 +207,38 @@ void Solver::sweep_y() {
                             U_coarse_face[v][kx] += nc->get_U(v, ky, kx, p.N_PTS) * weights[ky];
                         }
                         sig_coarse_face[kx] += nc->sigma_field[ky * p.N_PTS + kx] * weights[ky];
+                        if (p.ENABLE_PPR) {
+                            S_coarse_face[kx] += nc->S_field[ky * p.N_PTS + kx] * weights[ky];
+                        }
                     }
                 }
 
                 double U_neigh[4] = {};
                 double sig_neigh = 0.0;
+                double S_neigh = 0.0;
                 for (int kx = 0; kx < p.N_PTS; ++kx) {
                     for (int v = 0; v < 4; ++v) {
                         U_neigh[v] += P[kx][ix] * U_coarse_face[v][kx];
                     }
                     sig_neigh += P[kx][ix] * sig_coarse_face[kx];
+                    if (p.ENABLE_PPR) {
+                        S_neigh += P[kx][ix] * S_coarse_face[kx];
+                    }
                 }
 
                 double Flux_B_comm[4];
-                solve_riemann(U_neigh, UB_face, Flux_B_comm, 1, sig_neigh, sig_B_face);
+                double Flux_S_B_comm = 0.0;
+                compute_interface_flux(U_neigh, UB_face, sig_neigh, sig_B_face, S_neigh, S_B_face, nc->theta_avg, c->theta_avg, 1, Flux_B_comm, Flux_S_B_comm);
 
                 // Update fine cell
                 for (int iy = 0; iy < p.N_PTS; ++iy) {
                     for (int v = 0; v < 4; ++v) {
                         #pragma omp atomic
                         c->get_RHS(v, iy, ix, p.N_PTS) -= Flux_B_comm[v] * basis.dgl[iy] * (2.0 / c->dy);
+                    }
+                    if (p.ENABLE_PPR) {
+                        #pragma omp atomic
+                        c->S_RHS[iy * p.N_PTS + ix] -= Flux_S_B_comm * basis.dgl[iy] * (2.0 / c->dy);
                     }
                 }
 
@@ -200,6 +249,10 @@ void Solver::sweep_y() {
                         for (int v = 0; v < 4; ++v) {
                             #pragma omp atomic
                             nc->get_RHS(v, ky, kx, p.N_PTS) -= factor * Flux_B_comm[v] * dg_nc[ky] * (2.0 / nc->dy);
+                        }
+                        if (p.ENABLE_PPR) {
+                            #pragma omp atomic
+                            nc->S_RHS[ky * p.N_PTS + kx] -= factor * Flux_S_B_comm * dg_nc[ky] * (2.0 / nc->dy);
                         }
                     }
                 }
@@ -218,9 +271,13 @@ void Solver::sweep_y() {
             for (int ix = 0; ix < p.N_PTS; ++ix) {
                 double UT_face[4] = {};
                 double sig_T_face = 0.0;
+                double S_T_face = 0.0;
                 for (int iy = 0; iy < p.N_PTS; ++iy) {
                     double s = c->sigma_field[iy * p.N_PTS + ix];
                     sig_T_face += s * basis.l_R[iy];
+                    if (p.ENABLE_PPR) {
+                        S_T_face += c->S_field[iy * p.N_PTS + ix] * basis.l_R[iy];
+                    }
                     for (int v = 0; v < 4; ++v) {
                         UT_face[v] += c->get_U(v, iy, ix, p.N_PTS) * basis.l_R[iy];
                     }
@@ -228,6 +285,7 @@ void Solver::sweep_y() {
 
                 double U_coarse_face[4][MAX_PTS] = {};
                 double sig_coarse_face[MAX_PTS] = {};
+                double S_coarse_face[MAX_PTS] = {};
                 const double* weights = (nface == 'B') ? basis.l_L.data() : basis.l_R.data();
                 for (int kx = 0; kx < p.N_PTS; ++kx) {
                     for (int ky = 0; ky < p.N_PTS; ++ky) {
@@ -235,26 +293,38 @@ void Solver::sweep_y() {
                             U_coarse_face[v][kx] += nc->get_U(v, ky, kx, p.N_PTS) * weights[ky];
                         }
                         sig_coarse_face[kx] += nc->sigma_field[ky * p.N_PTS + kx] * weights[ky];
+                        if (p.ENABLE_PPR) {
+                            S_coarse_face[kx] += nc->S_field[ky * p.N_PTS + kx] * weights[ky];
+                        }
                     }
                 }
 
                 double U_neigh[4] = {};
                 double sig_neigh = 0.0;
+                double S_neigh = 0.0;
                 for (int kx = 0; kx < p.N_PTS; ++kx) {
                     for (int v = 0; v < 4; ++v) {
                         U_neigh[v] += P[kx][ix] * U_coarse_face[v][kx];
                     }
                     sig_neigh += P[kx][ix] * sig_coarse_face[kx];
+                    if (p.ENABLE_PPR) {
+                        S_neigh += P[kx][ix] * S_coarse_face[kx];
+                    }
                 }
 
                 double Flux_T_comm[4];
-                solve_riemann(UT_face, U_neigh, Flux_T_comm, 1, sig_T_face, sig_neigh);
+                double Flux_S_T_comm = 0.0;
+                compute_interface_flux(UT_face, U_neigh, sig_T_face, sig_neigh, S_T_face, S_neigh, c->theta_avg, nc->theta_avg, 1, Flux_T_comm, Flux_S_T_comm);
 
                 // Update fine cell
                 for (int iy = 0; iy < p.N_PTS; ++iy) {
                     for (int v = 0; v < 4; ++v) {
                         #pragma omp atomic
                         c->get_RHS(v, iy, ix, p.N_PTS) -= Flux_T_comm[v] * basis.dgr[iy] * (2.0 / c->dy);
+                    }
+                    if (p.ENABLE_PPR) {
+                        #pragma omp atomic
+                        c->S_RHS[iy * p.N_PTS + ix] -= Flux_S_T_comm * basis.dgr[iy] * (2.0 / c->dy);
                     }
                 }
 
@@ -265,6 +335,371 @@ void Solver::sweep_y() {
                         for (int v = 0; v < 4; ++v) {
                             #pragma omp atomic
                             nc->get_RHS(v, ky, kx, p.N_PTS) -= factor * Flux_T_comm[v] * dg_nc[ky] * (2.0 / nc->dy);
+                        }
+                        if (p.ENABLE_PPR) {
+                            #pragma omp atomic
+                            nc->S_RHS[ky * p.N_PTS + kx] -= factor * Flux_S_T_comm * dg_nc[ky] * (2.0 / nc->dy);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// =========================================================================
+// SolverDim<3> 3D Inviscid Sweep Y Implementation
+// =========================================================================
+
+void SolverDim<3>::sweep_y() {
+    int N = p.N_PTS;
+    int N2 = N * N;
+    int N3 = N * N * N;
+
+    // =========================================================================
+    // Pass 1: Local & Conforming Sweep
+    // =========================================================================
+    #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < cells.size(); ++i) {
+        Cell3D* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+
+        for (int iz = 0; iz < N; ++iz) {
+            for (int ix = 0; ix < N; ++ix) {
+
+                // Pointwise Y-flux at each solution point
+                double G_sol[MAX_PTS][5];
+                double G_sol_S[MAX_PTS] = {};
+                for (int iy = 0; iy < N; ++iy) {
+                    get_flux_pointwise_cell(*c, iz, iy, ix,
+                                            nullptr, G_sol[iy], nullptr,
+                                            c->sigma_field[iz * N2 + iy * N + ix]);
+                    if (p.ENABLE_PPR) {
+                        double rho = std::max(p.POS_LIMITER_EPS, c->get_U(0, iz, iy, ix, N));
+                        double v   = c->get_U(2, iz, iy, ix, N) / rho;
+                        G_sol_S[iy] = c->S_field[iz * N2 + iy * N + ix] * v;
+                    }
+                }
+
+                // Face-extrapolated states
+                double UB_face[5] = {}, UT_face[5] = {};
+                double sig_B_face = 0.0, sig_T_face = 0.0;
+                double S_B_face = 0.0, S_T_face = 0.0;
+                for (int iy = 0; iy < N; ++iy) {
+                    double s = c->sigma_field[iz * N2 + iy * N + ix];
+                    sig_B_face += s * basis.l_L[iy];
+                    sig_T_face += s * basis.l_R[iy];
+                    if (p.ENABLE_PPR) {
+                        S_B_face += c->S_field[iz * N2 + iy * N + ix] * basis.l_L[iy];
+                        S_T_face += c->S_field[iz * N2 + iy * N + ix] * basis.l_R[iy];
+                    }
+                }
+                for (int v = 0; v < 5; ++v) {
+                    for (int iy = 0; iy < N; ++iy) {
+                        UB_face[v] += c->get_U(v, iz, iy, ix, N) * basis.l_L[iy];
+                        UT_face[v] += c->get_U(v, iz, iy, ix, N) * basis.l_R[iy];
+                    }
+                }
+
+                // Common Riemann fluxes (Local, Conforming & Boundary)
+                double Flux_B_local[5] = {}, Flux_T_local[5] = {};
+                double Flux_S_B_comm = 0.0, Flux_S_T_comm = 0.0;
+                double U_neigh[5];
+                double sig_neigh;
+
+                // Bottom Face (2)
+                if (c->neighbors[2] && c->neighbors[2]->level == c->level) {
+                    Cell3D* nc = c->neighbors[2];
+                    char nface = c->neighbor_faces[2];
+                    const double* weights = (nface == 'B') ? basis.l_L.data() : basis.l_R.data();
+                    sig_neigh = 0.0;
+                    double S_neigh = 0.0;
+                    for (int v = 0; v < 5; ++v) U_neigh[v] = 0.0;
+                    for (int k = 0; k < N; ++k) {
+                        for (int v = 0; v < 5; ++v)
+                            U_neigh[v] += nc->get_U(v, iz, k, ix, N) * weights[k];
+                        sig_neigh += nc->sigma_field[iz * N2 + k * N + ix] * weights[k];
+                        if (p.ENABLE_PPR) {
+                            S_neigh += nc->S_field[iz * N2 + k * N + ix] * weights[k];
+                        }
+                    }
+                    compute_interface_flux(U_neigh, UB_face, sig_neigh, sig_B_face, S_neigh, S_B_face, nc->theta_avg, c->theta_avg, 1, Flux_B_local, Flux_S_B_comm);
+                } else if (c->is_boundary[2]) {
+                    double S_neigh = S_B_face;
+                    get_neigh_state_cell(*c, iz * N + ix, false,
+                                         UB_face, sig_B_face, U_neigh, sig_neigh, 1, S_B_face, &S_neigh);
+                    compute_interface_flux(U_neigh, UB_face, sig_neigh, sig_B_face, S_neigh, S_B_face, c->theta_avg, c->theta_avg, 1, Flux_B_local, Flux_S_B_comm);
+                }
+
+                // Top Face (3)
+                if (c->neighbors[3] && c->neighbors[3]->level == c->level) {
+                    Cell3D* nc = c->neighbors[3];
+                    char nface = c->neighbor_faces[3];
+                    const double* weights = (nface == 'B') ? basis.l_L.data() : basis.l_R.data();
+                    sig_neigh = 0.0;
+                    double S_neigh = 0.0;
+                    for (int v = 0; v < 5; ++v) U_neigh[v] = 0.0;
+                    for (int k = 0; k < N; ++k) {
+                        for (int v = 0; v < 5; ++v)
+                            U_neigh[v] += nc->get_U(v, iz, k, ix, N) * weights[k];
+                        sig_neigh += nc->sigma_field[iz * N2 + k * N + ix] * weights[k];
+                        if (p.ENABLE_PPR) {
+                            S_neigh += nc->S_field[iz * N2 + k * N + ix] * weights[k];
+                        }
+                    }
+                    compute_interface_flux(UT_face, U_neigh, sig_T_face, sig_neigh, S_T_face, S_neigh, c->theta_avg, nc->theta_avg, 1, Flux_T_local, Flux_S_T_comm);
+                } else if (c->is_boundary[3]) {
+                    double S_neigh = S_T_face;
+                    get_neigh_state_cell(*c, iz * N + ix, true,
+                                         UT_face, sig_T_face, U_neigh, sig_neigh, 1, S_T_face, &S_neigh);
+                    compute_interface_flux(UT_face, U_neigh, sig_T_face, sig_neigh, S_T_face, S_neigh, c->theta_avg, c->theta_avg, 1, Flux_T_local, Flux_S_T_comm);
+                }
+
+                // Interior flux at faces
+                double G_L[5] = {}, G_R[5] = {};
+                double G_S_L = 0.0, G_S_R = 0.0;
+                for (int v = 0; v < 5; ++v) {
+                    for (int iy = 0; iy < N; ++iy) {
+                        G_L[v] += G_sol[iy][v] * basis.l_L[iy];
+                        G_R[v] += G_sol[iy][v] * basis.l_R[iy];
+                    }
+                }
+                if (p.ENABLE_PPR) {
+                    for (int iy = 0; iy < N; ++iy) {
+                        G_S_L += G_sol_S[iy] * basis.l_L[iy];
+                        G_S_R += G_sol_S[iy] * basis.l_R[iy];
+                    }
+                }
+
+                // Accumulate into RHS
+                for (int v = 0; v < 5; ++v) {
+                    for (int iy = 0; iy < N; ++iy) {
+                        double dg = 0.0;
+                        for (int k = 0; k < N; ++k)
+                            dg += basis.D[iy][k] * G_sol[k][v];
+                        
+                        c->get_RHS(v, iz, iy, ix, N) -= 
+                            (dg
+                             + (Flux_B_local[v] - G_L[v]) * basis.dgl[iy]
+                             + (Flux_T_local[v] - G_R[v]) * basis.dgr[iy])
+                            * (2.0 / c->dy);
+                    }
+                }
+                if (p.ENABLE_PPR) {
+                    for (int iy = 0; iy < N; ++iy) {
+                        double dg_S = 0.0;
+                        for (int k = 0; k < N; ++k)
+                            dg_S += basis.D[iy][k] * G_sol_S[k];
+
+                        c->S_RHS[iz * N2 + iy * N + ix] -=
+                            (dg_S
+                             + (Flux_S_B_comm - G_S_L) * basis.dgl[iy]
+                             + (Flux_S_T_comm - G_S_R) * basis.dgr[iy])
+                            * (2.0 / c->dy);
+                    }
+                }
+            }
+        }
+    }
+
+    // =========================================================================
+    // Pass 2: Non-Conforming Interface Sweep
+    // =========================================================================
+    #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < cells.size(); ++i) {
+        Cell3D* c = cells[i];
+        if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+
+        // Bottom Face (2) non-conforming coarser neighbor
+        if (c->neighbors[2] && c->neighbors[2]->level < c->level) {
+            Cell3D* nc = c->neighbors[2];
+            char nface = c->neighbor_faces[2];
+            int child_x_idx = c->ex & 1;
+            int child_z_idx = c->ez & 1;
+            const auto& PX = (child_x_idx == 0) ? basis.P1 : basis.P2;
+            const auto& PZ = (child_z_idx == 0) ? basis.P1 : basis.P2;
+            const auto& RX = (child_x_idx == 0) ? basis.R1 : basis.R2;
+            const auto& RZ = (child_z_idx == 0) ? basis.R1 : basis.R2;
+            const double* dg_nc = (nface == 'B') ? basis.dgl.data() : basis.dgr.data();
+
+            for (int iz = 0; iz < N; ++iz) {
+                for (int ix = 0; ix < N; ++ix) {
+                    double UB_face[5] = {};
+                    double sig_B_face = 0.0;
+                    double S_B_face = 0.0;
+                    for (int iy = 0; iy < N; ++iy) {
+                        double s = c->sigma_field[iz * N2 + iy * N + ix];
+                        sig_B_face += s * basis.l_L[iy];
+                        if (p.ENABLE_PPR) {
+                            S_B_face += c->S_field[iz * N2 + iy * N + ix] * basis.l_L[iy];
+                        }
+                        for (int v = 0; v < 5; ++v) {
+                            UB_face[v] += c->get_U(v, iz, iy, ix, N) * basis.l_L[iy];
+                        }
+                    }
+
+                    double U_coarse_face[5][MAX_PTS][MAX_PTS] = {};
+                    double sig_coarse_face[MAX_PTS][MAX_PTS] = {};
+                    double S_coarse_face[MAX_PTS][MAX_PTS] = {};
+                    const double* weights = (nface == 'B') ? basis.l_L.data() : basis.l_R.data();
+                    for (int kz = 0; kz < N; ++kz) {
+                        for (int kx = 0; kx < N; ++kx) {
+                            for (int ky = 0; ky < N; ++ky) {
+                                for (int v = 0; v < 5; ++v) {
+                                    U_coarse_face[v][kx][kz] += nc->get_U(v, kz, ky, kx, N) * weights[ky];
+                                }
+                                sig_coarse_face[kx][kz] += nc->sigma_field[kz * N2 + ky * N + kx] * weights[ky];
+                                if (p.ENABLE_PPR) {
+                                    S_coarse_face[kx][kz] += nc->S_field[kz * N2 + ky * N + kx] * weights[ky];
+                                }
+                            }
+                        }
+                    }
+
+                    double U_neigh[5] = {};
+                    double sig_neigh = 0.0;
+                    double S_neigh = 0.0;
+                    for (int kz = 0; kz < N; ++kz) {
+                        for (int kx = 0; kx < N; ++kx) {
+                            double factor = PX[kx][ix] * PZ[kz][iz];
+                            for (int v = 0; v < 5; ++v) {
+                                U_neigh[v] += factor * U_coarse_face[v][kx][kz];
+                            }
+                            sig_neigh += factor * sig_coarse_face[kx][kz];
+                            if (p.ENABLE_PPR) {
+                                S_neigh += factor * S_coarse_face[kx][kz];
+                            }
+                        }
+                    }
+
+                    double Flux_B_comm[5];
+                    double Flux_S_B_comm = 0.0;
+                    compute_interface_flux(U_neigh, UB_face, sig_neigh, sig_B_face, S_neigh, S_B_face, nc->theta_avg, c->theta_avg, 1, Flux_B_comm, Flux_S_B_comm);
+
+                    // Update fine cell
+                    for (int iy = 0; iy < N; ++iy) {
+                        for (int v = 0; v < 5; ++v) {
+                            #pragma omp atomic
+                            c->get_RHS(v, iz, iy, ix, N) -= Flux_B_comm[v] * basis.dgl[iy] * (2.0 / c->dy);
+                        }
+                        if (p.ENABLE_PPR) {
+                            #pragma omp atomic
+                            c->S_RHS[iz * N2 + iy * N + ix] -= Flux_S_B_comm * basis.dgl[iy] * (2.0 / c->dy);
+                        }
+                    }
+
+                    // Restrict and accumulate to coarse neighbor
+                    for (int kz = 0; kz < N; ++kz) {
+                        for (int kx = 0; kx < N; ++kx) {
+                            double factor = RX[kx][ix] * RZ[kz][iz];
+                            for (int ky = 0; ky < N; ++ky) {
+                                for (int v = 0; v < 5; ++v) {
+                                    #pragma omp atomic
+                                    nc->get_RHS(v, kz, ky, kx, N) -= factor * Flux_B_comm[v] * dg_nc[ky] * (2.0 / nc->dy);
+                                }
+                                if (p.ENABLE_PPR) {
+                                    #pragma omp atomic
+                                    nc->S_RHS[kz * N2 + ky * N + kx] -= factor * Flux_S_B_comm * dg_nc[ky] * (2.0 / nc->dy);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Top Face (3) non-conforming coarser neighbor
+        if (c->neighbors[3] && c->neighbors[3]->level < c->level) {
+            Cell3D* nc = c->neighbors[3];
+            char nface = c->neighbor_faces[3];
+            int child_x_idx = c->ex & 1;
+            int child_z_idx = c->ez & 1;
+            const auto& PX = (child_x_idx == 0) ? basis.P1 : basis.P2;
+            const auto& PZ = (child_z_idx == 0) ? basis.P1 : basis.P2;
+            const auto& RX = (child_x_idx == 0) ? basis.R1 : basis.R2;
+            const auto& RZ = (child_z_idx == 0) ? basis.R1 : basis.R2;
+            const double* dg_nc = (nface == 'B') ? basis.dgl.data() : basis.dgr.data();
+
+            for (int iz = 0; iz < N; ++iz) {
+                for (int ix = 0; ix < N; ++ix) {
+                    double UT_face[5] = {};
+                    double sig_T_face = 0.0;
+                    double S_T_face = 0.0;
+                    for (int iy = 0; iy < N; ++iy) {
+                        double s = c->sigma_field[iz * N2 + iy * N + ix];
+                        sig_T_face += s * basis.l_R[iy];
+                        if (p.ENABLE_PPR) {
+                            S_T_face += c->S_field[iz * N2 + iy * N + ix] * basis.l_R[iy];
+                        }
+                        for (int v = 0; v < 5; ++v) {
+                            UT_face[v] += c->get_U(v, iz, iy, ix, N) * basis.l_R[iy];
+                        }
+                    }
+
+                    double U_coarse_face[5][MAX_PTS][MAX_PTS] = {};
+                    double sig_coarse_face[MAX_PTS][MAX_PTS] = {};
+                    double S_coarse_face[MAX_PTS][MAX_PTS] = {};
+                    const double* weights = (nface == 'B') ? basis.l_L.data() : basis.l_R.data();
+                    for (int kz = 0; kz < N; ++kz) {
+                        for (int kx = 0; kx < N; ++kx) {
+                            for (int ky = 0; ky < N; ++ky) {
+                                for (int v = 0; v < 5; ++v) {
+                                    U_coarse_face[v][kx][kz] += nc->get_U(v, kz, ky, kx, N) * weights[ky];
+                                }
+                                sig_coarse_face[kx][kz] += nc->sigma_field[kz * N2 + ky * N + kx] * weights[ky];
+                                if (p.ENABLE_PPR) {
+                                    S_coarse_face[kx][kz] += nc->S_field[kz * N2 + ky * N + kx] * weights[ky];
+                                }
+                            }
+                        }
+                    }
+
+                    double U_neigh[5] = {};
+                    double sig_neigh = 0.0;
+                    double S_neigh = 0.0;
+                    for (int kz = 0; kz < N; ++kz) {
+                        for (int kx = 0; kx < N; ++kx) {
+                            double factor = PX[kx][ix] * PZ[kz][iz];
+                            for (int v = 0; v < 5; ++v) {
+                                U_neigh[v] += factor * U_coarse_face[v][kx][kz];
+                            }
+                            sig_neigh += factor * sig_coarse_face[kx][kz];
+                            if (p.ENABLE_PPR) {
+                                S_neigh += factor * S_coarse_face[kx][kz];
+                            }
+                        }
+                    }
+
+                    double Flux_T_comm[5];
+                    double Flux_S_T_comm = 0.0;
+                    compute_interface_flux(UT_face, U_neigh, sig_T_face, sig_neigh, S_T_face, S_neigh, c->theta_avg, nc->theta_avg, 1, Flux_T_comm, Flux_S_T_comm);
+
+                    // Update fine cell
+                    for (int iy = 0; iy < N; ++iy) {
+                        for (int v = 0; v < 5; ++v) {
+                            #pragma omp atomic
+                            c->get_RHS(v, iz, iy, ix, N) -= Flux_T_comm[v] * basis.dgr[iy] * (2.0 / c->dy);
+                        }
+                        if (p.ENABLE_PPR) {
+                            #pragma omp atomic
+                            c->S_RHS[iz * N2 + iy * N + ix] -= Flux_S_T_comm * basis.dgr[iy] * (2.0 / c->dy);
+                        }
+                    }
+
+                    // Restrict and accumulate to coarse neighbor
+                    for (int kz = 0; kz < N; ++kz) {
+                        for (int kx = 0; kx < N; ++kx) {
+                            double factor = RX[kx][ix] * RZ[kz][iz];
+                            for (int ky = 0; ky < N; ++ky) {
+                                for (int v = 0; v < 5; ++v) {
+                                    #pragma omp atomic
+                                    nc->get_RHS(v, kz, ky, kx, N) -= factor * Flux_T_comm[v] * dg_nc[ky] * (2.0 / nc->dy);
+                                }
+                                if (p.ENABLE_PPR) {
+                                    #pragma omp atomic
+                                    nc->S_RHS[kz * N2 + ky * N + kx] -= factor * Flux_S_T_comm * dg_nc[ky] * (2.0 / nc->dy);
+                                }
+                            }
                         }
                     }
                 }

@@ -1,14 +1,5 @@
 var searchData=
 [
-  ['re_0',['RE',['../struct_parameters.html#a199a831da1cf52741dca28db20e4d943',1,'Parameters']]],
-  ['ref_5fp_1',['ref_p',['../struct_neighbor_info.html#acab04aa270e900dd495e61b9a529d2c3',1,'NeighborInfo']]],
-  ['ref_5frho_2',['ref_rho',['../struct_neighbor_info.html#a78e9c359b249166b9277289e03048903',1,'NeighborInfo']]],
-  ['ref_5fu_3',['ref_u',['../struct_neighbor_info.html#a60cb009de6683144ef8b74b1da2f5102',1,'NeighborInfo']]],
-  ['ref_5fv_4',['ref_v',['../struct_neighbor_info.html#a43430107ebefd7aba9114d26b89d62c6',1,'NeighborInfo']]],
-  ['residual_5finterval_5',['RESIDUAL_INTERVAL',['../struct_parameters.html#a5e043aac29119176d9530e16bd4f1715',1,'Parameters']]],
-  ['restart_5ffile_6',['RESTART_FILE',['../struct_parameters.html#a79c0ab15579a822794e725e8d71836a2',1,'Parameters']]],
-  ['restart_5finterval_7',['RESTART_INTERVAL',['../struct_parameters.html#a2bce3891bb00d5a544f7f59a8b7194b9',1,'Parameters']]],
-  ['restart_5ftime_8',['RESTART_TIME',['../struct_parameters.html#a44fc90cac9242bb8bed48e4762654f21',1,'Parameters']]],
-  ['rho_5finf_9',['RHO_INF',['../struct_parameters.html#a73d295d61fd23756f5857f09c745a4dd',1,'Parameters']]],
-  ['rhs_10',['RHS',['../struct_block.html#a6e0f9d07ecc510d0a643c034430b91da',1,'Block']]]
+  ['qx_5fbuf_0',['qx_buf',['../structCell.html#a198c7d58469a37dc1d3b0521d66eedc9',1,'Cell::qx_buf'],['../structBlock.html#a1741bd2787dbf1d817ba827feb1141ba',1,'Block::qx_buf']]],
+  ['qy_5fbuf_1',['qy_buf',['../structCell.html#ac75fa2046bae0521816ce6bdaf657872',1,'Cell::qy_buf'],['../structBlock.html#a3a6f995cfcd816457df5ee0d4986ea29',1,'Block::qy_buf']]]
 ];

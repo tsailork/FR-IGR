@@ -18,7 +18,8 @@
  * @class Solver
  * @brief Forward declaration of the main Solver class to break dependency cycles.
  */
-class Solver; 
+template<int Dim> class SolverDim;
+using Solver = SolverDim<2>; 
 
 namespace ImmersedBoundary {
 
@@ -119,5 +120,6 @@ const SurrogateFluxPoint* get_sbm_face(int b_id, int ey, int ex, int face, int n
  * @param[out] u_sb Array containing the calculated boundary state conservative variables \f$[\rho, \rho u, \rho v, E]\f$.
  */
 void compute_sbm_state(const Solver& solver, const SurrogateFluxPoint* sfp, double u_sb[4]);
+void compute_sbm_state(const SolverDim<3>& solver, const SurrogateFluxPoint* sfp, double u_sb[5]);
 
 } // namespace ImmersedBoundary

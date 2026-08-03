@@ -12,6 +12,17 @@
 
 namespace Limiters {
 
+constexpr int MAX_LIM_PTS = 8;
+
+enum class LimiterStrategy { ZHANG_SHU = 0, BBCH = 1, MODAL = 2, HERMITE = 3 };
+
+inline LimiterStrategy parse_limiter_strategy(const std::string& str) {
+    if (str == "BBCH") return LimiterStrategy::BBCH;
+    if (str == "MODAL") return LimiterStrategy::MODAL;
+    if (str == "HERMITE") return LimiterStrategy::HERMITE;
+    return LimiterStrategy::ZHANG_SHU;
+}
+
 /**
  * @struct LimiterStats
  * @brief Structure to track limiter application statistics across the mesh.
@@ -164,6 +175,319 @@ inline double min_entropy_in_cell(const Cell& c, const Parameters& p, int npts) 
             double E  = c.get_U(3, iy, ix, npts);
             s_min = std::min(s_min, specific_entropy(r, ru, rv, E, p.GAMMA));
         }
+    return s_min;
+}
+
+constexpr int MAX_FACE_PTS_3D = 6 * 4 * 4;
+
+inline double pressure_3d(double rho, double rhou, double rhov, double rhow, double E, double gamma) {
+    return (gamma - 1.0) * (E - 0.5 * (rhou*rhou + rhov*rhov + rhow*rhow) / rho);
+}
+
+inline double specific_entropy_3d(double rho, double rhou, double rhov, double rhow, double E, double gamma) {
+    double p = pressure_3d(rho, rhou, rhov, rhow, E, gamma);
+    return p / std::pow(rho, gamma);
+}
+
+inline double pressure_at_theta_3d(double theta,
+                                    double r, double ru, double rv, double rw, double E,
+                                    double r_avg, double ru_avg, double rv_avg, double rw_avg, double E_avg, double gamma) {
+    double rt  = theta * r  + (1.0 - theta) * r_avg;
+    double rut = theta * ru + (1.0 - theta) * ru_avg;
+    double rvt = theta * rv + (1.0 - theta) * rv_avg;
+    double rwt = theta * rw + (1.0 - theta) * rw_avg;
+    double Et  = theta * E  + (1.0 - theta) * E_avg;
+    return (gamma - 1.0) * (Et - 0.5 * (rut*rut + rvt*rvt + rwt*rwt) / rt);
+}
+
+inline double entropy_at_theta_3d(double theta,
+                                   double r, double ru, double rv, double rw, double E,
+                                   double r_avg, double ru_avg, double rv_avg, double rw_avg, double E_avg, double gamma) {
+    double rt  = theta * r  + (1.0 - theta) * r_avg;
+    double rut = theta * ru + (1.0 - theta) * ru_avg;
+    double rvt = theta * rv + (1.0 - theta) * rv_avg;
+    double rwt = theta * rw + (1.0 - theta) * rw_avg;
+    double Et  = theta * E  + (1.0 - theta) * E_avg;
+    double pt  = (gamma - 1.0) * (Et - 0.5 * (rut*rut + rvt*rvt + rwt*rwt) / rt);
+    return pt / std::pow(rt, gamma);
+}
+
+inline double bisect_for_theta_3d(
+    double r, double ru, double rv, double rw, double E,
+    double r_avg, double ru_avg, double rv_avg, double rw_avg, double E_avg,
+    double gamma, double target, bool is_pressure, int n_iter = 30)
+{
+    double lo = 0.0, hi = 1.0;
+    for (int iter = 0; iter < n_iter; ++iter) {
+        double mid = 0.5 * (lo + hi);
+        double val = is_pressure
+            ? pressure_at_theta_3d(mid, r, ru, rv, rw, E, r_avg, ru_avg, rv_avg, rw_avg, E_avg, gamma)
+            : entropy_at_theta_3d(mid, r, ru, rv, rw, E, r_avg, ru_avg, rv_avg, rw_avg, E_avg, gamma);
+        if (val >= target) lo = mid;
+        else               hi = mid;
+    }
+    return lo * (1.0 - 1e-8);
+}
+
+inline int extrapolate_face_values(const Cell3D& c, const Basis& basis, double face_pts[][5], int npts) {
+    int count = 0;
+    int npts3 = npts * npts * npts;
+
+    // Left (ξ = −1) & Right (ξ = +1)
+    for (int iz = 0; iz < npts; ++iz) {
+        for (int iy = 0; iy < npts; ++iy) {
+            // Left
+            for (int v = 0; v < 5; ++v) face_pts[count][v] = 0.0;
+            for (int ix = 0; ix < npts; ++ix) {
+                for (int v = 0; v < 5; ++v) {
+                    face_pts[count][v] += c.U[v * npts3 + iz * npts * npts + iy * npts + ix] * basis.l_L[ix];
+                }
+            }
+            ++count;
+
+            // Right
+            for (int v = 0; v < 5; ++v) face_pts[count][v] = 0.0;
+            for (int ix = 0; ix < npts; ++ix) {
+                for (int v = 0; v < 5; ++v) {
+                    face_pts[count][v] += c.U[v * npts3 + iz * npts * npts + iy * npts + ix] * basis.l_R[ix];
+                }
+            }
+            ++count;
+        }
+    }
+
+    // Bottom (η = −1) & Top (η = +1)
+    for (int iz = 0; iz < npts; ++iz) {
+        for (int ix = 0; ix < npts; ++ix) {
+            // Bottom
+            for (int v = 0; v < 5; ++v) face_pts[count][v] = 0.0;
+            for (int iy = 0; iy < npts; ++iy) {
+                for (int v = 0; v < 5; ++v) {
+                    face_pts[count][v] += c.U[v * npts3 + iz * npts * npts + iy * npts + ix] * basis.l_L[iy];
+                }
+            }
+            ++count;
+
+            // Top
+            for (int v = 0; v < 5; ++v) face_pts[count][v] = 0.0;
+            for (int iy = 0; iy < npts; ++iy) {
+                for (int v = 0; v < 5; ++v) {
+                    face_pts[count][v] += c.U[v * npts3 + iz * npts * npts + iy * npts + ix] * basis.l_R[iy];
+                }
+            }
+            ++count;
+        }
+    }
+
+    // Front (ζ = −1) & Back (ζ = +1)
+    for (int iy = 0; iy < npts; ++iy) {
+        for (int ix = 0; ix < npts; ++ix) {
+            // Front
+            for (int v = 0; v < 5; ++v) face_pts[count][v] = 0.0;
+            for (int iz = 0; iz < npts; ++iz) {
+                for (int v = 0; v < 5; ++v) {
+                    face_pts[count][v] += c.U[v * npts3 + iz * npts * npts + iy * npts + ix] * basis.l_L[iz];
+                }
+            }
+            ++count;
+
+            // Back
+            for (int v = 0; v < 5; ++v) face_pts[count][v] = 0.0;
+            for (int iz = 0; iz < npts; ++iz) {
+                for (int v = 0; v < 5; ++v) {
+                    face_pts[count][v] += c.U[v * npts3 + iz * npts * npts + iy * npts + ix] * basis.l_R[iz];
+                }
+            }
+            ++count;
+        }
+    }
+    return count;
+}
+
+/**
+ * @brief Extrapolate 3D array U[4][MAX_LIM_PTS][MAX_LIM_PTS] to face checking points.
+ */
+inline int extrapolate_face_values_array(const double U[4][MAX_LIM_PTS][MAX_LIM_PTS], const Basis& basis, double face_pts[][4], int npts) {
+    int count = 0;
+    for (int iy = 0; iy < npts; ++iy) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        for (int ix = 0; ix < npts; ++ix)
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += U[v][iy][ix] * basis.l_L[ix];
+        ++count;
+    }
+    for (int iy = 0; iy < npts; ++iy) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        for (int ix = 0; ix < npts; ++ix)
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += U[v][iy][ix] * basis.l_R[ix];
+        ++count;
+    }
+    for (int ix = 0; ix < npts; ++ix) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        for (int iy = 0; iy < npts; ++iy)
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += U[v][iy][ix] * basis.l_L[iy];
+        ++count;
+    }
+    for (int ix = 0; ix < npts; ++ix) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        for (int iy = 0; iy < npts; ++iy)
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += U[v][iy][ix] * basis.l_R[iy];
+        ++count;
+    }
+    return count;
+}
+
+/**
+ * @brief Check positivity validity including physical pressure, PPR phantom pressure, and regularized pressure.
+ */
+inline bool check_positivity_valid(double r, double ru, double rv, double E, double S, double theta_avg, double gamma, double eps, bool enable_ppr) {
+    if (r < eps) return false;
+    double p_phys = pressure(r, ru, rv, E, gamma);
+    if (p_phys < eps) return false;
+    if (enable_ppr) {
+        double p_phan = S / r;
+        if (p_phan < eps) return false;
+        double p_reg = p_phys + theta_avg * (p_phys - p_phan);
+        if (p_reg < eps) return false;
+    }
+    return true;
+}
+
+/**
+ * @brief Extrapolate cell conservative variables and PPR phantom pressure S to face checking points.
+ */
+inline int extrapolate_face_values_ppr(const Cell& c, const Basis& basis, double face_pts[][4], double face_S[], int npts) {
+    int count = 0;
+    for (int iy = 0; iy < npts; ++iy) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        face_S[count] = 0.0;
+        for (int ix = 0; ix < npts; ++ix) {
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += c.get_U(v, iy, ix, npts) * basis.l_L[ix];
+            face_S[count] += c.S_field[iy * npts + ix] * basis.l_L[ix];
+        }
+        ++count;
+    }
+    for (int iy = 0; iy < npts; ++iy) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        face_S[count] = 0.0;
+        for (int ix = 0; ix < npts; ++ix) {
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += c.get_U(v, iy, ix, npts) * basis.l_R[ix];
+            face_S[count] += c.S_field[iy * npts + ix] * basis.l_R[ix];
+        }
+        ++count;
+    }
+    for (int ix = 0; ix < npts; ++ix) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        face_S[count] = 0.0;
+        for (int iy = 0; iy < npts; ++iy) {
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += c.get_U(v, iy, ix, npts) * basis.l_L[iy];
+            face_S[count] += c.S_field[iy * npts + ix] * basis.l_L[iy];
+        }
+        ++count;
+    }
+    for (int ix = 0; ix < npts; ++ix) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        face_S[count] = 0.0;
+        for (int iy = 0; iy < npts; ++iy) {
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += c.get_U(v, iy, ix, npts) * basis.l_R[iy];
+            face_S[count] += c.S_field[iy * npts + ix] * basis.l_R[iy];
+        }
+        ++count;
+    }
+    return count;
+}
+
+/**
+ * @brief Extrapolate 3D array U[5][MAX_LIM_PTS][MAX_LIM_PTS] to face checking points for PPR.
+ */
+inline int extrapolate_face_values_ppr_array(const double U[5][MAX_LIM_PTS][MAX_LIM_PTS], const Basis& basis, double face_pts[][4], double face_S[], int npts) {
+    int count = 0;
+    for (int iy = 0; iy < npts; ++iy) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        face_S[count] = 0.0;
+        for (int ix = 0; ix < npts; ++ix) {
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += U[v][iy][ix] * basis.l_L[ix];
+            face_S[count] += U[4][iy][ix] * basis.l_L[ix];
+        }
+        ++count;
+    }
+    for (int iy = 0; iy < npts; ++iy) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        face_S[count] = 0.0;
+        for (int ix = 0; ix < npts; ++ix) {
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += U[v][iy][ix] * basis.l_R[ix];
+            face_S[count] += U[4][iy][ix] * basis.l_R[ix];
+        }
+        ++count;
+    }
+    for (int ix = 0; ix < npts; ++ix) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        face_S[count] = 0.0;
+        for (int iy = 0; iy < npts; ++iy) {
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += U[v][iy][ix] * basis.l_L[iy];
+            face_S[count] += U[4][iy][ix] * basis.l_L[iy];
+        }
+        ++count;
+    }
+    for (int ix = 0; ix < npts; ++ix) {
+        for (int v = 0; v < 4; ++v) face_pts[count][v] = 0.0;
+        face_S[count] = 0.0;
+        for (int iy = 0; iy < npts; ++iy) {
+            for (int v = 0; v < 4; ++v)
+                face_pts[count][v] += U[v][iy][ix] * basis.l_R[iy];
+            face_S[count] += U[4][iy][ix] * basis.l_R[iy];
+        }
+        ++count;
+    }
+    return count;
+}
+
+inline void compute_cell_average(const Cell3D& c, const Basis& basis,
+                                  double& r_avg, double& ru_avg, double& rv_avg, double& rw_avg,
+                                  double& E_avg, int npts) {
+    r_avg = ru_avg = rv_avg = rw_avg = E_avg = 0.0;
+    int npts3 = npts * npts * npts;
+    for (int iz = 0; iz < npts; ++iz) {
+        for (int iy = 0; iy < npts; ++iy) {
+            for (int ix = 0; ix < npts; ++ix) {
+                double w = (basis.w[iz] * 0.5) * (basis.w[iy] * 0.5) * (basis.w[ix] * 0.5);
+                int idx = iz * npts * npts + iy * npts + ix;
+                r_avg  += w * c.U[0 * npts3 + idx];
+                ru_avg += w * c.U[1 * npts3 + idx];
+                rv_avg += w * c.U[2 * npts3 + idx];
+                rw_avg += w * c.U[3 * npts3 + idx];
+                E_avg  += w * c.U[4 * npts3 + idx];
+            }
+        }
+    }
+}
+
+inline double min_entropy_in_cell(const Cell3D& c, const Parameters& p, int npts) {
+    double s_min = 1e30;
+    int npts3 = npts * npts * npts;
+    for (int iz = 0; iz < npts; ++iz) {
+        for (int iy = 0; iy < npts; ++iy) {
+            for (int ix = 0; ix < npts; ++ix) {
+                int idx = iz * npts * npts + iy * npts + ix;
+                double r  = std::max(1e-14, c.U[0 * npts3 + idx]);
+                double ru = c.U[1 * npts3 + idx];
+                double rv = c.U[2 * npts3 + idx];
+                double rw = c.U[3 * npts3 + idx];
+                double E  = c.U[4 * npts3 + idx];
+                s_min = std::min(s_min, specific_entropy_3d(r, ru, rv, rw, E, p.GAMMA));
+            }
+        }
+    }
     return s_min;
 }
 

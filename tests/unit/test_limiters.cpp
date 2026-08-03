@@ -93,4 +93,55 @@ TEST_SUITE("Limiters") {
         auto stats = Limiters::apply_entropy_limiter(solver);
         CHECK(stats.num_limited == 0);
     }
+
+    TEST_CASE("Smooth Local Limiter Strategies - Positivity & Cell Average Conservation") {
+        std::vector<std::string> strategies = {"BBCH", "MODAL", "HERMITE"};
+
+        for (const auto& strat : strategies) {
+            SUBCASE(strat.c_str()) {
+                auto p = make_params(2, 2, 2);
+                p.LIMITER_STRATEGY = strat;
+                Solver solver(p);
+                Basis basis(p.P_DEG);
+
+                int npts = p.N_PTS;
+
+                // Set all cells to uniform physical state
+                for (Cell* c : solver.cells) {
+                    for (int iy = 0; iy < npts; ++iy) {
+                        for (int ix = 0; ix < npts; ++ix) {
+                            c->U[0*npts*npts + iy*npts + ix] = 2.0;
+                            c->U[1*npts*npts + iy*npts + ix] = 0.0;
+                            c->U[2*npts*npts + iy*npts + ix] = 0.0;
+                            c->U[3*npts*npts + iy*npts + ix] = 2.5;
+                        }
+                    }
+                }
+
+                // Introduce negative density at node (0, 0)
+                solver.cells[0]->U[0*npts*npts + 0*npts + 0] = -0.5;
+
+                // Calculate actual cell average before limiting
+                double r_avg_orig, ru_avg_orig, rv_avg_orig, E_avg_orig;
+                Limiters::compute_cell_average(*solver.cells[0], basis, r_avg_orig, ru_avg_orig, rv_avg_orig, E_avg_orig, npts);
+
+                // Apply positivity limiter with strategy
+                auto stats = Limiters::apply_positivity_limiter(solver.cells, basis, p);
+                CHECK(stats.num_limited > 0);
+
+                // Verify positivity restored
+                for (int iy = 0; iy < npts; ++iy) {
+                    for (int ix = 0; ix < npts; ++ix) {
+                        CHECK(solver.cells[0]->U[0*npts*npts + iy*npts + ix] >= p.POS_LIMITER_EPS);
+                    }
+                }
+
+                // Verify exact cell average conservation
+                double r_avg_new, ru_avg_new, rv_avg_new, E_avg_new;
+                Limiters::compute_cell_average(*solver.cells[0], basis, r_avg_new, ru_avg_new, rv_avg_new, E_avg_new, npts);
+                CHECK(r_avg_new == doctest::Approx(r_avg_orig));
+            }
+        }
+    }
 }
+

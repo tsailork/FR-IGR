@@ -1,4 +1,6 @@
 var searchData=
 [
-  ['operator_28_29_0',['operator()',['../struct_state.html#abe10574d5709bd83b6b3e96cc52bb0fe',1,'State::operator()(int v, int ey, int ex, int iy, int ix)'],['../struct_state.html#a48e5faa0d3dca4037b3698d71d0874bc',1,'State::operator()(int v, int ey, int ex, int iy, int ix) const']]]
+  ['main_0',['main',['../main_8cpp.html#ae66f6b31b5ad750f1fe042a706a4e3d4',1,'main.cpp']]],
+  ['merge_5fcells_1',['merge_cells',['../classSolver.html#afed3d971a2d85b1f9baa15cf7e326553',1,'Solver']]],
+  ['min_5fentropy_5fin_5fcell_2',['min_entropy_in_cell',['../namespaceLimiters.html#a6039881aaf366575ab45e4ce9ee67dd3',1,'Limiters']]]
 ];
