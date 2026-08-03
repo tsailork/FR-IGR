@@ -144,28 +144,26 @@ struct Parameters {
     double IGR_SUB_ITER_TOL         = 0.0;    ///< Convergence tolerance for IGR sub-iterations (0 = inactive, runs lock-step).
 
     // -------------------------------------------------------------------------
-    // PPR (Phantom Pressure Regularization)
+    // PPR (Phantom Pressure Regularization) & APSR (Anisotropic Phantom Stress)
     // -------------------------------------------------------------------------
-    bool   ENABLE_PPR           = false;    ///< Toggle Phantom Pressure Regularization.
-    std::string PPR_WALL_BC     = "EQUILIBRATED"; ///< Wall BC for phantom pressure: EQUILIBRATED, PHYSICAL_DIRICHLET, CONSTANT_DIFFERENCE.
-    double PPR_N_CELLS_SHOCK    = 2.5;      ///< Target shock transition width in cell units (default: 2.5; theta_target ~ (N_cells_shock * (N+1))^2).
-    double PPR_C_TAU            = 0.25;     ///< Baseline non-equilibrium relaxation time scale ratio C_tau_base (default: 0.25).
-    double PPR_C_POS            = 0.05;     ///< Lower positivity bound coefficient for regularized pressure (default: 0.05).
-    double PPR_C_MAX            = 2.5;      ///< Upper bound coefficient for regularized pressure (default: 2.5).
-    bool   PPR_USE_SHOCK_NORMAL_MACH   = true;  ///< Use shock-normal Mach number M_n = |u . grad(P)| / a in Master Law.
-    bool   PPR_USE_DYNAMIC_C_TAU       = false; ///< Legacy toggle for dynamic C_tau guide rule.
-    bool   PPR_USE_DUCROS_SENSOR       = true;  ///< Apply Ducros vorticity shielding to zero out PPR in shear layers.
-    bool   PPR_USE_ENERGY_GUARD        = false; ///< Apply thermodynamic energy guard to zero out theta in expansion regions.
-    bool   PPR_USE_STENCIL_EXPANSION   = true;  ///< Expand theta and C_tau to 1-ring face neighbors for smooth pre-conditioning.
-    bool   PPR_USE_VON_NEUMANN_CEILING = true;  ///< Apply C_tau_vonNeumann ceiling outside shocks to prevent phase-lag ripples.
-    bool   PPR_USE_SPATIAL_CLAMP       = false; ///< Clamp phantom pressure to local 3-element physical pressure min/max.
-    bool   PPR_DEBUG_OUTPUT            = false; ///< Output detailed cell-local timescales and sensor diagnostics.
-    bool   PPR_CONSTANT_MODE           = false; ///< Use spatially-uniform user-specified theta and C_tau everywhere (bypasses all adaptive logic).
-    bool   PPR_USE_LIMITER             = true;  ///< Apply phantom pressure bounds limiter (default true). Set false to disable all P_phan clamping.
-    double PPR_CONSTANT_THETA          = 2.0;   ///< Constant coupling intensity theta when PPR_CONSTANT_MODE = true.
-    double PPR_CONSTANT_C_TAU_VAL      = 0.25;  ///< Constant relaxation timescale ratio C_tau when PPR_CONSTANT_MODE = true.
-    double PPR_SENSOR_NOISE_FLOOR      = 0.05;  ///< Acoustic noise floor for kinematic shock sensor (default: 0.05).
-    double PPR_SENSOR_SATURATION       = 0.50;  ///< Shock saturation threshold for kinematic shock sensor (default: 0.50).
+    bool   ENABLE_PPR                 = false;  ///< Toggle Phantom Pressure Regularization.
+    bool   ENABLE_APSR                = false;  ///< Toggle Anisotropic Phantom Stress Relaxation (APSR-R).
+    std::string PPR_WALL_BC           = "EQUILIBRATED"; ///< Wall BC for phantom pressure: EQUILIBRATED.
+    double PPR_N_CELLS_SHOCK          = 2.5;    ///< Target shock transition width in cell units.
+    double PPR_C_TAU                  = 0.25;   ///< Baseline non-equilibrium relaxation time scale ratio C_tau_base.
+    double PPR_C_POS                  = 0.05;   ///< Lower positivity bound coefficient for regularized pressure.
+    double PPR_C_MAX                  = 2.5;    ///< Upper bound coefficient for regularized pressure.
+    bool   PPR_USE_DUCROS             = true;   // Apply Ducros vorticity shielding in shear layers.
+    bool   PPR_USE_STENCIL_EXPANSION   = true;   ///< Expand theta and C_tau to 1-ring face neighbors.
+    bool   PPR_USE_VON_NEUMANN_CEILING = true;   ///< Apply C_tau_vonNeumann ceiling outside shocks.
+    bool   PPR_USE_LIMITER            = true;   ///< Apply phantom pressure bounds limiter.
+    bool   PPR_CONSTANT_MODE          = false;  ///< Use spatially-uniform user-specified theta and C_tau everywhere.
+    double PPR_CONSTANT_THETA         = 2.0;    ///< Constant coupling intensity theta when PPR_CONSTANT_MODE = true.
+    double PPR_CONSTANT_C_TAU_VAL     = 0.25;   ///< Constant relaxation timescale ratio C_tau when PPR_CONSTANT_MODE = true.
+    double PPR_SENSOR_NOISE_FLOOR     = 0.05;   ///< Acoustic noise floor for kinematic shock sensor.
+    double PPR_SENSOR_SATURATION      = 0.50;   ///< Shock saturation threshold for kinematic shock sensor.
+    double APSR_ALPHA                 = 0.02;   ///< Transverse-to-normal dissipation ratio alpha in [0, 1].
+    double APSR_ETA_BR2               = 2.0;    ///< Penalty factor for APSR BR2 face gradient lifting.
 
     // -------------------------------------------------------------------------
     // Time Stepping & I/O

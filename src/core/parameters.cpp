@@ -276,29 +276,35 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("IGR_SUB_ITER_TOL"))         IGR_SUB_ITER_TOL         = std::stod(kv["IGR_SUB_ITER_TOL"]);
     }
 
-    // --- [PPR] ---
+    // --- [PPR] / [APSR] ---
     if (ini.count("PPR")) {
         auto& kv = ini["PPR"];
         if (kv.count("ENABLE_PPR"))        ENABLE_PPR        = (kv["ENABLE_PPR"] == "true" || kv["ENABLE_PPR"] == "1");
-        if (kv.count("PPR_WALL_BC"))       PPR_WALL_BC       = kv["PPR_WALL_BC"];
+        if (kv.count("ENABLE_APSR"))       ENABLE_APSR       = (kv["ENABLE_APSR"] == "true" || kv["ENABLE_APSR"] == "1");
         if (kv.count("PPR_N_CELLS_SHOCK")) PPR_N_CELLS_SHOCK = std::stod(kv["PPR_N_CELLS_SHOCK"]);
         if (kv.count("PPR_C_TAU"))         PPR_C_TAU         = std::stod(kv["PPR_C_TAU"]);
         if (kv.count("PPR_C_POS"))         PPR_C_POS         = std::stod(kv["PPR_C_POS"]);
         if (kv.count("PPR_C_MAX"))         PPR_C_MAX         = std::stod(kv["PPR_C_MAX"]);
-        if (kv.count("PPR_USE_SHOCK_NORMAL_MACH"))   PPR_USE_SHOCK_NORMAL_MACH   = (kv["PPR_USE_SHOCK_NORMAL_MACH"] == "true" || kv["PPR_USE_SHOCK_NORMAL_MACH"] == "1");
-        if (kv.count("PPR_USE_DYNAMIC_C_TAU"))       PPR_USE_DYNAMIC_C_TAU       = (kv["PPR_USE_DYNAMIC_C_TAU"] == "true" || kv["PPR_USE_DYNAMIC_C_TAU"] == "1");
-        if (kv.count("PPR_USE_DUCROS_SENSOR"))       PPR_USE_DUCROS_SENSOR       = (kv["PPR_USE_DUCROS_SENSOR"] == "true" || kv["PPR_USE_DUCROS_SENSOR"] == "1");
-        if (kv.count("PPR_USE_ENERGY_GUARD"))        PPR_USE_ENERGY_GUARD        = (kv["PPR_USE_ENERGY_GUARD"] == "true" || kv["PPR_USE_ENERGY_GUARD"] == "1");
+        if (kv.count("PPR_USE_DUCROS"))    PPR_USE_DUCROS    = (kv["PPR_USE_DUCROS"] == "true" || kv["PPR_USE_DUCROS"] == "1");
+        if (kv.count("PPR_USE_DUCROS_SENSOR")) PPR_USE_DUCROS = (kv["PPR_USE_DUCROS_SENSOR"] == "true" || kv["PPR_USE_DUCROS_SENSOR"] == "1");
         if (kv.count("PPR_USE_STENCIL_EXPANSION"))   PPR_USE_STENCIL_EXPANSION   = (kv["PPR_USE_STENCIL_EXPANSION"] == "true" || kv["PPR_USE_STENCIL_EXPANSION"] == "1");
         if (kv.count("PPR_USE_VON_NEUMANN_CEILING")) PPR_USE_VON_NEUMANN_CEILING = (kv["PPR_USE_VON_NEUMANN_CEILING"] == "true" || kv["PPR_USE_VON_NEUMANN_CEILING"] == "1");
-        if (kv.count("PPR_USE_SPATIAL_CLAMP"))       PPR_USE_SPATIAL_CLAMP       = (kv["PPR_USE_SPATIAL_CLAMP"] == "true" || kv["PPR_USE_SPATIAL_CLAMP"] == "1");
-        if (kv.count("PPR_DEBUG_OUTPUT"))            PPR_DEBUG_OUTPUT            = (kv["PPR_DEBUG_OUTPUT"] == "true" || kv["PPR_DEBUG_OUTPUT"] == "1");
-        if (kv.count("PPR_CONSTANT_MODE"))           PPR_CONSTANT_MODE           = (kv["PPR_CONSTANT_MODE"] == "true" || kv["PPR_CONSTANT_MODE"] == "1");
         if (kv.count("PPR_USE_LIMITER"))             PPR_USE_LIMITER             = (kv["PPR_USE_LIMITER"] == "true" || kv["PPR_USE_LIMITER"] == "1");
+        if (kv.count("PPR_CONSTANT_MODE"))           PPR_CONSTANT_MODE           = (kv["PPR_CONSTANT_MODE"] == "true" || kv["PPR_CONSTANT_MODE"] == "1");
         if (kv.count("PPR_CONSTANT_THETA"))          PPR_CONSTANT_THETA          = std::stod(kv["PPR_CONSTANT_THETA"]);
         if (kv.count("PPR_CONSTANT_C_TAU_VAL"))      PPR_CONSTANT_C_TAU_VAL      = std::stod(kv["PPR_CONSTANT_C_TAU_VAL"]);
         if (kv.count("PPR_SENSOR_NOISE_FLOOR"))      PPR_SENSOR_NOISE_FLOOR      = std::stod(kv["PPR_SENSOR_NOISE_FLOOR"]);
         if (kv.count("PPR_SENSOR_SATURATION"))       PPR_SENSOR_SATURATION       = std::stod(kv["PPR_SENSOR_SATURATION"]);
+        if (kv.count("APSR_ALPHA"))                  APSR_ALPHA                  = std::stod(kv["APSR_ALPHA"]);
+        if (kv.count("APSR_ETA_BR2"))                APSR_ETA_BR2                = std::stod(kv["APSR_ETA_BR2"]);
+    }
+
+    if (ini.count("APSR")) {
+        auto& kv = ini["APSR"];
+        if (kv.count("ENABLE_APSR"))                 ENABLE_APSR                 = (kv["ENABLE_APSR"] == "true" || kv["ENABLE_APSR"] == "1");
+        if (kv.count("APSR_ALPHA"))                  APSR_ALPHA                  = std::stod(kv["APSR_ALPHA"]);
+        if (kv.count("APSR_ETA_BR2"))                APSR_ETA_BR2                = std::stod(kv["APSR_ETA_BR2"]);
+        if (kv.count("APSR_USE_DUCROS"))             PPR_USE_DUCROS              = (kv["APSR_USE_DUCROS"] == "true" || kv["APSR_USE_DUCROS"] == "1");
     }
 
     // --- [Stabilization] ---

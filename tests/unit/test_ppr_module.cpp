@@ -115,37 +115,9 @@ TEST_CASE("PPR - Multidimensional Feature Switches") {
 
     std::vector<CellDim<2>*> cells = { &cell };
 
-    SUBCASE("Shock-Normal Mach vs Total Mach Switch") {
-        p.PPR_USE_SHOCK_NORMAL_MACH = true;
-        PPR::compute_element_theta_2d(cells, basis, p);
-        double theta_normal = cell.theta_avg;
-
-        p.PPR_USE_SHOCK_NORMAL_MACH = false;
-        PPR::compute_element_theta_2d(cells, basis, p);
-        double theta_total = cell.theta_avg;
-
-        CHECK(theta_normal >= 0.0);
-        CHECK(theta_total >= 0.0);
-    }
-
-
-    SUBCASE("Thermodynamic Energy Guard Switch") {
-        p.PPR_USE_ENERGY_GUARD = true;
+    SUBCASE("PPR Element Theta Evaluation") {
         PPR::compute_element_theta_2d(cells, basis, p);
         CHECK(cell.theta_avg >= 0.0);
-
-        p.PPR_USE_ENERGY_GUARD = false;
-        PPR::compute_element_theta_2d(cells, basis, p);
-        CHECK(cell.theta_avg >= 0.0);
-    }
-
-    SUBCASE("Dynamic C_tau Guide Rule Switch") {
-        p.PPR_USE_DYNAMIC_C_TAU = true;
-        PPR::compute_element_theta_2d(cells, basis, p);
-        CHECK(cell.theta_avg >= 0.0);
-
-        p.PPR_USE_DYNAMIC_C_TAU = false;
-        PPR::compute_element_theta_2d(cells, basis, p);
-        CHECK(cell.theta_avg >= 0.0);
+        CHECK(cell.C_tau_cell >= 0.0);
     }
 }

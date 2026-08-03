@@ -271,6 +271,16 @@ The solver incorporates a fully modular, mathematically rigorous local element l
   - Dynamically adapts $C_{\tau, \text{eff}} = \min\left(C_{\tau, \text{base}}, \, \frac{0.90}{\theta_{\text{target}} + 1.0}\right)$, hard-enforcing $C_{\tau, \text{eff}} \cdot (\theta_{\text{target}} + 1.0) \le 0.90$ at all times.
   - At high Mach numbers ($M_n \ge 3.0$), $C_\tau$ dynamically shrinks, allowing $\theta$ to scale freely up to $50-100+$ for strong shocks without hitting phase-lag caps or instabilities.
 
+### 16. Comprehensive PPR Strategies & Mathematical Documentation (August 2026)
+- **Documented PPR Attempted Strategies (`doc/ppr_attempted_strategies_and_analysis.md`)**:
+  Created a comprehensive, mathematically rigorous reference document detailing all 5 attempted PPR and APSR strategies:
+  1. *Isotropic PPR*: Linearized 2D dispersion relation, Doppler frequency $\Omega$, low/high frequency limits ($a_{\text{eq}} \le a_{\text{frozen}}$), effective bulk viscosity $\nu_{\text{eff}}$, and mathematical analysis of standing wave resonance and transverse phase-lag oscillation mechanisms.
+  2. *APSR-R (Rectified Anisotropic Phantom Stress Relaxation)*: Rotational invariance, full interface traction vector assembly $\mathbf{t}_{\text{phan}}^*$, 2nd Law thermodynamic positive entropy production proof ($\rho T \frac{Ds}{Dt} \ge 0$), and Whitham anisotropic sound speed bounds ($a_{\text{frozen}, n} > a_0, a_{\text{frozen}, t} = a_0$).
+  3. *Shock-Aligned Transport Velocity ($\mathbf{u}_S$)*: Transport velocity formulation aligning phantom pressure advection with physical shock normal $\mathbf{n}_{\text{shock}}$ to eliminate transverse phase lag.
+  4. *Non-Dimensional Divergence Sensor ($\theta_{\text{simple\_div}}$)*: Parameterless shock sensor scaling coupling intensity directly with non-dimensional compression.
+  5. *Spatial Clamping & Energy Guard*: Nodal bounds $[P_{\text{phan, min}}, P_{\text{phan, max}}]$ and instant-thermalization anti-dissipative compression guard.
+- **Codebase Compartmentalization**: Cleanly decoupled spatial sweeps (`sweep_x.cpp`, `sweep_y.cpp`) to pure scalar advection ($F_{\text{sol}, S} = u S$), pruned 7 dead parameters, and encapsulated pointwise and Riemann regularizations into static helpers in `ppr.hpp`.
+
 ## Documentation Maintenance (Agent Hook)
 Whenever tasked with "updating the documentation" for a new feature or change, you **MUST** ensure all the following locations are kept perfectly synchronized with the codebase:
 

@@ -12,6 +12,7 @@
 
 #include "../core/solver.hpp"
 #include "../ppr/ppr.hpp"
+#include "../apsr/apsr.hpp"
 
 // =========================================================================
 // Pointwise physical flux (with entropic pressure σ)
@@ -122,12 +123,7 @@ void Solver::solve_riemann(const double* UL, const double* UR, double* F_comm,
     double aL_reg = std::sqrt(p.GAMMA * pL / rhoL);
     double aR_reg = std::sqrt(p.GAMMA * pR / rhoR);
 
-    if (p.ENABLE_PPR) {
-        double theta_f = 0.5 * (thetaL + thetaR);
-        double P_phanL, P_phanR;
-        PPR::get_thermodynamics(rhoL, UL[1], UL[2], UL[3], SL, theta_f, p.GAMMA, p.POS_LIMITER_EPS, pL, P_phanL, pL_reg, aL_reg);
-        PPR::get_thermodynamics(rhoR, UR[1], UR[2], UR[3], SR, theta_f, p.GAMMA, p.POS_LIMITER_EPS, pR, P_phanR, pR_reg, aR_reg);
-    }
+    PPR::prepare_riemann_states(UL, UR, SL, SR, thetaL, thetaR, dir, p, pL, pR, pL_reg, pR_reg, aL_reg, aR_reg);
 
     if (aL_reg_out) *aL_reg_out = aL_reg;
     if (aR_reg_out) *aR_reg_out = aR_reg;

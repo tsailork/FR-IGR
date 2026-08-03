@@ -18,6 +18,7 @@
 #include "../ib/sbm_geometry.hpp"
 #include "../igr/ducros_sensor.hpp"
 #include "../ppr/ppr.hpp"
+#include "../apsr/apsr.hpp"
 
 /**
  * @brief Parse a boundary condition string from domain.grid into a NeighborInfo metadata struct.
@@ -204,7 +205,11 @@ SolverDim<2>::SolverDim(const Parameters& params)
 /// Pre-compute element-average adaptive theta for PPR and store in each cell's theta_avg.
 void Solver::compute_ppr_theta_avg() {
     if (!p.ENABLE_PPR) return;
-    PPR::compute_element_theta_2d(cells, basis, p);
+    if (p.ENABLE_APSR) {
+        APSR::compute_element_theta_apsr_2d(cells, basis, p);
+    } else {
+        PPR::compute_element_theta_2d(cells, basis, p);
+    }
 }
 
 /// Assemble the full right-hand side: IGR + inviscid sweeps + viscous fluxes.
@@ -807,23 +812,20 @@ void Solver::get_flux_pointwise_cell(const Cell& c, int iy, int ix,
     double v     = c.get_U(2, iy, ix, p.N_PTS) / rho;
     double E     = c.get_U(3, iy, ix, p.N_PTS);
     double press = std::max(p.POS_LIMITER_EPS, (p.GAMMA - 1.0) * (E - 0.5 * rho * (u*u + v*v)));
-    if (p.ENABLE_PPR) {
-        double P_phan = c.S_field[iy * p.N_PTS + ix] / rho;
-        double P_reg  = press + c.theta_avg * (press - P_phan);
-        press = std::max(p.POS_LIMITER_EPS, P_reg);
-    }
+    double tau_xx = 0.0, tau_xy = 0.0, tau_yy = 0.0;
+    PPR::get_pointwise_regularization(c, iy, ix, basis, p, press, press, tau_xx, tau_xy, tau_yy);
 
     if (F) {
         F[0] = rho * u;
-        F[1] = rho * u * u + press + sigma;
-        F[2] = rho * u * v;
-        F[3] = (E + press + sigma) * u;
+        F[1] = rho * u * u + press + tau_xx + sigma;
+        F[2] = rho * u * v + tau_xy;
+        F[3] = (E + press + tau_xx + sigma) * u + tau_xy * v;
     }
     if (G) {
         G[0] = rho * v;
-        G[1] = rho * v * u;
-        G[2] = rho * v * v + press + sigma;
-        G[3] = (E + press + sigma) * v;
+        G[1] = rho * v * u + tau_xy;
+        G[2] = rho * v * v + press + tau_yy + sigma;
+        G[3] = tau_xy * u + (E + press + tau_yy + sigma) * v;
     }
 }
 

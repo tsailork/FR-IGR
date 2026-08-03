@@ -4,6 +4,7 @@
  */
 
 #include "ppr.hpp"
+#include "../core/solver.hpp"
 
 namespace PPR {
 
@@ -206,7 +207,7 @@ void compute_element_theta_2d(const std::vector<CellDim<2>*>& cells,
         double M_avg = std::sqrt(u_avg*u_avg + v_avg*v_avg) / a_avg;
         double M_normal_avg = Mn_sum;
 
-        double M_mach_use = (p.PPR_USE_SHOCK_NORMAL_MACH) ? M_normal_avg : M_avg;
+        double M_mach_use = M_normal_avg;
 
         // 1. Refined Kinematic Sensor I_shock = Ducros * S(phi_eff)
         double h_node = h_eff / N_factor;
@@ -215,7 +216,7 @@ void compute_element_theta_2d(const std::vector<CellDim<2>*>& cells,
         double phi_eff = std::max({shock_val, phi_comp, phi_face});
 
         double Ducros_ratio = 1.0;
-        if (p.PPR_USE_DUCROS_SENSOR) {
+        if (p.PPR_USE_DUCROS) {
             double div_sq = div_u_sum * div_u_sum;
             Ducros_ratio = div_sq / (div_sq + curl_u_sum + 1e-12);
         }
@@ -232,20 +233,19 @@ void compute_element_theta_2d(const std::vector<CellDim<2>*>& cells,
             c->C_tau_cell = p.PPR_CONSTANT_C_TAU_VAL;
             c->theta_max_tmp = p.PPR_CONSTANT_THETA;
         } else {
-        double C_tau_0 = (p.PPR_C_TAU != 0.0) ? std::abs(p.PPR_C_TAU) : 0.25;
-        double C_tau_base = C_tau_0;// * std::max(0.5, p.PPR_N_CELLS_SHOCK);
-        double theta_target = (p.PPR_N_CELLS_SHOCK * N_factor * (p.GAMMA + 1.0) / (8.0 * std::max(0.01, C_tau_0))) * (1.0 + M_mach_use) * phi_eff;
-        double theta_e = theta_target * I_shock;
+            double C_tau_0 = (p.PPR_C_TAU != 0.0) ? std::abs(p.PPR_C_TAU) : 0.25;
+            double C_tau_base = C_tau_0;
+            double theta_target = (p.PPR_N_CELLS_SHOCK * N_factor * (p.GAMMA + 1.0) / (8.0 * std::max(0.01, C_tau_0))) * (1.0 + M_mach_use) * phi_eff;
+            double theta_e = theta_target * I_shock;
 
-        // 3. Three-State Relaxation Controller & Von Neumann Ceiling
-        double C_tau_vonNeumann = C_tau_base;
-        if (p.PPR_USE_VON_NEUMANN_CEILING) {
-            C_tau_vonNeumann = std::min(C_tau_base, 0.90 / (theta_e + 1.0));
-        }
-        double C_tau_blend = (1.0 - I_shock) * C_tau_vonNeumann + I_shock * C_tau_base;
+            double C_tau_vonNeumann = C_tau_base;
+            if (p.PPR_USE_VON_NEUMANN_CEILING) {
+                C_tau_vonNeumann = std::min(C_tau_base, 0.90 / (theta_e + 1.0));
+            }
+            double C_tau_blend = (1.0 - I_shock) * C_tau_vonNeumann + I_shock * C_tau_base;
 
-        c->C_tau_cell = C_tau_blend;
-        c->theta_max_tmp = theta_e;
+            c->C_tau_cell = C_tau_blend;
+            c->theta_max_tmp = theta_e;
         } // end adaptive mode
     }
 
@@ -303,18 +303,6 @@ void relax_phantom_pressure_2d(CellDim<2>& cell, double dt_stage, const Basis& b
 
             double P_phys = std::max(eps, (p.GAMMA - 1.0) * (E - 0.5 * rho * (u*u + v*v)));
             double P_phan = cell.S_field[k] / rho;
-            double div_u = (cell.get_U(1, iy, ix, Np) - cell.get_U(1, iy, std::max(0, ix-1), Np)) / h_eff;
-
-            // Thermodynamic Instant-Thermalization Guard
-            bool anti_dissipative = (cell.theta_avg * (P_phys - P_phan) * div_u > 0.0) ||
-                                    (div_u < 0.0 && P_phan > P_phys);
-            if (p.PPR_USE_ENERGY_GUARD && anti_dissipative) {
-                // Instantly thermalize P_phan -> P_phys in 1 RK stage
-                double S_eq = rho * P_phys;
-                cell.S_field[k] = S_eq;
-                continue;
-            }
-
             double a_phys = std::sqrt(p.GAMMA * P_phys / rho);
             double speed = std::sqrt(u*u + v*v);
 
@@ -385,11 +373,6 @@ void apply_phantom_pressure_limiter_2d(const std::vector<CellDim<2>*>& cells, co
 
                 double P_phan_max = (1.0 + (1.0 - c_pos) / (theta + 1e-12)) * P_phys;
                 double P_phan_min = std::max(0.0, (1.0 - (C_max - 1.0) / (theta + 1e-12)) * P_phys);
-
-                if (p.PPR_USE_SPATIAL_CLAMP) {
-                    P_phan_max = std::min(P_nodal_max, P_phan_max);
-                    P_phan_min = std::min(P_nodal_min, P_phan_min);
-                }
 
                 double P_phan_clipped = std::clamp(P_phan, P_phan_min, P_phan_max);
                 c->S_field[k] = rho * P_phan_clipped;
@@ -643,7 +626,7 @@ void compute_element_theta_3d(const std::vector<CellDim<3>*>& cells,
         double M_avg = std::sqrt(u_avg*u_avg + v_avg*v_avg + w_avg*w_avg) / a_avg;
         double M_normal_avg = Mn_sum;
 
-        double M_mach_use = (p.PPR_USE_SHOCK_NORMAL_MACH) ? M_normal_avg : M_avg;
+        double M_mach_use = M_avg;
 
         // 1. Refined Kinematic Sensor I_shock = Ducros * S(phi_eff) in 3D
         double h_node = h_eff / N_factor;
@@ -651,7 +634,7 @@ void compute_element_theta_3d(const std::vector<CellDim<3>*>& cells,
         double phi_eff = std::max(shock_val, phi_comp);
 
         double Ducros_ratio = 1.0;
-        if (p.PPR_USE_DUCROS_SENSOR) {
+        if (p.PPR_USE_DUCROS) {
             double div_sq = div_u_sum * div_u_sum;
             Ducros_ratio = div_sq / (div_sq + curl_u_sum + 1e-12);
         }
@@ -741,19 +724,6 @@ void relax_phantom_pressure_3d(CellDim<3>& cell, double dt_stage, const Basis& b
                 double E = cell.get_U(4, iz, iy, ix, Np);
 
                 double P_phys = std::max(eps, (p.GAMMA - 1.0) * (E - 0.5 * rho * (u*u + v*v + w*w)));
-                double P_phan = cell.S_field[k] / rho;
-                double div_u = (cell.get_U(1, iz, iy, ix, Np) - cell.get_U(1, iz, iy, std::max(0, ix-1), Np)) / h_eff;
-
-                // Thermodynamic Instant-Thermalization Guard in 3D
-                bool anti_dissipative = (cell.theta_avg * (P_phys - P_phan) * div_u > 0.0) ||
-                                        (div_u < 0.0 && P_phan > P_phys);
-                if (p.PPR_USE_ENERGY_GUARD && anti_dissipative) {
-                    // Instantly thermalize P_phan -> P_phys in 1 RK stage
-                    double S_eq = rho * P_phys;
-                    cell.S_field[k] = S_eq;
-                    continue;
-                }
-
                 double a_phys = std::sqrt(p.GAMMA * P_phys / rho);
                 double speed = std::sqrt(u*u + v*v + w*w);
 
@@ -829,11 +799,6 @@ void apply_phantom_pressure_limiter_3d(const std::vector<CellDim<3>*>& cells, co
 
                     double P_phan_max = (1.0 + (1.0 - c_pos) / (theta + 1e-12)) * P_phys;
                     double P_phan_min = std::max(0.0, (1.0 - (C_max - 1.0) / (theta + 1e-12)) * P_phys);
-
-                    if (p.PPR_USE_SPATIAL_CLAMP) {
-                        P_phan_max = std::min(P_nodal_max, P_phan_max);
-                        P_phan_min = std::min(P_nodal_min, P_phan_min);
-                    }
 
                     double P_phan_clipped = std::clamp(P_phan, P_phan_min, P_phan_max);
                     c->S_field[k] = rho * P_phan_clipped;

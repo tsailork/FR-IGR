@@ -341,7 +341,7 @@ void VTKWriter::write_checkpoint(Solver& solver, int step, double time) {
             double p_phan = S / std::max(p.POS_LIMITER_EPS, r);
             return press - p_phan;
         });
-        if (p.OUTPUT_ADAPTIVE_THETA || p.PPR_DEBUG_OUTPUT) {
+        if (p.OUTPUT_ADAPTIVE_THETA) {
             write_point_array_f32("Theta_PPR", [&](Cell* c, int, int) {
                 return c->theta_avg;
             });
@@ -743,7 +743,7 @@ void VTKWriter::write_plot(Solver& solver, int step, double time) {
             double p_phan = S / std::max(p.POS_LIMITER_EPS, r);
             return press - p_phan;
         });
-        if (p.OUTPUT_ADAPTIVE_THETA || p.PPR_DEBUG_OUTPUT) {
+        if (p.OUTPUT_ADAPTIVE_THETA) {
             write_array("Theta_PPR", [&](Cell* c, int, int) {
                 return c->theta_avg;
             });

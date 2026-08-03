@@ -21,9 +21,10 @@ This project has also been an exploration of AI-LLM assisted code generation. LL
 
 ## Documentation
 - [GEMINI.md](GEMINI.md): Detailed technical history, architecture notes, and feature descriptions.
+- [doc/ppr_attempted_strategies_and_analysis.md](doc/ppr_attempted_strategies_and_analysis.md): Mathematical derivations, linear dispersion analyses, 2nd law proofs, and attempted PPR/APSR shock-capturing strategies.
 - [dependencies.txt](dependencies.txt): Software and library requirements.
 - [inputs_example.txt](inputs_example.txt): Comprehensive guide to all simulation parameters.
 - (.html) [High level overview](doc/index.html) of the methods used in this code.
-- (.html) [Doxygen](doc/doxygen/html/index.html) documentation pages. 
+- (.html) [Doxygen](doc/doxygen/html/index.html) documentation pages.
 
 ---
