@@ -1,3 +1,4 @@
+#include <array>
 #include "../doctest.h"
 #include "../../src/core/solver.hpp"
 #include "../../src/core/parameters.hpp"
@@ -9,11 +10,11 @@ TEST_CASE("Rusanov Riemann solver - Identical states") {
     p.GAMMA = 1.4;
     Solver solver(p);
 
-    double UL[4] = {1.0, 0.0, 0.0, 2.5}; // rho=1, u=0, v=0, p=1
-    double UR[4] = {1.0, 0.0, 0.0, 2.5};
-    double F_comm[4] = {0.0, 0.0, 0.0, 0.0};
+    std::array<double, 4> UL = {1.0, 0.0, 0.0, 2.5}; // rho=1, u=0, v=0, p=1
+    std::array<double, 4> UR = {1.0, 0.0, 0.0, 2.5};
+    std::array<double, 4> F_comm = {0.0, 0.0, 0.0, 0.0};
 
-    solver.solve_riemann(UL, UR, F_comm, 0);
+    solver.solve_riemann(UL.data(), UR.data(), F_comm.data(), 0);
 
     // Flux should be F(U) = [0, p, 0, 0] = [0, 1.0, 0, 0]
     CHECK(F_comm[0] == doctest::Approx(0.0));
@@ -27,11 +28,11 @@ TEST_CASE("Rusanov Riemann solver - Sod shock tube") {
     p.GAMMA = 1.4;
     Solver solver(p);
 
-    double UL[4] = {1.0, 0.0, 0.0, 2.5};
-    double UR[4] = {0.125, 0.0, 0.0, 0.25};
-    double F_comm[4] = {0.0, 0.0, 0.0, 0.0};
+    std::array<double, 4> UL = {1.0, 0.0, 0.0, 2.5};
+    std::array<double, 4> UR = {0.125, 0.0, 0.0, 0.25};
+    std::array<double, 4> F_comm = {0.0, 0.0, 0.0, 0.0};
 
-    solver.solve_riemann(UL, UR, F_comm, 0);
+    solver.solve_riemann(UL.data(), UR.data(), F_comm.data(), 0);
 
     // The interface flux should reflect numerical dissipation
     // LLF adds dissipation based on max eigenvalue
@@ -52,14 +53,14 @@ TEST_CASE("Rusanov Riemann solver - Symmetry") {
     p.GAMMA = 1.4;
     Solver solver(p);
 
-    double U1[4] = {1.0, 0.5, 0.0, 3.0};
-    double U2[4] = {0.5, 0.0, 0.0, 1.5};
+    std::array<double, 4> U1 = {1.0, 0.5, 0.0, 3.0};
+    std::array<double, 4> U2 = {0.5, 0.0, 0.0, 1.5};
     
-    double F_comm_12[4];
-    solver.solve_riemann(U1, U2, F_comm_12, 0);
+    std::array<double, 4> F_comm_12;
+    solver.solve_riemann(U1.data(), U2.data(), F_comm_12.data(), 0);
 
-    double F_comm_21[4];
-    solver.solve_riemann(U2, U1, F_comm_21, 0);
+    std::array<double, 4> F_comm_21;
+    solver.solve_riemann(U2.data(), U1.data(), F_comm_21.data(), 0);
 
     // The solver computes flux for left U1 and right U2. F = 0.5*(F1+F2) - 0.5*lambda*(U2-U1)
     CHECK(F_comm_12[0] != 0.0);
@@ -70,14 +71,14 @@ TEST_CASE("Rusanov Riemann solver - With sigma") {
     p.GAMMA = 1.4;
     Solver solver(p);
 
-    double UL[4] = {1.0, 0.0, 0.0, 2.5}; 
-    double UR[4] = {1.0, 0.0, 0.0, 2.5};
-    double F_comm[4] = {0.0, 0.0, 0.0, 0.0};
+    std::array<double, 4> UL = {1.0, 0.0, 0.0, 2.5}; 
+    std::array<double, 4> UR = {1.0, 0.0, 0.0, 2.5};
+    std::array<double, 4> F_comm = {0.0, 0.0, 0.0, 0.0};
 
     // Sigmas apply an artificial pressure gradient 
     double sigl = 0.1;
     double sigr = -0.1;
-    solver.solve_riemann(UL, UR, F_comm, 0);
+    solver.solve_riemann(UL.data(), UR.data(), F_comm.data(), 0);
 
     double un_l = UL[1] / std::max(p.POS_LIMITER_EPS, UL[0]);
     double un_r = UR[1] / std::max(p.POS_LIMITER_EPS, UR[0]);
@@ -95,11 +96,11 @@ TEST_CASE("Rusanov Riemann solver - Y-direction") {
     Solver solver(p);
 
     // Flow in Y direction: u=0, v=0.5
-    double UL[4] = {1.0, 0.0, 0.5, 2.5 + 0.5*1.0*0.25}; 
-    double UR[4] = {1.0, 0.0, 0.5, 2.5 + 0.5*1.0*0.25};
-    double F_comm[4] = {0.0, 0.0, 0.0, 0.0};
+    std::array<double, 4> UL = {1.0, 0.0, 0.5, 2.5 + 0.5*1.0*0.25}; 
+    std::array<double, 4> UR = {1.0, 0.0, 0.5, 2.5 + 0.5*1.0*0.25};
+    std::array<double, 4> F_comm = {0.0, 0.0, 0.0, 0.0};
 
-    solver.solve_riemann(UL, UR, F_comm, 1);
+    solver.solve_riemann(UL.data(), UR.data(), F_comm.data(), 1);
 
     // Flux G(U) = [rho*v, rho*u*v, rho*v^2 + p, (E+p)*v]
     // rho*v = 0.5
@@ -124,16 +125,16 @@ TEST_CASE("PPR-HLLC Riemann solver - Pressure equilibration with WE-BC") {
     double rho = 1.2;
     double p_phys = 100000.0;
     double E = p_phys / (p.GAMMA - 1.0);
-    double UL[4] = {rho, 0.0, 0.0, E};
-    double UR[4] = {rho, 0.0, 0.0, E};
+    std::array<double, 4> UL = {rho, 0.0, 0.0, E};
+    std::array<double, 4> UR = {rho, 0.0, 0.0, E};
 
     SUBCASE("Steady State Equilibrium") {
         double SL = rho * p_phys;
         double SR = 2.0 * (rho * p_phys) - SL; // SR = rho * p_phys
 
-        double F_comm[4] = {0.0};
+        std::array<double, 4> F_comm = {0.0};
         double Flux_S_comm = 0.0;
-        solver.compute_interface_flux(UL, UR, 0.0, 0.0, SL, SR, 1.0, 1.0, 0, F_comm, Flux_S_comm);
+        solver.compute_interface_flux(UL.data(), UR.data(), 0.0, 0.0, SL, SR, 1.0, 1.0, 0, F_comm.data(), Flux_S_comm);
 
         CHECK(F_comm[1] == doctest::Approx(p_phys));
     }
@@ -142,9 +143,9 @@ TEST_CASE("PPR-HLLC Riemann solver - Pressure equilibration with WE-BC") {
         double SL = 0.7 * (rho * p_phys); // Phantom pressure lags behind physical shock
         double SR = 2.0 * (rho * p_phys) - SL; // WE-BC ghost state
 
-        double F_comm[4] = {0.0};
+        std::array<double, 4> F_comm = {0.0};
         double Flux_S_comm = 0.0;
-        solver.compute_interface_flux(UL, UR, 0.0, 0.0, SL, SR, 1.0, 1.0, 0, F_comm, Flux_S_comm);
+        solver.compute_interface_flux(UL.data(), UR.data(), 0.0, 0.0, SL, SR, 1.0, 1.0, 0, F_comm.data(), Flux_S_comm);
 
         // Wall normal momentum flux is closely bounded near regularized pressure (within 35%)
         CHECK(F_comm[1] > 0.95 * p_phys);

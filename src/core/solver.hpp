@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <cmath>
 #include <vector>
+#include <memory>
 #include "../limiters/limiter_common.hpp"
 
 /**

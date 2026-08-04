@@ -19,8 +19,7 @@ TEST_REGR_TARGET = bin/test_regression
 
 # Source Files
 CORE_SRC = src/core/parameters.cpp src/core/basis.cpp src/core/solver.cpp src/core/geometry.cpp
-FLUX_SRC = src/flux/euler_flux.cpp src/flux/sweep_x.cpp src/flux/sweep_y.cpp src/flux/sweep_z.cpp \
-           src/flux/gradient.cpp src/flux/viscous_sweep_x.cpp src/flux/viscous_sweep_y.cpp src/flux/viscous_sweep_z.cpp
+FLUX_SRC = src/flux/euler_flux.cpp src/flux/sweeps.cpp src/flux/gradient.cpp
 IGR_SRC  = src/igr/sensor.cpp src/igr/adi_solver.cpp src/igr/parabolic.cpp src/igr/entropic_pressure.cpp src/igr/ducros_sensor.cpp
 PPR_SRC  = src/ppr/ppr.cpp src/apsr/apsr.cpp
 BND_SRC  = src/boundary/boundary_wall.cpp src/boundary/boundary_characteristic.cpp src/boundary/boundary_x.cpp src/boundary/boundary_y.cpp src/boundary/boundary_backpressure.cpp

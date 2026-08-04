@@ -1,3 +1,4 @@
+#include <array>
 /**
  * @file test_amr_phase3.cpp
  * @brief Unit tests for Quadtree AMR Phase 3 capabilities.

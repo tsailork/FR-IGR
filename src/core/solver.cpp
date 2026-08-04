@@ -366,7 +366,8 @@ static inline void morton_decode_3d(uint64_t morton, uint32_t& x, uint32_t& y, u
 }
 
 SolverDim<2>::~SolverDim() {
-    for (Cell* c : cells) {
+    std::unordered_set<Cell2D*> unique_cells(cells.begin(), cells.end());
+    for (Cell2D* c : unique_cells) {
         delete c;
     }
     cells.clear();
@@ -506,6 +507,12 @@ void Solver::enforce_21_ratio() {
 }
 
 void Solver::initialize_cells() {
+    std::unordered_set<Cell*> unique_cells(cells.begin(), cells.end());
+    for (Cell* c : unique_cells) {
+        delete c;
+    }
+    cells.clear();
+
     int max_block_id = -1;
     for (const auto& b : blocks) {
         if (b.id > max_block_id) max_block_id = b.id;
@@ -1056,7 +1063,21 @@ static void restrict_3d_scalar(const std::vector<const std::vector<double>*>& ch
 }
 
 // =========================================================================
-// Quadtree AMR: Member Function Implementations
+// Quadtree AMR: Member Function Implementations & L2 Projections
+//
+// Mathematical Formulation (Conservative L_2 Restriction & Prolongation):
+//
+// 1. Prolongation (Parent -> Children):
+//    Evaluates parent polynomial degrees-of-freedom at sub-element Gauss points via 1D projection matrices P1, P2:
+//    \f[
+//    U_{child}(\xi) = \sum_{j=1}^{P+1} P_{ij} U_{parent}(\xi_j)
+//    \f]
+//
+// 2. Restriction (Children -> Parent):
+//    Strictly conservative L_2 inner product projection preserving global conservation:
+//    \f[
+//    U_{parent} = \frac{1}{2} \int_{-1}^{1} U_{child}(\xi) d\xi = \sum_{c} \sum_{j=1}^{P+1} R_{ij} U_{child, c}(\xi_j)
+//    \f]
 // =========================================================================
 
 Cell* Solver::find_leaf_cell(int block_id, double x, double y) const {
@@ -1487,14 +1508,16 @@ SolverDim<3>::SolverDim(const Parameters& params)
 }
 
 SolverDim<3>::~SolverDim() {
-    for (Cell3D* c : cells) {
+    std::unordered_set<Cell3D*> unique_cells(cells.begin(), cells.end());
+    for (Cell3D* c : unique_cells) {
         delete c;
     }
     cells.clear();
 }
 
 void SolverDim<3>::initialize_cells() {
-    for (Cell3D* c : cells) {
+    std::unordered_set<Cell3D*> unique_cells(cells.begin(), cells.end());
+    for (Cell3D* c : unique_cells) {
         delete c;
     }
     cells.clear();

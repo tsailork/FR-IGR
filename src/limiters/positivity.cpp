@@ -1,6 +1,18 @@
 /**
  * @file positivity.cpp
  * @brief Zhang-Shu bounds-preserving (positivity) limiter on decoupled Cells.
+ *
+ * @details
+ * Mathematical Formulation (Zhang-Shu Positivity Limiter):
+ * Preserves strict physical bounds \f$ \rho(\mathbf{x}) \ge \epsilon \f$ and \f$ p(\mathbf{x}) \ge \epsilon \f$
+ * by scaling high-order polynomial fluctuations towards element averages:
+ * \f[
+ * U_{\theta}(\mathbf{x}) = \theta (U(\mathbf{x}) - \bar{U}) + \bar{U}, \quad \theta \in [0, 1]
+ * \f]
+ * Where \f$ \theta \f$ is computed per-element via exact bisection / closed-form ratio:
+ * \f[
+ * \theta_{\rho} = \min \left( 1, \frac{\bar{\rho} - \epsilon}{\bar{\rho} - \rho_{min}} \right)
+ * \f]
  */
 #include "positivity.hpp"
 #include "limiter_common.hpp"

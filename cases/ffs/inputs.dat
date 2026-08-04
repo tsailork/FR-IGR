@@ -9,7 +9,7 @@ V_INF = 0.0
 P_INF = 1.0
 
 [Solver]
-P_DEG = 2
+P_DEG = 3
 CFL = 0.4
 T_FINAL = 4.0
 NUM_THREADS = 18
@@ -22,7 +22,7 @@ ENABLE_NS = false
 ENABLE_IGR = false
 
 [PPR]
-ENABLE_PPR           = true
+ENABLE_PPR           = false
 PPR_WALL_BC          = CONSTANT_DIFFERENCE
 PPR_N_CELLS_SHOCK    = 0.25
 PPR_C_TAU            = -0.25
@@ -46,7 +46,7 @@ POS_LIMITER_EPS = 1e-6
 ENABLE_ENTROPY_LIMITER = true
 ENTROPY_LIMITER_EPS = 1e-2
 
-LIMITER_STRATEGY = ZHANG_SHU
+LIMITER_STRATEGY = MODAL
 
 [ImmersedBoundary]
 ENABLE_IB = false

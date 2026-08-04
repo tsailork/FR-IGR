@@ -1,3 +1,4 @@
+#include <array>
 #include "../doctest.h"
 #include "../../src/io/initial_conditions.hpp"
 #include "../../src/core/solver.hpp"

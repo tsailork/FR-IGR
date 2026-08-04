@@ -2,10 +2,19 @@
  * @file basis.cpp
  * @brief Construction of the 1-D Lagrange / FR-DG basis.
  *
+ * @details
  * Implements the initialization of the Basis structure. It defines hardcoded 
  * Gauss-Legendre quadrature points for polynomial degrees \f$ P \in [0, 3] \f$. 
  * The derivative matrix, boundary evaluations, and Radau correction derivatives 
  * are computed analytically from the quadrature nodes using barycentric Lagrange interpolation.
+ * 
+ * Mathematical Formulations:
+ *   - Left Radau Correction Function:
+ *     \f[ g_L(\xi) = \frac{(-1)^P}{2} \left[ P_P(\xi) - P_{P+1}(\xi) \right] \f]
+ *   - Right Radau Correction Function:
+ *     \f[ g_R(\xi) = \frac{1}{2} \left[ P_P(\xi) + P_{P+1}(\xi) \right] \f]
+ *   - Conservative AMR Restriction Matrix ($L_2$ Projection):
+ *     \f[ R_1 = \int_{-1}^{0} l_i(2\xi + 1) l_j(\xi) d\xi, \quad R_2 = \int_{0}^{1} l_i(2\xi - 1) l_j(\xi) d\xi \f]
  * 
  * @see Basis
  */

@@ -1,6 +1,19 @@
 /**
  * @file geometry.hpp
- * @brief Decoupled shape definitions and intersection query functions.
+ * @brief Decoupled shape definitions, ray-casting point containment, and Liang-Barsky clipping.
+ *
+ * @details
+ * Mathematical Algorithms:
+ *
+ * 1. Ray-Casting Point-in-Polygon Containment:
+ *    Casts a horizontal ray \f$ y = y_0 \f$ from \f$ (x_0, y_0) \f$ to \f$ +\infty \f$ and counts edge crossings:
+ *    \f[
+ *    (y_i > y_0) \neq (y_j > y_0) \quad \text{and} \quad x_0 < \frac{(x_j - x_i)(y_0 - y_i)}{y_j - y_i} + x_i
+ *    \f]
+ *
+ * 2. Liang-Barsky Line Clipping (Segment vs AABB):
+ *    Parametric line representation \f$ x(t) = x_1 + t \Delta x, y(t) = y_1 + t \Delta y \f$ for \f$ t \in [0, 1] \f$.
+ *    Evaluates boundary inequalities \f$ p_k t \le q_k \f$ to determine valid clipping interval \f$ [t_1, t_2] \f$.
  */
 
 #pragma once

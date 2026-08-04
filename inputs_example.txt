@@ -125,13 +125,13 @@ IGR_SUB_ITER_TOL = 0.0
 
 [Stabilization]
 # ENABLE_POS_LIMITER: Zhang-Shu density and pressure positivity limiter.
-ENABLE_POS_LIMITER = true
+ENABLE_POS_LIMITER = false
 
 # POS_LIMITER_EPS: Minimum value floor for density and pressure.
 POS_LIMITER_EPS = 1e-10
 
 # ENABLE_ENTROPY_LIMITER: Prevents unphysical entropy undershoots.
-ENABLE_ENTROPY_LIMITER = true
+ENABLE_ENTROPY_LIMITER = false
 
 # ENTROPY_LIMITER_EPS: Minimum specific entropy violation threshold/offset.
 # Smaller values restrict the specific entropy minimum preservation more tightly, while larger
@@ -405,10 +405,10 @@ IB_SMOOTH_WIDTH = 1.5
 [TreeDecomposition]
 # Target refinement level for cells touching a wall boundary. Set to 0 to disable near-wall refinement.
 # Individual boundaries in domain.grid can opt-out by appending ":NOREFINED" (e.g. WALL:NOREFINED).
-WALL_REFINEMENT_LEVEL = 2
+WALL_REFINEMENT_LEVEL = 0
 
 # Number of cell layers from the wall boundary to apply the WALL_REFINEMENT_LEVEL.
-WALL_REFINEMENT_CELLS = 3
+WALL_REFINEMENT_CELLS = 0
 
 # Number of manual refinement zones defined. Supports "NUM_REFINEMENT_ZONES" or "WALL_REFINEMENT_ZONES".
 NUM_REFINEMENT_ZONES = 1
@@ -487,10 +487,10 @@ PLOT_SUB_DIVISIONS = 0
 SMOOTH_PLOT_OUTPUTS = true
 
 # RESIDUAL_INTERVAL: Time interval between L2 residual tracking outputs to csv_outputs/residuals.csv
-RESIDUAL_INTERVAL = 0.005
+RESIDUAL_INTERVAL = 0.001
 
 # PROBE_INTERVAL: Time interval between point probe tracking to probe.csv
-PROBE_INTERVAL = 0.005
+PROBE_INTERVAL = 0.001
 
 # PRINT_INTERVAL: Time interval between terminal stdout status updates.
 PRINT_INTERVAL = 0.01

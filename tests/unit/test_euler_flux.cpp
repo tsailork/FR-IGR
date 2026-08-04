@@ -1,3 +1,4 @@
+#include <array>
 #include "../doctest.h"
 #include "../../src/core/solver.hpp"
 #include "../../src/ppr/ppr.hpp"
@@ -20,8 +21,8 @@ TEST_CASE("Euler flux computation") {
         b.U(2, 0, 0, 0, 0) = 0.0; // rho*v
         b.U(3, 0, 0, 0, 0) = 2.5; // E = p/(gamma-1) = 1.0/0.4 = 2.5 (pressure = 1.0)
         
-        double F[4], G[4];
-        solver.get_flux_pointwise(b, 0, 0, 0, 0, F, G, 0.0);
+        std::array<double, 4> F, G;
+        solver.get_flux_pointwise(b, 0, 0, 0, 0, F.data(), G.data(), 0.0);
         
         CHECK(F[0] == doctest::Approx(0.0));
         CHECK(F[1] == doctest::Approx(1.0)); // pressure
@@ -40,8 +41,8 @@ TEST_CASE("Euler flux computation") {
         b.U(2, 0, 0, 0, 0) = 0.0; // rho*v
         b.U(3, 0, 0, 0, 0) = 2.5 + 0.5 * 1.0 * 4.0; // E = 4.5 (pressure = 1.0)
         
-        double F[4], G[4];
-        solver.get_flux_pointwise(b, 0, 0, 0, 0, F, G, 0.0);
+        std::array<double, 4> F, G;
+        solver.get_flux_pointwise(b, 0, 0, 0, 0, F.data(), G.data(), 0.0);
         
         CHECK(F[0] == doctest::Approx(2.0));       // rho*u
         CHECK(F[1] == doctest::Approx(4.0 + 1.0)); // rho*u^2 + p = 5.0
@@ -55,8 +56,8 @@ TEST_CASE("Euler flux computation") {
         b.U(2, 0, 0, 0, 0) = 3.0; // rho*v (v=3)
         b.U(3, 0, 0, 0, 0) = 2.5 + 0.5 * 1.0 * 9.0; // E = 7.0 (pressure = 1.0)
         
-        double F[4], G[4];
-        solver.get_flux_pointwise(b, 0, 0, 0, 0, F, G, 0.0);
+        std::array<double, 4> F, G;
+        solver.get_flux_pointwise(b, 0, 0, 0, 0, F.data(), G.data(), 0.0);
         
         CHECK(G[0] == doctest::Approx(3.0));       // rho*v
         CHECK(G[1] == doctest::Approx(0.0));       // rho*v*u
@@ -71,8 +72,8 @@ TEST_CASE("Euler flux computation") {
         b.U(3, 0, 0, 0, 0) = 3.5; // p = 1.0
         
         double sigma = 0.5;
-        double F[4], G[4];
-        solver.get_flux_pointwise(b, 0, 0, 0, 0, F, G, sigma);
+        std::array<double, 4> F, G;
+        solver.get_flux_pointwise(b, 0, 0, 0, 0, F.data(), G.data(), sigma);
         
         CHECK(F[1] == doctest::Approx(1.0 + 1.0 + 0.5)); // rho*u^2 + p + sigma = 2.5
         CHECK(F[3] == doctest::Approx((3.5 + 1.0 + 0.5) * 1.0)); // (E + p + sigma)*u = 5.0
@@ -82,11 +83,11 @@ TEST_CASE("Euler flux computation") {
     }
     
     SUBCASE("Symmetry") {
-        double F_comm[4];
-        double UL[4] = {1.0, 1.0, 0.0, 2.5 + 0.5}; // rho, u=1, v=0, E=3.0 (p=1)
-        double UR[4] = {1.0, -1.0, 0.0, 2.5 + 0.5}; // rho, u=-1, v=0, E=3.0 (p=1)
+        std::array<double, 4> F_comm;
+        std::array<double, 4> UL = {1.0, 1.0, 0.0, 2.5 + 0.5}; // rho, u=1, v=0, E=3.0 (p=1)
+        std::array<double, 4> UR = {1.0, -1.0, 0.0, 2.5 + 0.5}; // rho, u=-1, v=0, E=3.0 (p=1)
         
-        solver.solve_riemann(UL, UR, F_comm, 0);
+        solver.solve_riemann(UL.data(), UR.data(), F_comm.data(), 0);
         
         // Exact symmetry implies mass flux should be 0 due to symmetric opposing flows
         CHECK(F_comm[0] == doctest::Approx(0.0).epsilon(1e-12));
@@ -112,8 +113,8 @@ TEST_CASE("3D Euler flux computation") {
         b.U(3, 0, 0, 0, 0, 0, 0) = 0.0; // rho*w
         b.U(4, 0, 0, 0, 0, 0, 0) = 2.5; // E = 2.5 (pressure = 1.0)
         
-        double F[5], G[5], H[5];
-        solver.get_flux_pointwise(b, 0, 0, 0, 0, 0, 0, F, G, H, 0.0);
+        std::array<double, 5> F, G, H;
+        solver.get_flux_pointwise(b, 0, 0, 0, 0, 0, 0, F.data(), G.data(), H.data(), 0.0);
         
         CHECK(F[0] == doctest::Approx(0.0));
         CHECK(F[1] == doctest::Approx(1.0)); // pressure
@@ -135,8 +136,8 @@ TEST_CASE("3D Euler flux computation") {
         b.U(3, 0, 0, 0, 0, 0, 0) = 4.0; // rho*w (w=4)
         b.U(4, 0, 0, 0, 0, 0, 0) = 2.5 + 0.5 * 1.0 * 16.0; // E = 10.5
         
-        double F[5], G[5], H[5];
-        solver.get_flux_pointwise(b, 0, 0, 0, 0, 0, 0, F, G, H, 0.0);
+        std::array<double, 5> F, G, H;
+        solver.get_flux_pointwise(b, 0, 0, 0, 0, 0, 0, F.data(), G.data(), H.data(), 0.0);
         
         CHECK(H[0] == doctest::Approx(4.0));       // rho*w
         CHECK(H[1] == doctest::Approx(0.0));       // rho*w*u
@@ -146,9 +147,9 @@ TEST_CASE("3D Euler flux computation") {
     }
     
     SUBCASE("Symmetry 3D") {
-        double F_comm[5];
-        double UL[5] = {1.0, 0.0, 0.0, 1.0, 2.5 + 0.5}; // rho, u=0, v=0, w=1, E=3.0 (p=1)
-        double UR[5] = {1.0, 0.0, 0.0, -1.0, 2.5 + 0.5}; // rho, u=0, v=0, w=-1, E=3.0 (p=1)
+        std::array<double, 5> F_comm;
+        std::array<double, 5> UL = {1.0, 0.0, 0.0, 1.0, 2.5 + 0.5}; // rho, u=0, v=0, w=1, E=3.0 (p=1)
+        std::array<double, 5> UR = {1.0, 0.0, 0.0, -1.0, 2.5 + 0.5}; // rho, u=0, v=0, w=-1, E=3.0 (p=1)
         
         CHECK(F_comm[0] == doctest::Approx(0.0).epsilon(1e-12));
     }
@@ -162,13 +163,13 @@ TEST_CASE("PPR Regularized Acoustic Sound Speed Evaluation") {
 
     Solver solver(p);
 
-    double UL[4] = {1.0, 0.0, 0.0, 2.5}; // rho=1, u=0, v=0, p=1.0, a_phys = sqrt(1.4)
-    double UR[4] = {1.0, 0.0, 0.0, 2.5};
+    std::array<double, 4> UL = {1.0, 0.0, 0.0, 2.5}; // rho=1, u=0, v=0, p=1.0, a_phys = sqrt(1.4)
+    std::array<double, 4> UR = {1.0, 0.0, 0.0, 2.5};
     double SL = 1.0, SR = 1.0; // S = rho * P_phan = 1.0 -> P_phan = 1.0 (P_reg = P_phys = 1.0)
     double thetaL = 3.0, thetaR = 3.0;
 
-    double F_comm[4];
-    solver.solve_riemann(UL, UR, F_comm, 0, SL, SR, thetaL, thetaR);
+    std::array<double, 4> F_comm;
+    solver.solve_riemann(UL.data(), UR.data(), F_comm.data(), 0, SL, SR, thetaL, thetaR);
 
     // Physical sound speed a_phys = sqrt(1.4 * 1.0 / 1.0) = sqrt(1.4) = 1.1832159566
     double P_phys, P_phan, P_reg, a_reg;

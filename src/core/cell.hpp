@@ -47,6 +47,15 @@ struct CellDim;
  * @struct CellDim<2>
  * @brief Represents a single computational element/cell in the quadtree domain (2D).
  */
+/**
+ * @struct CellDim<2>
+ * @brief Storage and connectivity data structure representing a single leaf node in 2D.
+ *
+ * @details
+ * Encapsulates element local physical geometry, solution DOFs, residual accumulators, 
+ * and IGR entropic pressure fields (\Sigma). Manages non-conforming neighbor links and 
+ * Quadtree AMR refinement levels.
+ */
 template<>
 struct CellDim<2> {
     static constexpr int N_VARS = 4;

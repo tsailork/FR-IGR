@@ -1,6 +1,20 @@
 /**
  * @file sbm_geometry.cpp
  * @brief Implementations of shifted boundary face detection, 1D normal ray stencils, and state extrapolations.
+ *
+ * @details
+ * Mathematical Formulation:
+ * The Shifted Boundary Method (SBM) avoids body-fitted meshes by shifting physical boundary conditions
+ * from the true smooth geometry surface \f$ \Gamma \f$ to surrogate grid faces \f$ \Gamma_h \f$.
+ *
+ * Surrogate State Extrapolation (Taylor series / Lagrange 1D ray extension):
+ * \f[
+ * U(\mathbf{x}_{surrogate}) = U(\mathbf{x}_{true}) + \nabla U \cdot (\mathbf{x}_{surrogate} - \mathbf{x}_{true})
+ * \f]
+ * Or via 1D 3-point normal ray Lagrange interpolation stencil:
+ * \f[
+ * U_{surrogate} = \sum_{j=1}^{3} L_j(\xi=0) U(\mathbf{x}_j)
+ * \f]
  */
 
 #include "sbm_geometry.hpp"

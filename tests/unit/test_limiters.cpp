@@ -1,3 +1,4 @@
+#include <array>
 #include "../doctest.h"
 #include "../test_helpers.hpp"
 #include "../../src/limiters/positivity.hpp"
