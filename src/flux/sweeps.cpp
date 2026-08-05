@@ -40,7 +40,7 @@ void Solver::viscous_sweep_y() {
 void SolverDim<3>::sweep_x() {
     int N = p.N_PTS;
     int N2 = N * N;
-    int N3 = N * N * N;
+    int N3 = N * N * N; (void)N3;
 
     // =========================================================================
     // Pass 1: Local & Conforming Sweep
@@ -399,7 +399,7 @@ void SolverDim<3>::sweep_x() {
 void SolverDim<3>::sweep_y() {
     int N = p.N_PTS;
     int N2 = N * N;
-    int N3 = N * N * N;
+    int N3 = N * N * N; (void)N3;
 
     // =========================================================================
     // Pass 1: Local & Conforming Sweep
@@ -755,7 +755,7 @@ void SolverDim<3>::sweep_y() {
 void SolverDim<3>::sweep_z() {
     int N = p.N_PTS;
     int N2 = N * N;
-    int N3 = N * N * N;
+    int N3 = N * N * N; (void)N3;
 
     // =========================================================================
     // Pass 1: Local & Conforming Sweep
@@ -1127,10 +1127,10 @@ static void compute_viscous_flux_x_3d(const double U[5],
 
     double dvdx = (dUdx[2] - v * dUdx[0]) / rho;
     double dvdy = (dUdy[2] - v * dUdy[0]) / rho;
-    double dvdz = (dUdz[2] - v * dUdz[0]) / rho;
+    double dvdz = (dUdz[2] - v * dUdz[0]) / rho; (void)dvdz;
 
     double dwdx = (dUdx[3] - w * dUdx[0]) / rho;
-    double dwdy = (dUdy[3] - w * dUdy[0]) / rho;
+    double dwdy = (dUdy[3] - w * dUdy[0]) / rho; (void)dwdy;
     double dwdz = (dUdz[3] - w * dUdz[0]) / rho;
 
     double p = (gamma - 1.0) * (U[4] - 0.5 * rho * (u*u + v*v + w*w));
@@ -1141,7 +1141,7 @@ static void compute_viscous_flux_x_3d(const double U[5],
     double kappa_local = kappa;
     if (enable_suth) {
         double T_norm = std::max(1e-8, T);
-        mu_local = mu * (std::pow(T_norm, 1.5) * (1.0 + suth_c) / (T_norm + suth_c));
+        mu_local = mu * (T_norm * std::sqrt(T_norm) * (1.0 + suth_c) / (T_norm + suth_c));
         kappa_local = mu_local * gamma / ((gamma - 1.0) * pr);
     }
 
@@ -1560,13 +1560,13 @@ static void compute_viscous_flux_y_3d(const double U[5],
 
     double dudx = (dUdx[1] - u * dUdx[0]) / rho;
     double dudy = (dUdy[1] - u * dUdy[0]) / rho;
-    double dudz = (dUdz[1] - u * dUdz[0]) / rho;
+    double dudz = (dUdz[1] - u * dUdz[0]) / rho; (void)dudz;
 
     double dvdx = (dUdx[2] - v * dUdx[0]) / rho;
     double dvdy = (dUdy[2] - v * dUdy[0]) / rho;
     double dvdz = (dUdz[2] - v * dUdz[0]) / rho;
 
-    double dwdx = (dUdx[3] - w * dUdx[0]) / rho;
+    double dwdx = (dUdx[3] - w * dUdx[0]) / rho; (void)dwdx;
     double dwdy = (dUdy[3] - w * dUdy[0]) / rho;
     double dwdz = (dUdz[3] - w * dUdz[0]) / rho;
 
@@ -1578,7 +1578,7 @@ static void compute_viscous_flux_y_3d(const double U[5],
     double kappa_local = kappa;
     if (enable_suth) {
         double T_norm = std::max(1e-8, T);
-        mu_local = mu * (std::pow(T_norm, 1.5) * (1.0 + suth_c) / (T_norm + suth_c));
+        mu_local = mu * (T_norm * std::sqrt(T_norm) * (1.0 + suth_c) / (T_norm + suth_c));
         kappa_local = mu_local * gamma / ((gamma - 1.0) * pr);
     }
 
@@ -1993,10 +1993,10 @@ static void compute_viscous_flux_z_3d(const double U[5],
     double w = U[3] / rho;
 
     double dudx = (dUdx[1] - u * dUdx[0]) / rho;
-    double dudy = (dUdy[1] - u * dUdy[0]) / rho;
+    double dudy = (dUdy[1] - u * dUdy[0]) / rho; (void)dudy;
     double dudz = (dUdz[1] - u * dUdz[0]) / rho;
 
-    double dvdx = (dUdx[2] - v * dUdx[0]) / rho;
+    double dvdx = (dUdx[2] - v * dUdx[0]) / rho; (void)dvdx;
     double dvdy = (dUdy[2] - v * dUdy[0]) / rho;
     double dvdz = (dUdz[2] - v * dUdz[0]) / rho;
 
@@ -2012,7 +2012,7 @@ static void compute_viscous_flux_z_3d(const double U[5],
     double kappa_local = kappa;
     if (enable_suth) {
         double T_norm = std::max(1e-8, T);
-        mu_local = mu * (std::pow(T_norm, 1.5) * (1.0 + suth_c) / (T_norm + suth_c));
+        mu_local = mu * (T_norm * std::sqrt(T_norm) * (1.0 + suth_c) / (T_norm + suth_c));
         kappa_local = mu_local * gamma / ((gamma - 1.0) * pr);
     }
 

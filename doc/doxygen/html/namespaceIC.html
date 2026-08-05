@@ -98,7 +98,8 @@ $(function(){initNavTree('namespaceIC.html','',''); });
 <tr class="heading"><td colspan="2"><h2 id="header-func-members" class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
 <tr class="memitem:aa0a10b481c8bd9d7ba66d6bcec60b56d" id="r_aa0a10b481c8bd9d7ba66d6bcec60b56d"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#aa0a10b481c8bd9d7ba66d6bcec60b56d">apply</a> (<a class="el" href="classSolver.html">Solver</a> &amp;solver)</td></tr>
-<tr class="memdesc:aa0a10b481c8bd9d7ba66d6bcec60b56d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Applies the chosen initial condition to the state <picture><source srcset="form_80_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$U$" src="form_80.png"/></picture> across all blocks.  <br /></td></tr>
+<tr class="memdesc:aa0a10b481c8bd9d7ba66d6bcec60b56d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Applies the chosen initial condition to the state <picture><source srcset="form_77_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$U$" src="form_77.png"/></picture> across all blocks.  <br /></td></tr>
+<tr class="memitem:aa0ac91472b87b586d2bafc213b0a61bf" id="r_aa0ac91472b87b586d2bafc213b0a61bf"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#aa0ac91472b87b586d2bafc213b0a61bf">apply</a> (<a class="el" href="classSolverDim.html">SolverDim</a>&lt; 3 &gt; &amp;solver)</td></tr>
 <tr class="memitem:a81543274240a242d64dd75d5f57fbbd5" id="r_a81543274240a242d64dd75d5f57fbbd5"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a81543274240a242d64dd75d5f57fbbd5">sigmoid</a> (double x, double x0, double delta)</td></tr>
 <tr class="memdesc:a81543274240a242d64dd75d5f57fbbd5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluates a sigmoid function for initial condition smoothing.  <br /></td></tr>
 </table>
@@ -106,7 +107,7 @@ Functions</h2></td></tr>
 <div class="textblock"><p>Contains initial condition routines and smoothing utilities. </p>
 </div><a name="doc-func-members" id="doc-func-members"></a><h2 id="header-doc-func-members" class="groupheader">Function Documentation</h2>
 <a id="aa0a10b481c8bd9d7ba66d6bcec60b56d" name="aa0a10b481c8bd9d7ba66d6bcec60b56d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aa0a10b481c8bd9d7ba66d6bcec60b56d">&#9670;&#160;</a></span>apply()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#aa0a10b481c8bd9d7ba66d6bcec60b56d">&#9670;&#160;</a></span>apply() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -120,7 +121,7 @@ Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Applies the chosen initial condition to the state <picture><source srcset="form_80_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$U$" src="form_80.png"/></picture> across all blocks. </p>
+<p>Applies the chosen initial condition to the state <picture><source srcset="form_77_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$U$" src="form_77.png"/></picture> across all blocks. </p>
 <p>Evaluates the initialization configuration (e.g., Riemann 2D configuration, Blast wave, Isentropic Vortex) and assigns the exact physical values to all Gauss-Legendre quadrature points.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
@@ -130,6 +131,23 @@ Functions</h2></td></tr>
 </dl>
 <dl class="section see"><dt>See also</dt><dd><a class="el" href="structParameters.html#a9e991be803842f88df0a7179388ddf31" title="Target physical initial condition profile name.">Parameters::IC_TYPE</a> </dd></dl>
 <dl class="section note"><dt>Note</dt><dd>Overwrites any existing state unless an immersed boundary (IB) mask prevents it. </dd></dl>
+
+</div>
+</div>
+<a id="aa0ac91472b87b586d2bafc213b0a61bf" name="aa0ac91472b87b586d2bafc213b0a61bf"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa0ac91472b87b586d2bafc213b0a61bf">&#9670;&#160;</a></span>apply() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void IC::apply </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classSolverDim.html">SolverDim</a>&lt; 3 &gt; &amp;</td>          <td class="paramname"><span class="paramname"><em>solver</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
 
 </div>
 </div>
@@ -158,7 +176,7 @@ Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Evaluates a sigmoid function for initial condition smoothing. </p>
-<p>Smooths discontinuous initial states (like shock waves) over a characteristic width <picture><source srcset="form_81_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\delta$" src="form_81.png"/></picture> to prevent immediate Gibbs-like oscillations in high-order polynomial basis representations.</p>
+<p>Smooths discontinuous initial states (like shock waves) over a characteristic width <picture><source srcset="form_78_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\delta$" src="form_78.png"/></picture> to prevent immediate Gibbs-like oscillations in high-order polynomial basis representations.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">x</td><td>The spatial coordinate to evaluate. </td></tr>
@@ -167,7 +185,7 @@ Functions</h2></td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>The smoothed scalar multiplier bounded within <picture><source srcset="form_82_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$[0, 1]$" src="form_82.png"/></picture>. </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>The smoothed scalar multiplier bounded within <picture><source srcset="form_79_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$[0, 1]$" src="form_79.png"/></picture>. </dd></dl>
 
 </div>
 </div>

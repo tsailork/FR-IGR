@@ -5,14 +5,19 @@
 
 #include "../core/solver.hpp"
 #include "../ppr/ppr.hpp"
-#ifdef _OPENMP
-#include <omp.h>
-#endif
+#include "../core/exceptions.hpp"
 #include <iostream>
 #include <iomanip>
 #include <cstdlib>
+#include <cmath>
+#include <algorithm>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 void Solver::check_stability() const {
+    bool unstable = false;
+
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
@@ -27,6 +32,7 @@ void Solver::check_stability() const {
                 if (std::isnan(rho) || std::isnan(press) || rho <= 0.0 || press <= 0.0) {
                     #pragma omp critical
                     {
+                        unstable = true;
                         std::cerr << std::scientific << std::setprecision(15)
                                   << "\n[STABILITY ERROR] cell_index=" << i
                                   << " morton_id=" << c->morton_id
@@ -37,11 +43,13 @@ void Solver::check_stability() const {
                                   << "\n  rhov = " << rhov
                                   << "\n  E    = " << E
                                   << "\n  p    = " << press << "\n";
-                        exit(1);
                     }
                 }
             }
         }
+    }
+    if (unstable) {
+        throw fr::DivergenceException("Non-physical fluid state detected in 2D grid cell.");
     }
 }
 
@@ -96,6 +104,7 @@ double Solver::compute_dt() const {
 }
 
 void SolverDim<3>::check_stability() const {
+    bool unstable = false;
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell3D* c = cells[i];
@@ -111,6 +120,7 @@ void SolverDim<3>::check_stability() const {
             if (std::isnan(rho) || std::isnan(press) || rho <= 0.0 || press <= 0.0) {
                 #pragma omp critical
                 {
+                    unstable = true;
                     std::cerr << std::scientific << std::setprecision(15)
                               << "\n[STABILITY ERROR 3D] cell_index=" << i
                               << " node=" << pt
@@ -120,10 +130,12 @@ void SolverDim<3>::check_stability() const {
                               << "\n  rhow = " << rhow
                               << "\n  E    = " << E
                               << "\n  p    = " << press << "\n";
-                    exit(1);
                 }
             }
         }
+    }
+    if (unstable) {
+        throw fr::DivergenceException("Non-physical fluid state detected in 3D grid cell.");
     }
 }
 

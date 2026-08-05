@@ -70,6 +70,23 @@ void IC::apply(Solver& solver) {
                     v = 0.0;
                     press = 1.0;
 
+                } else if (p.IC_TYPE == "VORTEX" || p.IC_TYPE == "ISENTROPIC_VORTEX") {
+                    // 2D Isentropic Euler Vortex
+                    double beta = 5.0; // Vortex strength
+                    double xc = 0.0, yc = 0.0; // Center position
+                    double rx = x - xc;
+                    double ry = y - yc;
+                    double r2 = rx * rx + ry * ry;
+                    double du = -(beta / (2.0 * M_PI)) * std::exp(0.5 * (1.0 - r2)) * ry;
+                    double dv =  (beta / (2.0 * M_PI)) * std::exp(0.5 * (1.0 - r2)) * rx;
+                    double T_vort = 1.0 - ((p.GAMMA - 1.0) * beta * beta / (8.0 * p.GAMMA * M_PI * M_PI)) * std::exp(1.0 - r2);
+                    if (T_vort < 1e-4) T_vort = 1e-4;
+
+                    rho = std::pow(T_vort, 1.0 / (p.GAMMA - 1.0));
+                    u = p.U_INF + du;
+                    v = p.V_INF + dv;
+                    press = std::pow(T_vort, p.GAMMA / (p.GAMMA - 1.0));
+
                 } else if (p.IC_TYPE == "FREESTREAM") {
                     rho = p.RHO_INF;
                     u = p.U_INF;

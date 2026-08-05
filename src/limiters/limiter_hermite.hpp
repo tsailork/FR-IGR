@@ -124,7 +124,6 @@ inline bool apply_hermite_positivity(Cell& c, const Basis& basis, const Paramete
     }
 
     double U_patch[5][MAX_LIM_PTS][MAX_LIM_PTS];
-    double U_orig[5][MAX_LIM_PTS][MAX_LIM_PTS];
 
     for (int v = 0; v < num_vars; ++v) {
         for (int iy = 0; iy < npts; ++iy) {
@@ -136,7 +135,6 @@ inline bool apply_hermite_positivity(Cell& c, const Basis& basis, const Paramete
                 double hL = hermite_H_L(x);
                 double hR = hermite_H_R(x);
 
-                U_orig[v][iy][ix] = (v < 4) ? c.get_U(v, iy, ix, npts) : c.S_field[iy * npts + ix];
                 U_patch[v][iy][ix] = U_avg[v]
                                    + hL * (U_L[v] - U_avg[v])
                                    + hR * (U_R[v] - U_avg[v])
@@ -296,7 +294,6 @@ inline bool apply_hermite_entropy(Cell& c, double s_floor, const Basis& basis, c
     }
 
     double U_patch[4][MAX_LIM_PTS][MAX_LIM_PTS];
-    double U_orig[4][MAX_LIM_PTS][MAX_LIM_PTS];
 
     for (int v = 0; v < 4; ++v) {
         for (int iy = 0; iy < npts; ++iy) {
@@ -308,7 +305,6 @@ inline bool apply_hermite_entropy(Cell& c, double s_floor, const Basis& basis, c
                 double hL = hermite_H_L(x);
                 double hR = hermite_H_R(x);
 
-                U_orig[v][iy][ix] = c.get_U(v, iy, ix, npts);
                 U_patch[v][iy][ix] = U_avg[v]
                                    + hL * (U_L[v] - U_avg[v])
                                    + hR * (U_R[v] - U_avg[v])

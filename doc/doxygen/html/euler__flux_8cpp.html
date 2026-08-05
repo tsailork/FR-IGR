@@ -95,12 +95,14 @@ $(function(){initNavTree('euler__flux_8cpp.html','',''); });
 <p>Pointwise Euler flux evaluation and Rusanov Riemann solver.  
 <a href="#details">More...</a></p>
 <div class="textblock"><code>#include &quot;<a class="el" href="solver_8hpp_source.html">../core/solver.hpp</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="ppr_8hpp_source.html">../ppr/ppr.hpp</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="apsr_8hpp_source.html">../apsr/apsr.hpp</a>&quot;</code><br />
 </div><a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Pointwise Euler flux evaluation and Rusanov Riemann solver. </p>
 <p>These functions are called at every solution and face point during the X- and Y-sweeps. They are small, scalar routines that benefit from inlining by the compiler at -O2 / -O3.</p>
-<dl class="section see"><dt>See also</dt><dd><a class="el" href="sweep__x_8cpp.html" title="X-direction Flux Reconstruction sweep (tensor-product) on decoupled Cells.">sweep_x.cpp</a> </dd>
+<dl class="section see"><dt>See also</dt><dd>sweep_x.cpp </dd>
 <dd>
-<a class="el" href="sweep__y_8cpp.html" title="Y-direction Flux Reconstruction sweep (tensor-product) on decoupled Cells.">sweep_y.cpp</a> </dd></dl>
+sweep_y.cpp </dd></dl>
 </div></div><!-- contents -->
 </div><!-- doc-content -->
 <div id="page-nav" class="page-nav-panel">

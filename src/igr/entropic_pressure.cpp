@@ -4,6 +4,7 @@
  */
 
 #include "../core/solver.hpp"
+#include "../core/exceptions.hpp"
 #include <iostream>
 #ifdef _OPENMP
 #include <omp.h>
@@ -18,8 +19,7 @@ void Solver::compute_entropic_pressure() {
     if (p.IGR_TYPE == "PARABOLIC") {
         compute_igr_parabolic_rhs();
     } else {
-        std::cerr << "Error: Elliptic ADI IGR is deprecated and removed. Please configure IGR_TYPE = PARABOLIC.\n";
-        std::exit(EXIT_FAILURE);
+        throw fr::ConfigurationException("Elliptic ADI IGR is deprecated and removed. Please configure IGR_TYPE = PARABOLIC.");
     }
 
     // Clamp the entropic pressure strictly to the local thermodynamic pressure

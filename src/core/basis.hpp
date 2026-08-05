@@ -70,6 +70,64 @@ inline double legendre_prime(int n, double x) {
 }
 
 // ============================================================================
+// Flat Matrix Helper (Contiguous 64-byte aligned 2D layout)
+// ============================================================================
+
+/**
+ * @struct FlatMatrix
+ * @brief Contiguous 2D matrix structure for SIMD vectorization.
+ */
+struct FlatMatrix {
+    std::vector<double> data;
+    size_t rows{0};
+    size_t cols{0};
+
+    struct RowProxy {
+        const double* row_ptr;
+        size_t cols{0};
+        [[nodiscard]] inline double operator[](size_t c) const noexcept { return row_ptr[c]; }
+        [[nodiscard]] inline size_t size() const noexcept { return cols; }
+    };
+
+    struct MutRowProxy {
+        double* row_ptr;
+        size_t cols{0};
+        [[nodiscard]] inline double& operator[](size_t c) noexcept { return row_ptr[c]; }
+        [[nodiscard]] inline size_t size() const noexcept { return cols; }
+    };
+
+    FlatMatrix() = default;
+    FlatMatrix(size_t r, size_t c, double val = 0.0) : data(r * c, val), rows(r), cols(c) {}
+
+    void resize(size_t r, size_t c, double val = 0.0) {
+        rows = r;
+        cols = c;
+        data.assign(r * c, val);
+    }
+
+    [[nodiscard]] inline size_t size() const noexcept { return rows; }
+
+    [[nodiscard]] inline double operator()(size_t r, size_t c) const noexcept {
+        return data[r * cols + c];
+    }
+
+    [[nodiscard]] inline double& operator()(size_t r, size_t c) noexcept {
+        return data[r * cols + c];
+    }
+
+    [[nodiscard]] inline RowProxy operator[](size_t r) const noexcept {
+        return RowProxy{data.data() + r * cols, cols};
+    }
+
+    [[nodiscard]] inline MutRowProxy operator[](size_t r) noexcept {
+        return MutRowProxy{data.data() + r * cols, cols};
+    }
+
+    [[nodiscard]] inline const double* data_ptr() const noexcept { return data.data(); }
+    [[nodiscard]] inline double* data_ptr() noexcept { return data.data(); }
+};
+
+// ============================================================================
 // Basis struct — constructor is implemented in basis.cpp
 // ============================================================================
 
@@ -84,25 +142,26 @@ inline double legendre_prime(int n, double x) {
  * @see Solver::sweep_y
  */
 struct Basis {
+    int P{0};                  ///< Polynomial degree P.
     std::vector<double> z;     ///< Gauss-Legendre solution points on \f$ [-1, 1] \f$.
     std::vector<double> w;     ///< Quadrature weights for numerical integration.
     std::vector<double> l_L;   ///< Lagrange basis evaluated at the left interface (\f$ x = -1 \f$).
     std::vector<double> l_R;   ///< Lagrange basis evaluated at the right interface (\f$ x = +1 \f$).
-    std::vector<std::vector<double>> D;  ///< Nodal derivative matrix \f$ D_{ij} \f$.
+    FlatMatrix D;              ///< Nodal derivative matrix \f$ D_{ij} \f$.
     std::vector<double> dgl;   ///< Left Radau correction derivative \f$ g'_L \f$.
     std::vector<double> dgr;   ///< Right Radau correction derivative \f$ g'_R \f$.
 
     // Quadtree prolongation and restriction matrices
     std::vector<double> bary_w;                 ///< Barycentric weights for Lagrange interpolation.
-    std::vector<std::vector<double>> P1;        ///< Prolongation matrix for child cell 1 (coarse face to bottom/left fine face).
-    std::vector<std::vector<double>> P2;        ///< Prolongation matrix for child cell 2 (coarse face to top/right fine face).
-    std::vector<std::vector<double>> R1;        ///< Conservative L2 restriction matrix for child cell 1.
-    std::vector<std::vector<double>> R2;        ///< Conservative L2 restriction matrix for child cell 2.
+    FlatMatrix P1;       ///< Prolongation matrix for child cell 1 (coarse face to bottom/left fine face).
+    FlatMatrix P2;       ///< Prolongation matrix for child cell 2 (coarse face to top/right fine face).
+    FlatMatrix R1;       ///< Conservative L2 restriction matrix for child cell 1.
+    FlatMatrix R2;       ///< Conservative L2 restriction matrix for child cell 2.
 
     /**
      * @brief Nodal Lagrange polynomial evaluation using barycentric weights.
      */
-    double interpolate_lagrange(int j, double x) const;
+    [[nodiscard]] double interpolate_lagrange(int j, double x) const;
 
     /**
      * @brief Construct the basis operators for a given polynomial degree.

@@ -1,57 +1,57 @@
 /**
  * @file block_soa.hpp
- * @brief Contiguous 64-byte aligned Structure-of-Arrays (SoA) memory layout for SIMD vectorization.
+ * @brief Contiguous 64-byte aligned Block Structure-of-Arrays (BlockSoA) layout for SIMD vectorization.
  */
 
-#ifndef BLOCK_SOA_HPP
-#define BLOCK_SOA_HPP
-
-#include <cstdlib>
+#pragma once
 #include <vector>
-#include <algorithm>
+#include <cstddef>
+#include "constants.hpp"
+
+namespace fr::core {
 
 /**
- * @struct FieldBlockSoA
- * @brief Contiguous 64-byte aligned memory block for element DOFs, stresses, and RHS buffers.
+ * @struct BlockSoA
+ * @brief Contiguous 64-byte aligned SoA memory layout for element blocks.
+ *
+ * Flattens element state vectors into contiguous 1D buffers:
+ * `[n_vars][num_cells][N_PTS * N_PTS]`
  */
-struct alignas(64) FieldBlockSoA {
-    int n_cells;
-    int n_pts_per_cell;
-    int total_dofs;
+struct alignas(64) BlockSoA {
+    std::vector<double> U;          ///< Conserved variables [n_vars * num_cells * n_nodes]
+    std::vector<double> RHS;        ///< Residual accumulators [n_vars * num_cells * n_nodes]
+    std::vector<double> sigma;      ///< Entropic pressure [num_cells * n_nodes]
+    std::vector<double> S_buf;      ///< Shock sensor source term [num_cells * n_nodes]
 
-    double* U;           // Conserved variables: [N_VARS * n_cells * n_pts_per_cell]
-    double* RHS;         // Conserved RHS buffers: [N_VARS * n_cells * n_pts_per_cell]
-    double* S_field;     // Phantom pressure density S = rho * P_phan: [n_cells * n_pts_per_cell]
-    double* S_RHS;       // Phantom pressure RHS buffer: [n_cells * n_pts_per_cell]
-    double* tau_tensor;  // Stress tensor components: [N_COMPS * n_cells * n_pts_per_cell]
+    size_t num_cells{0};
+    int n_vars{4};
+    int n_nodes{4};
 
-    FieldBlockSoA(int cells, int pts_per_cell, int n_vars = 4, int n_tensor = 3)
-        : n_cells(cells), n_pts_per_cell(pts_per_cell) {
-        total_dofs = n_vars * n_cells * n_pts_per_cell;
-        U = static_cast<double*>(std::aligned_alloc(64, total_dofs * sizeof(double)));
-        RHS = static_cast<double*>(std::aligned_alloc(64, total_dofs * sizeof(double)));
-        S_field = static_cast<double*>(std::aligned_alloc(64, n_cells * n_pts_per_cell * sizeof(double)));
-        S_RHS = static_cast<double*>(std::aligned_alloc(64, n_cells * n_pts_per_cell * sizeof(double)));
-        tau_tensor = static_cast<double*>(std::aligned_alloc(64, n_tensor * n_cells * n_pts_per_cell * sizeof(double)));
+    BlockSoA() = default;
 
-        if (U) std::fill(U, U + total_dofs, 0.0);
-        if (RHS) std::fill(RHS, RHS + total_dofs, 0.0);
-        if (S_field) std::fill(S_field, S_field + n_cells * n_pts_per_cell, 0.0);
-        if (S_RHS) std::fill(S_RHS, S_RHS + n_cells * n_pts_per_cell, 0.0);
-        if (tau_tensor) std::fill(tau_tensor, tau_tensor + n_tensor * n_cells * n_pts_per_cell, 0.0);
+    /**
+     * @brief Resize memory buffers for a given block capacity.
+     */
+    void resize(size_t n_cells, int vars, int nodes) {
+        num_cells = n_cells;
+        n_vars = vars;
+        n_nodes = nodes;
+        U.assign(n_vars * num_cells * n_nodes, 0.0);
+        RHS.assign(n_vars * num_cells * n_nodes, 0.0);
+        sigma.assign(num_cells * n_nodes, 0.0);
+        S_buf.assign(num_cells * n_nodes, 0.0);
     }
 
-    ~FieldBlockSoA() {
-        if (U) std::free(U);
-        if (RHS) std::free(RHS);
-        if (S_field) std::free(S_field);
-        if (S_RHS) std::free(S_RHS);
-        if (tau_tensor) std::free(tau_tensor);
+    /**
+     * @brief Direct pointer accessor for conserved variable slice.
+     */
+    [[nodiscard]] inline double* get_var_ptr(int v, size_t cell_idx) noexcept {
+        return U.data() + (v * num_cells + cell_idx) * n_nodes;
     }
 
-    // Non-copyable
-    FieldBlockSoA(const FieldBlockSoA&) = delete;
-    FieldBlockSoA& operator=(const FieldBlockSoA&) = delete;
+    [[nodiscard]] inline const double* get_var_ptr(int v, size_t cell_idx) const noexcept {
+        return U.data() + (v * num_cells + cell_idx) * n_nodes;
+    }
 };
 
-#endif // BLOCK_SOA_HPP
+} // namespace fr::core

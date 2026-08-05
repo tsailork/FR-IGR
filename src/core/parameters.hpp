@@ -130,6 +130,7 @@ struct Parameters {
     double ALPHA_SCALE        = 0.5;       ///< Viscosity scale factor controlling dissipation levels.
     std::string IGR_GRADIENT_TYPE = "LOCAL";  ///< Gradient formulation ("LOCAL" or "CORRECTED").
     std::string IGR_TYPE      = "ELLIPTIC";  ///< Helmholtz solver equation mode ("ELLIPTIC" or "PARABOLIC").
+    std::string IGR_SOLVER    = "PARABOLIC"; ///< Linear solver mode ("PARABOLIC", "PCG", "ADI").
     double IGR_TAU_R          = 0.1;         ///< Relaxation timescale factor for Parabolic IGR.
     double IGR_BR2_ETA        = 1.0;         ///< BR2 penalty coefficient for Parabolic IGR.
     int    IGR_SUB_ITERS      = 1;           ///< Forward-Euler sub-iterations per flow step under Parabolic IGR.

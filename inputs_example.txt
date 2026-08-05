@@ -517,26 +517,31 @@ PROBE_3 = 0.9, 0.5, Mach
 #
 # Constraints (due to 64-bit Morton spatial hashing):
 #   - Maximum total number of blocks: 511
-#   - Maximum block dimensions (N_ELEM_X, N_ELEM_Y): 2047 x 2047
+#   - Maximum block dimensions (N_ELEM_X, N_ELEM_Y, N_ELEM_Z): 2047 x 2047 x 2047
 #
-# Example [Block0] configuration:
+# Example [Block0] configuration (2D or 3D):
 # [Block0]
 # N_ELEM_X = 20           # Number of elements in X direction
 # N_ELEM_Y = 20           # Number of elements in Y direction
+# N_ELEM_Z = 1            # Number of elements in Z direction (3D solver)
 # X_MIN = 0.0             # Physical X coordinate of the left face
 # X_MAX = 1.0             # Physical X coordinate of the right face
 # Y_MIN = 0.0             # Physical Y coordinate of the bottom face
 # Y_MAX = 1.0             # Physical Y coordinate of the top face
+# Z_MIN = 0.0             # Physical Z coordinate of the front face (3D)
+# Z_MAX = 1.0             # Physical Z coordinate of the back face (3D)
 # 
-# BC_L = TRANSMISSIVE    # Boundary Condition for Left face
-# BC_R = 1:L             # Connects to Block 1's Left face
-# BC_B = 0:T             # Connects to Block 0's Top face (self-periodic)
-# BC_T = 0:B             # Connects to Block 0's Bottom face (self-periodic)
+# BC_L = TRANSMISSIVE    # Boundary Condition for Left face (X-)
+# BC_R = 1:L             # Connects to Block 1's Left face (X+)
+# BC_B = 0:T             # Connects to Block 0's Top face (Y-)
+# BC_T = 0:B             # Connects to Block 0's Bottom face (Y+)
+# BC_F = 0:K             # Boundary Condition for Front face (Z-, 3D)
+# BC_K = 0:F             # Boundary Condition for Back face (Z+, 3D)
 #
 # Available BCs:
 #   - OUTFLOW_SUPERSONIC: Simple copy-out/ghost-state condition.
 #   - WALL: Reflective slip-wall (normal velocity negated).
-#   - WALL_NOSLIP: Adiabatic viscous no-slip wall (u=v=0, dT/dn=0).
+#   - WALL_NOSLIP: Adiabatic viscous no-slip wall (u=v=w=0, dT/dn=0).
 #   - WALL_NOSLIP:T: Isothermal viscous no-slip wall at temperature T.
 #   - WALL_MOVING:V: Adiabatic moving wall with tangential velocity V.
 #   - WALL_MOVING:V:T: Isothermal moving wall with velocity V and temperature T.
@@ -545,7 +550,7 @@ PROBE_3 = 0.9, 0.5, Mach
 #   - TOTAL_PRESSURE_COMP:Pt: Subsonic backpressure boundary scaling the state to match target compressible total pressure Pt.
 #   - TOTAL_PRESSURE_INCOMP:Pt: Subsonic backpressure boundary using Bernoulli's incompressible equation to match target total pressure Pt.
 #   - STATIC_PRESSURE:P: Subsonic backpressure boundary enforcing the target static pressure P while copying interior density and velocity.
-#   - ID:FACE: Connects to the specified face of neighbor Block ID.
+#   - ID:FACE: Connects to the specified face of neighbor Block ID ('L', 'R', 'B', 'T', 'F', 'K').
 #     Example: '2:T' means "Connect to the TOP face of Block 2".
 #     Note: For periodic boundaries, simply map opposite faces to each other 
 #     (e.g., Block 0 Left connects to Block 0 Right using '0:R').

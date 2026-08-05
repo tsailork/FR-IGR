@@ -1,6 +1,25 @@
 var searchData=
 [
-  ['update_0',['update',['../classDiagnostics.html#a215d2e78ad7be6a0cb125174fb620c22',1,'Diagnostics']]],
-  ['update_5fib_5fmask_5ffield_1',['update_ib_mask_field',['../classSolver.html#a7fa3198999a98fbdb79d8de31437a508',1,'Solver']]],
-  ['update_5ftree_2',['update_tree',['../classSolver.html#a891449b420f3f828959e9890da5438e4',1,'Solver']]]
+  ['segment_5fintersects_5faabb_0',['segment_intersects_aabb',['../namespaceGeometry.html#a3fc466e800cdc7f0c15f73ee0aa88d3f',1,'Geometry']]],
+  ['setup_5fcell_5fconnectivity_1',['setup_cell_connectivity',['../classSolverDim_3_012_01_4.html#a260ec43533e94d9276007fd92978c931',1,'SolverDim&lt; 2 &gt;::setup_cell_connectivity()'],['../classSolverDim_3_013_01_4.html#a9b0fa087904a780c5c63c910f6fa37ff',1,'SolverDim&lt; 3 &gt;::setup_cell_connectivity()']]],
+  ['sigmoid_2',['sigmoid',['../namespaceIC.html#a81543274240a242d64dd75d5f57fbbd5',1,'IC']]],
+  ['size_3',['size',['../structFlatMatrix_1_1RowProxy.html#af4cf67e42a42eb164f90b2a1564f112f',1,'FlatMatrix::RowProxy::size()'],['../structFlatMatrix_1_1MutRowProxy.html#a0b4e695afa5aa2f9f3298e2dd406762a',1,'FlatMatrix::MutRowProxy::size()'],['../structFlatMatrix.html#ad23e2fbf6d9e91e3a1dc43d7452697b7',1,'FlatMatrix::size()']]],
+  ['smooth_5frelu_4',['smooth_relu',['../namespaceAPSR.html#a7da5d521d0cb71b441975ec7aba2f490',1,'APSR']]],
+  ['solve_5',['solve',['../classfr_1_1solver_1_1MatrixFreePCG.html#a5cc0b0afebaccfdcfe58b807352a2d2b',1,'fr::solver::MatrixFreePCG']]],
+  ['solve_5fadi_5fpass_6',['solve_adi_pass',['../classSolverDim_3_012_01_4.html#a5c33026f80b5d0c1fb4e73fcb5bc202e',1,'SolverDim&lt; 2 &gt;']]],
+  ['solve_5friemann_7',['solve_riemann',['../classSolverDim_3_012_01_4.html#a8c87c7781ddcaca251335969659626ab',1,'SolverDim&lt; 2 &gt;::solve_riemann()'],['../classSolverDim_3_013_01_4.html#ac0dc22ca221be8e56be13181787c2ecb',1,'SolverDim&lt; 3 &gt;::solve_riemann()']]],
+  ['solve_5ftridiagonal_8',['solve_tridiagonal',['../adi__solver_8cpp.html#a8099a6d513786658caaf2abdfb4bd24f',1,'solve_tridiagonal(const std::vector&lt; double &gt; &amp;a, const std::vector&lt; double &gt; &amp;b, const std::vector&lt; double &gt; &amp;c, const std::vector&lt; double &gt; &amp;d, std::vector&lt; double &gt; &amp;x):&#160;adi_solver.cpp'],['../adi__solver_8hpp.html#a8099a6d513786658caaf2abdfb4bd24f',1,'solve_tridiagonal(const std::vector&lt; double &gt; &amp;a, const std::vector&lt; double &gt; &amp;b, const std::vector&lt; double &gt; &amp;c, const std::vector&lt; double &gt; &amp;d, std::vector&lt; double &gt; &amp;x):&#160;adi_solver.cpp']]],
+  ['solverdim_9',['SolverDim',['../classSolverDim_3_012_01_4.html#acc5342172eb3988fe63965b168d3be03',1,'SolverDim&lt; 2 &gt;::SolverDim()'],['../classSolverDim_3_013_01_4.html#a01684140646d768688acaf0c3e0ca6aa',1,'SolverDim&lt; 3 &gt;::SolverDim()']]],
+  ['solverexception_10',['SolverException',['../classfr_1_1SolverException.html#ad276dccf39e6ead9d494e0e548d6607f',1,'fr::SolverException::SolverException(const std::string &amp;message)'],['../classfr_1_1SolverException.html#af971198bd174bb44c06e63f24330974d',1,'fr::SolverException::SolverException(const char *message)']]],
+  ['sort_5fcells_5f2d_11',['sort_cells_2d',['../classfr_1_1core_1_1SFCPartitioner.html#a0a5f636a9f31b4ae909f63f4b6675d04',1,'fr::core::SFCPartitioner']]],
+  ['specific_5fentropy_12',['specific_entropy',['../namespaceLimiters.html#a3334592c4203876a8996f9a61de141fd',1,'Limiters']]],
+  ['specific_5fentropy_5f3d_13',['specific_entropy_3d',['../namespaceLimiters.html#a33dfb5461afb184da4c77a1c6e941506',1,'Limiters']]],
+  ['speed_5fof_5fsound_14',['speed_of_sound',['../structfr_1_1physics_1_1IdealGasEOS.html#a28f9da7e271c13ebedbd367224580f94',1,'fr::physics::IdealGasEOS']]],
+  ['split_5fcell_15',['split_cell',['../classSolverDim_3_012_01_4.html#a9a6c40eaf33de54dd96bbaaaa2ec7ef9',1,'SolverDim&lt; 2 &gt;::split_cell()'],['../classSolverDim_3_013_01_4.html#a410bd591028c02885a70d330fa735dfe',1,'SolverDim&lt; 3 &gt;::split_cell()']]],
+  ['statedim_16',['StateDim',['../structStateDim_3_012_01_4.html#a51f82d02adf2d65cbd7e742ad7839c4d',1,'StateDim&lt; 2 &gt;::StateDim(int nx, int ny, int npts)'],['../structStateDim_3_012_01_4.html#a58834e74fb6661a5b7fcee5b52320dd8',1,'StateDim&lt; 2 &gt;::StateDim()'],['../structStateDim_3_013_01_4.html#a6c3809f38ab5d460f247b6f873ae76f0',1,'StateDim&lt; 3 &gt;::StateDim(int nx, int ny, int nz, int npts)'],['../structStateDim_3_013_01_4.html#aaab8ae215033bea774950a135c1ce809',1,'StateDim&lt; 3 &gt;::StateDim()']]],
+  ['step_5fparabolic_5figr_17',['step_parabolic_igr',['../classSolverDim_3_013_01_4.html#a0b3bb6439a68f062a1aacca67a4eb758',1,'SolverDim&lt; 3 &gt;']]],
+  ['step_5frk3_18',['step_rk3',['../classSolverDim_3_012_01_4.html#a1955c5bddc43bdc741da8b102e874ca6',1,'SolverDim&lt; 2 &gt;::step_rk3()'],['../classSolverDim_3_013_01_4.html#ac394769c5de07fe54bfae93993fc3532',1,'SolverDim&lt; 3 &gt;::step_rk3()']]],
+  ['sweep_5fx_19',['sweep_x',['../classSolverDim_3_012_01_4.html#ad4a53686f0b8769e79b9660e82c40144',1,'SolverDim&lt; 2 &gt;::sweep_x()'],['../classSolverDim_3_013_01_4.html#ac36431798a48aecf49fa6261b2205e1b',1,'SolverDim&lt; 3 &gt;::sweep_x()']]],
+  ['sweep_5fy_20',['sweep_y',['../classSolverDim_3_012_01_4.html#a5e5cbed48f902893f19f4af0910f6945',1,'SolverDim&lt; 2 &gt;::sweep_y()'],['../classSolverDim_3_013_01_4.html#a296fadb599a9aa34c405d8e79c7f9543',1,'SolverDim&lt; 3 &gt;::sweep_y()']]],
+  ['sweep_5fz_21',['sweep_z',['../classSolverDim_3_013_01_4.html#af6bf7da266757a0be31899e53ff97590',1,'SolverDim&lt; 3 &gt;']]]
 ];

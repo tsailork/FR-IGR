@@ -89,7 +89,7 @@ void initialize_sbm_geometry(Solver& solver) {
     
     int total_sbm_faces = 0;
 
-    for (int b_idx = 0; b_idx < solver.blocks.size(); ++b_idx) {
+    for (size_t b_idx = 0; b_idx < solver.blocks.size(); ++b_idx) {
         Block& b = solver.blocks[b_idx];
         
         // 3D arrays: [ey][ex][face]

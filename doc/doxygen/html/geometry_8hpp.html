@@ -92,7 +92,7 @@ $(function(){initNavTree('geometry_8hpp.html','',''); });
 </div><!--header-->
 <div class="contents">
 
-<p>Decoupled shape definitions and intersection query functions.  
+<p>Decoupled shape definitions, ray-casting point containment, and Liang-Barsky clipping.  
 <a href="#details">More...</a></p>
 <div class="textblock"><code>#include &lt;vector&gt;</code><br />
 <code>#include &lt;string&gt;</code><br />
@@ -122,7 +122,16 @@ Functions</h2></td></tr>
 <tr class="memdesc:aa66185bb6c8e39a41e7687619355085d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Check if a polygon intersects an axis-aligned bounding box (AABB). Checks if any vertex is inside, if any corner is inside, or if any edge crosses.  <br /></td></tr>
 </table>
 <a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>Decoupled shape definitions and intersection query functions. </p>
+<div class="textblock"><p>Decoupled shape definitions, ray-casting point containment, and Liang-Barsky clipping. </p>
+<p>Mathematical Algorithms:</p>
+<ol type="1">
+<li>Ray-Casting Point-in-Polygon Containment: Casts a horizontal ray <picture><source srcset="form_37_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ y = y_0 $" src="form_37.png"/></picture> from <picture><source srcset="form_38_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ (x_0, y_0) $" src="form_38.png"/></picture> to <picture><source srcset="form_39_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ +\infty $" src="form_39.png"/></picture> and counts edge crossings:   <p class="formulaDsp">
+<picture><source srcset="form_40_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[   (y_i &gt; y_0) \neq (y_j &gt; y_0) \quad \text{and} \quad x_0 &lt; \frac{(x_j - x_i)(y_0 - y_i)}{y_j - y_i} + x_i
+\&zwj;]" src="form_40.png"/></picture>
+</p>
+</li>
+<li>Liang-Barsky Line Clipping (Segment vs AABB): Parametric line representation <picture><source srcset="form_41_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ x(t) = x_1 + t \Delta x, y(t) = y_1 + t \Delta y $" src="form_41.png"/></picture> for <picture><source srcset="form_42_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ t \in [0, 1] $" src="form_42.png"/></picture>. Evaluates boundary inequalities <picture><source srcset="form_43_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ p_k t \le q_k $" src="form_43.png"/></picture> to determine valid clipping interval <picture><source srcset="form_44_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ [t_1, t_2] $" src="form_44.png"/></picture>. </li>
+</ol>
 </div></div><!-- contents -->
 </div><!-- doc-content -->
 <div id="page-nav" class="page-nav-panel">

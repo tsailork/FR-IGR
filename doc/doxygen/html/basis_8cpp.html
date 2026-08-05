@@ -95,9 +95,27 @@ $(function(){initNavTree('basis_8cpp.html','',''); });
 <p>Construction of the 1-D Lagrange / FR-DG basis.  
 <a href="#details">More...</a></p>
 <div class="textblock"><code>#include &quot;<a class="el" href="basis_8hpp_source.html">basis.hpp</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="exceptions_8hpp_source.html">exceptions.hpp</a>&quot;</code><br />
+<code>#include &lt;cmath&gt;</code><br />
+<code>#include &lt;iostream&gt;</code><br />
+<code>#include &lt;algorithm&gt;</code><br />
 </div><a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Construction of the 1-D Lagrange / FR-DG basis. </p>
 <p>Implements the initialization of the <a class="el" href="structBasis.html" title="Encapsulates the 1D Lagrange polynomial basis and FR-DG correction operators.">Basis</a> structure. It defines hardcoded Gauss-Legendre quadrature points for polynomial degrees <picture><source srcset="form_9_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ P \in [0, 3] $" src="form_9.png"/></picture>. The derivative matrix, boundary evaluations, and Radau correction derivatives are computed analytically from the quadrature nodes using barycentric Lagrange interpolation.</p>
+<p>Mathematical Formulations:</p><ul>
+<li>Left Radau Correction Function: <p class="formulaDsp">
+<picture><source srcset="form_10_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ g_L(\xi) = \frac{(-1)^P}{2} \left[ P_P(\xi) - P_{P+1}(\xi) \right] \&zwj;]" src="form_10.png"/></picture>
+</p>
+</li>
+<li>Right Radau Correction Function: <p class="formulaDsp">
+<picture><source srcset="form_11_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ g_R(\xi) = \frac{1}{2} \left[ P_P(\xi) + P_{P+1}(\xi) \right] \&zwj;]" src="form_11.png"/></picture>
+</p>
+</li>
+<li>Conservative AMR Restriction Matrix ($L_2$ Projection): <p class="formulaDsp">
+<picture><source srcset="form_12_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ R_1 = \int_{-1}^{0} l_i(2\xi + 1) l_j(\xi) d\xi, \quad R_2 = \int_{0}^{1} l_i(2\xi - 1) l_j(\xi) d\xi \&zwj;]" src="form_12.png"/></picture>
+</p>
+</li>
+</ul>
 <dl class="section see"><dt>See also</dt><dd><a class="el" href="structBasis.html" title="Encapsulates the 1D Lagrange polynomial basis and FR-DG correction operators.">Basis</a> </dd></dl>
 </div></div><!-- contents -->
 </div><!-- doc-content -->

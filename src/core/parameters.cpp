@@ -9,6 +9,7 @@
  * @see Parameters
  */
 #include "parameters.hpp"
+#include "exceptions.hpp"
 #include <algorithm>
 
 #ifdef _OPENMP
@@ -118,28 +119,41 @@ void Parameters::load_domain(const std::string& filename) {
         }
     }
 
+    if (blocks.empty()) {
+        std::cerr << "[Warning] Domain file empty or unparseable. Falling back to single-block defaults.\n";
+        BlockConfig default_block;
+        default_block.id = 0;
+        default_block.N_ELEM_X = 10;
+        default_block.N_ELEM_Y = 10;
+        default_block.X_MIN = 0.0;
+        default_block.X_MAX = 1.0;
+        default_block.Y_MIN = 0.0;
+        default_block.Y_MAX = 1.0;
+        default_block.BC_L = "TRANSMISSIVE";
+        default_block.BC_R = "TRANSMISSIVE";
+        default_block.BC_B = "TRANSMISSIVE";
+        default_block.BC_T = "TRANSMISSIVE";
+        blocks.push_back(default_block);
+        return;
+    }
+
     // Sort blocks by ID
     std::sort(blocks.begin(), blocks.end(), [](const BlockConfig& a, const BlockConfig& b){
         return a.id < b.id;
     });
 
     if (blocks.size() > 511) {
-        std::cerr << "[Error] Number of blocks (" << blocks.size() << ") exceeds the maximum supported by Morton scheme (511).\n";
-        std::exit(EXIT_FAILURE);
+        throw fr::ConfigurationException("Number of blocks (" + std::to_string(blocks.size()) + ") exceeds maximum supported by Morton scheme (511).");
     }
 
     for (const auto& b : blocks) {
         if (b.N_ELEM_Z > 1) {
             if (b.N_ELEM_X > 63 || b.N_ELEM_Y > 63 || b.N_ELEM_Z > 63) {
-                std::cerr << "[Error] Block " << b.id << " dimensions (" << b.N_ELEM_X << "x" << b.N_ELEM_Y << "x" << b.N_ELEM_Z
-                          << ") exceed the maximum supported by 3D Morton scheme (63x63x63).\n";
-                std::exit(EXIT_FAILURE);
+                throw fr::ConfigurationException("Block " + std::to_string(b.id) + " dimensions exceed maximum supported by 3D Morton scheme (63x63x63).");
             }
         } else {
             if (b.N_ELEM_X > 2047 || b.N_ELEM_Y > 2047) {
-                std::cerr << "[Error] Block " << b.id << " dimensions (" << b.N_ELEM_X << "x" << b.N_ELEM_Y 
-                          << ") exceed the maximum supported by 2D Morton scheme (2047x2047).\n";
-                std::exit(EXIT_FAILURE);
+                throw fr::ConfigurationException("Block " + std::to_string(b.id) + " dimensions exceed maximum supported by 2D Morton scheme (2047x2047).");
             }
         }
     }
@@ -147,12 +161,10 @@ void Parameters::load_domain(const std::string& filename) {
     // Validation pass
     for (const auto& b : blocks) {
         if (b.N_ELEM_X <= 0 || b.N_ELEM_Y <= 0) {
-            std::cerr << "[GRID ERROR] Block " << b.id << " has invalid element counts (" << b.N_ELEM_X << ", " << b.N_ELEM_Y << ")\n";
-            exit(1);
+            throw fr::ConfigurationException("Block " + std::to_string(b.id) + " has invalid element counts.");
         }
         if (b.X_MAX <= b.X_MIN || b.Y_MAX <= b.Y_MIN) {
-            std::cerr << "[GRID ERROR] Block " << b.id << " has invalid dimensions (X: " << b.X_MIN << " to " << b.X_MAX << ", Y: " << b.Y_MIN << " to " << b.Y_MAX << ")\n";
-            exit(1);
+            throw fr::ConfigurationException("Block " + std::to_string(b.id) + " has invalid dimensions.");
         }
 
         auto check_face = [&](const std::string& bc, char self_face) {
@@ -166,8 +178,7 @@ void Parameters::load_domain(const std::string& filename) {
 
                 auto it = std::find_if(blocks.begin(), blocks.end(), [nid](const BlockConfig& config) { return config.id == nid; });
                 if (it == blocks.end()) {
-                    std::cerr << "[GRID ERROR] Block " << b.id << " face " << self_face << " points to missing block " << nid << "\n";
-                    exit(1);
+                    throw fr::ConfigurationException("Block " + std::to_string(b.id) + " face " + std::string(1, self_face) + " points to missing block " + std::to_string(nid));
                 }
                 const auto& nb = *it;
 
@@ -175,26 +186,19 @@ void Parameters::load_domain(const std::string& filename) {
                 std::string actual_bc = (nface == 'L') ? nb.BC_L : (nface == 'R') ? nb.BC_R : (nface == 'B') ? nb.BC_B : (nface == 'T') ? nb.BC_T : "";
                 
                 if (actual_bc != expected_bc) {
-                    std::cerr << "[GRID ERROR] Asymmetric boundary condition. Block " << b.id << " face " << self_face 
-                              << " points to Block " << nid << " face " << nface 
-                              << ", but that face has BC '" << actual_bc << "' (expected '" << expected_bc << "')\n";
-                    exit(1);
+                    throw fr::ConfigurationException("Asymmetric boundary condition on Block " + std::to_string(b.id) + " face " + std::string(1, self_face));
                 }
 
                 int my_elems = (self_face == 'L' || self_face == 'R') ? b.N_ELEM_Y : b.N_ELEM_X;
                 int n_elems = (nface == 'L' || nface == 'R') ? nb.N_ELEM_Y : nb.N_ELEM_X;
                 if (my_elems != n_elems) {
-                    std::cerr << "[GRID ERROR] Element count mismatch between Block " << b.id << " (" << my_elems << " elems) and Block " 
-                              << nid << " (" << n_elems << " elems) on shared interface.\n";
-                    exit(1);
+                    throw fr::ConfigurationException("Element count mismatch between Block " + std::to_string(b.id) + " and Block " + std::to_string(nid));
                 }
 
                 double my_len = (self_face == 'L' || self_face == 'R') ? (b.Y_MAX - b.Y_MIN) : (b.X_MAX - b.X_MIN);
                 double n_len = (nface == 'L' || nface == 'R') ? (nb.Y_MAX - nb.Y_MIN) : (nb.X_MAX - nb.X_MIN);
                 if (std::abs(my_len - n_len) > 1e-8) {
-                    std::cerr << "[GRID ERROR] Physical length mismatch between Block " << b.id << " (" << my_len << ") and Block " 
-                              << nid << " (" << n_len << ") on shared interface.\n";
-                    exit(1);
+                    throw fr::ConfigurationException("Physical length mismatch between Block " + std::to_string(b.id) + " and Block " + std::to_string(nid));
                 }
             }
         };
@@ -262,6 +266,7 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("ALPHA_SCALE"))       ALPHA_SCALE       = std::stod(kv["ALPHA_SCALE"]);
         if (kv.count("IGR_GRADIENT_TYPE")) IGR_GRADIENT_TYPE = kv["IGR_GRADIENT_TYPE"];
         if (kv.count("IGR_TYPE"))          IGR_TYPE          = kv["IGR_TYPE"];
+        if (kv.count("IGR_SOLVER"))        IGR_SOLVER        = kv["IGR_SOLVER"];
         if (kv.count("IGR_TAU_R"))         IGR_TAU_R         = std::stod(kv["IGR_TAU_R"]);
         if (kv.count("IGR_BR2_ETA"))       IGR_BR2_ETA       = std::stod(kv["IGR_BR2_ETA"]);
         if (kv.count("IGR_SUB_ITERS"))     IGR_SUB_ITERS     = std::stoi(kv["IGR_SUB_ITERS"]);

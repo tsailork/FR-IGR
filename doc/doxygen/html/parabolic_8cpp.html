@@ -98,6 +98,10 @@ $(function(){initNavTree('parabolic_8cpp.html','',''); });
 <code>#include &lt;tuple&gt;</code><br />
 </div><a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Parabolic IGR evolution — BR2 gradient + divergence operator on decoupled Cells. </p>
+<p>Solves the explicit parabolic relaxation equation for entropic pressure (\Sigma): </p><p class="formulaDsp">
+<picture><source srcset="form_74_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ \frac{\partial \Sigma}{\partial t} = \frac{1}{\tau_R} \left( \alpha \nabla \cdot ( \lambda \nabla \Sigma ) + S_{buf} - \Sigma \right) \&zwj;]" src="form_74.png"/></picture>
+</p>
+<p> using Bassi-Rebay 2 (BR2) interface penalty fluxes for the parabolic discretization. </p>
 </div></div><!-- contents -->
 </div><!-- doc-content -->
 <div id="page-nav" class="page-nav-panel">

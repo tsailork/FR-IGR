@@ -9,6 +9,7 @@
 #include <vector>
 #include <string>
 #include <cstdint>
+#include <cassert>
 #include "state.hpp"
 
 /**
@@ -178,13 +179,15 @@ struct CellDim<2> {
      * @brief Indexing accessor for conserved variables.
      */
     inline double& get_U(int v, int iy, int ix, int npts) {
+        assert(iy >= 0 && iy < npts && ix >= 0 && ix < npts && "Index out of bounds in get_U");
         return U[v * npts * npts + iy * npts + ix];
     }
 
     /**
      * @brief Read-only indexing accessor for conserved variables.
      */
-    inline double get_U(int v, int iy, int ix, int npts) const {
+    [[nodiscard]] inline double get_U(int v, int iy, int ix, int npts) const {
+        assert(iy >= 0 && iy < npts && ix >= 0 && ix < npts && "Index out of bounds in get_U");
         return U[v * npts * npts + iy * npts + ix];
     }
 
@@ -192,13 +195,15 @@ struct CellDim<2> {
      * @brief Indexing accessor for residual accumulator RHS.
      */
     inline double& get_RHS(int v, int iy, int ix, int npts) {
+        assert(iy >= 0 && iy < npts && ix >= 0 && ix < npts && "Index out of bounds in get_RHS");
         return RHS[v * npts * npts + iy * npts + ix];
     }
 
     /**
      * @brief Read-only indexing accessor for residual accumulator RHS.
      */
-    inline double get_RHS(int v, int iy, int ix, int npts) const {
+    [[nodiscard]] inline double get_RHS(int v, int iy, int ix, int npts) const {
+        assert(iy >= 0 && iy < npts && ix >= 0 && ix < npts && "Index out of bounds in get_RHS");
         return RHS[v * npts * npts + iy * npts + ix];
     }
 };
@@ -339,13 +344,15 @@ struct CellDim<3> {
      * @brief Indexing accessor for conserved variables in 3D.
      */
     inline double& get_U(int v, int iz, int iy, int ix, int npts) {
+        assert(v >= 0 && v < N_VARS && iz >= 0 && iz < npts && iy >= 0 && iy < npts && ix >= 0 && ix < npts);
         return U[v * npts * npts * npts + iz * npts * npts + iy * npts + ix];
     }
 
     /**
      * @brief Read-only indexing accessor for conserved variables in 3D.
      */
-    inline double get_U(int v, int iz, int iy, int ix, int npts) const {
+    [[nodiscard]] inline double get_U(int v, int iz, int iy, int ix, int npts) const {
+        assert(v >= 0 && v < N_VARS && iz >= 0 && iz < npts && iy >= 0 && iy < npts && ix >= 0 && ix < npts);
         return U[v * npts * npts * npts + iz * npts * npts + iy * npts + ix];
     }
 
@@ -353,13 +360,15 @@ struct CellDim<3> {
      * @brief Indexing accessor for residual accumulator RHS in 3D.
      */
     inline double& get_RHS(int v, int iz, int iy, int ix, int npts) {
+        assert(v >= 0 && v < N_VARS && iz >= 0 && iz < npts && iy >= 0 && iy < npts && ix >= 0 && ix < npts);
         return RHS[v * npts * npts * npts + iz * npts * npts + iy * npts + ix];
     }
 
     /**
      * @brief Read-only indexing accessor for residual accumulator RHS in 3D.
      */
-    inline double get_RHS(int v, int iz, int iy, int ix, int npts) const {
+    [[nodiscard]] inline double get_RHS(int v, int iz, int iy, int ix, int npts) const {
+        assert(v >= 0 && v < N_VARS && iz >= 0 && iz < npts && iy >= 0 && iy < npts && ix >= 0 && ix < npts);
         return RHS[v * npts * npts * npts + iz * npts * npts + iy * npts + ix];
     }
 };

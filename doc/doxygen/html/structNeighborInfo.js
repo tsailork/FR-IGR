@@ -16,6 +16,7 @@ var structNeighborInfo =
     [ "ref_rho", "structNeighborInfo.html#a78e9c359b249166b9277289e03048903", null ],
     [ "ref_u", "structNeighborInfo.html#a60cb009de6683144ef8b74b1da2f5102", null ],
     [ "ref_v", "structNeighborInfo.html#a43430107ebefd7aba9114d26b89d62c6", null ],
+    [ "ref_w", "structNeighborInfo.html#ac93e9086e8e3ab8551fb53332c1271a0", null ],
     [ "refine", "structNeighborInfo.html#a23972c6865c38ce0a9926436be1b353e", null ],
     [ "wall_temperature", "structNeighborInfo.html#ab2fa29f3d8da28ef4c816e1bcecebe89", null ],
     [ "wall_velocity", "structNeighborInfo.html#a90b39b33e66c00c91be1e3aa5a8e8e37", null ]

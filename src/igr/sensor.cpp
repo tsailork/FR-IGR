@@ -4,9 +4,36 @@
  */
 
 #include "../core/solver.hpp"
+#include "../core/constants.hpp"
 #ifdef _OPENMP
 #include <omp.h>
 #endif
+
+namespace {
+    /**
+     * @brief Computes the Ducros shock-vorticity switch factor: div^2 / (div^2 + curl^2 + eps).
+     */
+    [[nodiscard]] inline double compute_ducros_switch(double div_u, double omega) noexcept {
+        double div2 = div_u * div_u;
+        double om2 = omega * omega;
+        return div2 / (div2 + om2 + fr::constants::EPS_DUCROS);
+    }
+
+    /**
+     * @brief Applies smooth geometric masking to the sensor source term near an IB surface.
+     */
+    inline void apply_ib_sdf_mask(double& source_val, double phi, double h) noexcept {
+        double d_min = 0.5 * h;
+        double d_max = 2.0 * h;
+        if (phi <= d_min) {
+            source_val = 0.0;
+        } else if (phi < d_max) {
+            double r = (phi - d_min) / (d_max - d_min);
+            double M = 0.5 * (1.0 - std::cos(fr::constants::PI * r));
+            source_val *= M;
+        }
+    }
+}
 
 // IGR threshold settings are now dynamically queried from p.IGR_DIVERGENCE_THRESHOLD and p.IGR_SENSOR_THRESHOLD.
 
@@ -277,7 +304,7 @@ void Solver::compute_sensor_source() {
                     if (p.USE_DUCROS_SWITCH) {
                         double div_u = du_dx[idx] + dv_dy[idx];
                         double omega = dv_dx[idx] - du_dy[idx];
-                        ducros = (div_u * div_u) / (div_u * div_u + omega * omega + 1e-30);
+                        ducros = compute_ducros_switch(div_u, omega);
                     }
                     double source_val = 0.0;
                     if (compression < p.IGR_DIVERGENCE_THRESHOLD && val > p.IGR_SENSOR_THRESHOLD) {
@@ -296,15 +323,7 @@ void Solver::compute_sensor_source() {
                         double y = c->y_min + 0.5 * (1.0 + basis.z[iy]) * c->dy;
                         double phi = get_ib_sdf_at_time(x, y, current_time);
                         double h = std::max(c->dx, c->dy);
-                        double d_min = 0.5 * h;
-                        double d_max = 2.0 * h;
-                        if (phi <= d_min) {
-                            source_val = 0.0;
-                        } else if (phi < d_max) {
-                            double r = (phi - d_min) / (d_max - d_min);
-                            double M = 0.5 * (1.0 - std::cos(3.14159265358979323846 * r));
-                            source_val *= M;
-                        }
+                        apply_ib_sdf_mask(source_val, phi, h);
                     }
                     c->S_buf[idx] = source_val;
                 }
@@ -339,7 +358,7 @@ void Solver::compute_sensor_source() {
                     if (p.USE_DUCROS_SWITCH) {
                         double div_u = du_dx + dv_dy;
                         double omega = dv_dx - du_dy;
-                        ducros = (div_u * div_u) / (div_u * div_u + omega * omega + 1e-30);
+                        ducros = compute_ducros_switch(div_u, omega);
                     }
                     double source_val = 0.0;
                     if (compression < p.IGR_DIVERGENCE_THRESHOLD && val > p.IGR_SENSOR_THRESHOLD) {
@@ -358,15 +377,7 @@ void Solver::compute_sensor_source() {
                         double y = c->y_min + 0.5 * (1.0 + basis.z[iy]) * c->dy;
                         double phi = get_ib_sdf_at_time(x, y, current_time);
                         double h = std::max(c->dx, c->dy);
-                        double d_min = 0.5 * h;
-                        double d_max = 2.0 * h;
-                        if (phi <= d_min) {
-                            source_val = 0.0;
-                        } else if (phi < d_max) {
-                            double r = (phi - d_min) / (d_max - d_min);
-                            double M = 0.5 * (1.0 - std::cos(3.14159265358979323846 * r));
-                            source_val *= M;
-                        }
+                        apply_ib_sdf_mask(source_val, phi, h);
                     }
                     c->S_buf[iy * p.N_PTS + ix] = source_val;
                 }

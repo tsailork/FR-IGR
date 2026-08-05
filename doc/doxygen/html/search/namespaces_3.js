@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['restart_0',['Restart',['../namespaceRestart.html',1,'']]]
+  ['ic_0',['IC',['../namespaceIC.html',1,'']]],
+  ['immersedboundary_1',['ImmersedBoundary',['../namespaceImmersedBoundary.html',1,'']]]
 ];

@@ -115,6 +115,7 @@ Diagnostics::~Diagnostics() {
 }
 
 double Diagnostics::evaluate_probe(const Solver& solver, const ProbeLocator& loc) const {
+    (void)solver;
     const Cell* c = loc.cell_ptr;
     if (!c) return 0.0;
 
@@ -386,6 +387,7 @@ void Diagnostics::export_workshop_probes(const Solver& solver) const {
 Diagnostics::Diagnostics(const Parameters& p, const SolverDim<3>& solver, double startTime)
     : params(p), sim_start_time(startTime)
 {
+    (void)solver;
     start_time = std::chrono::steady_clock::now();
     last_print_wall_time = start_time;
 

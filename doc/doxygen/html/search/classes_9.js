@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['vtkwriter_0',['VTKWriter',['../classVTKWriter.html',1,'']]]
+  ['quadshape_0',['QuadShape',['../structImmersedBoundary_1_1QuadShape.html',1,'ImmersedBoundary']]]
 ];

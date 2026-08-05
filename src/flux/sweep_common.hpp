@@ -436,7 +436,7 @@ inline void compute_viscous_flux_2d(const double U[4],
     double kappa_local = kappa;
     if (enable_suth) {
         double T_norm = std::max(1e-8, T);
-        mu_local = mu * (std::pow(T_norm, 1.5) * (1.0 + suth_c) / (T_norm + suth_c));
+        mu_local = mu * ((T_norm * std::sqrt(T_norm)) * (1.0 + suth_c) / (T_norm + suth_c));
         kappa_local = mu_local * gamma / ((gamma - 1.0) * pr);
     }
 
@@ -490,7 +490,7 @@ void viscous_sweep_2d(Solver& solver) {
             if (press < 1e-14) press = 1e-14;
             double Temp = press / r;
             double T_norm = std::max(1e-8, Temp);
-            return mu * (std::pow(T_norm, 1.5) * (1.0 + p.SUTH_C) / (T_norm + p.SUTH_C));
+            return mu * ((T_norm * std::sqrt(T_norm)) * (1.0 + p.SUTH_C) / (T_norm + p.SUTH_C));
         };
 
         auto extrapolate_neighbor = [&](const Cell2D* nc, char nface, int line, double U_nb[4], double dUdx_nb[4], double dUdy_nb[4]) {

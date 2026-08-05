@@ -91,11 +91,9 @@ $(function(){initNavTree('adi__solver_8cpp.html','',''); });
   <div class="headertitle"><div class="title">adi_solver.cpp File Reference</div></div>
 </div><!--header-->
 <div class="contents">
-
-<p>Thomas algorithm and symmetrized ADI passes for the elliptic IGR solver.  
-<a href="#details">More...</a></p>
 <div class="textblock"><code>#include &quot;<a class="el" href="adi__solver_8hpp_source.html">adi_solver.hpp</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="solver_8hpp_source.html">../core/solver.hpp</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="exceptions_8hpp_source.html">../core/exceptions.hpp</a>&quot;</code><br />
 <code>#include &lt;iostream&gt;</code><br />
 </div><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-func-members" class="groupheader"><a id="func-members" name="func-members"></a>
@@ -103,9 +101,7 @@ Functions</h2></td></tr>
 <tr class="memitem:a8099a6d513786658caaf2abdfb4bd24f" id="r_a8099a6d513786658caaf2abdfb4bd24f"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#a8099a6d513786658caaf2abdfb4bd24f">solve_tridiagonal</a> (const std::vector&lt; double &gt; &amp;a, const std::vector&lt; double &gt; &amp;b, const std::vector&lt; double &gt; &amp;c, const std::vector&lt; double &gt; &amp;d, std::vector&lt; double &gt; &amp;x)</td></tr>
 <tr class="memdesc:a8099a6d513786658caaf2abdfb4bd24f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Solve a tridiagonal system of linear equations using the Thomas algorithm (TDMA).  <br /></td></tr>
 </table>
-<a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>Thomas algorithm and symmetrized ADI passes for the elliptic IGR solver. </p>
-</div><a name="doc-func-members" id="doc-func-members"></a><h2 id="header-doc-func-members" class="groupheader">Function Documentation</h2>
+<a name="doc-func-members" id="doc-func-members"></a><h2 id="header-doc-func-members" class="groupheader">Function Documentation</h2>
 <a id="a8099a6d513786658caaf2abdfb4bd24f" name="a8099a6d513786658caaf2abdfb4bd24f"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a8099a6d513786658caaf2abdfb4bd24f">&#9670;&#160;</a></span>solve_tridiagonal()</h2>
 
@@ -142,7 +138,7 @@ Functions</h2></td></tr>
 
 <p>Solve a tridiagonal system of linear equations using the Thomas algorithm (TDMA). </p>
 <p>Solves a tridiagonal system of the form: </p><p class="formulaDsp">
-<picture><source srcset="form_78_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ a_i x_{i-1} + b_i x_i + c_i x_{i+1} = d_i \&zwj;]" src="form_78.png"/></picture>
+<picture><source srcset="form_73_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ a_i x_{i-1} + b_i x_i + c_i x_{i+1} = d_i \&zwj;]" src="form_73.png"/></picture>
 </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">

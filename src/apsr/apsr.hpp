@@ -72,6 +72,7 @@ inline void get_thermodynamics_apsr_2d(const double U[4],
                                        double& a_reg,
                                        double n_x = 1.0,
                                        double n_y = 0.0) {
+    (void)n_x; (void)n_y;
     double rho = std::max(p.POS_LIMITER_EPS, U[0]);
     double u = U[1] / rho;
     double v = U[2] / rho;

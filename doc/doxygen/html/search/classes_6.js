@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['quadshape_0',['QuadShape',['../structImmersedBoundary_1_1QuadShape.html',1,'ImmersedBoundary']]]
+  ['matrixfreepcg_0',['MatrixFreePCG',['../classfr_1_1solver_1_1MatrixFreePCG.html',1,'fr::solver']]],
+  ['mutrowproxy_1',['MutRowProxy',['../structFlatMatrix_1_1MutRowProxy.html',1,'FlatMatrix']]]
 ];

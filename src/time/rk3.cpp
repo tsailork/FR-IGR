@@ -7,6 +7,7 @@
 #include "../limiters/entropy.hpp"
 #include "../limiters/positivity.hpp"
 #include "../ppr/ppr.hpp"
+#include "../igr/pcg_solver.hpp"
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -92,6 +93,7 @@ void Solver::step_rk3(double dt) {
         }
     }
     const double dt_sub = dt / n_sub;
+    (void)dt_sub;
 
     current_limiter_stats.num_limited = 0;
     current_limiter_stats.sum_theta = 0.0;
@@ -130,6 +132,12 @@ void Solver::step_rk3(double dt) {
     };
 
     auto sub_iterate_sigma_all = [&](double alpha, double beta) {
+        if (p.IGR_SOLVER == "PCG") {
+            fr::solver::MatrixFreePCG::solve(*this, p.IGR_SUB_ITER_TOL, p.IGR_SUB_ITERS > 0 ? p.IGR_SUB_ITERS : 20);
+            clamp_sigma_all();
+            return;
+        }
+
         if (p.IGR_SUB_ITER_TOL > 0.0) {
             #pragma omp parallel for schedule(static)
             for (size_t i = 0; i < cells.size(); ++i) {
