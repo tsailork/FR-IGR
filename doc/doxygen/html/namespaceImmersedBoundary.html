@@ -119,6 +119,7 @@ Functions</h2></td></tr>
 <tr class="memdesc:af62bc6ef9fb1d42b0408bd121270c236"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the raw signed distance function (phi) for a NACA 4-digit airfoil.  <br /></td></tr>
 <tr class="memitem:a822f7c52c2d045b7e7eb05a6690bda35" id="r_a822f7c52c2d045b7e7eb05a6690bda35"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a822f7c52c2d045b7e7eb05a6690bda35">compute_naca_mask</a> (double x, double y, double x_le, double y_le, double chord, const std::string &amp;naca_code, double aoa_deg, bool sharp, double smooth_width, double dx, double dy)</td></tr>
 <tr class="memdesc:a822f7c52c2d045b7e7eb05a6690bda35"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the mask value chi (solid indicator) for a NACA 4-digit airfoil.  <br /></td></tr>
+<tr class="memitem:a3434e5aa5d945c3449bab5f9a27d254f" id="r_a3434e5aa5d945c3449bab5f9a27d254f"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a3434e5aa5d945c3449bab5f9a27d254f">get_quadratic_bump_sdf</a> (double x, double y, double xc, double yc, double w, double h_max)</td></tr>
 <tr class="memitem:a6ddbe105b567a6786559a64852eacc80" id="r_a6ddbe105b567a6786559a64852eacc80"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#a6ddbe105b567a6786559a64852eacc80">reset_sbm_diagnostics</a> ()</td></tr>
 <tr class="memdesc:a6ddbe105b567a6786559a64852eacc80"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reset the active SBM diagnostics structure.  <br /></td></tr>
 <tr class="memitem:ac21babb545c74e73b2ab556ddb0c9b9f" id="r_ac21babb545c74e73b2ab556ddb0c9b9f"><td class="memItemLeft"><a class="el" href="structImmersedBoundary_1_1SBMDiagnostics.html">SBMDiagnostics</a>&#160;</td><td class="memItemRight"><a class="el" href="#ac21babb545c74e73b2ab556ddb0c9b9f">get_sbm_diagnostics</a> ()</td></tr>
@@ -131,6 +132,8 @@ Functions</h2></td></tr>
 <tr class="memdesc:a81e78f4f2f8dce33856d3f29f5c4bfeb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve a <a class="el" href="structImmersedBoundary_1_1SurrogateFluxPoint.html" title="Represents a single flux integration node located on a surrogate interface face.">SurrogateFluxPoint</a> if it exists for the given face and node.  <br /></td></tr>
 <tr class="memitem:a8c2ed0d378bc9e0156119f9bd3dd8ae7" id="r_a8c2ed0d378bc9e0156119f9bd3dd8ae7"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#a8c2ed0d378bc9e0156119f9bd3dd8ae7">compute_sbm_state</a> (const <a class="el" href="classSolver.html">Solver</a> &amp;solver, const <a class="el" href="structImmersedBoundary_1_1SurrogateFluxPoint.html">SurrogateFluxPoint</a> *sfp, double u_sb[4])</td></tr>
 <tr class="memdesc:a8c2ed0d378bc9e0156119f9bd3dd8ae7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the shifted boundary state u_sb for the given surrogate point.  <br /></td></tr>
+<tr class="memitem:a471b77756af54b78129e16b9af0616e4" id="r_a471b77756af54b78129e16b9af0616e4"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#a471b77756af54b78129e16b9af0616e4">initialize_sbm_geometry</a> (<a class="el" href="classSolverDim.html">SolverDim</a>&lt; 3 &gt; &amp;solver)</td></tr>
+<tr class="memitem:aba63d8e3d6557107b5e05213c95560d3" id="r_aba63d8e3d6557107b5e05213c95560d3"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#aba63d8e3d6557107b5e05213c95560d3">compute_sbm_state</a> (const <a class="el" href="classSolverDim.html">SolverDim</a>&lt; 3 &gt; &amp;solver, const <a class="el" href="structImmersedBoundary_1_1SurrogateFluxPoint.html">SurrogateFluxPoint</a> *sfp, double u_sb[5])</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-var-members" class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
@@ -212,7 +215,7 @@ Variables</h2></td></tr>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>Indicator value chi in [0, 1] (1 = fully inside solid, 0 = fully in fluid)</dd></dl>
-<p>Generates an indicator function <picture><source srcset="form_70_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \chi $" src="form_70.png"/></picture> where 1 indicates solid and 0 indicates fluid. If a smoothed interface is requested, it uses a regularized Heaviside function to smear the interface over a specified width. This regularization is crucial for stability in high-order FR Volume Penalty Methods (VPM).</p>
+<p>Generates an indicator function <picture><source srcset="form_61_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \chi $" src="form_61.png"/></picture> where 1 indicates solid and 0 indicates fluid. If a smoothed interface is requested, it uses a regularized Heaviside function to smear the interface over a specified width. This regularization is crucial for stability in high-order FR Volume Penalty Methods (VPM).</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">x</td><td>X coordinate of the query point </td></tr>
@@ -227,7 +230,7 @@ Variables</h2></td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>Indicator value <picture><source srcset="form_73_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \chi \in [0, 1] $" src="form_73.png"/></picture> </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>Indicator value <picture><source srcset="form_64_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \chi \in [0, 1] $" src="form_64.png"/></picture> </dd></dl>
 
 </div>
 </div>
@@ -345,7 +348,7 @@ Variables</h2></td></tr>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>Indicator value chi in [0, 1] (1 = fully inside solid, 0 = fully in fluid)</dd></dl>
-<p>Generates an indicator function <picture><source srcset="form_70_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \chi $" src="form_70.png"/></picture> based on the NACA SDF.</p>
+<p>Generates an indicator function <picture><source srcset="form_61_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \chi $" src="form_61.png"/></picture> based on the NACA SDF.</p>
 <dl class="section see"><dt>See also</dt><dd><a class="el" href="#acbdd9b9d3094063a9dfaf3d3434a1fbe" title="Computes the mask value chi (solid indicator) for a cylinder/circle shape.">compute_circle_mask</a> </dd></dl>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
@@ -358,17 +361,17 @@ Variables</h2></td></tr>
     <tr><td class="paramname">aoa_deg</td><td>Angle of attack (degrees) </td></tr>
     <tr><td class="paramname">sharp</td><td>True to use sharp boundary, false for smooth </td></tr>
     <tr><td class="paramname">smooth_width</td><td>Smoothing width coefficient </td></tr>
-    <tr><td class="paramname">dx</td><td><a class="el" href="structCell.html" title="Represents a single computational element/cell in the quadtree domain.">Cell</a> size dx </td></tr>
-    <tr><td class="paramname">dy</td><td><a class="el" href="structCell.html" title="Represents a single computational element/cell in the quadtree domain.">Cell</a> size dy </td></tr>
+    <tr><td class="paramname">dx</td><td><a class="el" href="cell_8hpp.html#ab06f62309991f3175fdb04b195dc34ed">Cell</a> size dx </td></tr>
+    <tr><td class="paramname">dy</td><td><a class="el" href="cell_8hpp.html#ab06f62309991f3175fdb04b195dc34ed">Cell</a> size dy </td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>Indicator value <picture><source srcset="form_73_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \chi \in [0, 1] $" src="form_73.png"/></picture> </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>Indicator value <picture><source srcset="form_64_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \chi \in [0, 1] $" src="form_64.png"/></picture> </dd></dl>
 
 </div>
 </div>
 <a id="a8c2ed0d378bc9e0156119f9bd3dd8ae7" name="a8c2ed0d378bc9e0156119f9bd3dd8ae7"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a8c2ed0d378bc9e0156119f9bd3dd8ae7">&#9670;&#160;</a></span>compute_sbm_state()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a8c2ed0d378bc9e0156119f9bd3dd8ae7">&#9670;&#160;</a></span>compute_sbm_state() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -397,10 +400,36 @@ Variables</h2></td></tr>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">solver</td><td>Reference to the solver instance. </td></tr>
     <tr><td class="paramdir">[in]</td><td class="paramname">sfp</td><td>Pointer to the surrogate flux point descriptor. </td></tr>
-    <tr><td class="paramdir">[out]</td><td class="paramname">u_sb</td><td>Array containing the calculated boundary state conservative variables <picture><source srcset="form_75_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$[\rho, \rho u, \rho v, E]$" src="form_75.png"/></picture>. </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">u_sb</td><td>Array containing the calculated boundary state conservative variables <picture><source srcset="form_70_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$[\rho, \rho u, \rho v, E]$" src="form_70.png"/></picture>. </td></tr>
   </table>
   </dd>
 </dl>
+
+</div>
+</div>
+<a id="aba63d8e3d6557107b5e05213c95560d3" name="aba63d8e3d6557107b5e05213c95560d3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aba63d8e3d6557107b5e05213c95560d3">&#9670;&#160;</a></span>compute_sbm_state() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void ImmersedBoundary::compute_sbm_state </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="classSolverDim.html">SolverDim</a>&lt; 3 &gt; &amp;</td>          <td class="paramname"><span class="paramname"><em>solver</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structImmersedBoundary_1_1SurrogateFluxPoint.html">SurrogateFluxPoint</a> *</td>          <td class="paramname"><span class="paramname"><em>sfp</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double</td>          <td class="paramname"><span class="paramname"><em>u_sb</em></span>[5]&#160;)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
 
 </div>
 </div>
@@ -461,7 +490,7 @@ Variables</h2></td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>Signed distance <picture><source srcset="form_71_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \phi $" src="form_71.png"/></picture> (negative inside, positive outside) </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>Signed distance <picture><source srcset="form_62_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \phi $" src="form_62.png"/></picture> (negative inside, positive outside) </dd></dl>
 
 </div>
 </div>
@@ -533,11 +562,11 @@ Variables</h2></td></tr>
     <tr><td class="paramname">y_le</td><td>Y coordinate of the leading edge </td></tr>
     <tr><td class="paramname">chord</td><td>Chord length of the airfoil </td></tr>
     <tr><td class="paramname">naca_code</td><td>A 4-digit string representing the NACA profile (e.g., "0012") </td></tr>
-    <tr><td class="paramname">aoa_deg</td><td>Angle of attack <picture><source srcset="form_74_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \alpha $" src="form_74.png"/></picture> in degrees </td></tr>
+    <tr><td class="paramname">aoa_deg</td><td>Angle of attack <picture><source srcset="form_65_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \alpha $" src="form_65.png"/></picture> in degrees </td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>Signed distance <picture><source srcset="form_71_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \phi $" src="form_71.png"/></picture> from the query point to the airfoil surface </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>Signed distance <picture><source srcset="form_62_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \phi $" src="form_62.png"/></picture> from the query point to the airfoil surface </dd></dl>
 
 </div>
 </div>
@@ -620,6 +649,47 @@ Variables</h2></td></tr>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>Signed distance value </dd></dl>
+
+</div>
+</div>
+<a id="a3434e5aa5d945c3449bab5f9a27d254f" name="a3434e5aa5d945c3449bab5f9a27d254f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3434e5aa5d945c3449bab5f9a27d254f">&#9670;&#160;</a></span>get_quadratic_bump_sdf()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double ImmersedBoundary::get_quadratic_bump_sdf </td>
+          <td>(</td>
+          <td class="paramtype">double</td>          <td class="paramname"><span class="paramname"><em>x</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double</td>          <td class="paramname"><span class="paramname"><em>y</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double</td>          <td class="paramname"><span class="paramname"><em>xc</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double</td>          <td class="paramname"><span class="paramname"><em>yc</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double</td>          <td class="paramname"><span class="paramname"><em>w</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double</td>          <td class="paramname"><span class="paramname"><em>h_max</em></span>&#160;)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
 
 </div>
 </div>
@@ -737,7 +807,7 @@ Variables</h2></td></tr>
 </div>
 </div>
 <a id="a14762f1b73a225fef97f558de2c2898d" name="a14762f1b73a225fef97f558de2c2898d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a14762f1b73a225fef97f558de2c2898d">&#9670;&#160;</a></span>initialize_sbm_geometry()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a14762f1b73a225fef97f558de2c2898d">&#9670;&#160;</a></span>initialize_sbm_geometry() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -758,6 +828,23 @@ Variables</h2></td></tr>
   </table>
   </dd>
 </dl>
+
+</div>
+</div>
+<a id="a471b77756af54b78129e16b9af0616e4" name="a471b77756af54b78129e16b9af0616e4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a471b77756af54b78129e16b9af0616e4">&#9670;&#160;</a></span>initialize_sbm_geometry() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void ImmersedBoundary::initialize_sbm_geometry </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classSolverDim.html">SolverDim</a>&lt; 3 &gt; &amp;</td>          <td class="paramname"><span class="paramname"><em>solver</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
 
 </div>
 </div>

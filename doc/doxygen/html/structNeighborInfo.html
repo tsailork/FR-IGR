@@ -102,7 +102,7 @@ Public Attributes</h2></td></tr>
 <tr class="memitem:a6c41cf6d36f4f43db9c4154e35602aa1" id="r_a6c41cf6d36f4f43db9c4154e35602aa1"><td class="memItemLeft">int&#160;</td><td class="memItemRight"><a class="el" href="#a6c41cf6d36f4f43db9c4154e35602aa1">id</a> = -1</td></tr>
 <tr class="memdesc:a6c41cf6d36f4f43db9c4154e35602aa1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Neighbor block ID. Set to -1 if periodic boundary or physical wall.  <br /></td></tr>
 <tr class="memitem:a731ea501cd8b01287143db630dc8be68" id="r_a731ea501cd8b01287143db630dc8be68"><td class="memItemLeft">char&#160;</td><td class="memItemRight"><a class="el" href="#a731ea501cd8b01287143db630dc8be68">face</a> = ' '</td></tr>
-<tr class="memdesc:a731ea501cd8b01287143db630dc8be68"><td class="mdescLeft">&#160;</td><td class="mdescRight">Target neighbor face being contacted ('L', 'R', 'B', 'T').  <br /></td></tr>
+<tr class="memdesc:a731ea501cd8b01287143db630dc8be68"><td class="mdescLeft">&#160;</td><td class="mdescRight">Target neighbor face being contacted ('L', 'R', 'B', 'T', 'F', 'K').  <br /></td></tr>
 <tr class="memitem:aaeceb4d4cbf39a2f61b89db26d6a0690" id="r_aaeceb4d4cbf39a2f61b89db26d6a0690"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#aaeceb4d4cbf39a2f61b89db26d6a0690">is_wall</a> = false</td></tr>
 <tr class="memdesc:aaeceb4d4cbf39a2f61b89db26d6a0690"><td class="mdescLeft">&#160;</td><td class="mdescRight">Slip wall boundary condition indicator.  <br /></td></tr>
 <tr class="memitem:a0624066d4c54833070afc85705dde2c1" id="r_a0624066d4c54833070afc85705dde2c1"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#a0624066d4c54833070afc85705dde2c1">is_supersonic_inflow</a> = false</td></tr>
@@ -123,6 +123,8 @@ Public Attributes</h2></td></tr>
 <tr class="memdesc:a60cb009de6683144ef8b74b1da2f5102"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reference X-velocity imposed at the boundary.  <br /></td></tr>
 <tr class="memitem:a43430107ebefd7aba9114d26b89d62c6" id="r_a43430107ebefd7aba9114d26b89d62c6"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a43430107ebefd7aba9114d26b89d62c6">ref_v</a> = 0.0</td></tr>
 <tr class="memdesc:a43430107ebefd7aba9114d26b89d62c6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reference Y-velocity imposed at the boundary.  <br /></td></tr>
+<tr class="memitem:ac93e9086e8e3ab8551fb53332c1271a0" id="r_ac93e9086e8e3ab8551fb53332c1271a0"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#ac93e9086e8e3ab8551fb53332c1271a0">ref_w</a> = 0.0</td></tr>
+<tr class="memdesc:ac93e9086e8e3ab8551fb53332c1271a0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reference Z-velocity imposed at the boundary.  <br /></td></tr>
 <tr class="memitem:acab04aa270e900dd495e61b9a529d2c3" id="r_acab04aa270e900dd495e61b9a529d2c3"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#acab04aa270e900dd495e61b9a529d2c3">ref_p</a> = 1.0</td></tr>
 <tr class="memdesc:acab04aa270e900dd495e61b9a529d2c3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reference pressure imposed at the boundary.  <br /></td></tr>
 <tr class="memitem:a5d78b066e37e144573050a5b5021c7db" id="r_a5d78b066e37e144573050a5b5021c7db"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#a5d78b066e37e144573050a5b5021c7db">is_noslip_wall</a> = false</td></tr>
@@ -154,7 +156,7 @@ Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Target neighbor face being contacted ('L', 'R', 'B', 'T'). </p>
+<p>Target neighbor face being contacted ('L', 'R', 'B', 'T', 'F', 'K'). </p>
 
 </div>
 </div>
@@ -395,6 +397,22 @@ Public Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Reference Y-velocity imposed at the boundary. </p>
+
+</div>
+</div>
+<a id="ac93e9086e8e3ab8551fb53332c1271a0" name="ac93e9086e8e3ab8551fb53332c1271a0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac93e9086e8e3ab8551fb53332c1271a0">&#9670;&#160;</a></span>ref_w</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double NeighborInfo::ref_w = 0.0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Reference Z-velocity imposed at the boundary. </p>
 
 </div>
 </div>

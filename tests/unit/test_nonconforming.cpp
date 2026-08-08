@@ -1,3 +1,4 @@
+#include <array>
 #include "../doctest.h"
 #include "../../src/core/basis.hpp"
 #include "../../src/core/solver.hpp"
@@ -247,7 +248,7 @@ TEST_CASE("Non-conforming: Conservation Verification") {
     solver.sweep_x();
     
     // Check inviscid conservation (sweep_x)
-    double total_rhs_x[4] = {};
+    std::array<double, 4> total_rhs_x = {};
     for (Cell* c : solver.cells) {
         for (int v = 0; v < 4; ++v) {
             double cell_int = 0.0;
@@ -275,7 +276,7 @@ TEST_CASE("Non-conforming: Conservation Verification") {
     solver.sweep_y();
 
     // Check inviscid conservation (sweep_y)
-    double total_rhs_y[4] = {};
+    std::array<double, 4> total_rhs_y = {};
     for (Cell* c : solver.cells) {
         for (int v = 0; v < 4; ++v) {
             double cell_int = 0.0;
@@ -302,7 +303,7 @@ TEST_CASE("Non-conforming: Conservation Verification") {
     solver.viscous_sweep_x();
 
     // Check viscous conservation (viscous_sweep_x)
-    double total_rhs_vx[4] = {};
+    std::array<double, 4> total_rhs_vx = {};
     for (Cell* c : solver.cells) {
         for (int v = 0; v < 4; ++v) {
             double cell_int = 0.0;

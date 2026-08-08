@@ -98,9 +98,9 @@ $(function(){initNavTree('parabolic_8hpp.html','',''); });
 <p><a href="parabolic_8hpp_source.html">Go to the source code of this file.</a></p>
 <a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Redirection hook and placeholder for the Parabolic IGR subsystem. </p>
-<dl class="section note"><dt>Note</dt><dd>The parabolic artificial viscosity method is implemented as member functions of the main <span class="tt"><a class="el" href="classSolver.html" title="Central solver class governing numerical integration, multi-block communication, and limiters.">Solver</a></span> class:<ul>
-<li><span class="tt"><a class="el" href="classSolver.html#a2998f0b737c5c52fda95f670e5fa0ecb" title="Compute the explicit RHS terms for Parabolic BR2 IGR solver.">Solver::compute_igr_parabolic_rhs()</a></span></li>
-<li><span class="tt"><a class="el" href="classSolver.html#a3c465da5c3686e7e8a4c576779ddf32e" title="Smooth the entropic pressure using the active IGR (Elliptic ADI or Parabolic BR2).">Solver::compute_entropic_pressure()</a></span></li>
+<dl class="section note"><dt>Note</dt><dd>The parabolic artificial viscosity method is implemented as member functions of the main <span class="tt"><a class="el" href="classSolver.html" title="Forward declaration of the main Solver class to break dependency cycles.">Solver</a></span> class:<ul>
+<li><span class="tt"><a class="el" href="classSolverDim_3_012_01_4.html#a13f868d10dc72b6b99a841bed927ac5b" title="Compute the explicit RHS terms for Parabolic BR2 IGR solver.">Solver::compute_igr_parabolic_rhs()</a></span></li>
+<li><span class="tt"><a class="el" href="classSolverDim_3_012_01_4.html#ae007862836078e1d4e602852e0d80520" title="Smooth the entropic pressure using the active IGR (Elliptic ADI or Parabolic BR2).">Solver::compute_entropic_pressure()</a></span></li>
 </ul>
 </dd></dl>
 <p>Their corresponding declarations are located in <span class="tt"><a class="el" href="solver_8hpp.html" title="Main Solver class and grid block structures for the FR-IGR simulation engine.">solver.hpp</a></span>, and implementations are located in <span class="tt"><a class="el" href="parabolic_8cpp.html" title="Parabolic IGR evolution — BR2 gradient + divergence operator on decoupled Cells.">parabolic.cpp</a></span>. This file acts as a placeholder to preserve compilation unit boundaries.</p>

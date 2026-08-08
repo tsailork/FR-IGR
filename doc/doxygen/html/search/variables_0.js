@@ -4,5 +4,7 @@ var searchData=
   ['a1_1',['a1',['../structImmersedBoundary_1_1ParabolaShape.html#afecb56bf86ee5d1859ecbdaef3749487',1,'ImmersedBoundary::ParabolaShape']]],
   ['alpha_5fscale_2',['ALPHA_SCALE',['../structParameters.html#a49527b8e4debf59ad82665d6a7b0776d',1,'Parameters']]],
   ['aoa_3',['aoa',['../structParameters_1_1RefinementZone.html#a653c027302ce6a725b26f817fa3652a7',1,'Parameters::RefinementZone']]],
-  ['aoa_5fdeg_4',['aoa_deg',['../structGeometry_1_1Naca.html#a4a230b3ef2e8ff8d8292c00860de5bb8',1,'Geometry::Naca']]]
+  ['aoa_5fdeg_4',['aoa_deg',['../structGeometry_1_1Naca.html#a4a230b3ef2e8ff8d8292c00860de5bb8',1,'Geometry::Naca']]],
+  ['apsr_5falpha_5',['APSR_ALPHA',['../structParameters.html#a2ee8acfdbcd19d8c5fa6591ff465581a',1,'Parameters']]],
+  ['apsr_5feta_5fbr2_6',['APSR_ETA_BR2',['../structParameters.html#a8ed1e3fe20eae3ff14c5569cf1bd7081',1,'Parameters']]]
 ];

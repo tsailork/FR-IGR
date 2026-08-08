@@ -1,3 +1,4 @@
+#include <array>
 /**
  * @file test_ppr_schedule_sensor.cpp
  * @brief Unit tests for the Ducros sensor, PPR theta schedule interpolation, and magnitude pressure difference.

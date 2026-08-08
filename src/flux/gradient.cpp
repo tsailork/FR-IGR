@@ -1,6 +1,13 @@
 /**
  * @file gradient.cpp
- * @brief BR2 Phase 1 — compute gradients of conservative variables ∇U cell-locally.
+ * @brief BR2 Phase 1 — compute gradients of conservative variables \f$ \nabla U \f$ cell-locally.
+ *
+ * @details
+ * Mathematical Formulation (Bassi-Rebay 2 / BR2 Scheme - Phase 1):
+ * Cell-local gradient reconstruction combining interior volume derivative and interface jump lifting terms:
+ * \f[
+ * \nabla U = \sum_j D_{ij} U_j + \frac{2}{\Delta x} \left[ \frac{1}{2}(U_{neigh} - U_{face}) g'_L(\xi) + \frac{1}{2}(U_{neigh} - U_{face}) g'_R(\xi) \right]
+ * \f]
  */
 
 #include "../core/solver.hpp"

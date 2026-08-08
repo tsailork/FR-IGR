@@ -1,14 +1,21 @@
 var searchData=
 [
   ['sbm_5fgeometry_2ecpp_0',['sbm_geometry.cpp',['../sbm__geometry_8cpp.html',1,'']]],
-  ['sbm_5fgeometry_2ehpp_1',['sbm_geometry.hpp',['../sbm__geometry_8hpp.html',1,'']]],
-  ['sensor_2ecpp_2',['sensor.cpp',['../sensor_8cpp.html',1,'']]],
-  ['sensor_2ehpp_3',['sensor.hpp',['../sensor_8hpp.html',1,'']]],
-  ['solver_2ecpp_4',['solver.cpp',['../solver_8cpp.html',1,'']]],
-  ['solver_2ehpp_5',['solver.hpp',['../solver_8hpp.html',1,'']]],
-  ['stability_2ecpp_6',['stability.cpp',['../stability_8cpp.html',1,'']]],
-  ['stability_2ehpp_7',['stability.hpp',['../stability_8hpp.html',1,'']]],
-  ['state_2ehpp_8',['state.hpp',['../state_8hpp.html',1,'']]],
-  ['sweep_5fx_2ecpp_9',['sweep_x.cpp',['../sweep__x_8cpp.html',1,'']]],
-  ['sweep_5fy_2ecpp_10',['sweep_y.cpp',['../sweep__y_8cpp.html',1,'']]]
+  ['sbm_5fgeometry_2ed_1',['sbm_geometry.d',['../sbm__geometry_8d.html',1,'']]],
+  ['sbm_5fgeometry_2ehpp_2',['sbm_geometry.hpp',['../sbm__geometry_8hpp.html',1,'']]],
+  ['sensor_2ecpp_3',['sensor.cpp',['../sensor_8cpp.html',1,'']]],
+  ['sensor_2ed_4',['sensor.d',['../sensor_8d.html',1,'']]],
+  ['sensor_2ehpp_5',['sensor.hpp',['../sensor_8hpp.html',1,'']]],
+  ['sfc_5fpartitioner_2ehpp_6',['sfc_partitioner.hpp',['../sfc__partitioner_8hpp.html',1,'']]],
+  ['shock_5fworkshop_5fcorrected_2ecpp_7',['shock_workshop_corrected.cpp',['../shock__workshop__corrected_8cpp.html',1,'']]],
+  ['solver_2ecpp_8',['solver.cpp',['../solver_8cpp.html',1,'']]],
+  ['solver_2ed_9',['solver.d',['../solver_8d.html',1,'']]],
+  ['solver_2ehpp_10',['solver.hpp',['../solver_8hpp.html',1,'']]],
+  ['stability_2ecpp_11',['stability.cpp',['../stability_8cpp.html',1,'']]],
+  ['stability_2ed_12',['stability.d',['../stability_8d.html',1,'']]],
+  ['stability_2ehpp_13',['stability.hpp',['../stability_8hpp.html',1,'']]],
+  ['state_2ehpp_14',['state.hpp',['../state_8hpp.html',1,'']]],
+  ['sweep_5fcommon_2ehpp_15',['sweep_common.hpp',['../sweep__common_8hpp.html',1,'']]],
+  ['sweeps_2ecpp_16',['sweeps.cpp',['../sweeps_8cpp.html',1,'']]],
+  ['sweeps_2ed_17',['sweeps.d',['../sweeps_8d.html',1,'']]]
 ];

@@ -9,6 +9,7 @@
 #include <vector>
 #include <string>
 #include <cstdint>
+#include <cassert>
 #include "state.hpp"
 
 /**
@@ -46,6 +47,15 @@ struct CellDim;
 /**
  * @struct CellDim<2>
  * @brief Represents a single computational element/cell in the quadtree domain (2D).
+ */
+/**
+ * @struct CellDim<2>
+ * @brief Storage and connectivity data structure representing a single leaf node in 2D.
+ *
+ * @details
+ * Encapsulates element local physical geometry, solution DOFs, residual accumulators, 
+ * and IGR entropic pressure fields (\Sigma). Manages non-conforming neighbor links and 
+ * Quadtree AMR refinement levels.
  */
 template<>
 struct CellDim<2> {
@@ -107,6 +117,7 @@ struct CellDim<2> {
     // Local Immersed Boundary fields
     std::vector<double> ib_mask;      ///< Cached solid volume fraction mask (chi), size: npts * npts.
     bool solid_mask = false;          ///< True if this element is fully inside the solid.
+    bool is_ib_cut_cell = false;      ///< True if this element contains solution points on both sides of IB.
 
     // Conforming neighbors: 0=Left, 1=Right, 2=Bottom, 3=Top
     CellDim<2>* neighbors[4] = {nullptr, nullptr, nullptr, nullptr};
@@ -169,13 +180,15 @@ struct CellDim<2> {
      * @brief Indexing accessor for conserved variables.
      */
     inline double& get_U(int v, int iy, int ix, int npts) {
+        assert(iy >= 0 && iy < npts && ix >= 0 && ix < npts && "Index out of bounds in get_U");
         return U[v * npts * npts + iy * npts + ix];
     }
 
     /**
      * @brief Read-only indexing accessor for conserved variables.
      */
-    inline double get_U(int v, int iy, int ix, int npts) const {
+    [[nodiscard]] inline double get_U(int v, int iy, int ix, int npts) const {
+        assert(iy >= 0 && iy < npts && ix >= 0 && ix < npts && "Index out of bounds in get_U");
         return U[v * npts * npts + iy * npts + ix];
     }
 
@@ -183,13 +196,15 @@ struct CellDim<2> {
      * @brief Indexing accessor for residual accumulator RHS.
      */
     inline double& get_RHS(int v, int iy, int ix, int npts) {
+        assert(iy >= 0 && iy < npts && ix >= 0 && ix < npts && "Index out of bounds in get_RHS");
         return RHS[v * npts * npts + iy * npts + ix];
     }
 
     /**
      * @brief Read-only indexing accessor for residual accumulator RHS.
      */
-    inline double get_RHS(int v, int iy, int ix, int npts) const {
+    [[nodiscard]] inline double get_RHS(int v, int iy, int ix, int npts) const {
+        assert(iy >= 0 && iy < npts && ix >= 0 && ix < npts && "Index out of bounds in get_RHS");
         return RHS[v * npts * npts + iy * npts + ix];
     }
 };
@@ -330,13 +345,15 @@ struct CellDim<3> {
      * @brief Indexing accessor for conserved variables in 3D.
      */
     inline double& get_U(int v, int iz, int iy, int ix, int npts) {
+        assert(v >= 0 && v < N_VARS && iz >= 0 && iz < npts && iy >= 0 && iy < npts && ix >= 0 && ix < npts);
         return U[v * npts * npts * npts + iz * npts * npts + iy * npts + ix];
     }
 
     /**
      * @brief Read-only indexing accessor for conserved variables in 3D.
      */
-    inline double get_U(int v, int iz, int iy, int ix, int npts) const {
+    [[nodiscard]] inline double get_U(int v, int iz, int iy, int ix, int npts) const {
+        assert(v >= 0 && v < N_VARS && iz >= 0 && iz < npts && iy >= 0 && iy < npts && ix >= 0 && ix < npts);
         return U[v * npts * npts * npts + iz * npts * npts + iy * npts + ix];
     }
 
@@ -344,13 +361,15 @@ struct CellDim<3> {
      * @brief Indexing accessor for residual accumulator RHS in 3D.
      */
     inline double& get_RHS(int v, int iz, int iy, int ix, int npts) {
+        assert(v >= 0 && v < N_VARS && iz >= 0 && iz < npts && iy >= 0 && iy < npts && ix >= 0 && ix < npts);
         return RHS[v * npts * npts * npts + iz * npts * npts + iy * npts + ix];
     }
 
     /**
      * @brief Read-only indexing accessor for residual accumulator RHS in 3D.
      */
-    inline double get_RHS(int v, int iz, int iy, int ix, int npts) const {
+    [[nodiscard]] inline double get_RHS(int v, int iz, int iy, int ix, int npts) const {
+        assert(v >= 0 && v < N_VARS && iz >= 0 && iz < npts && iy >= 0 && iy < npts && ix >= 0 && ix < npts);
         return RHS[v * npts * npts * npts + iz * npts * npts + iy * npts + ix];
     }
 };

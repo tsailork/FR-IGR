@@ -103,26 +103,30 @@ $(function(){initNavTree('basis_8hpp.html','',''); });
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-nested-classes" class="groupheader"><a id="nested-classes" name="nested-classes"></a>
 Classes</h2></td></tr>
+<tr class="memitem:FlatMatrix" id="r_FlatMatrix"><td class="memItemLeft">struct &#160;</td><td class="memItemRight"><a class="el" href="structFlatMatrix.html">FlatMatrix</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Contiguous 2D matrix structure for SIMD vectorization.  <a href="structFlatMatrix.html#details">More...</a><br /></td></tr>
+<tr class="memitem:FlatMatrix_3A_3ARowProxy" id="r_FlatMatrix_3A_3ARowProxy"><td class="memItemLeft">struct &#160;</td><td class="memItemRight"><a class="el" href="structFlatMatrix_1_1RowProxy.html">FlatMatrix::RowProxy</a></td></tr>
+<tr class="memitem:FlatMatrix_3A_3AMutRowProxy" id="r_FlatMatrix_3A_3AMutRowProxy"><td class="memItemLeft">struct &#160;</td><td class="memItemRight"><a class="el" href="structFlatMatrix_1_1MutRowProxy.html">FlatMatrix::MutRowProxy</a></td></tr>
 <tr class="memitem:Basis" id="r_Basis"><td class="memItemLeft">struct &#160;</td><td class="memItemRight"><a class="el" href="structBasis.html">Basis</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Encapsulates the 1D Lagrange polynomial basis and FR-DG correction operators.  <a href="structBasis.html#details">More...</a><br /></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-func-members" class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
 <tr class="memitem:a14aaca423ec40f09b5741c3b644265af" id="r_a14aaca423ec40f09b5741c3b644265af"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a14aaca423ec40f09b5741c3b644265af">legendre</a> (int n, double x)</td></tr>
-<tr class="memdesc:a14aaca423ec40f09b5741c3b644265af"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluate the Legendre polynomial <picture><source srcset="form_21_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ P_n(x) $" src="form_21.png"/></picture> via the three-term recurrence.  <br /></td></tr>
+<tr class="memdesc:a14aaca423ec40f09b5741c3b644265af"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluate the Legendre polynomial <picture><source srcset="form_24_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ P_n(x) $" src="form_24.png"/></picture> via the three-term recurrence.  <br /></td></tr>
 <tr class="memitem:a780888a40f8e742b75e9cb63f652b0ab" id="r_a780888a40f8e742b75e9cb63f652b0ab"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a780888a40f8e742b75e9cb63f652b0ab">legendre_prime</a> (int n, double x)</td></tr>
-<tr class="memdesc:a780888a40f8e742b75e9cb63f652b0ab"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluate the derivative of the Legendre polynomial <picture><source srcset="form_24_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ P'_n(x) $" src="form_24.png"/></picture>.  <br /></td></tr>
+<tr class="memdesc:a780888a40f8e742b75e9cb63f652b0ab"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluate the derivative of the Legendre polynomial <picture><source srcset="form_27_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ P'_n(x) $" src="form_27.png"/></picture>.  <br /></td></tr>
 </table>
 <a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>1-D Lagrange basis on Gauss-Legendre points for Flux Reconstruction. </p>
 <p>Provides the foundational mathematical structures for the high-order Flux Reconstruction (FR) method, specifically the FR-DG (Discontinuous Galerkin) variant.</p>
 <p>Includes:</p><ul>
-<li>Solution-point locations <picture><source srcset="form_13_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ z_i $" src="form_13.png"/></picture> and quadrature weights <picture><source srcset="form_14_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ w_i $" src="form_14.png"/></picture>.</li>
-<li>Lagrange basis values at cell interfaces: <picture><source srcset="form_15_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ l_L $" src="form_15.png"/></picture> at <picture><source srcset="form_16_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ x = -1 $" src="form_16.png"/></picture> and <picture><source srcset="form_17_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ l_R $" src="form_17.png"/></picture> at <picture><source srcset="form_18_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ x = +1 $" src="form_18.png"/></picture>.</li>
-<li>Derivative matrix <picture><source srcset="form_19_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ D_{ij} = l'_j(z_i) $" src="form_19.png"/></picture>.</li>
-<li>Radau correction polynomial derivatives <picture><source srcset="form_20_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ g'_L, g'_R $" src="form_20.png"/></picture> evaluated at solution points.</li>
+<li>Solution-point locations <picture><source srcset="form_16_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ z_i $" src="form_16.png"/></picture> and quadrature weights <picture><source srcset="form_17_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ w_i $" src="form_17.png"/></picture>.</li>
+<li>Lagrange basis values at cell interfaces: <picture><source srcset="form_18_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ l_L $" src="form_18.png"/></picture> at <picture><source srcset="form_19_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ x = -1 $" src="form_19.png"/></picture> and <picture><source srcset="form_20_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ l_R $" src="form_20.png"/></picture> at <picture><source srcset="form_21_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ x = +1 $" src="form_21.png"/></picture>.</li>
+<li>Derivative matrix <picture><source srcset="form_22_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ D_{ij} = l'_j(z_i) $" src="form_22.png"/></picture>.</li>
+<li>Radau correction polynomial derivatives <picture><source srcset="form_23_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ g'_L, g'_R $" src="form_23.png"/></picture> evaluated at solution points.</li>
 </ul>
-<dl class="section see"><dt>See also</dt><dd><a class="el" href="classSolver.html" title="Central solver class governing numerical integration, multi-block communication, and limiters.">Solver</a> </dd>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="classSolver.html" title="Forward declaration of the main Solver class to break dependency cycles.">Solver</a> </dd>
 <dd>
 <a class="el" href="structParameters.html" title="Global simulation database holding all options parsed from inputs.dat and domain.grid.">Parameters</a> </dd></dl>
 </div><a name="doc-func-members" id="doc-func-members"></a><h2 id="header-doc-func-members" class="groupheader">Function Documentation</h2>
@@ -153,18 +157,18 @@ Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Evaluate the Legendre polynomial <picture><source srcset="form_21_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ P_n(x) $" src="form_21.png"/></picture> via the three-term recurrence. </p>
+<p>Evaluate the Legendre polynomial <picture><source srcset="form_24_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ P_n(x) $" src="form_24.png"/></picture> via the three-term recurrence. </p>
 <p>The recurrence relation used is: </p><p class="formulaDsp">
-<picture><source srcset="form_22_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ (k) P_k(x) = (2k - 1) x P_{k-1}(x) - (k - 1) P_{k-2}(x) \&zwj;]" src="form_22.png"/></picture>
+<picture><source srcset="form_25_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ (k) P_k(x) = (2k - 1) x P_{k-1}(x) - (k - 1) P_{k-2}(x) \&zwj;]" src="form_25.png"/></picture>
 </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">n</td><td>Degree of the Legendre polynomial. </td></tr>
-    <tr><td class="paramname">x</td><td>Evaluation point <picture><source srcset="form_23_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ x \in [-1, 1] $" src="form_23.png"/></picture>. </td></tr>
+    <tr><td class="paramname">x</td><td>Evaluation point <picture><source srcset="form_26_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ x \in [-1, 1] $" src="form_26.png"/></picture>. </td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>Value of <picture><source srcset="form_21_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ P_n(x) $" src="form_21.png"/></picture>. </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>Value of <picture><source srcset="form_24_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ P_n(x) $" src="form_24.png"/></picture>. </dd></dl>
 <dl class="section note"><dt>Note</dt><dd>Kept inline for performance during basis generation. </dd></dl>
 
 </div>
@@ -196,19 +200,19 @@ Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Evaluate the derivative of the Legendre polynomial <picture><source srcset="form_24_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ P'_n(x) $" src="form_24.png"/></picture>. </p>
+<p>Evaluate the derivative of the Legendre polynomial <picture><source srcset="form_27_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ P'_n(x) $" src="form_27.png"/></picture>. </p>
 <p>Utilizes the analytical identity: </p><p class="formulaDsp">
-<picture><source srcset="form_25_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ (x^2 - 1) P'_n(x) = n (x P_n(x) - P_{n-1}(x)) \&zwj;]" src="form_25.png"/></picture>
+<picture><source srcset="form_28_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ (x^2 - 1) P'_n(x) = n (x P_n(x) - P_{n-1}(x)) \&zwj;]" src="form_28.png"/></picture>
 </p>
-<p> At the boundaries <picture><source srcset="form_26_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ x = \pm 1 $" src="form_26.png"/></picture>, L'Hopital's rule or known identities are applied.</p>
+<p> At the boundaries <picture><source srcset="form_29_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ x = \pm 1 $" src="form_29.png"/></picture>, L'Hopital's rule or known identities are applied.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">n</td><td>Degree of the Legendre polynomial. </td></tr>
-    <tr><td class="paramname">x</td><td>Evaluation point <picture><source srcset="form_23_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ x \in [-1, 1] $" src="form_23.png"/></picture>. </td></tr>
+    <tr><td class="paramname">x</td><td>Evaluation point <picture><source srcset="form_26_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ x \in [-1, 1] $" src="form_26.png"/></picture>. </td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>Value of <picture><source srcset="form_24_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ P'_n(x) $" src="form_24.png"/></picture>. </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>Value of <picture><source srcset="form_27_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ P'_n(x) $" src="form_27.png"/></picture>. </dd></dl>
 <dl class="section see"><dt>See also</dt><dd><a class="el" href="#a14aaca423ec40f09b5741c3b644265af" title="Evaluate the Legendre polynomial  via the three-term recurrence.">legendre</a> </dd></dl>
 
 </div>

@@ -125,13 +125,13 @@ IGR_SUB_ITER_TOL = 0.0
 
 [Stabilization]
 # ENABLE_POS_LIMITER: Zhang-Shu density and pressure positivity limiter.
-ENABLE_POS_LIMITER = true
+ENABLE_POS_LIMITER = false
 
 # POS_LIMITER_EPS: Minimum value floor for density and pressure.
 POS_LIMITER_EPS = 1e-10
 
 # ENABLE_ENTROPY_LIMITER: Prevents unphysical entropy undershoots.
-ENABLE_ENTROPY_LIMITER = true
+ENABLE_ENTROPY_LIMITER = false
 
 # ENTROPY_LIMITER_EPS: Minimum specific entropy violation threshold/offset.
 # Smaller values restrict the specific entropy minimum preservation more tightly, while larger
@@ -345,8 +345,108 @@ IB_L_SCALE = 1.0
 # ENABLE_IB_3C: Toggle Colombo Constraint 3.c. Set to false for solid airfoils to prevent boundary loss.
 ENABLE_IB_3C = false
 
-# IB_METHOD: Immersed Boundary method ("SBM", "VPM_ANALYTICAL", "VPM_EXPLICIT")
-IB_METHOD = SBM
+# IB_METHOD: Immersed Boundary method selection.
+# Options:
+#   - GCM_FR (Recommended for High-Mach & High-Order FR):
+#       High-Order Ghost-Cell Method for Flux Reconstruction. Populates ghost solution nodes (phi <= 0)
+#       using normal probe polynomials (P-order matching solver P_DEG) into the fluid domain.
+#   - SBM: Shifted Boundary Method (Taylor/Lagrange surrogate face extrapolation).
+#   - VPM_ANALYTICAL: Volume Penalization Method with analytical target state integration.
+#   - VPM_EXPLICIT: Volume Penalization Method with explicit source term addition.
+IB_METHOD = GCM_FR
+
+# --- High-Order Ghost Nodal Reconstruction (GCM_FR) Parameters ---
+# IB_GCM_ORDER: Polynomial degree of normal probe extension.
+# Set to -1 to automatically match the FR solution polynomial degree (P_DEG).
+# Set to 1 (linear), 2 (quadratic), 3 (cubic) to manually control extrapolation order.
+IB_GCM_ORDER = -1
+
+# IB_GCM_PROBE_DISTANCE_SCALE: Scaling factor C_probe for normal probe sampling distance.
+# Normal probe distance into fluid domain: h_probe = 2 * |phi| + C_probe * h_cell.
+IB_GCM_PROBE_DISTANCE_SCALE = 1.0
+
+# IB_GCM_INTERPOLATION_SCHEME: High-order fluid sampling interpolation scheme.
+# Options: "LAGRANGE_TENSOR" (exact host element polynomial), "HERMITE", "INVERSE_DISTANCE_WEIGHTED".
+IB_GCM_INTERPOLATION_SCHEME = LAGRANGE_TENSOR
+
+# IB_GCM_SHOCK_DAMPING: Enable adaptive shock sensor damping on ghost states near strong shocks.
+IB_GCM_SHOCK_DAMPING = true
+
+# --- Off-Body Compressible Law-of-the-Wall Model Parameters ---
+# ENABLE_IB_WALL_FUNCTION: Enable off-body compressible law-of-the-wall model at IB boundaries.
+ENABLE_IB_WALL_FUNCTION = false
+
+# IB_WF_TYPE: Wall-function model type.
+# Options: "VAN_DRIEST" (Compressible Van Driest transformation), "MUSKER", "REICHARDT", "LOG_LAW".
+IB_WF_TYPE = VAN_DRIEST
+
+# IB_WF_KAPPA: Von Kármán turbulence constant kappa.
+IB_WF_KAPPA = 0.41
+
+# IB_WF_B: Log-law intercept constant B.
+IB_WF_B = 5.2
+
+# IB_WF_Y_PLUS_TARGET: Target non-dimensional sampling height y+ for wall-function probe (logarithmic layer [30, 300]).
+IB_WF_Y_PLUS_TARGET = 50.0
+
+# IB_WF_COUPLING: Wall-function boundary condition coupling method.
+# Options: "EFFECTIVE_SLIP_VELOCITY" (Dirichlet effective slip), "ROBIN_DERIVATIVE" (Neumann/Robin shear stress constraint).
+IB_WF_COUPLING = EFFECTIVE_SLIP_VELOCITY
+
+# IB_WF_MAX_ITER: Maximum Newton-Raphson iterations for friction velocity u_tau solver.
+IB_WF_MAX_ITER = 50
+
+# IB_WF_TOL: Newton-Raphson convergence tolerance for u_tau solver.
+IB_WF_TOL = 1e-6
+
+# --- CAD SDF Level-Set Engine Parameters ---
+# IB_CAD_FILE: Path to 3D CAD surface mesh file (.stl or .obj). Leave empty for primitive shapes (CIRCLE, NACA).
+IB_CAD_FILE = 
+
+# IB_CAD_SCALE: Uniform scaling factor for imported CAD geometry.
+IB_CAD_SCALE = 1.0
+
+# IB_CAD_TRANSLATE_X, IB_CAD_TRANSLATE_Y, IB_CAD_TRANSLATE_Z: CAD geometry translation offsets.
+IB_CAD_TRANSLATE_X = 0.0
+IB_CAD_TRANSLATE_Y = 0.0
+IB_CAD_TRANSLATE_Z = 0.0
+
+# IB_CAD_ROTATE_PITCH, IB_CAD_ROTATE_YAW, IB_CAD_ROTATE_ROLL: CAD geometry Euler rotation angles (degrees).
+IB_CAD_ROTATE_PITCH = 0.0
+IB_CAD_ROTATE_YAW = 0.0
+IB_CAD_ROTATE_ROLL = 0.0
+
+# IB_CAD_BVH_MAX_LEAF_TRIANGLES: Max triangles per leaf node in BVH tree.
+IB_CAD_BVH_MAX_LEAF_TRIANGLES = 8
+
+# --- Dynamic Body Motion & Stationary Grid Mechanics Parameters ---
+# ENABLE_IB_DYNAMIC_MOTION: Enable dynamic body motion on the strictly stationary Cartesian grid.
+ENABLE_IB_DYNAMIC_MOTION = false
+
+# IB_MOTION_TYPE: Type of body motion.
+# Options: "TRANSLATIONAL", "ROTATIONAL", "SINUSOIDAL", "PIECEWISE_MAP".
+IB_MOTION_TYPE = SINUSOIDAL
+
+# IB_MOTION_AMPLITUDE_X, IB_MOTION_AMPLITUDE_Y, IB_MOTION_AMPLITUDE_Z: Oscillation amplitudes (A_x, A_y, A_z).
+IB_MOTION_AMPLITUDE_X = 0.0
+IB_MOTION_AMPLITUDE_Y = 0.1
+IB_MOTION_AMPLITUDE_Z = 0.0
+
+# IB_MOTION_FREQ_X, IB_MOTION_FREQ_Y, IB_MOTION_FREQ_Z: Oscillation frequencies (f_x, f_y, f_z) in Hz.
+IB_MOTION_FREQ_X = 0.0
+IB_MOTION_FREQ_Y = 1.0
+IB_MOTION_FREQ_Z = 0.0
+
+# IB_MOTION_PHASE_X, IB_MOTION_PHASE_Y, IB_MOTION_PHASE_Z: Oscillation phase offsets (radians).
+IB_MOTION_PHASE_X = 0.0
+IB_MOTION_PHASE_Y = 0.0
+IB_MOTION_PHASE_Z = 0.0
+
+# ENABLE_IB_CLEARED_NODE_HANDLER: Toggle freshly cleared fluid node re-initialization prior to RK advancement.
+ENABLE_IB_CLEARED_NODE_HANDLER = true
+
+# IB_CLEARED_NODE_INTERP: Cleared fluid node extrapolation method ("NORMAL_PROBE", "NEAREST_FLUID_AVERAGE").
+IB_CLEARED_NODE_INTERP = NORMAL_PROBE
 
 # IB_SHAPE: Geometry definition. Supported: "CIRCLE", "NACA", "MULTI"
 #   - CIRCLE: Uses standard single cylinder geometry.
@@ -405,10 +505,10 @@ IB_SMOOTH_WIDTH = 1.5
 [TreeDecomposition]
 # Target refinement level for cells touching a wall boundary. Set to 0 to disable near-wall refinement.
 # Individual boundaries in domain.grid can opt-out by appending ":NOREFINED" (e.g. WALL:NOREFINED).
-WALL_REFINEMENT_LEVEL = 2
+WALL_REFINEMENT_LEVEL = 0
 
 # Number of cell layers from the wall boundary to apply the WALL_REFINEMENT_LEVEL.
-WALL_REFINEMENT_CELLS = 3
+WALL_REFINEMENT_CELLS = 0
 
 # Number of manual refinement zones defined. Supports "NUM_REFINEMENT_ZONES" or "WALL_REFINEMENT_ZONES".
 NUM_REFINEMENT_ZONES = 1
@@ -487,10 +587,10 @@ PLOT_SUB_DIVISIONS = 0
 SMOOTH_PLOT_OUTPUTS = true
 
 # RESIDUAL_INTERVAL: Time interval between L2 residual tracking outputs to csv_outputs/residuals.csv
-RESIDUAL_INTERVAL = 0.005
+RESIDUAL_INTERVAL = 0.001
 
 # PROBE_INTERVAL: Time interval between point probe tracking to probe.csv
-PROBE_INTERVAL = 0.005
+PROBE_INTERVAL = 0.001
 
 # PRINT_INTERVAL: Time interval between terminal stdout status updates.
 PRINT_INTERVAL = 0.01
@@ -517,26 +617,31 @@ PROBE_3 = 0.9, 0.5, Mach
 #
 # Constraints (due to 64-bit Morton spatial hashing):
 #   - Maximum total number of blocks: 511
-#   - Maximum block dimensions (N_ELEM_X, N_ELEM_Y): 2047 x 2047
+#   - Maximum block dimensions (N_ELEM_X, N_ELEM_Y, N_ELEM_Z): 2047 x 2047 x 2047
 #
-# Example [Block0] configuration:
+# Example [Block0] configuration (2D or 3D):
 # [Block0]
 # N_ELEM_X = 20           # Number of elements in X direction
 # N_ELEM_Y = 20           # Number of elements in Y direction
+# N_ELEM_Z = 1            # Number of elements in Z direction (3D solver)
 # X_MIN = 0.0             # Physical X coordinate of the left face
 # X_MAX = 1.0             # Physical X coordinate of the right face
 # Y_MIN = 0.0             # Physical Y coordinate of the bottom face
 # Y_MAX = 1.0             # Physical Y coordinate of the top face
+# Z_MIN = 0.0             # Physical Z coordinate of the front face (3D)
+# Z_MAX = 1.0             # Physical Z coordinate of the back face (3D)
 # 
-# BC_L = TRANSMISSIVE    # Boundary Condition for Left face
-# BC_R = 1:L             # Connects to Block 1's Left face
-# BC_B = 0:T             # Connects to Block 0's Top face (self-periodic)
-# BC_T = 0:B             # Connects to Block 0's Bottom face (self-periodic)
+# BC_L = TRANSMISSIVE    # Boundary Condition for Left face (X-)
+# BC_R = 1:L             # Connects to Block 1's Left face (X+)
+# BC_B = 0:T             # Connects to Block 0's Top face (Y-)
+# BC_T = 0:B             # Connects to Block 0's Bottom face (Y+)
+# BC_F = 0:K             # Boundary Condition for Front face (Z-, 3D)
+# BC_K = 0:F             # Boundary Condition for Back face (Z+, 3D)
 #
 # Available BCs:
 #   - OUTFLOW_SUPERSONIC: Simple copy-out/ghost-state condition.
 #   - WALL: Reflective slip-wall (normal velocity negated).
-#   - WALL_NOSLIP: Adiabatic viscous no-slip wall (u=v=0, dT/dn=0).
+#   - WALL_NOSLIP: Adiabatic viscous no-slip wall (u=v=w=0, dT/dn=0).
 #   - WALL_NOSLIP:T: Isothermal viscous no-slip wall at temperature T.
 #   - WALL_MOVING:V: Adiabatic moving wall with tangential velocity V.
 #   - WALL_MOVING:V:T: Isothermal moving wall with velocity V and temperature T.
@@ -545,7 +650,7 @@ PROBE_3 = 0.9, 0.5, Mach
 #   - TOTAL_PRESSURE_COMP:Pt: Subsonic backpressure boundary scaling the state to match target compressible total pressure Pt.
 #   - TOTAL_PRESSURE_INCOMP:Pt: Subsonic backpressure boundary using Bernoulli's incompressible equation to match target total pressure Pt.
 #   - STATIC_PRESSURE:P: Subsonic backpressure boundary enforcing the target static pressure P while copying interior density and velocity.
-#   - ID:FACE: Connects to the specified face of neighbor Block ID.
+#   - ID:FACE: Connects to the specified face of neighbor Block ID ('L', 'R', 'B', 'T', 'F', 'K').
 #     Example: '2:T' means "Connect to the TOP face of Block 2".
 #     Note: For periodic boundaries, simply map opposite faces to each other 
 #     (e.g., Block 0 Left connects to Block 0 Right using '0:R').

@@ -129,14 +129,50 @@ Public Attributes</h2></td></tr>
 <tr class="memdesc:a835a0d51a130ed27bd17184621e2728c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Specific heat ratio for the ideal gas.  <br /></td></tr>
 <tr class="memitem:a9e991be803842f88df0a7179388ddf31" id="r_a9e991be803842f88df0a7179388ddf31"><td class="memItemLeft">std::string&#160;</td><td class="memItemRight"><a class="el" href="#a9e991be803842f88df0a7179388ddf31">IC_TYPE</a> = &quot;RIEMANN_2D_C3&quot;</td></tr>
 <tr class="memdesc:a9e991be803842f88df0a7179388ddf31"><td class="mdescLeft">&#160;</td><td class="mdescRight">Target physical initial condition profile name.  <br /></td></tr>
+<tr class="memitem:a913bd4d6c92b6361def455522f3f5328" id="r_a913bd4d6c92b6361def455522f3f5328"><td class="memItemLeft">std::string&#160;</td><td class="memItemRight"><a class="el" href="#a913bd4d6c92b6361def455522f3f5328">RIEMANN_SOLVER</a> = &quot;HLLC&quot;</td></tr>
+<tr class="memdesc:a913bd4d6c92b6361def455522f3f5328"><td class="mdescLeft">&#160;</td><td class="mdescRight">Unified Riemann numerical flux solver ("HLLC" or "RUSANOV").  <br /></td></tr>
 <tr class="memitem:a73d295d61fd23756f5857f09c745a4dd" id="r_a73d295d61fd23756f5857f09c745a4dd"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a73d295d61fd23756f5857f09c745a4dd">RHO_INF</a> = 1.0</td></tr>
 <tr class="memdesc:a73d295d61fd23756f5857f09c745a4dd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reference freestream density.  <br /></td></tr>
 <tr class="memitem:acf1fe13d891a825351f2faf69b8c3ccb" id="r_acf1fe13d891a825351f2faf69b8c3ccb"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#acf1fe13d891a825351f2faf69b8c3ccb">U_INF</a> = 0.0</td></tr>
 <tr class="memdesc:acf1fe13d891a825351f2faf69b8c3ccb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reference freestream X-velocity.  <br /></td></tr>
 <tr class="memitem:ac91504e4c85d6033e19e2d6202f9f66e" id="r_ac91504e4c85d6033e19e2d6202f9f66e"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#ac91504e4c85d6033e19e2d6202f9f66e">V_INF</a> = 0.0</td></tr>
 <tr class="memdesc:ac91504e4c85d6033e19e2d6202f9f66e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reference freestream Y-velocity.  <br /></td></tr>
+<tr class="memitem:a4d5b7544ca3474bb6971e410be6a46de" id="r_a4d5b7544ca3474bb6971e410be6a46de"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a4d5b7544ca3474bb6971e410be6a46de">W_INF</a> = 0.0</td></tr>
+<tr class="memdesc:a4d5b7544ca3474bb6971e410be6a46de"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reference freestream Z-velocity.  <br /></td></tr>
 <tr class="memitem:adef02a96faef5251c7430d4235e4aab9" id="r_adef02a96faef5251c7430d4235e4aab9"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#adef02a96faef5251c7430d4235e4aab9">P_INF</a> = 1.0</td></tr>
 <tr class="memdesc:adef02a96faef5251c7430d4235e4aab9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reference freestream pressure.  <br /></td></tr>
+<tr class="memitem:a5dc452816239b88f411bf5a0a95010ca" id="r_a5dc452816239b88f411bf5a0a95010ca"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a5dc452816239b88f411bf5a0a95010ca">OBLIQUE_SHOCK_M</a> = 5.0</td></tr>
+<tr class="memdesc:a5dc452816239b88f411bf5a0a95010ca"><td class="mdescLeft">&#160;</td><td class="mdescRight">Inflow Mach number for oblique shock.  <br /></td></tr>
+<tr class="memitem:a0f5375efe4f11dda6fd2ed724c11fa03" id="r_a0f5375efe4f11dda6fd2ed724c11fa03"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a0f5375efe4f11dda6fd2ed724c11fa03">OBLIQUE_SHOCK_BETA_DEG</a> = 32.0</td></tr>
+<tr class="memdesc:a0f5375efe4f11dda6fd2ed724c11fa03"><td class="mdescLeft">&#160;</td><td class="mdescRight">Oblique shock wave angle in degrees.  <br /></td></tr>
+<tr class="memitem:ad1678a397dd9ae4208bca941ebe1c856" id="r_ad1678a397dd9ae4208bca941ebe1c856"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#ad1678a397dd9ae4208bca941ebe1c856">SHOCK_VORTEX_MS</a> = 1.2</td></tr>
+<tr class="memdesc:ad1678a397dd9ae4208bca941ebe1c856"><td class="mdescLeft">&#160;</td><td class="mdescRight">Incident shock Mach number.  <br /></td></tr>
+<tr class="memitem:a01f55971472fb0eb9f46713994d217bf" id="r_a01f55971472fb0eb9f46713994d217bf"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a01f55971472fb0eb9f46713994d217bf">SHOCK_VORTEX_MV</a> = 0.25</td></tr>
+<tr class="memdesc:a01f55971472fb0eb9f46713994d217bf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Vortex Mach number (strength).  <br /></td></tr>
+<tr class="memitem:a218c41b63c2cf97fea4dfc53fcac27ac" id="r_a218c41b63c2cf97fea4dfc53fcac27ac"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a218c41b63c2cf97fea4dfc53fcac27ac">SHOCK_VORTEX_XS</a> = 0.5</td></tr>
+<tr class="memdesc:a218c41b63c2cf97fea4dfc53fcac27ac"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initial shock X location.  <br /></td></tr>
+<tr class="memitem:a295b6ce4f2a50b0a9c5eef68f090966d" id="r_a295b6ce4f2a50b0a9c5eef68f090966d"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a295b6ce4f2a50b0a9c5eef68f090966d">SHOCK_VORTEX_XV</a> = 1.5</td></tr>
+<tr class="memdesc:a295b6ce4f2a50b0a9c5eef68f090966d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initial vortex core X location.  <br /></td></tr>
+<tr class="memitem:a0361fb51aa3a9c4082eb0b7831e88a5f" id="r_a0361fb51aa3a9c4082eb0b7831e88a5f"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a0361fb51aa3a9c4082eb0b7831e88a5f">SHOCK_VORTEX_YV</a> = 0.0</td></tr>
+<tr class="memdesc:a0361fb51aa3a9c4082eb0b7831e88a5f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initial vortex core Y location.  <br /></td></tr>
+<tr class="memitem:a6e37065ab0159678482cd09782495563" id="r_a6e37065ab0159678482cd09782495563"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a6e37065ab0159678482cd09782495563">SHOCK_VORTEX_RC</a> = 0.2</td></tr>
+<tr class="memdesc:a6e37065ab0159678482cd09782495563"><td class="mdescLeft">&#160;</td><td class="mdescRight">Vortex core radius scale.  <br /></td></tr>
+<tr class="memitem:a4612432de1da9ef2294dd6b6f11ca83f" id="r_a4612432de1da9ef2294dd6b6f11ca83f"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a4612432de1da9ef2294dd6b6f11ca83f">RMI_MS</a> = 1.5</td></tr>
+<tr class="memdesc:a4612432de1da9ef2294dd6b6f11ca83f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Incident shock Mach number.  <br /></td></tr>
+<tr class="memitem:a8d97c5567d3fed5a752a3ace311d5391" id="r_a8d97c5567d3fed5a752a3ace311d5391"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a8d97c5567d3fed5a752a3ace311d5391">RMI_RHO1</a> = 1.0</td></tr>
+<tr class="memdesc:a8d97c5567d3fed5a752a3ace311d5391"><td class="mdescLeft">&#160;</td><td class="mdescRight">Light fluid density (unshocked region 1).  <br /></td></tr>
+<tr class="memitem:a03b199f100f1ddfb9387c61b194945e1" id="r_a03b199f100f1ddfb9387c61b194945e1"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a03b199f100f1ddfb9387c61b194945e1">RMI_RHO2</a> = 3.0</td></tr>
+<tr class="memdesc:a03b199f100f1ddfb9387c61b194945e1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Heavy fluid density (unshocked region 2).  <br /></td></tr>
+<tr class="memitem:acc1ea02ba43341f0142ccf77ed420951" id="r_acc1ea02ba43341f0142ccf77ed420951"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#acc1ea02ba43341f0142ccf77ed420951">RMI_XS</a> = 0.2</td></tr>
+<tr class="memdesc:acc1ea02ba43341f0142ccf77ed420951"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initial shock X location.  <br /></td></tr>
+<tr class="memitem:a5ceea00aa02c0f580f5ddd8b8e84d3fb" id="r_a5ceea00aa02c0f580f5ddd8b8e84d3fb"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a5ceea00aa02c0f580f5ddd8b8e84d3fb">RMI_X0</a> = 0.5</td></tr>
+<tr class="memdesc:a5ceea00aa02c0f580f5ddd8b8e84d3fb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Mean interface X location.  <br /></td></tr>
+<tr class="memitem:a82cb5c3da4da958ccec149ca84b59407" id="r_a82cb5c3da4da958ccec149ca84b59407"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a82cb5c3da4da958ccec149ca84b59407">RMI_AMP</a> = 0.05</td></tr>
+<tr class="memdesc:a82cb5c3da4da958ccec149ca84b59407"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initial perturbation amplitude a0.  <br /></td></tr>
+<tr class="memitem:a86b9b705e36401d1289844243f9d5edf" id="r_a86b9b705e36401d1289844243f9d5edf"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a86b9b705e36401d1289844243f9d5edf">RMI_LY</a> = 1.0</td></tr>
+<tr class="memdesc:a86b9b705e36401d1289844243f9d5edf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Perturbation wavelength / domain height Ly.  <br /></td></tr>
+<tr class="memitem:a482d6e37726292b98c7b5ae7bcf9ec71" id="r_a482d6e37726292b98c7b5ae7bcf9ec71"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a482d6e37726292b98c7b5ae7bcf9ec71">RMI_SIGMA</a> = 0.01</td></tr>
+<tr class="memdesc:a482d6e37726292b98c7b5ae7bcf9ec71"><td class="mdescLeft">&#160;</td><td class="mdescRight">Smooth interface transition width.  <br /></td></tr>
 <tr class="memitem:abd1851f1d6c8e8c5626188e80a5cb4f0" id="r_abd1851f1d6c8e8c5626188e80a5cb4f0"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#abd1851f1d6c8e8c5626188e80a5cb4f0">ENABLE_NS</a> = false</td></tr>
 <tr class="memdesc:abd1851f1d6c8e8c5626188e80a5cb4f0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Toggle physical Navier-Stokes viscous fluxes.  <br /></td></tr>
 <tr class="memitem:a199a831da1cf52741dca28db20e4d943" id="r_a199a831da1cf52741dca28db20e4d943"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a199a831da1cf52741dca28db20e4d943">RE</a> = 1000.0</td></tr>
@@ -159,6 +195,8 @@ Public Attributes</h2></td></tr>
 <tr class="memdesc:afb42b9036463cfb21db2d1c76fa4aa69"><td class="mdescLeft">&#160;</td><td class="mdescRight">Gradient formulation ("LOCAL" or "CORRECTED").  <br /></td></tr>
 <tr class="memitem:a2e55153222e221ecc488020bacd0706c" id="r_a2e55153222e221ecc488020bacd0706c"><td class="memItemLeft">std::string&#160;</td><td class="memItemRight"><a class="el" href="#a2e55153222e221ecc488020bacd0706c">IGR_TYPE</a> = &quot;ELLIPTIC&quot;</td></tr>
 <tr class="memdesc:a2e55153222e221ecc488020bacd0706c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Helmholtz solver equation mode ("ELLIPTIC" or "PARABOLIC").  <br /></td></tr>
+<tr class="memitem:ae00ebaef70b9fc1265fac7b0b765bfd7" id="r_ae00ebaef70b9fc1265fac7b0b765bfd7"><td class="memItemLeft">std::string&#160;</td><td class="memItemRight"><a class="el" href="#ae00ebaef70b9fc1265fac7b0b765bfd7">IGR_SOLVER</a> = &quot;PARABOLIC&quot;</td></tr>
+<tr class="memdesc:ae00ebaef70b9fc1265fac7b0b765bfd7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Linear solver mode ("PARABOLIC", "PCG", "ADI").  <br /></td></tr>
 <tr class="memitem:a497e67c1b0a89ef8c3d490a3305c6f63" id="r_a497e67c1b0a89ef8c3d490a3305c6f63"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a497e67c1b0a89ef8c3d490a3305c6f63">IGR_TAU_R</a> = 0.1</td></tr>
 <tr class="memdesc:a497e67c1b0a89ef8c3d490a3305c6f63"><td class="mdescLeft">&#160;</td><td class="mdescRight">Relaxation timescale factor for Parabolic IGR.  <br /></td></tr>
 <tr class="memitem:af98c549d797625a6c631af7528aefd67" id="r_af98c549d797625a6c631af7528aefd67"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#af98c549d797625a6c631af7528aefd67">IGR_BR2_ETA</a> = 1.0</td></tr>
@@ -185,18 +223,55 @@ Public Attributes</h2></td></tr>
 <tr class="memdesc:a2713cc12f3eea03e1f39b4e8b0ab52d9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Convergence tolerance for IGR sub-iterations (0 = inactive, runs lock-step).  <br /></td></tr>
 <tr class="memitem:adc278db2ef62c0e0a58a9dfdce4632b5" id="r_adc278db2ef62c0e0a58a9dfdce4632b5"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#adc278db2ef62c0e0a58a9dfdce4632b5">ENABLE_PPR</a> = false</td></tr>
 <tr class="memdesc:adc278db2ef62c0e0a58a9dfdce4632b5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Toggle Phantom Pressure Regularization.  <br /></td></tr>
-<tr class="memitem:af87a3836862aaee3cc9362880314d0c6" id="r_af87a3836862aaee3cc9362880314d0c6"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#af87a3836862aaee3cc9362880314d0c6">PPR_THETA</a> = 1.0</td></tr>
-<tr class="memdesc:af87a3836862aaee3cc9362880314d0c6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Regularization feedback coefficient (theta).  <br /></td></tr>
-<tr class="memitem:a95a86da960ec6ccdbca4a3607c9a829c" id="r_a95a86da960ec6ccdbca4a3607c9a829c"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a95a86da960ec6ccdbca4a3607c9a829c">PPR_C_TAU</a> = 0.2</td></tr>
-<tr class="memdesc:a95a86da960ec6ccdbca4a3607c9a829c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Scaling coefficient for the relaxation time (C_tau).  <br /></td></tr>
+<tr class="memitem:a33298f4195d11ce27708c9f4f1db3068" id="r_a33298f4195d11ce27708c9f4f1db3068"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#a33298f4195d11ce27708c9f4f1db3068">ENABLE_APSR</a> = false</td></tr>
+<tr class="memdesc:a33298f4195d11ce27708c9f4f1db3068"><td class="mdescLeft">&#160;</td><td class="mdescRight">Toggle Anisotropic Phantom Stress Relaxation (APSR-R).  <br /></td></tr>
+<tr class="memitem:a87c3dc074904fdb034e39441c5ff19db" id="r_a87c3dc074904fdb034e39441c5ff19db"><td class="memItemLeft">std::string&#160;</td><td class="memItemRight"><a class="el" href="#a87c3dc074904fdb034e39441c5ff19db">PPR_WALL_BC</a> = &quot;EQUILIBRATED&quot;</td></tr>
+<tr class="memdesc:a87c3dc074904fdb034e39441c5ff19db"><td class="mdescLeft">&#160;</td><td class="mdescRight">Wall BC for phantom pressure: EQUILIBRATED.  <br /></td></tr>
+<tr class="memitem:a7eea30de9df39a6f789bcf87f4c25385" id="r_a7eea30de9df39a6f789bcf87f4c25385"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a7eea30de9df39a6f789bcf87f4c25385">PPR_N_CELLS_SHOCK</a> = 2.5</td></tr>
+<tr class="memdesc:a7eea30de9df39a6f789bcf87f4c25385"><td class="mdescLeft">&#160;</td><td class="mdescRight">Target shock transition width in cell units.  <br /></td></tr>
+<tr class="memitem:a95a86da960ec6ccdbca4a3607c9a829c" id="r_a95a86da960ec6ccdbca4a3607c9a829c"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a95a86da960ec6ccdbca4a3607c9a829c">PPR_C_TAU</a> = 0.25</td></tr>
+<tr class="memdesc:a95a86da960ec6ccdbca4a3607c9a829c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Baseline non-equilibrium relaxation time scale ratio C_tau_base.  <br /></td></tr>
+<tr class="memitem:a6b1b3df849bd609d5ccd8168fc52ebe8" id="r_a6b1b3df849bd609d5ccd8168fc52ebe8"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a6b1b3df849bd609d5ccd8168fc52ebe8">PPR_C_POS</a> = 0.05</td></tr>
+<tr class="memdesc:a6b1b3df849bd609d5ccd8168fc52ebe8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Lower positivity bound coefficient for regularized pressure.  <br /></td></tr>
+<tr class="memitem:a0159d711604a282f7df9e9dc0f57e689" id="r_a0159d711604a282f7df9e9dc0f57e689"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a0159d711604a282f7df9e9dc0f57e689">PPR_C_MAX</a> = 2.5</td></tr>
+<tr class="memdesc:a0159d711604a282f7df9e9dc0f57e689"><td class="mdescLeft">&#160;</td><td class="mdescRight">Upper bound coefficient for regularized pressure.  <br /></td></tr>
+<tr class="memitem:a1efa3d549dd2ebc0af819afde6de64bd" id="r_a1efa3d549dd2ebc0af819afde6de64bd"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#a1efa3d549dd2ebc0af819afde6de64bd">PPR_USE_DUCROS</a> = true</td></tr>
+<tr class="memitem:a31776739e4bc538a28b64218c2bfd906" id="r_a31776739e4bc538a28b64218c2bfd906"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#a31776739e4bc538a28b64218c2bfd906">PPR_USE_STENCIL_EXPANSION</a> = true</td></tr>
+<tr class="memdesc:a31776739e4bc538a28b64218c2bfd906"><td class="mdescLeft">&#160;</td><td class="mdescRight">Expand theta and C_tau to 1-ring face neighbors.  <br /></td></tr>
+<tr class="memitem:a57f1688136cfd79729ee5eb9b964030f" id="r_a57f1688136cfd79729ee5eb9b964030f"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#a57f1688136cfd79729ee5eb9b964030f">PPR_USE_VON_NEUMANN_CEILING</a> = true</td></tr>
+<tr class="memdesc:a57f1688136cfd79729ee5eb9b964030f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Apply C_tau_vonNeumann ceiling outside shocks.  <br /></td></tr>
+<tr class="memitem:ac8f05727cc9addd91034d699aa5591a3" id="r_ac8f05727cc9addd91034d699aa5591a3"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#ac8f05727cc9addd91034d699aa5591a3">PPR_USE_LIMITER</a> = true</td></tr>
+<tr class="memdesc:ac8f05727cc9addd91034d699aa5591a3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Apply phantom pressure bounds limiter.  <br /></td></tr>
+<tr class="memitem:aa64b0284e22e035a6e62846eacf4d8b3" id="r_aa64b0284e22e035a6e62846eacf4d8b3"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#aa64b0284e22e035a6e62846eacf4d8b3">PPR_CONSTANT_MODE</a> = false</td></tr>
+<tr class="memdesc:aa64b0284e22e035a6e62846eacf4d8b3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Use spatially-uniform user-specified theta and C_tau everywhere.  <br /></td></tr>
+<tr class="memitem:a4788433f580045db1bea03402c0cdfc5" id="r_a4788433f580045db1bea03402c0cdfc5"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a4788433f580045db1bea03402c0cdfc5">PPR_CONSTANT_THETA</a> = 2.0</td></tr>
+<tr class="memdesc:a4788433f580045db1bea03402c0cdfc5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constant coupling intensity theta when PPR_CONSTANT_MODE = true.  <br /></td></tr>
+<tr class="memitem:a6050e2ebc3d0bb7d8f9474030389aee9" id="r_a6050e2ebc3d0bb7d8f9474030389aee9"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a6050e2ebc3d0bb7d8f9474030389aee9">PPR_CONSTANT_C_TAU_VAL</a> = 0.25</td></tr>
+<tr class="memdesc:a6050e2ebc3d0bb7d8f9474030389aee9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constant relaxation timescale ratio C_tau when PPR_CONSTANT_MODE = true.  <br /></td></tr>
+<tr class="memitem:a317974db0c592153c75517fb44025b2a" id="r_a317974db0c592153c75517fb44025b2a"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a317974db0c592153c75517fb44025b2a">PPR_SENSOR_NOISE_FLOOR</a> = 0.05</td></tr>
+<tr class="memdesc:a317974db0c592153c75517fb44025b2a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Acoustic noise floor for kinematic shock sensor.  <br /></td></tr>
+<tr class="memitem:ad0f8d4f70a856a0f4cc88f551628594c" id="r_ad0f8d4f70a856a0f4cc88f551628594c"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#ad0f8d4f70a856a0f4cc88f551628594c">PPR_SENSOR_SATURATION</a> = 0.50</td></tr>
+<tr class="memdesc:ad0f8d4f70a856a0f4cc88f551628594c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Shock saturation threshold for kinematic shock sensor.  <br /></td></tr>
+<tr class="memitem:a2ee8acfdbcd19d8c5fa6591ff465581a" id="r_a2ee8acfdbcd19d8c5fa6591ff465581a"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a2ee8acfdbcd19d8c5fa6591ff465581a">APSR_ALPHA</a> = 0.02</td></tr>
+<tr class="memdesc:a2ee8acfdbcd19d8c5fa6591ff465581a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Transverse-to-normal dissipation ratio alpha in [0, 1].  <br /></td></tr>
+<tr class="memitem:a8ed1e3fe20eae3ff14c5569cf1bd7081" id="r_a8ed1e3fe20eae3ff14c5569cf1bd7081"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a8ed1e3fe20eae3ff14c5569cf1bd7081">APSR_ETA_BR2</a> = 2.0</td></tr>
+<tr class="memdesc:a8ed1e3fe20eae3ff14c5569cf1bd7081"><td class="mdescLeft">&#160;</td><td class="mdescRight">Penalty factor for <a class="el" href="namespaceAPSR.html">APSR</a> BR2 face gradient lifting.  <br /></td></tr>
 <tr class="memitem:a476736baac301e7558381d10da304b2b" id="r_a476736baac301e7558381d10da304b2b"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a476736baac301e7558381d10da304b2b">T_FINAL</a> = 0.3</td></tr>
 <tr class="memdesc:a476736baac301e7558381d10da304b2b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Target end time of the simulation.  <br /></td></tr>
 <tr class="memitem:a0ee5b44f97306d274ca63e5a232cf905" id="r_a0ee5b44f97306d274ca63e5a232cf905"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a0ee5b44f97306d274ca63e5a232cf905">OUTPUT_DT</a> = 0.01</td></tr>
 <tr class="memdesc:a0ee5b44f97306d274ca63e5a232cf905"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deprecated, maps to OUTPUT_INTERVAL.  <br /></td></tr>
 <tr class="memitem:a1fc24b7f53ca3b0cb3b38672ed688a1d" id="r_a1fc24b7f53ca3b0cb3b38672ed688a1d"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a1fc24b7f53ca3b0cb3b38672ed688a1d">OUTPUT_INTERVAL</a> = 0.01</td></tr>
 <tr class="memdesc:a1fc24b7f53ca3b0cb3b38672ed688a1d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Periodicity of structured grid visual output snapshots (.vts).  <br /></td></tr>
+<tr class="memitem:a4c45e5400757e65f9fbf0fe8f595d1fe" id="r_a4c45e5400757e65f9fbf0fe8f595d1fe"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#a4c45e5400757e65f9fbf0fe8f595d1fe">OUTPUT_DIV_ND</a> = false</td></tr>
+<tr class="memdesc:a4c45e5400757e65f9fbf0fe8f595d1fe"><td class="mdescLeft">&#160;</td><td class="mdescRight">Output the non-dimensional velocity divergence (div*).  <br /></td></tr>
+<tr class="memitem:ad0fd85352cabe2b2fd9a7c6ca9895919" id="r_ad0fd85352cabe2b2fd9a7c6ca9895919"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#ad0fd85352cabe2b2fd9a7c6ca9895919">OUTPUT_ADAPTIVE_THETA</a> = false</td></tr>
+<tr class="memdesc:ad0fd85352cabe2b2fd9a7c6ca9895919"><td class="mdescLeft">&#160;</td><td class="mdescRight">Output the element-wise adaptive <a class="el" href="namespacePPR.html">PPR</a> theta field.  <br /></td></tr>
 <tr class="memitem:a2bce3891bb00d5a544f7f59a8b7194b9" id="r_a2bce3891bb00d5a544f7f59a8b7194b9"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a2bce3891bb00d5a544f7f59a8b7194b9">RESTART_INTERVAL</a> = 0.1</td></tr>
 <tr class="memdesc:a2bce3891bb00d5a544f7f59a8b7194b9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Periodicity of exact binary restart checkpoints (.vts).  <br /></td></tr>
+<tr class="memitem:acbc4c34b8e8655310f3de15b65c5c8e6" id="r_acbc4c34b8e8655310f3de15b65c5c8e6"><td class="memItemLeft">int&#160;</td><td class="memItemRight"><a class="el" href="#acbc4c34b8e8655310f3de15b65c5c8e6">PLOT_SUB_DIVISIONS</a> = 0</td></tr>
+<tr class="memdesc:acbc4c34b8e8655310f3de15b65c5c8e6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of equidistant sub-element visualization intervals per dimension (0 = auto max(1, P_DEG)).  <br /></td></tr>
+<tr class="memitem:a9e0bc28b475b2da6375b145aeeb779e5" id="r_a9e0bc28b475b2da6375b145aeeb779e5"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#a9e0bc28b475b2da6375b145aeeb779e5">SMOOTH_PLOT_OUTPUTS</a> = true</td></tr>
+<tr class="memdesc:a9e0bc28b475b2da6375b145aeeb779e5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Apply BBCH C0 interface smoothing to exported VTK plot files (.vtu).  <br /></td></tr>
 <tr class="memitem:a5e043aac29119176d9530e16bd4f1715" id="r_a5e043aac29119176d9530e16bd4f1715"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a5e043aac29119176d9530e16bd4f1715">RESIDUAL_INTERVAL</a> = 0.001</td></tr>
 <tr class="memdesc:a5e043aac29119176d9530e16bd4f1715"><td class="mdescLeft">&#160;</td><td class="mdescRight">Output time interval for tracking global residual norms.  <br /></td></tr>
 <tr class="memitem:a37b04d6dfb8f10eaba5b7d3a14d1bee7" id="r_a37b04d6dfb8f10eaba5b7d3a14d1bee7"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a37b04d6dfb8f10eaba5b7d3a14d1bee7">PROBE_INTERVAL</a> = 0.001</td></tr>
@@ -215,6 +290,8 @@ Public Attributes</h2></td></tr>
 <tr class="memdesc:a0f68f71eb54d0cfa0878ec86190dd2d2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Toggle high-order specific entropy minimum preservation limiter.  <br /></td></tr>
 <tr class="memitem:a7a739efc0eb310b61f55da562c48d4db" id="r_a7a739efc0eb310b61f55da562c48d4db"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="#a7a739efc0eb310b61f55da562c48d4db">ENTROPY_LIMITER_EPS</a> = 1e-4</td></tr>
 <tr class="memdesc:a7a739efc0eb310b61f55da562c48d4db"><td class="mdescLeft">&#160;</td><td class="mdescRight">Offset tolerance for specific entropy limiter (relax violation check).  <br /></td></tr>
+<tr class="memitem:a8ba70d96566cb8510126af853cfe2af0" id="r_a8ba70d96566cb8510126af853cfe2af0"><td class="memItemLeft">std::string&#160;</td><td class="memItemRight"><a class="el" href="#a8ba70d96566cb8510126af853cfe2af0">LIMITER_STRATEGY</a> = &quot;ZHANG_SHU&quot;</td></tr>
+<tr class="memdesc:a8ba70d96566cb8510126af853cfe2af0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Limiter strategy: "ZHANG_SHU", "BBCH", "MODAL", "HERMITE".  <br /></td></tr>
 <tr class="memitem:a8a09d2131266435a236f2cccc018dc20" id="r_a8a09d2131266435a236f2cccc018dc20"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#a8a09d2131266435a236f2cccc018dc20">ENABLE_IB</a> = false</td></tr>
 <tr class="memdesc:a8a09d2131266435a236f2cccc018dc20"><td class="mdescLeft">&#160;</td><td class="mdescRight">Toggle Immersed Boundary Method.  <br /></td></tr>
 <tr class="memitem:addab8f879be126c13b88e029994519d5" id="r_addab8f879be126c13b88e029994519d5"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#addab8f879be126c13b88e029994519d5">ENABLE_IB_3C</a> = false</td></tr>
@@ -280,7 +357,7 @@ Public Attributes</h2></td></tr>
 </table>
 <a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Global simulation database holding all options parsed from inputs.dat and domain.grid. </p>
-<p>This struct is passed to the core <span class="tt"><a class="el" href="classSolver.html" title="Central solver class governing numerical integration, multi-block communication, and limiters.">Solver</a></span> and dictates everything from the polynomial degree <picture><source srcset="form_32_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ P_{deg} $" src="form_32.png"/></picture> to the choice of Immersed Boundary methods and fluid properties. </p>
+<p>This struct is passed to the core <span class="tt"><a class="el" href="classSolver.html" title="Forward declaration of the main Solver class to break dependency cycles.">Solver</a></span> and dictates everything from the polynomial degree <picture><source srcset="form_45_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ P_{deg} $" src="form_45.png"/></picture> to the choice of Immersed Boundary methods and fluid properties. </p>
 </div><a name="doc-func-members" id="doc-func-members"></a><h2 id="header-doc-func-members" class="groupheader">Member Function Documentation</h2>
 <a id="a5e0c39e00b4b8b8e9db4218a8a22028f" name="a5e0c39e00b4b8b8e9db4218a8a22028f"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a5e0c39e00b4b8b8e9db4218a8a22028f">&#9670;&#160;</a></span>evaluate_ib_q()</h2>
@@ -376,7 +453,7 @@ Public Attributes</h2></td></tr>
 
 <p>Helper utility to parse an INI-formatted text configuration file. </p>
 <p>Maps sections, keys, and values into standard map arrays: </p><p class="formulaDsp">
-<picture><source srcset="form_33_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ \text{Config: Section} \rightarrow (\text{Key} \rightarrow \text{Value}) \&zwj;]" src="form_33.png"/></picture>
+<picture><source srcset="form_46_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[ \text{Config: Section} \rightarrow (\text{Key} \rightarrow \text{Value}) \&zwj;]" src="form_46.png"/></picture>
 </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
@@ -402,6 +479,38 @@ Public Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Viscosity scale factor controlling dissipation levels. </p>
+
+</div>
+</div>
+<a id="a2ee8acfdbcd19d8c5fa6591ff465581a" name="a2ee8acfdbcd19d8c5fa6591ff465581a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2ee8acfdbcd19d8c5fa6591ff465581a">&#9670;&#160;</a></span>APSR_ALPHA</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::APSR_ALPHA = 0.02</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Transverse-to-normal dissipation ratio alpha in [0, 1]. </p>
+
+</div>
+</div>
+<a id="a8ed1e3fe20eae3ff14c5569cf1bd7081" name="a8ed1e3fe20eae3ff14c5569cf1bd7081"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8ed1e3fe20eae3ff14c5569cf1bd7081">&#9670;&#160;</a></span>APSR_ETA_BR2</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::APSR_ETA_BR2 = 2.0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Penalty factor for <a class="el" href="namespaceAPSR.html">APSR</a> BR2 face gradient lifting. </p>
 
 </div>
 </div>
@@ -434,6 +543,22 @@ Public Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Courant-Friedrichs-Lewy stability safety factor. </p>
+
+</div>
+</div>
+<a id="a33298f4195d11ce27708c9f4f1db3068" name="a33298f4195d11ce27708c9f4f1db3068"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a33298f4195d11ce27708c9f4f1db3068">&#9670;&#160;</a></span>ENABLE_APSR</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool Parameters::ENABLE_APSR = false</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Toggle Anisotropic Phantom Stress Relaxation (APSR-R). </p>
 
 </div>
 </div>
@@ -1045,6 +1170,22 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="ae00ebaef70b9fc1265fac7b0b765bfd7" name="ae00ebaef70b9fc1265fac7b0b765bfd7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae00ebaef70b9fc1265fac7b0b765bfd7">&#9670;&#160;</a></span>IGR_SOLVER</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string Parameters::IGR_SOLVER = &quot;PARABOLIC&quot;</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Linear solver mode ("PARABOLIC", "PCG", "ADI"). </p>
+
+</div>
+</div>
 <a id="a2713cc12f3eea03e1f39b4e8b0ab52d9" name="a2713cc12f3eea03e1f39b4e8b0ab52d9"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a2713cc12f3eea03e1f39b4e8b0ab52d9">&#9670;&#160;</a></span>IGR_SUB_ITER_TOL</h2>
 
@@ -1106,6 +1247,22 @@ Public Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Helmholtz solver equation mode ("ELLIPTIC" or "PARABOLIC"). </p>
+
+</div>
+</div>
+<a id="a8ba70d96566cb8510126af853cfe2af0" name="a8ba70d96566cb8510126af853cfe2af0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8ba70d96566cb8510126af853cfe2af0">&#9670;&#160;</a></span>LIMITER_STRATEGY</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string Parameters::LIMITER_STRATEGY = &quot;ZHANG_SHU&quot;</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Limiter strategy: "ZHANG_SHU", "BBCH", "MODAL", "HERMITE". </p>
 
 </div>
 </div>
@@ -1189,6 +1346,70 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="a0f5375efe4f11dda6fd2ed724c11fa03" name="a0f5375efe4f11dda6fd2ed724c11fa03"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0f5375efe4f11dda6fd2ed724c11fa03">&#9670;&#160;</a></span>OBLIQUE_SHOCK_BETA_DEG</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::OBLIQUE_SHOCK_BETA_DEG = 32.0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Oblique shock wave angle in degrees. </p>
+
+</div>
+</div>
+<a id="a5dc452816239b88f411bf5a0a95010ca" name="a5dc452816239b88f411bf5a0a95010ca"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5dc452816239b88f411bf5a0a95010ca">&#9670;&#160;</a></span>OBLIQUE_SHOCK_M</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::OBLIQUE_SHOCK_M = 5.0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Inflow Mach number for oblique shock. </p>
+
+</div>
+</div>
+<a id="ad0fd85352cabe2b2fd9a7c6ca9895919" name="ad0fd85352cabe2b2fd9a7c6ca9895919"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad0fd85352cabe2b2fd9a7c6ca9895919">&#9670;&#160;</a></span>OUTPUT_ADAPTIVE_THETA</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool Parameters::OUTPUT_ADAPTIVE_THETA = false</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Output the element-wise adaptive <a class="el" href="namespacePPR.html">PPR</a> theta field. </p>
+
+</div>
+</div>
+<a id="a4c45e5400757e65f9fbf0fe8f595d1fe" name="a4c45e5400757e65f9fbf0fe8f595d1fe"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4c45e5400757e65f9fbf0fe8f595d1fe">&#9670;&#160;</a></span>OUTPUT_DIV_ND</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool Parameters::OUTPUT_DIV_ND = false</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Output the non-dimensional velocity divergence (div*). </p>
+
+</div>
+</div>
 <a id="a0ee5b44f97306d274ca63e5a232cf905" name="a0ee5b44f97306d274ca63e5a232cf905"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a0ee5b44f97306d274ca63e5a232cf905">&#9670;&#160;</a></span>OUTPUT_DT</h2>
 
@@ -1253,6 +1474,22 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="acbc4c34b8e8655310f3de15b65c5c8e6" name="acbc4c34b8e8655310f3de15b65c5c8e6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#acbc4c34b8e8655310f3de15b65c5c8e6">&#9670;&#160;</a></span>PLOT_SUB_DIVISIONS</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int Parameters::PLOT_SUB_DIVISIONS = 0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Number of equidistant sub-element visualization intervals per dimension (0 = auto max(1, P_DEG)). </p>
+
+</div>
+</div>
 <a id="a3ded5317f01a3473043edb193d50ed8e" name="a3ded5317f01a3473043edb193d50ed8e"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a3ded5317f01a3473043edb193d50ed8e">&#9670;&#160;</a></span>POS_LIMITER_EPS</h2>
 
@@ -1269,6 +1506,38 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="a0159d711604a282f7df9e9dc0f57e689" name="a0159d711604a282f7df9e9dc0f57e689"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0159d711604a282f7df9e9dc0f57e689">&#9670;&#160;</a></span>PPR_C_MAX</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::PPR_C_MAX = 2.5</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Upper bound coefficient for regularized pressure. </p>
+
+</div>
+</div>
+<a id="a6b1b3df849bd609d5ccd8168fc52ebe8" name="a6b1b3df849bd609d5ccd8168fc52ebe8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6b1b3df849bd609d5ccd8168fc52ebe8">&#9670;&#160;</a></span>PPR_C_POS</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::PPR_C_POS = 0.05</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Lower positivity bound coefficient for regularized pressure. </p>
+
+</div>
+</div>
 <a id="a95a86da960ec6ccdbca4a3607c9a829c" name="a95a86da960ec6ccdbca4a3607c9a829c"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a95a86da960ec6ccdbca4a3607c9a829c">&#9670;&#160;</a></span>PPR_C_TAU</h2>
 
@@ -1276,28 +1545,186 @@ Public Attributes</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">double Parameters::PPR_C_TAU = 0.2</td>
+          <td class="memname">double Parameters::PPR_C_TAU = 0.25</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p>Scaling coefficient for the relaxation time (C_tau). </p>
+<p>Baseline non-equilibrium relaxation time scale ratio C_tau_base. </p>
 
 </div>
 </div>
-<a id="af87a3836862aaee3cc9362880314d0c6" name="af87a3836862aaee3cc9362880314d0c6"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#af87a3836862aaee3cc9362880314d0c6">&#9670;&#160;</a></span>PPR_THETA</h2>
+<a id="a6050e2ebc3d0bb7d8f9474030389aee9" name="a6050e2ebc3d0bb7d8f9474030389aee9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6050e2ebc3d0bb7d8f9474030389aee9">&#9670;&#160;</a></span>PPR_CONSTANT_C_TAU_VAL</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">double Parameters::PPR_THETA = 1.0</td>
+          <td class="memname">double Parameters::PPR_CONSTANT_C_TAU_VAL = 0.25</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p>Regularization feedback coefficient (theta). </p>
+<p>Constant relaxation timescale ratio C_tau when PPR_CONSTANT_MODE = true. </p>
+
+</div>
+</div>
+<a id="aa64b0284e22e035a6e62846eacf4d8b3" name="aa64b0284e22e035a6e62846eacf4d8b3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa64b0284e22e035a6e62846eacf4d8b3">&#9670;&#160;</a></span>PPR_CONSTANT_MODE</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool Parameters::PPR_CONSTANT_MODE = false</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Use spatially-uniform user-specified theta and C_tau everywhere. </p>
+
+</div>
+</div>
+<a id="a4788433f580045db1bea03402c0cdfc5" name="a4788433f580045db1bea03402c0cdfc5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4788433f580045db1bea03402c0cdfc5">&#9670;&#160;</a></span>PPR_CONSTANT_THETA</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::PPR_CONSTANT_THETA = 2.0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Constant coupling intensity theta when PPR_CONSTANT_MODE = true. </p>
+
+</div>
+</div>
+<a id="a7eea30de9df39a6f789bcf87f4c25385" name="a7eea30de9df39a6f789bcf87f4c25385"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7eea30de9df39a6f789bcf87f4c25385">&#9670;&#160;</a></span>PPR_N_CELLS_SHOCK</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::PPR_N_CELLS_SHOCK = 2.5</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Target shock transition width in cell units. </p>
+
+</div>
+</div>
+<a id="a317974db0c592153c75517fb44025b2a" name="a317974db0c592153c75517fb44025b2a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a317974db0c592153c75517fb44025b2a">&#9670;&#160;</a></span>PPR_SENSOR_NOISE_FLOOR</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::PPR_SENSOR_NOISE_FLOOR = 0.05</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Acoustic noise floor for kinematic shock sensor. </p>
+
+</div>
+</div>
+<a id="ad0f8d4f70a856a0f4cc88f551628594c" name="ad0f8d4f70a856a0f4cc88f551628594c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad0f8d4f70a856a0f4cc88f551628594c">&#9670;&#160;</a></span>PPR_SENSOR_SATURATION</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::PPR_SENSOR_SATURATION = 0.50</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Shock saturation threshold for kinematic shock sensor. </p>
+
+</div>
+</div>
+<a id="a1efa3d549dd2ebc0af819afde6de64bd" name="a1efa3d549dd2ebc0af819afde6de64bd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1efa3d549dd2ebc0af819afde6de64bd">&#9670;&#160;</a></span>PPR_USE_DUCROS</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool Parameters::PPR_USE_DUCROS = true</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ac8f05727cc9addd91034d699aa5591a3" name="ac8f05727cc9addd91034d699aa5591a3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac8f05727cc9addd91034d699aa5591a3">&#9670;&#160;</a></span>PPR_USE_LIMITER</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool Parameters::PPR_USE_LIMITER = true</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Apply phantom pressure bounds limiter. </p>
+
+</div>
+</div>
+<a id="a31776739e4bc538a28b64218c2bfd906" name="a31776739e4bc538a28b64218c2bfd906"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a31776739e4bc538a28b64218c2bfd906">&#9670;&#160;</a></span>PPR_USE_STENCIL_EXPANSION</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool Parameters::PPR_USE_STENCIL_EXPANSION = true</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Expand theta and C_tau to 1-ring face neighbors. </p>
+
+</div>
+</div>
+<a id="a57f1688136cfd79729ee5eb9b964030f" name="a57f1688136cfd79729ee5eb9b964030f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a57f1688136cfd79729ee5eb9b964030f">&#9670;&#160;</a></span>PPR_USE_VON_NEUMANN_CEILING</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool Parameters::PPR_USE_VON_NEUMANN_CEILING = true</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Apply C_tau_vonNeumann ceiling outside shocks. </p>
+
+</div>
+</div>
+<a id="a87c3dc074904fdb034e39441c5ff19db" name="a87c3dc074904fdb034e39441c5ff19db"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a87c3dc074904fdb034e39441c5ff19db">&#9670;&#160;</a></span>PPR_WALL_BC</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string Parameters::PPR_WALL_BC = &quot;EQUILIBRATED&quot;</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Wall BC for phantom pressure: EQUILIBRATED. </p>
 
 </div>
 </div>
@@ -1477,6 +1904,262 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="a913bd4d6c92b6361def455522f3f5328" name="a913bd4d6c92b6361def455522f3f5328"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a913bd4d6c92b6361def455522f3f5328">&#9670;&#160;</a></span>RIEMANN_SOLVER</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string Parameters::RIEMANN_SOLVER = &quot;HLLC&quot;</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Unified Riemann numerical flux solver ("HLLC" or "RUSANOV"). </p>
+
+</div>
+</div>
+<a id="a82cb5c3da4da958ccec149ca84b59407" name="a82cb5c3da4da958ccec149ca84b59407"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a82cb5c3da4da958ccec149ca84b59407">&#9670;&#160;</a></span>RMI_AMP</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::RMI_AMP = 0.05</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Initial perturbation amplitude a0. </p>
+
+</div>
+</div>
+<a id="a86b9b705e36401d1289844243f9d5edf" name="a86b9b705e36401d1289844243f9d5edf"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a86b9b705e36401d1289844243f9d5edf">&#9670;&#160;</a></span>RMI_LY</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::RMI_LY = 1.0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Perturbation wavelength / domain height Ly. </p>
+
+</div>
+</div>
+<a id="a4612432de1da9ef2294dd6b6f11ca83f" name="a4612432de1da9ef2294dd6b6f11ca83f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4612432de1da9ef2294dd6b6f11ca83f">&#9670;&#160;</a></span>RMI_MS</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::RMI_MS = 1.5</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Incident shock Mach number. </p>
+
+</div>
+</div>
+<a id="a8d97c5567d3fed5a752a3ace311d5391" name="a8d97c5567d3fed5a752a3ace311d5391"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8d97c5567d3fed5a752a3ace311d5391">&#9670;&#160;</a></span>RMI_RHO1</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::RMI_RHO1 = 1.0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Light fluid density (unshocked region 1). </p>
+
+</div>
+</div>
+<a id="a03b199f100f1ddfb9387c61b194945e1" name="a03b199f100f1ddfb9387c61b194945e1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a03b199f100f1ddfb9387c61b194945e1">&#9670;&#160;</a></span>RMI_RHO2</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::RMI_RHO2 = 3.0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Heavy fluid density (unshocked region 2). </p>
+
+</div>
+</div>
+<a id="a482d6e37726292b98c7b5ae7bcf9ec71" name="a482d6e37726292b98c7b5ae7bcf9ec71"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a482d6e37726292b98c7b5ae7bcf9ec71">&#9670;&#160;</a></span>RMI_SIGMA</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::RMI_SIGMA = 0.01</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Smooth interface transition width. </p>
+
+</div>
+</div>
+<a id="a5ceea00aa02c0f580f5ddd8b8e84d3fb" name="a5ceea00aa02c0f580f5ddd8b8e84d3fb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5ceea00aa02c0f580f5ddd8b8e84d3fb">&#9670;&#160;</a></span>RMI_X0</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::RMI_X0 = 0.5</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Mean interface X location. </p>
+
+</div>
+</div>
+<a id="acc1ea02ba43341f0142ccf77ed420951" name="acc1ea02ba43341f0142ccf77ed420951"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#acc1ea02ba43341f0142ccf77ed420951">&#9670;&#160;</a></span>RMI_XS</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::RMI_XS = 0.2</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Initial shock X location. </p>
+
+</div>
+</div>
+<a id="ad1678a397dd9ae4208bca941ebe1c856" name="ad1678a397dd9ae4208bca941ebe1c856"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad1678a397dd9ae4208bca941ebe1c856">&#9670;&#160;</a></span>SHOCK_VORTEX_MS</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::SHOCK_VORTEX_MS = 1.2</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Incident shock Mach number. </p>
+
+</div>
+</div>
+<a id="a01f55971472fb0eb9f46713994d217bf" name="a01f55971472fb0eb9f46713994d217bf"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a01f55971472fb0eb9f46713994d217bf">&#9670;&#160;</a></span>SHOCK_VORTEX_MV</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::SHOCK_VORTEX_MV = 0.25</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Vortex Mach number (strength). </p>
+
+</div>
+</div>
+<a id="a6e37065ab0159678482cd09782495563" name="a6e37065ab0159678482cd09782495563"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6e37065ab0159678482cd09782495563">&#9670;&#160;</a></span>SHOCK_VORTEX_RC</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::SHOCK_VORTEX_RC = 0.2</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Vortex core radius scale. </p>
+
+</div>
+</div>
+<a id="a218c41b63c2cf97fea4dfc53fcac27ac" name="a218c41b63c2cf97fea4dfc53fcac27ac"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a218c41b63c2cf97fea4dfc53fcac27ac">&#9670;&#160;</a></span>SHOCK_VORTEX_XS</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::SHOCK_VORTEX_XS = 0.5</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Initial shock X location. </p>
+
+</div>
+</div>
+<a id="a295b6ce4f2a50b0a9c5eef68f090966d" name="a295b6ce4f2a50b0a9c5eef68f090966d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a295b6ce4f2a50b0a9c5eef68f090966d">&#9670;&#160;</a></span>SHOCK_VORTEX_XV</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::SHOCK_VORTEX_XV = 1.5</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Initial vortex core X location. </p>
+
+</div>
+</div>
+<a id="a0361fb51aa3a9c4082eb0b7831e88a5f" name="a0361fb51aa3a9c4082eb0b7831e88a5f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0361fb51aa3a9c4082eb0b7831e88a5f">&#9670;&#160;</a></span>SHOCK_VORTEX_YV</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::SHOCK_VORTEX_YV = 0.0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Initial vortex core Y location. </p>
+
+</div>
+</div>
+<a id="a9e0bc28b475b2da6375b145aeeb779e5" name="a9e0bc28b475b2da6375b145aeeb779e5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9e0bc28b475b2da6375b145aeeb779e5">&#9670;&#160;</a></span>SMOOTH_PLOT_OUTPUTS</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool Parameters::SMOOTH_PLOT_OUTPUTS = true</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Apply BBCH C0 interface smoothing to exported VTK plot files (.vtu). </p>
+
+</div>
+</div>
 <a id="a5aa4e5b8e3fc7d32dadf37d0e903d202" name="a5aa4e5b8e3fc7d32dadf37d0e903d202"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a5aa4e5b8e3fc7d32dadf37d0e903d202">&#9670;&#160;</a></span>SOURCE_CAP_COEFF</h2>
 
@@ -1634,6 +2317,22 @@ Public Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Reference freestream Y-velocity. </p>
+
+</div>
+</div>
+<a id="a4d5b7544ca3474bb6971e410be6a46de" name="a4d5b7544ca3474bb6971e410be6a46de"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4d5b7544ca3474bb6971e410be6a46de">&#9670;&#160;</a></span>W_INF</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Parameters::W_INF = 0.0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Reference freestream Z-velocity. </p>
 
 </div>
 </div>

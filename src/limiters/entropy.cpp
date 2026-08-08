@@ -37,7 +37,7 @@ Limiters::LimiterStats Limiters::apply_entropy_limiter(Solver &solver) {
 
         // Gather neighborhood entropy minimum from conforming neighbors
         for (int f = 0; f < 4; ++f) {
-            if (c->neighbors[f]) {
+            if (c->neighbors[f] && c->neighbors[f]->level == c->level) {
                 s_floor = std::min(s_floor, c->neighbors[f]->s_min_val);
             }
         }

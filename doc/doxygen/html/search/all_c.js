@@ -1,6 +1,11 @@
 var searchData=
 [
-  ['operator_28_29_0',['operator()',['../structState.html#abe10574d5709bd83b6b3e96cc52bb0fe',1,'State::operator()(int v, int ey, int ex, int iy, int ix)'],['../structState.html#a48e5faa0d3dca4037b3698d71d0874bc',1,'State::operator()(int v, int ey, int ex, int iy, int ix) const']]],
-  ['output_5fdt_1',['OUTPUT_DT',['../structParameters.html#a0ee5b44f97306d274ca63e5a232cf905',1,'Parameters']]],
-  ['output_5finterval_2',['OUTPUT_INTERVAL',['../structParameters.html#a1fc24b7f53ca3b0cb3b38672ed688a1d',1,'Parameters']]]
+  ['oblique_5fshock_5fbeta_5fdeg_0',['OBLIQUE_SHOCK_BETA_DEG',['../structParameters.html#a0f5375efe4f11dda6fd2ed724c11fa03',1,'Parameters']]],
+  ['oblique_5fshock_5fm_1',['OBLIQUE_SHOCK_M',['../structParameters.html#a5dc452816239b88f411bf5a0a95010ca',1,'Parameters']]],
+  ['operator_28_29_2',['operator()',['../structFlatMatrix.html#a2af5712e2a53cea804319a65c0ddd375',1,'FlatMatrix::operator()(size_t r, size_t c) const noexcept'],['../structFlatMatrix.html#ae8e49983c7027fd7d9c3c87cbb75bec0',1,'FlatMatrix::operator()(size_t r, size_t c) noexcept'],['../structStateDim_3_012_01_4.html#a845703d3a05de91b63d1fd55e0e396c7',1,'StateDim&lt; 2 &gt;::operator()(int v, int ey, int ex, int iy, int ix)'],['../structStateDim_3_012_01_4.html#a10bbcf25bc4c03dbbbcc55ed538a572a',1,'StateDim&lt; 2 &gt;::operator()(int v, int ey, int ex, int iy, int ix) const'],['../structStateDim_3_013_01_4.html#af5f921789baa8afc2b262500f934f9c3',1,'StateDim&lt; 3 &gt;::operator()(int v, int ez, int ey, int ex, int iz, int iy, int ix)'],['../structStateDim_3_013_01_4.html#acf07df42c8c741b02ce2e3f4734c62e2',1,'StateDim&lt; 3 &gt;::operator()(int v, int ez, int ey, int ex, int iz, int iy, int ix) const']]],
+  ['operator_5b_5d_3',['operator[]',['../structFlatMatrix_1_1RowProxy.html#a610eb22347547300fb4cbeb38b470f60',1,'FlatMatrix::RowProxy::operator[]()'],['../structFlatMatrix_1_1MutRowProxy.html#a2305690f0d32b1858b3b7db687202a91',1,'FlatMatrix::MutRowProxy::operator[]()'],['../structFlatMatrix.html#a8d551fa747704d53542629e0f27b54b2',1,'FlatMatrix::operator[](size_t r) const noexcept'],['../structFlatMatrix.html#a70c3d68b323804c26fdf51e60a5d5606',1,'FlatMatrix::operator[](size_t r) noexcept']]],
+  ['output_5fadaptive_5ftheta_4',['OUTPUT_ADAPTIVE_THETA',['../structParameters.html#ad0fd85352cabe2b2fd9a7c6ca9895919',1,'Parameters']]],
+  ['output_5fdiv_5fnd_5',['OUTPUT_DIV_ND',['../structParameters.html#a4c45e5400757e65f9fbf0fe8f595d1fe',1,'Parameters']]],
+  ['output_5fdt_6',['OUTPUT_DT',['../structParameters.html#a0ee5b44f97306d274ca63e5a232cf905',1,'Parameters']]],
+  ['output_5finterval_7',['OUTPUT_INTERVAL',['../structParameters.html#a1fc24b7f53ca3b0cb3b38672ed688a1d',1,'Parameters']]]
 ];

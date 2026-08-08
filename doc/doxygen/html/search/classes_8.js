@@ -1,7 +1,7 @@
 var searchData=
 [
-  ['sbmdiagnostics_0',['SBMDiagnostics',['../structImmersedBoundary_1_1SBMDiagnostics.html',1,'ImmersedBoundary']]],
-  ['solver_1',['Solver',['../classSolver.html',1,'']]],
-  ['state_2',['State',['../structState.html',1,'']]],
-  ['surrogatefluxpoint_3',['SurrogateFluxPoint',['../structImmersedBoundary_1_1SurrogateFluxPoint.html',1,'ImmersedBoundary']]]
+  ['parabolashape_0',['ParabolaShape',['../structImmersedBoundary_1_1ParabolaShape.html',1,'ImmersedBoundary']]],
+  ['parameters_1',['Parameters',['../structParameters.html',1,'']]],
+  ['polygon_2',['Polygon',['../structGeometry_1_1Polygon.html',1,'Geometry']]],
+  ['probedef_3',['ProbeDef',['../structProbeDef.html',1,'']]]
 ];

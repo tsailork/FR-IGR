@@ -67,7 +67,7 @@ void compute_element_theta_2d(const std::vector<CellDim<2>*>& cells,
         double u_buf[MAX_PTS][MAX_PTS];
         double v_buf[MAX_PTS][MAX_PTS];
         double P_phys_buf[MAX_PTS][MAX_PTS];
-        double P_phan_buf[MAX_PTS][MAX_PTS];
+        double P_phan_buf[MAX_PTS][MAX_PTS]; (void)P_phan_buf;
 
         for (int iy = 0; iy < Np; ++iy) {
             for (int ix = 0; ix < Np; ++ix) {
@@ -204,7 +204,7 @@ void compute_element_theta_2d(const std::vector<CellDim<2>*>& cells,
         double v_avg = rhov_sum / rho_avg;
         double P_avg = std::max(eps, (p.GAMMA - 1.0) * (E_sum - 0.5 * rho_avg * (u_avg*u_avg + v_avg*v_avg)));
         double a_avg = std::sqrt(p.GAMMA * P_avg / rho_avg);
-        double M_avg = std::sqrt(u_avg*u_avg + v_avg*v_avg) / a_avg;
+        double M_avg = std::sqrt(u_avg*u_avg + v_avg*v_avg) / a_avg; (void)M_avg;
         double M_normal_avg = Mn_sum;
 
         double M_mach_use = M_normal_avg;
@@ -302,7 +302,7 @@ void relax_phantom_pressure_2d(CellDim<2>& cell, double dt_stage, const Basis& b
             double E = cell.get_U(3, iy, ix, Np);
 
             double P_phys = std::max(eps, (p.GAMMA - 1.0) * (E - 0.5 * rho * (u*u + v*v)));
-            double P_phan = cell.S_field[k] / rho;
+            double P_phan = cell.S_field[k] / rho; (void)P_phan;
             double a_phys = std::sqrt(p.GAMMA * P_phys / rho);
             double speed = std::sqrt(u*u + v*v);
 
@@ -563,7 +563,7 @@ void compute_element_theta_3d(const std::vector<CellDim<3>*>& cells,
                     double w_vel = w_buf[iz][iy][ix];
                     double E = c->get_U(4, iz, iy, ix, Np);
                     double P_phys = P_phys_buf[iz][iy][ix];
-                    double P_phan = P_phan_buf[iz][iy][ix];
+                    double P_phan = P_phan_buf[iz][iy][ix]; (void)P_phan;
                     double a_phys = std::sqrt(p.GAMMA * P_phys / rho);
 
                     // Option 1: Shock-Normal Mach estimation in 3D
@@ -624,7 +624,7 @@ void compute_element_theta_3d(const std::vector<CellDim<3>*>& cells,
         double P_avg = std::max(eps, (p.GAMMA - 1.0) * (E_sum - 0.5 * rho_avg * (u_avg*u_avg + v_avg*v_avg + w_avg*w_avg)));
         double a_avg = std::sqrt(p.GAMMA * P_avg / rho_avg);
         double M_avg = std::sqrt(u_avg*u_avg + v_avg*v_avg + w_avg*w_avg) / a_avg;
-        double M_normal_avg = Mn_sum;
+        double M_normal_avg = Mn_sum; (void)M_normal_avg;
 
         double M_mach_use = M_avg;
 

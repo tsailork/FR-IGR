@@ -1,3 +1,4 @@
+#include <array>
 #include "../doctest.h"
 #include "../../src/ib/ib.hpp"
 #include "../../src/ib/sbm_geometry.hpp"

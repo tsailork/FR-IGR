@@ -1,10 +1,6 @@
-/**
- * @file adi_solver.cpp
- * @brief Thomas algorithm and symmetrized ADI passes for the elliptic IGR solver.
- */
-
 #include "adi_solver.hpp"
 #include "../core/solver.hpp"
+#include "../core/exceptions.hpp"
 #include <iostream>
 
 void solve_tridiagonal(const std::vector<double>& a,
@@ -36,6 +32,7 @@ void solve_tridiagonal(const std::vector<double>& a,
 void Solver::solve_adi_pass(Block& b, const std::vector<double>& S,
                             std::vector<double>& Out, bool x_first)
 {
-    std::cerr << "Error: Symmetrized ADI solver is deprecated and disabled.\n";
-    std::exit(EXIT_FAILURE);
+    (void)b; (void)S; (void)Out; (void)x_first;
+    throw fr::NumericalException("Symmetrized ADI solver is deprecated and disabled.");
 }
+

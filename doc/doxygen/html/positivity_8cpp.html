@@ -96,9 +96,20 @@ $(function(){initNavTree('positivity_8cpp.html','',''); });
 <a href="#details">More...</a></p>
 <div class="textblock"><code>#include &quot;<a class="el" href="positivity_8hpp_source.html">positivity.hpp</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="limiter__common_8hpp_source.html">limiter_common.hpp</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="limiter__modal_8hpp_source.html">limiter_modal.hpp</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="limiter__bbch_8hpp_source.html">limiter_bbch.hpp</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="limiter__hermite_8hpp_source.html">limiter_hermite.hpp</a>&quot;</code><br />
 </div><a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Zhang-Shu bounds-preserving (positivity) limiter on decoupled Cells. </p>
-</div></div><!-- contents -->
+<p>Mathematical Formulation (Zhang-Shu Positivity Limiter): Preserves strict physical bounds <picture><source srcset="form_83_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \rho(\mathbf{x}) \ge \epsilon $" src="form_83.png"/></picture> and <picture><source srcset="form_84_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ p(\mathbf{x}) \ge \epsilon $" src="form_84.png"/></picture> by scaling high-order polynomial fluctuations towards element averages:   </p><p class="formulaDsp">
+<picture><source srcset="form_85_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[U_{\theta}(\mathbf{x}) = \theta (U(\mathbf{x}) - \bar{U}) + \bar{U}, \quad \theta \in [0, 1]
+\&zwj;]" src="form_85.png"/></picture>
+</p>
+<p> Where <picture><source srcset="form_86_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \theta $" src="form_86.png"/></picture> is computed per-element via exact bisection / closed-form ratio:   </p><p class="formulaDsp">
+<picture><source srcset="form_87_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[\theta_{\rho} = \min \left( 1, \frac{\bar{\rho} - \epsilon}{\bar{\rho} - \rho_{min}} \right)
+\&zwj;]" src="form_87.png"/></picture>
+</p>
+ </div></div><!-- contents -->
 </div><!-- doc-content -->
 <div id="page-nav" class="page-nav-panel">
 <div id="page-nav-resize-handle"></div>

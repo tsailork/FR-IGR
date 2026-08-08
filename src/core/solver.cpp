@@ -10,6 +10,7 @@
  */
 #include "solver.hpp"
 #include "geometry.hpp"
+#include "sfc_partitioner.hpp"
 #include <stdexcept>
 #include <unordered_set>
 #include <queue>
@@ -190,6 +191,19 @@ SolverDim<2>::SolverDim(const Parameters& params)
     initialize_cells();
     setup_cell_connectivity();
 
+    // Initialize CAD engine first so wall refinement and mask queries find the CAD STL
+    if (p.ENABLE_IB && (p.IB_SHAPE == "CAD" || !p.IB_CAD_FILE.empty())) {
+        if (cad_engine.load_mesh(p.IB_CAD_FILE)) {
+            cad_engine.transform(p.IB_CAD_SCALE, p.IB_CAD_TRANSLATE_X, p.IB_CAD_TRANSLATE_Y, p.IB_CAD_TRANSLATE_Z,
+                                p.IB_CAD_ROTATE_PITCH, p.IB_CAD_ROTATE_YAW, p.IB_CAD_ROTATE_ROLL);
+            cad_engine.build_bvh(p.IB_CAD_BVH_MAX_LEAF_TRIANGLES);
+            std::cout << "[CAD] Loaded CAD mesh: '" << p.IB_CAD_FILE 
+                      << "' (" << cad_engine.get_triangle_count() << " triangles)\n";
+        } else {
+            std::cerr << "[CAD ERROR] Failed to load CAD file: '" << p.IB_CAD_FILE << "'!\n";
+        }
+    }
+
     // Apply initial refinement based on walls and manual zones
     flag_refinement_coarsening();
 
@@ -198,6 +212,9 @@ SolverDim<2>::SolverDim(const Parameters& params)
         update_ib_mask_field(current_time);
         if (p.IB_METHOD == "SBM") {
             ImmersedBoundary::initialize_sbm_geometry(*this);
+        } else if (p.IB_METHOD == "GCM_FR") {
+            gcm_solver.update_geometry_and_masks(*this, current_time);
+            gcm_solver.apply_ghost_nodal_states(*this, current_time);
         }
     }
 }
@@ -366,7 +383,8 @@ static inline void morton_decode_3d(uint64_t morton, uint32_t& x, uint32_t& y, u
 }
 
 SolverDim<2>::~SolverDim() {
-    for (Cell* c : cells) {
+    std::unordered_set<Cell2D*> unique_cells(cells.begin(), cells.end());
+    for (Cell2D* c : unique_cells) {
         delete c;
     }
     cells.clear();
@@ -506,6 +524,12 @@ void Solver::enforce_21_ratio() {
 }
 
 void Solver::initialize_cells() {
+    std::unordered_set<Cell*> unique_cells(cells.begin(), cells.end());
+    for (Cell* c : unique_cells) {
+        delete c;
+    }
+    cells.clear();
+
     int max_block_id = -1;
     for (const auto& b : blocks) {
         if (b.id > max_block_id) max_block_id = b.id;
@@ -735,6 +759,7 @@ void Solver::get_neigh_state_cell(const Cell& c, int node_idx, bool is_right_or_
                                   double* neigh_state, double& sig_neigh, int dir,
                                   double S_face, double* S_neigh) const
 {
+    (void)node_idx;
     sig_neigh = 0.0;
     for (int v = 0; v < 4; ++v) neigh_state[v] = 0.0;
 
@@ -834,7 +859,7 @@ void Solver::get_flux_pointwise_cell(const Cell& c, int iy, int ix,
 // =========================================================================
 
 static void prolong_2d(const std::vector<double>& parent_arr, std::vector<double>& child_arr,
-                       const std::vector<std::vector<double>>& PX, const std::vector<std::vector<double>>& PY,
+                       const FlatMatrix& PX, const FlatMatrix& PY,
                        int n_vars, int N) {
     for (int v = 0; v < n_vars; ++v) {
         for (int iy = 0; iy < N; ++iy) {
@@ -853,7 +878,7 @@ static void prolong_2d(const std::vector<double>& parent_arr, std::vector<double
 }
 
 static void prolong_2d_scalar(const std::vector<double>& parent_arr, std::vector<double>& child_arr,
-                              const std::vector<std::vector<double>>& PX, const std::vector<std::vector<double>>& PY,
+                              const FlatMatrix& PX, const FlatMatrix& PY,
                               int N) {
     for (int iy = 0; iy < N; ++iy) {
         for (int ix = 0; ix < N; ++ix) {
@@ -872,7 +897,7 @@ static void prolong_2d_scalar(const std::vector<double>& parent_arr, std::vector
 static void restrict_2d(const std::vector<double>& c0_arr, const std::vector<double>& c1_arr,
                         const std::vector<double>& c2_arr, const std::vector<double>& c3_arr,
                         std::vector<double>& parent_arr,
-                        const std::vector<std::vector<double>>& R1, const std::vector<std::vector<double>>& R2,
+                        const FlatMatrix& R1, const FlatMatrix& R2,
                         int n_vars, int N) {
     for (int v = 0; v < n_vars; ++v) {
         for (int iy = 0; iy < N; ++iy) {
@@ -911,7 +936,7 @@ static void restrict_2d(const std::vector<double>& c0_arr, const std::vector<dou
 static void restrict_2d_scalar(const std::vector<double>& c0_arr, const std::vector<double>& c1_arr,
                                const std::vector<double>& c2_arr, const std::vector<double>& c3_arr,
                                std::vector<double>& parent_arr,
-                               const std::vector<std::vector<double>>& R1, const std::vector<std::vector<double>>& R2,
+                               const FlatMatrix& R1, const FlatMatrix& R2,
                                int N) {
     for (int iy = 0; iy < N; ++iy) {
         for (int ix = 0; ix < N; ++ix) {
@@ -946,26 +971,53 @@ static void restrict_2d_scalar(const std::vector<double>& c0_arr, const std::vec
 }
 
 static void prolong_3d(const std::vector<double>& parent_arr, std::vector<double>& child_arr,
-                       const std::vector<std::vector<double>>& PX,
-                       const std::vector<std::vector<double>>& PY,
-                       const std::vector<std::vector<double>>& PZ,
+                       const FlatMatrix& PX,
+                       const FlatMatrix& PY,
+                       const FlatMatrix& PZ,
                        int n_vars, int N) {
     int N3 = N * N * N;
     int N2 = N * N;
     for (int v = 0; v < n_vars; ++v) {
+        const double* P_v = &parent_arr[v * N3];
+        double* C_v = &child_arr[v * N3];
+
+        // Pass 1: X-contraction T1[pz][py][ix] = sum_{px} P[pz][py][px] * PX(px, ix)
+        double T1[MAX_PTS][MAX_PTS][MAX_PTS] = {};
+        for (int pz = 0; pz < N; ++pz) {
+            for (int py = 0; py < N; ++py) {
+                for (int ix = 0; ix < N; ++ix) {
+                    double sum = 0.0;
+                    for (int px = 0; px < N; ++px) {
+                        sum += P_v[pz * N2 + py * N + px] * PX(px, ix);
+                    }
+                    T1[pz][py][ix] = sum;
+                }
+            }
+        }
+
+        // Pass 2: Y-contraction T2[pz][iy][ix] = sum_{py} T1[pz][py][ix] * PY(py, iy)
+        double T2[MAX_PTS][MAX_PTS][MAX_PTS] = {};
+        for (int pz = 0; pz < N; ++pz) {
+            for (int iy = 0; iy < N; ++iy) {
+                for (int ix = 0; ix < N; ++ix) {
+                    double sum = 0.0;
+                    for (int py = 0; py < N; ++py) {
+                        sum += T1[pz][py][ix] * PY(py, iy);
+                    }
+                    T2[pz][iy][ix] = sum;
+                }
+            }
+        }
+
+        // Pass 3: Z-contraction C[iz][iy][ix] = sum_{pz} T2[pz][iy][ix] * PZ(pz, iz)
         for (int iz = 0; iz < N; ++iz) {
             for (int iy = 0; iy < N; ++iy) {
                 for (int ix = 0; ix < N; ++ix) {
-                    double val = 0.0;
+                    double sum = 0.0;
                     for (int pz = 0; pz < N; ++pz) {
-                        for (int py = 0; py < N; ++py) {
-                            for (int px = 0; px < N; ++px) {
-                                double p_val = parent_arr[v * N3 + pz * N2 + py * N + px];
-                                val += p_val * PZ[pz][iz] * PY[py][iy] * PX[px][ix];
-                            }
-                        }
+                        sum += T2[pz][iy][ix] * PZ(pz, iz);
                     }
-                    child_arr[v * N3 + iz * N2 + iy * N + ix] = val;
+                    C_v[iz * N2 + iy * N + ix] = sum;
                 }
             }
         }
@@ -973,24 +1025,48 @@ static void prolong_3d(const std::vector<double>& parent_arr, std::vector<double
 }
 
 static void prolong_3d_scalar(const std::vector<double>& parent_arr, std::vector<double>& child_arr,
-                              const std::vector<std::vector<double>>& PX,
-                              const std::vector<std::vector<double>>& PY,
-                              const std::vector<std::vector<double>>& PZ,
+                              const FlatMatrix& PX,
+                              const FlatMatrix& PY,
+                              const FlatMatrix& PZ,
                               int N) {
     int N2 = N * N;
+    // Pass 1: X-contraction
+    double T1[MAX_PTS][MAX_PTS][MAX_PTS] = {};
+    for (int pz = 0; pz < N; ++pz) {
+        for (int py = 0; py < N; ++py) {
+            for (int ix = 0; ix < N; ++ix) {
+                double sum = 0.0;
+                for (int px = 0; px < N; ++px) {
+                    sum += parent_arr[pz * N2 + py * N + px] * PX(px, ix);
+                }
+                T1[pz][py][ix] = sum;
+            }
+        }
+    }
+
+    // Pass 2: Y-contraction
+    double T2[MAX_PTS][MAX_PTS][MAX_PTS] = {};
+    for (int pz = 0; pz < N; ++pz) {
+        for (int iy = 0; iy < N; ++iy) {
+            for (int ix = 0; ix < N; ++ix) {
+                double sum = 0.0;
+                for (int py = 0; py < N; ++py) {
+                    sum += T1[pz][py][ix] * PY(py, iy);
+                }
+                T2[pz][iy][ix] = sum;
+            }
+        }
+    }
+
+    // Pass 3: Z-contraction
     for (int iz = 0; iz < N; ++iz) {
         for (int iy = 0; iy < N; ++iy) {
             for (int ix = 0; ix < N; ++ix) {
-                double val = 0.0;
+                double sum = 0.0;
                 for (int pz = 0; pz < N; ++pz) {
-                    for (int py = 0; py < N; ++py) {
-                        for (int px = 0; px < N; ++px) {
-                            double p_val = parent_arr[pz * N2 + py * N + px];
-                            val += p_val * PZ[pz][iz] * PY[py][iy] * PX[px][ix];
-                        }
-                    }
+                    sum += T2[pz][iy][ix] * PZ(pz, iz);
                 }
-                child_arr[iz * N2 + iy * N + ix] = val;
+                child_arr[iz * N2 + iy * N + ix] = sum;
             }
         }
     }
@@ -998,7 +1074,7 @@ static void prolong_3d_scalar(const std::vector<double>& parent_arr, std::vector
 
 static void restrict_3d(const std::vector<const std::vector<double>*>& children_arrs,
                         std::vector<double>& parent_arr,
-                        const std::vector<std::vector<double>>& R1, const std::vector<std::vector<double>>& R2,
+                        const FlatMatrix& R1, const FlatMatrix& R2,
                         int n_vars, int N) {
     int N3 = N * N * N;
     int N2 = N * N;
@@ -1029,7 +1105,7 @@ static void restrict_3d(const std::vector<const std::vector<double>*>& children_
 
 static void restrict_3d_scalar(const std::vector<const std::vector<double>*>& children_arrs,
                                std::vector<double>& parent_arr,
-                               const std::vector<std::vector<double>>& R1, const std::vector<std::vector<double>>& R2,
+                               const FlatMatrix& R1, const FlatMatrix& R2,
                                int N) {
     int N2 = N * N;
     for (int iz = 0; iz < N; ++iz) {
@@ -1056,7 +1132,21 @@ static void restrict_3d_scalar(const std::vector<const std::vector<double>*>& ch
 }
 
 // =========================================================================
-// Quadtree AMR: Member Function Implementations
+// Quadtree AMR: Member Function Implementations & L2 Projections
+//
+// Mathematical Formulation (Conservative L_2 Restriction & Prolongation):
+//
+// 1. Prolongation (Parent -> Children):
+//    Evaluates parent polynomial degrees-of-freedom at sub-element Gauss points via 1D projection matrices P1, P2:
+//    \f[
+//    U_{child}(\xi) = \sum_{j=1}^{P+1} P_{ij} U_{parent}(\xi_j)
+//    \f]
+//
+// 2. Restriction (Children -> Parent):
+//    Strictly conservative L_2 inner product projection preserving global conservation:
+//    \f[
+//    U_{parent} = \frac{1}{2} \int_{-1}^{1} U_{child}(\xi) d\xi = \sum_{c} \sum_{j=1}^{P+1} R_{ij} U_{child, c}(\xi_j)
+//    \f]
 // =========================================================================
 
 Cell* Solver::find_leaf_cell(int block_id, double x, double y) const {
@@ -1334,6 +1424,7 @@ void Solver::update_tree(const std::vector<int>& target_levels) {
         }
 
         setup_cell_connectivity();
+        fr::core::SFCPartitioner::sort_cells_2d(cells);
     }
 }
 
@@ -1350,6 +1441,8 @@ void Solver::flag_refinement_coarsening() {
         }
     }
 
+    std::unordered_set<Cell*> wall_layer_cells;
+
     if (p.WALL_REFINEMENT_LEVEL > 0 && p.WALL_REFINEMENT_CELLS > 0) {
         std::vector<Cell*> wall_cells;
         for (Cell* c : cells) {
@@ -1362,6 +1455,9 @@ void Solver::flag_refinement_coarsening() {
                         break;
                     }
                 }
+            }
+            if (!touches_wall && p.ENABLE_IB && c->is_ib_cut_cell) {
+                touches_wall = true;
             }
             if (touches_wall) {
                 wall_cells.push_back(c);
@@ -1392,6 +1488,7 @@ void Solver::flag_refinement_coarsening() {
         for (size_t i = 0; i < cells.size(); ++i) {
             if (dist.find(cells[i]) != dist.end()) {
                 target_levels[i] = std::max(target_levels[i], p.WALL_REFINEMENT_LEVEL);
+                wall_layer_cells.insert(cells[i]);
             }
         }
     }
@@ -1447,6 +1544,9 @@ void Solver::flag_refinement_coarsening() {
         #pragma omp parallel for schedule(static)
         for (size_t i = 0; i < cells.size(); ++i) {
             Cell* c = cells[i];
+            // Preserve near-wall AMR target levels (do not coarsen wall-layer cells)
+            if (wall_layer_cells.find(c) != wall_layer_cells.end()) continue;
+
             for (int L = 0; L <= c->level; ++L) {
                 int diff = c->level - L;
                 double dx_L = c->dx * (1 << diff);
@@ -1456,9 +1556,9 @@ void Solver::flag_refinement_coarsening() {
                 double xc_L = xmin_L + 0.5 * dx_L;
                 double yc_L = ymin_L + 0.5 * dy_L;
                 double half_diag = 0.5 * std::sqrt(dx_L * dx_L + dy_L * dy_L);
-                
+
                 double sdf = get_ib_sdf_at_time(xc_L, yc_L, current_time);
-                if (sdf < -half_diag) {
+                if (sdf < -2.0 * half_diag) {
                     target_levels[i] = L;
                     break; // Found the coarsest level
                 }
@@ -1487,14 +1587,16 @@ SolverDim<3>::SolverDim(const Parameters& params)
 }
 
 SolverDim<3>::~SolverDim() {
-    for (Cell3D* c : cells) {
+    std::unordered_set<Cell3D*> unique_cells(cells.begin(), cells.end());
+    for (Cell3D* c : unique_cells) {
         delete c;
     }
     cells.clear();
 }
 
 void SolverDim<3>::initialize_cells() {
-    for (Cell3D* c : cells) {
+    std::unordered_set<Cell3D*> unique_cells(cells.begin(), cells.end());
+    for (Cell3D* c : unique_cells) {
         delete c;
     }
     cells.clear();
@@ -1763,7 +1865,6 @@ void SolverDim<3>::setup_cell_connectivity() {
                     c->neighbors[f] = *it;
                     c->neighbor_faces[f] = (f == 0) ? 'R' : (f == 1) ? 'L' : (f == 2) ? 'T' : (f == 3) ? 'B' : (f == 4) ? 'K' : 'F';
                 } else {
-                    bool found = false;
                     for (int p_level = L - 1; p_level >= 0; --p_level) {
                         int scale = 1 << (L - p_level);
                         uint64_t p_id = get_morton_id(nid, p_level, ex_neigh / scale, ey_neigh / scale, ez_neigh / scale);
@@ -1773,7 +1874,6 @@ void SolverDim<3>::setup_cell_connectivity() {
                         if (it2 != cells.end() && (*it2)->morton_id == p_id) {
                             c->neighbors[f] = *it2;
                             c->neighbor_faces[f] = (f == 0) ? 'R' : (f == 1) ? 'L' : (f == 2) ? 'T' : (f == 3) ? 'B' : (f == 4) ? 'K' : 'F';
-                            found = true;
                             break;
                         }
                     }
@@ -2063,6 +2163,7 @@ void SolverDim<3>::get_neigh_state_cell(const Cell3D& c, int node_idx, bool is_r
                                         double* neigh_state, double& sig_neigh, int dir,
                                         double S_face, double* S_neigh) const
 {
+    (void)node_idx;
     sig_neigh = 0.0;
     for (int v = 0; v < 5; ++v) neigh_state[v] = 0.0;
 
@@ -2113,13 +2214,6 @@ void SolverDim<3>::get_neigh_state_cell(const Cell3D& c, int node_idx, bool is_r
         neigh_state[4] = ni.ref_p / (p.GAMMA - 1.0) + 0.5 * ni.ref_rho * (ni.ref_u*ni.ref_u + ni.ref_v*ni.ref_v + ni.ref_w*ni.ref_w);
         sig_neigh = 0.0;
     } else if (ni.is_characteristic) {
-        double ref_state[5];
-        ref_state[0] = ni.ref_rho;
-        ref_state[1] = ni.ref_rho * ni.ref_u;
-        ref_state[2] = ni.ref_rho * ni.ref_v;
-        ref_state[3] = ni.ref_rho * ni.ref_w;
-        ref_state[4] = ni.ref_p / (p.GAMMA - 1.0) + 0.5 * ni.ref_rho * (ni.ref_u*ni.ref_u + ni.ref_v*ni.ref_v + ni.ref_w*ni.ref_w);
-        
         double n_x = 0.0, n_y = 0.0, n_z = 0.0;
         if (dir == 0) n_x = is_right_or_top ? 1.0 : -1.0;
         else if (dir == 1) n_y = is_right_or_top ? 1.0 : -1.0;

@@ -40,8 +40,8 @@ PPR_USE_SPATIAL_CLAMP       = false
 PPR_USE_LIMITER             = false
 
 PPR_CONSTANT_MODE      = true    # Bypass all adaptive logic
-PPR_CONSTANT_THETA     = 30.0    # Uniform theta everywhere
-PPR_CONSTANT_C_TAU_VAL = 0.5     # Uniform C_tau everywhere
+PPR_CONSTANT_THETA     = 15.0    # Uniform theta everywhere
+PPR_CONSTANT_C_TAU_VAL = 0.6     # Uniform C_tau everywhere
 
 [APSR]
 ENABLE_APSR = true

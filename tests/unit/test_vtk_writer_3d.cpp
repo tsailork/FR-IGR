@@ -1,3 +1,4 @@
+#include <array>
 #include "../doctest.h"
 #include "../../src/core/solver.hpp"
 #include "../../src/core/parameters.hpp"

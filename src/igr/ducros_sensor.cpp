@@ -61,7 +61,7 @@ double compute_combined_ppr_sensor(const Cell& c, int iy, int ix,
     double curl_u = dv_dx - du_dy;
 
     // Ducros sensor capped to [0, 1]
-    double s_ducros = compute_ducros_sensor(div_u, curl_u);
+    double s_ducros = compute_ducros_sensor(div_u, curl_u); (void)s_ducros;
 
     // Non-dimensional divergence (uncapped)
     double rho   = std::max(p.POS_LIMITER_EPS, c.get_U(0, iy, ix, p.N_PTS));

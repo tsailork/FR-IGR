@@ -105,17 +105,37 @@ Namespaces</h2></td></tr>
 <tr class="memitem:IC" id="r_IC"><td class="memItemLeft">namespace &#160;</td><td class="memItemRight"><a class="el" href="namespaceIC.html">IC</a></td></tr>
 <tr class="memdesc:namespaceIC"><td class="mdescLeft">&#160;</td><td class="mdescRight">Contains initial condition routines and smoothing utilities. <br /></td></tr>
 </table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 id="header-typedef-members" class="groupheader"><a id="typedef-members" name="typedef-members"></a>
+Typedefs</h2></td></tr>
+<tr class="memitem:a250b1453bb9d3c21d8b0f5249d7680de" id="r_a250b1453bb9d3c21d8b0f5249d7680de"><td class="memItemLeft">using&#160;</td><td class="memItemRight"><a class="el" href="#a250b1453bb9d3c21d8b0f5249d7680de">Solver</a> = <a class="el" href="classSolverDim.html">SolverDim</a>&lt;2&gt;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-func-members" class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
 <tr class="memitem:aa0a10b481c8bd9d7ba66d6bcec60b56d" id="r_aa0a10b481c8bd9d7ba66d6bcec60b56d"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="namespaceIC.html#aa0a10b481c8bd9d7ba66d6bcec60b56d">IC::apply</a> (<a class="el" href="classSolver.html">Solver</a> &amp;solver)</td></tr>
-<tr class="memdesc:aa0a10b481c8bd9d7ba66d6bcec60b56d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Applies the chosen initial condition to the state <picture><source srcset="form_80_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$U$" src="form_80.png"/></picture> across all blocks.  <br /></td></tr>
+<tr class="memdesc:aa0a10b481c8bd9d7ba66d6bcec60b56d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Applies the chosen initial condition to the state <picture><source srcset="form_77_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$U$" src="form_77.png"/></picture> across all blocks.  <br /></td></tr>
+<tr class="memitem:aa0ac91472b87b586d2bafc213b0a61bf" id="r_aa0ac91472b87b586d2bafc213b0a61bf"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="namespaceIC.html#aa0ac91472b87b586d2bafc213b0a61bf">IC::apply</a> (<a class="el" href="classSolverDim.html">SolverDim</a>&lt; 3 &gt; &amp;solver)</td></tr>
 <tr class="memitem:a81543274240a242d64dd75d5f57fbbd5" id="r_a81543274240a242d64dd75d5f57fbbd5"><td class="memItemLeft">double&#160;</td><td class="memItemRight"><a class="el" href="namespaceIC.html#a81543274240a242d64dd75d5f57fbbd5">IC::sigmoid</a> (double x, double x0, double delta)</td></tr>
 <tr class="memdesc:a81543274240a242d64dd75d5f57fbbd5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluates a sigmoid function for initial condition smoothing.  <br /></td></tr>
 </table>
 <a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Initial condition setup declarations for the Euler solver. </p>
-<p>Defines the namespace and routines responsible for populating the initial thermodynamic state ( <picture><source srcset="form_79_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\rho, \rho u, \rho v, E$" src="form_79.png"/></picture>) of the domain prior to SSP-RK3 integration. </p>
-</div></div><!-- contents -->
+<p>Defines the namespace and routines responsible for populating the initial thermodynamic state ( <picture><source srcset="form_76_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$\rho, \rho u, \rho v, E$" src="form_76.png"/></picture>) of the domain prior to SSP-RK3 integration. </p>
+</div><a name="doc-typedef-members" id="doc-typedef-members"></a><h2 id="header-doc-typedef-members" class="groupheader">Typedef Documentation</h2>
+<a id="a250b1453bb9d3c21d8b0f5249d7680de" name="a250b1453bb9d3c21d8b0f5249d7680de"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a250b1453bb9d3c21d8b0f5249d7680de">&#9670;&#160;</a></span>Solver</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">using Solver = <a class="el" href="classSolverDim.html">SolverDim</a>&lt;2&gt;</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+</div><!-- contents -->
 </div><!-- doc-content -->
 <div id="page-nav" class="page-nav-panel">
 <div id="page-nav-resize-handle"></div>

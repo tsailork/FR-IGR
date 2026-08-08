@@ -1,3 +1,4 @@
+#include <array>
 #include "../doctest.h"
 #include "../test_helpers.hpp"
 #include "../../src/io/diagnostics.hpp"
@@ -47,15 +48,15 @@ TEST_SUITE("Diagnostics") {
         TempDir td("diag_test_dir");
         auto old_path = std::filesystem::current_path();
         std::filesystem::current_path(td.get());
-        
+
         Diagnostics d(p, solver, 0.0);
         d.update(solver, 0.001, 1);
-        
+
         std::filesystem::current_path(old_path);
-        
+
         std::string probe_path = td.get() + "/csv_outputs/probe.csv";
         std::string res_path = td.get() + "/csv_outputs/residuals.csv";
-        
+
         CHECK(std::filesystem::exists(probe_path));
         CHECK(std::filesystem::exists(res_path));
         

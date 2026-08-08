@@ -103,22 +103,26 @@ $(function(){initNavTree('main_8cpp.html','',''); });
 <code>#include &quot;<a class="el" href="sbm__geometry_8hpp_source.html">ib/sbm_geometry.hpp</a>&quot;</code><br />
 <code>#include &lt;cmath&gt;</code><br />
 <code>#include &lt;iostream&gt;</code><br />
+<code>#include &lt;fstream&gt;</code><br />
 <code>#include &lt;filesystem&gt;</code><br />
+<code>#include &lt;memory&gt;</code><br />
 <code>#include &lt;cstdio&gt;</code><br />
 </div><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-func-members" class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
+<tr class="memitem:aea308f484c60c813222f4552e7a42c44" id="r_aea308f484c60c813222f4552e7a42c44"><td class="memTemplParams" colspan="2">template&lt;int Dim&gt; </td></tr>
+<tr class="memitem:aea308f484c60c813222f4552e7a42c44 template"><td class="memItemLeft">int&#160;</td><td class="memItemRight"><a class="el" href="#aea308f484c60c813222f4552e7a42c44">run_simulation</a> (<a class="el" href="structParameters.html">Parameters</a> &amp;params)</td></tr>
 <tr class="memitem:ae66f6b31b5ad750f1fe042a706a4e3d4" id="r_ae66f6b31b5ad750f1fe042a706a4e3d4"><td class="memItemLeft">int&#160;</td><td class="memItemRight"><a class="el" href="#ae66f6b31b5ad750f1fe042a706a4e3d4">main</a> ()</td></tr>
 </table>
 <a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Main entry point for the Flux Reconstruction Euler solver. </p>
-<p>Orchestrates the full CFD simulation pipeline:</p><ol type="1">
+<p>Orchestrates the full CFD simulation pipeline in 2D and 3D:</p><ol type="1">
 <li>Parameter and domain grid loading.</li>
-<li><a class="el" href="classSolver.html" title="Central solver class governing numerical integration, multi-block communication, and limiters.">Solver</a> initialization (applying initial conditions or VTK format restart serialization).</li>
+<li><a class="el" href="classSolver.html" title="Forward declaration of the main Solver class to break dependency cycles.">Solver</a> initialization (applying initial conditions or VTK format restart serialization).</li>
 <li>Explicit time-stepping loop using dynamic CFL stability conditions and SSP-RK3 integration.</li>
 <li>Periodic execution of diagnostics, state checkpoints, and ParaView plot generation.</li>
 </ol>
-<dl class="section see"><dt>See also</dt><dd><a class="el" href="classSolver.html#aa140ab3343657e002b37fed10f1b2e81" title="Perform one full SSP-RK3 integration step.">Solver::step_rk3</a> </dd>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="classSolverDim_3_012_01_4.html#a1955c5bddc43bdc741da8b102e874ca6" title="Perform one full SSP-RK3 integration step.">Solver::step_rk3</a> </dd>
 <dd>
 <a class="el" href="classVTKWriter.html#aaaac7b3b094b8679d26c345469b2361f" title="Write a high-resolution visualization-friendly plot snapshot.">VTKWriter::write_plot</a> </dd></dl>
 </div><a name="doc-func-members" id="doc-func-members"></a><h2 id="header-doc-func-members" class="groupheader">Function Documentation</h2>
@@ -132,6 +136,25 @@ Functions</h2></td></tr>
           <td class="memname">int main </td>
           <td>(</td>
           <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aea308f484c60c813222f4552e7a42c44" name="aea308f484c60c813222f4552e7a42c44"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aea308f484c60c813222f4552e7a42c44">&#9670;&#160;</a></span>run_simulation()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;int Dim&gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">int run_simulation </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structParameters.html">Parameters</a> &amp;</td>          <td class="paramname"><span class="paramname"><em>params</em></span></td><td>)</td>
           <td></td>
         </tr>
       </table>

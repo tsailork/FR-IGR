@@ -5,28 +5,36 @@
 
 #include "../core/solver.hpp"
 #include "../ppr/ppr.hpp"
-#ifdef _OPENMP
-#include <omp.h>
-#endif
+#include "../core/exceptions.hpp"
 #include <iostream>
 #include <iomanip>
 #include <cstdlib>
+#include <cmath>
+#include <algorithm>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 void Solver::check_stability() const {
+    bool unstable = false;
+
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
         if (p.ENABLE_MULTIRATE && !c->element_active) continue;
+        if (p.ENABLE_IB && c->solid_mask) continue;
         for (int iy = 0; iy < p.N_PTS; ++iy) {
             for (int ix = 0; ix < p.N_PTS; ++ix) {
+                if (p.ENABLE_IB && !c->ib_mask.empty() && c->ib_mask[iy * p.N_PTS + ix] >= 0.5) continue;
                 double rho  = c->get_U(0, iy, ix, p.N_PTS);
                 double rhou = c->get_U(1, iy, ix, p.N_PTS);
                 double rhov = c->get_U(2, iy, ix, p.N_PTS);
                 double E    = c->get_U(3, iy, ix, p.N_PTS);
                 double press = (p.GAMMA - 1.0) * (E - 0.5*(rhou*rhou + rhov*rhov)/rho);
-                if (std::isnan(rho) || std::isnan(press) || rho <= 0.0 || press <= 0.0) {
+                if (std::isnan(rho) || std::isnan(press) || rho <= 0.0 || press < 0.0) {
                     #pragma omp critical
                     {
+                        unstable = true;
                         std::cerr << std::scientific << std::setprecision(15)
                                   << "\n[STABILITY ERROR] cell_index=" << i
                                   << " morton_id=" << c->morton_id
@@ -37,11 +45,13 @@ void Solver::check_stability() const {
                                   << "\n  rhov = " << rhov
                                   << "\n  E    = " << E
                                   << "\n  p    = " << press << "\n";
-                        exit(1);
                     }
                 }
             }
         }
+    }
+    if (unstable) {
+        throw fr::DivergenceException("Non-physical fluid state detected in 2D grid cell.");
     }
 }
 
@@ -96,6 +106,7 @@ double Solver::compute_dt() const {
 }
 
 void SolverDim<3>::check_stability() const {
+    bool unstable = false;
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell3D* c = cells[i];
@@ -111,6 +122,7 @@ void SolverDim<3>::check_stability() const {
             if (std::isnan(rho) || std::isnan(press) || rho <= 0.0 || press <= 0.0) {
                 #pragma omp critical
                 {
+                    unstable = true;
                     std::cerr << std::scientific << std::setprecision(15)
                               << "\n[STABILITY ERROR 3D] cell_index=" << i
                               << " node=" << pt
@@ -120,10 +132,12 @@ void SolverDim<3>::check_stability() const {
                               << "\n  rhow = " << rhow
                               << "\n  E    = " << E
                               << "\n  p    = " << press << "\n";
-                    exit(1);
                 }
             }
         }
+    }
+    if (unstable) {
+        throw fr::DivergenceException("Non-physical fluid state detected in 3D grid cell.");
     }
 }
 

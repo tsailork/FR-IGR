@@ -169,6 +169,7 @@ inline double min_entropy_in_cell(const Cell& c, const Parameters& p, int npts) 
     double s_min = 1e30;
     for (int iy = 0; iy < npts; ++iy)
         for (int ix = 0; ix < npts; ++ix) {
+            if (p.ENABLE_IB && !c.ib_mask.empty() && c.ib_mask[iy * npts + ix] >= 0.5) continue;
             double r  = std::max(1e-14, c.get_U(0, iy, ix, npts));
             double ru = c.get_U(1, iy, ix, npts);
             double rv = c.get_U(2, iy, ix, npts);

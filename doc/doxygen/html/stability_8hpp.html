@@ -98,9 +98,9 @@ $(function(){initNavTree('stability_8hpp.html','',''); });
 <p><a href="stability_8hpp_source.html">Go to the source code of this file.</a></p>
 <a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Redirection hook and placeholder for the CFL condition and stability checking subsystems. </p>
-<dl class="section note"><dt>Note</dt><dd>The dynamic timestep calculations and state stability verifications are implemented as member functions of the main <span class="tt"><a class="el" href="classSolver.html" title="Central solver class governing numerical integration, multi-block communication, and limiters.">Solver</a></span> class:<ul>
-<li><span class="tt"><a class="el" href="classSolver.html#a62d2c24ff3855c5059b7e7a7c73f03a4" title="Compute dynamic timestep size ( ) based on CFL criteria.">Solver::compute_dt()</a></span></li>
-<li><span class="tt"><a class="el" href="classSolver.html#ac9d48e1cdc7aa8e51b197aa64398c65f" title="Verify the physical admissibility of conserved states (no NaN/Inf density or pressure).">Solver::check_stability()</a></span></li>
+<dl class="section note"><dt>Note</dt><dd>The dynamic timestep calculations and state stability verifications are implemented as member functions of the main <span class="tt"><a class="el" href="classSolver.html" title="Forward declaration of the main Solver class to break dependency cycles.">Solver</a></span> class:<ul>
+<li><span class="tt"><a class="el" href="classSolverDim_3_012_01_4.html#a02a13a5250d417f2d73d582b12ca9a07" title="Compute dynamic timestep size based on CFL criteria.">Solver::compute_dt()</a></span></li>
+<li><span class="tt"><a class="el" href="classSolverDim_3_012_01_4.html#a6b3da6c9de29cbf575de0dd875636a74" title="Verify the physical admissibility of conserved states (no NaN/Inf density or pressure).">Solver::check_stability()</a></span></li>
 </ul>
 </dd></dl>
 <p>The corresponding declarations are located in <span class="tt"><a class="el" href="solver_8hpp.html" title="Main Solver class and grid block structures for the FR-IGR simulation engine.">solver.hpp</a></span>, and implementations are located in <span class="tt"><a class="el" href="stability_8cpp.html" title="Stability error detection and CFL dynamic stability bounds on decoupled Cells.">stability.cpp</a></span>. This file acts as a placeholder to preserve compilation unit boundaries.</p>

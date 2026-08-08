@@ -1,3 +1,4 @@
+#include <array>
 #include "../doctest.h"
 #include "../../src/igr/adi_solver.hpp"
 #include <vector>

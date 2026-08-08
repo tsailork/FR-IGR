@@ -96,10 +96,11 @@ $(function(){initNavTree('namespaceRestart.html','',''); });
 Functions</h2></td></tr>
 <tr class="memitem:a492feab4e904564b66b5f9bf0d441ae8" id="r_a492feab4e904564b66b5f9bf0d441ae8"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#a492feab4e904564b66b5f9bf0d441ae8">load_restart</a> (const std::string &amp;filename, <a class="el" href="classSolver.html">Solver</a> &amp;solver)</td></tr>
 <tr class="memdesc:a492feab4e904564b66b5f9bf0d441ae8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Load a pre-existing single-file VTU restart dataset and map values to cells by Morton ID.  <br /></td></tr>
+<tr class="memitem:aee7f4632f64108155c9f87b78245f485" id="r_aee7f4632f64108155c9f87b78245f485"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#aee7f4632f64108155c9f87b78245f485">load_restart</a> (const std::string &amp;filename, <a class="el" href="classSolverDim.html">SolverDim</a>&lt; 3 &gt; &amp;solver)</td></tr>
 </table>
 <a name="doc-func-members" id="doc-func-members"></a><h2 id="header-doc-func-members" class="groupheader">Function Documentation</h2>
 <a id="a492feab4e904564b66b5f9bf0d441ae8" name="a492feab4e904564b66b5f9bf0d441ae8"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a492feab4e904564b66b5f9bf0d441ae8">&#9670;&#160;</a></span>load_restart()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a492feab4e904564b66b5f9bf0d441ae8">&#9670;&#160;</a></span>load_restart() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -121,11 +122,32 @@ Functions</h2></td></tr>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">filename</td><td>Path to the restart snapshot file. </td></tr>
-    <tr><td class="paramdir">[in,out]</td><td class="paramname">solver</td><td>The active <a class="el" href="classSolver.html" title="Central solver class governing numerical integration, multi-block communication, and limiters.">Solver</a> context. </td></tr>
+    <tr><td class="paramdir">[in,out]</td><td class="paramname">solver</td><td>The active <a class="el" href="classSolver.html" title="Forward declaration of the main Solver class to break dependency cycles.">Solver</a> context. </td></tr>
   </table>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>True if restart completes successfully, false if an error is encountered. </dd></dl>
+
+</div>
+</div>
+<a id="aee7f4632f64108155c9f87b78245f485" name="aee7f4632f64108155c9f87b78245f485"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aee7f4632f64108155c9f87b78245f485">&#9670;&#160;</a></span>load_restart() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool Restart::load_restart </td>
+          <td>(</td>
+          <td class="paramtype">const std::string &amp;</td>          <td class="paramname"><span class="paramname"><em>filename</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classSolverDim.html">SolverDim</a>&lt; 3 &gt; &amp;</td>          <td class="paramname"><span class="paramname"><em>solver</em></span>&#160;)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
 
 </div>
 </div>

@@ -1,6 +1,11 @@
 /**
  * @file parabolic.cpp
  * @brief Parabolic IGR evolution — BR2 gradient + divergence operator on decoupled Cells.
+ *
+ * @details
+ * Solves the explicit parabolic relaxation equation for entropic pressure (\Sigma):
+ * \f[ \frac{\partial \Sigma}{\partial t} = \frac{1}{\tau_R} \left( \alpha \nabla \cdot ( \lambda \nabla \Sigma ) + S_{buf} - \Sigma \right) \f]
+ * using Bassi-Rebay 2 (BR2) interface penalty fluxes for the parabolic discretization.
  */
 
 #include "../core/solver.hpp"

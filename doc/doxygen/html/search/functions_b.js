@@ -1,8 +1,6 @@
 var searchData=
 [
-  ['parse_5fini_0',['parse_ini',['../structParameters.html#adb1101c2c7ad80868005eac580fd7347',1,'Parameters']]],
-  ['point_5fin_5fpolygon_1',['point_in_polygon',['../namespaceGeometry.html#a123a18f00fe801932c02a115606541ea',1,'Geometry']]],
-  ['polygon_5fintersects_5faabb_2',['polygon_intersects_aabb',['../namespaceGeometry.html#aa66185bb6c8e39a41e7687619355085d',1,'Geometry']]],
-  ['pressure_3',['pressure',['../namespaceLimiters.html#ac039ab5e12f198658deef7fba65ddba8',1,'Limiters']]],
-  ['pressure_5fat_5ftheta_4',['pressure_at_theta',['../namespaceLimiters.html#ade4a86b7fb815db18482750e5482d1ec',1,'Limiters']]]
+  ['n_5fchoose_5fk_0',['n_choose_k',['../namespaceLimiters.html#a2379e4b1a367843f084e3076537c9ff1',1,'Limiters']]],
+  ['nc_5fchild_5fidx_1',['nc_child_idx',['../sweep__common_8hpp.html#a8c6bfc5d2b758ee28906df5a67e18d3e',1,'sweep_common.hpp']]],
+  ['numericalexception_2',['NumericalException',['../classfr_1_1NumericalException.html#afa19bb0c29dd4a7d28f5acab2e2d8203',1,'fr::NumericalException']]]
 ];

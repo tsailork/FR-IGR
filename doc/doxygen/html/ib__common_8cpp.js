@@ -5,5 +5,6 @@ var ib__common_8cpp =
     [ "ImmersedBoundary::get_circle_sdf", "namespaceImmersedBoundary.html#a932b28838fc6ccf2335149794c1bb5fd", null ],
     [ "ImmersedBoundary::get_naca_sdf", "namespaceImmersedBoundary.html#af62bc6ef9fb1d42b0408bd121270c236", null ],
     [ "ImmersedBoundary::get_parabola_sdf", "namespaceImmersedBoundary.html#a08694a4986d857953e941c4b04a26e40", null ],
-    [ "ImmersedBoundary::get_quad_sdf", "namespaceImmersedBoundary.html#af718a4a31f425036821f093cc10ec01b", null ]
+    [ "ImmersedBoundary::get_quad_sdf", "namespaceImmersedBoundary.html#af718a4a31f425036821f093cc10ec01b", null ],
+    [ "ImmersedBoundary::get_quadratic_bump_sdf", "namespaceImmersedBoundary.html#a3434e5aa5d945c3449bab5f9a27d254f", null ]
 ];

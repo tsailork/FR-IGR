@@ -303,14 +303,26 @@ void Solver::update_ib_mask_field(double time) {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < cells.size(); ++i) {
         Cell* c = cells[i];
+        bool all_solid = true;
+        bool has_ghost_sol = false;
+        bool has_fluid_sol = false;
         for (int iy = 0; iy < p.N_PTS; ++iy) {
             for (int ix = 0; ix < p.N_PTS; ++ix) {
                 double x = c->x_min + 0.5 * (1.0 + basis.z[ix]) * c->dx;
                 double y = c->y_min + 0.5 * (1.0 + basis.z[iy]) * c->dy;
                 int idx = iy * p.N_PTS + ix;
-                c->ib_mask[idx] = get_ib_mask_at_time(x, y, time, c->dx, c->dy);
+                double mask_val = get_ib_mask_at_time(x, y, time, c->dx, c->dy);
+                c->ib_mask[idx] = mask_val;
+                if (mask_val >= 0.5) {
+                    has_ghost_sol = true;
+                } else {
+                    has_fluid_sol = true;
+                    all_solid = false;
+                }
             }
         }
+        c->solid_mask = all_solid;
+        c->is_ib_cut_cell = (has_ghost_sol && has_fluid_sol);
     }
 }
 
@@ -408,6 +420,25 @@ double Solver::get_ib_mask_at_time(double x, double y, double time, double dx, d
                 return 1.0 - H;
             }
         }
+    } else if (p.IB_SHAPE == "CAD" || !p.IB_CAD_FILE.empty()) {
+        double query_pt[3] = {x, y, 0.0};
+        double phi = cad_engine.query_sdf(query_pt);
+        if (p.IB_SHARP) {
+            return (phi <= 0.0) ? 1.0 : 0.0;
+        } else {
+            double h_size = std::max(dx, dy);
+            double epsilon = p.IB_SMOOTH_WIDTH * h_size;
+            if (phi < -epsilon) {
+                return 1.0;
+            } else if (phi > epsilon) {
+                return 0.0;
+            } else {
+                double ratio = phi / epsilon;
+                static const double PI = 3.14159265358979323846;
+                double H = 0.5 * (1.0 + ratio + (1.0 / PI) * std::sin(PI * ratio));
+                return 1.0 - H;
+            }
+        }
     }
 
     return 0.0;
@@ -453,6 +484,9 @@ double Solver::get_ib_sdf_at_time(double x, double y, double time) const {
             if (d < phi) phi = d;
         }
         return phi;
+    } else if (p.IB_SHAPE == "CAD" || !p.IB_CAD_FILE.empty()) {
+        double query_pt[3] = {x, y, 0.0};
+        return cad_engine.query_sdf(query_pt);
     }
     return 1e20;
 }

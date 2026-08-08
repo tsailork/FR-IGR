@@ -87,53 +87,55 @@ struct SmoothBBPlotField {
             }
         }
 
-        // 3. Perform C0 boundary control point harmonization between neighbor cells
+        // 3. Perform C0 boundary control point harmonization between conforming neighbor cells
+        auto C_orig = C;
+
         #pragma omp parallel for schedule(static)
         for (size_t c_idx = 0; c_idx < num_cells; ++c_idx) {
             Cell* c = solver.cells[c_idx];
             // Left face (i = 0) with neighbor 0
-            if (c->neighbors[0]) {
+            if (c->neighbors[0] && c->neighbors[0]->level == c->level) {
                 int n_idx = c->neighbors[0]->cell_index;
-                if (n_idx >= 0 && static_cast<size_t>(n_idx) < num_cells) {
+                if (n_idx >= 0 && static_cast<size_t>(n_idx) < num_cells && solver.cells[n_idx] == c->neighbors[0]) {
                     for (int v = 0; v < 4; ++v) {
                         for (int j = 0; j < npts; ++j) {
-                            double avg = 0.5 * (C[c_idx][v][j][0] + C[n_idx][v][j][P]);
+                            double avg = 0.5 * (C_orig[c_idx][v][j][0] + C_orig[n_idx][v][j][P]);
                             C[c_idx][v][j][0] = avg;
                         }
                     }
                 }
             }
             // Right face (i = P) with neighbor 1
-            if (c->neighbors[1]) {
+            if (c->neighbors[1] && c->neighbors[1]->level == c->level) {
                 int n_idx = c->neighbors[1]->cell_index;
-                if (n_idx >= 0 && static_cast<size_t>(n_idx) < num_cells) {
+                if (n_idx >= 0 && static_cast<size_t>(n_idx) < num_cells && solver.cells[n_idx] == c->neighbors[1]) {
                     for (int v = 0; v < 4; ++v) {
                         for (int j = 0; j < npts; ++j) {
-                            double avg = 0.5 * (C[c_idx][v][j][P] + C[n_idx][v][j][0]);
+                            double avg = 0.5 * (C_orig[c_idx][v][j][P] + C_orig[n_idx][v][j][0]);
                             C[c_idx][v][j][P] = avg;
                         }
                     }
                 }
             }
             // Bottom face (j = 0) with neighbor 2
-            if (c->neighbors[2]) {
+            if (c->neighbors[2] && c->neighbors[2]->level == c->level) {
                 int n_idx = c->neighbors[2]->cell_index;
-                if (n_idx >= 0 && static_cast<size_t>(n_idx) < num_cells) {
+                if (n_idx >= 0 && static_cast<size_t>(n_idx) < num_cells && solver.cells[n_idx] == c->neighbors[2]) {
                     for (int v = 0; v < 4; ++v) {
                         for (int i = 0; i < npts; ++i) {
-                            double avg = 0.5 * (C[c_idx][v][0][i] + C[n_idx][v][P][i]);
+                            double avg = 0.5 * (C_orig[c_idx][v][0][i] + C_orig[n_idx][v][P][i]);
                             C[c_idx][v][0][i] = avg;
                         }
                     }
                 }
             }
             // Top face (j = P) with neighbor 3
-            if (c->neighbors[3]) {
+            if (c->neighbors[3] && c->neighbors[3]->level == c->level) {
                 int n_idx = c->neighbors[3]->cell_index;
-                if (n_idx >= 0 && static_cast<size_t>(n_idx) < num_cells) {
+                if (n_idx >= 0 && static_cast<size_t>(n_idx) < num_cells && solver.cells[n_idx] == c->neighbors[3]) {
                     for (int v = 0; v < 4; ++v) {
                         for (int i = 0; i < npts; ++i) {
-                            double avg = 0.5 * (C[c_idx][v][P][i] + C[n_idx][v][0][i]);
+                            double avg = 0.5 * (C_orig[c_idx][v][P][i] + C_orig[n_idx][v][0][i]);
                             C[c_idx][v][P][i] = avg;
                         }
                     }

@@ -9,6 +9,7 @@
  * @see Parameters
  */
 #include "parameters.hpp"
+#include "exceptions.hpp"
 #include <algorithm>
 
 #ifdef _OPENMP
@@ -118,28 +119,41 @@ void Parameters::load_domain(const std::string& filename) {
         }
     }
 
+    if (blocks.empty()) {
+        std::cerr << "[Warning] Domain file empty or unparseable. Falling back to single-block defaults.\n";
+        BlockConfig default_block;
+        default_block.id = 0;
+        default_block.N_ELEM_X = 10;
+        default_block.N_ELEM_Y = 10;
+        default_block.X_MIN = 0.0;
+        default_block.X_MAX = 1.0;
+        default_block.Y_MIN = 0.0;
+        default_block.Y_MAX = 1.0;
+        default_block.BC_L = "TRANSMISSIVE";
+        default_block.BC_R = "TRANSMISSIVE";
+        default_block.BC_B = "TRANSMISSIVE";
+        default_block.BC_T = "TRANSMISSIVE";
+        blocks.push_back(default_block);
+        return;
+    }
+
     // Sort blocks by ID
     std::sort(blocks.begin(), blocks.end(), [](const BlockConfig& a, const BlockConfig& b){
         return a.id < b.id;
     });
 
     if (blocks.size() > 511) {
-        std::cerr << "[Error] Number of blocks (" << blocks.size() << ") exceeds the maximum supported by Morton scheme (511).\n";
-        std::exit(EXIT_FAILURE);
+        throw fr::ConfigurationException("Number of blocks (" + std::to_string(blocks.size()) + ") exceeds maximum supported by Morton scheme (511).");
     }
 
     for (const auto& b : blocks) {
         if (b.N_ELEM_Z > 1) {
             if (b.N_ELEM_X > 63 || b.N_ELEM_Y > 63 || b.N_ELEM_Z > 63) {
-                std::cerr << "[Error] Block " << b.id << " dimensions (" << b.N_ELEM_X << "x" << b.N_ELEM_Y << "x" << b.N_ELEM_Z
-                          << ") exceed the maximum supported by 3D Morton scheme (63x63x63).\n";
-                std::exit(EXIT_FAILURE);
+                throw fr::ConfigurationException("Block " + std::to_string(b.id) + " dimensions exceed maximum supported by 3D Morton scheme (63x63x63).");
             }
         } else {
             if (b.N_ELEM_X > 2047 || b.N_ELEM_Y > 2047) {
-                std::cerr << "[Error] Block " << b.id << " dimensions (" << b.N_ELEM_X << "x" << b.N_ELEM_Y 
-                          << ") exceed the maximum supported by 2D Morton scheme (2047x2047).\n";
-                std::exit(EXIT_FAILURE);
+                throw fr::ConfigurationException("Block " + std::to_string(b.id) + " dimensions exceed maximum supported by 2D Morton scheme (2047x2047).");
             }
         }
     }
@@ -147,12 +161,10 @@ void Parameters::load_domain(const std::string& filename) {
     // Validation pass
     for (const auto& b : blocks) {
         if (b.N_ELEM_X <= 0 || b.N_ELEM_Y <= 0) {
-            std::cerr << "[GRID ERROR] Block " << b.id << " has invalid element counts (" << b.N_ELEM_X << ", " << b.N_ELEM_Y << ")\n";
-            exit(1);
+            throw fr::ConfigurationException("Block " + std::to_string(b.id) + " has invalid element counts.");
         }
         if (b.X_MAX <= b.X_MIN || b.Y_MAX <= b.Y_MIN) {
-            std::cerr << "[GRID ERROR] Block " << b.id << " has invalid dimensions (X: " << b.X_MIN << " to " << b.X_MAX << ", Y: " << b.Y_MIN << " to " << b.Y_MAX << ")\n";
-            exit(1);
+            throw fr::ConfigurationException("Block " + std::to_string(b.id) + " has invalid dimensions.");
         }
 
         auto check_face = [&](const std::string& bc, char self_face) {
@@ -166,8 +178,7 @@ void Parameters::load_domain(const std::string& filename) {
 
                 auto it = std::find_if(blocks.begin(), blocks.end(), [nid](const BlockConfig& config) { return config.id == nid; });
                 if (it == blocks.end()) {
-                    std::cerr << "[GRID ERROR] Block " << b.id << " face " << self_face << " points to missing block " << nid << "\n";
-                    exit(1);
+                    throw fr::ConfigurationException("Block " + std::to_string(b.id) + " face " + std::string(1, self_face) + " points to missing block " + std::to_string(nid));
                 }
                 const auto& nb = *it;
 
@@ -175,26 +186,19 @@ void Parameters::load_domain(const std::string& filename) {
                 std::string actual_bc = (nface == 'L') ? nb.BC_L : (nface == 'R') ? nb.BC_R : (nface == 'B') ? nb.BC_B : (nface == 'T') ? nb.BC_T : "";
                 
                 if (actual_bc != expected_bc) {
-                    std::cerr << "[GRID ERROR] Asymmetric boundary condition. Block " << b.id << " face " << self_face 
-                              << " points to Block " << nid << " face " << nface 
-                              << ", but that face has BC '" << actual_bc << "' (expected '" << expected_bc << "')\n";
-                    exit(1);
+                    throw fr::ConfigurationException("Asymmetric boundary condition on Block " + std::to_string(b.id) + " face " + std::string(1, self_face));
                 }
 
                 int my_elems = (self_face == 'L' || self_face == 'R') ? b.N_ELEM_Y : b.N_ELEM_X;
                 int n_elems = (nface == 'L' || nface == 'R') ? nb.N_ELEM_Y : nb.N_ELEM_X;
                 if (my_elems != n_elems) {
-                    std::cerr << "[GRID ERROR] Element count mismatch between Block " << b.id << " (" << my_elems << " elems) and Block " 
-                              << nid << " (" << n_elems << " elems) on shared interface.\n";
-                    exit(1);
+                    throw fr::ConfigurationException("Element count mismatch between Block " + std::to_string(b.id) + " and Block " + std::to_string(nid));
                 }
 
                 double my_len = (self_face == 'L' || self_face == 'R') ? (b.Y_MAX - b.Y_MIN) : (b.X_MAX - b.X_MIN);
                 double n_len = (nface == 'L' || nface == 'R') ? (nb.Y_MAX - nb.Y_MIN) : (nb.X_MAX - nb.X_MIN);
                 if (std::abs(my_len - n_len) > 1e-8) {
-                    std::cerr << "[GRID ERROR] Physical length mismatch between Block " << b.id << " (" << my_len << ") and Block " 
-                              << nid << " (" << n_len << ") on shared interface.\n";
-                    exit(1);
+                    throw fr::ConfigurationException("Physical length mismatch between Block " + std::to_string(b.id) + " and Block " + std::to_string(nid));
                 }
             }
         };
@@ -262,6 +266,7 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("ALPHA_SCALE"))       ALPHA_SCALE       = std::stod(kv["ALPHA_SCALE"]);
         if (kv.count("IGR_GRADIENT_TYPE")) IGR_GRADIENT_TYPE = kv["IGR_GRADIENT_TYPE"];
         if (kv.count("IGR_TYPE"))          IGR_TYPE          = kv["IGR_TYPE"];
+        if (kv.count("IGR_SOLVER"))        IGR_SOLVER        = kv["IGR_SOLVER"];
         if (kv.count("IGR_TAU_R"))         IGR_TAU_R         = std::stod(kv["IGR_TAU_R"]);
         if (kv.count("IGR_BR2_ETA"))       IGR_BR2_ETA       = std::stod(kv["IGR_BR2_ETA"]);
         if (kv.count("IGR_SUB_ITERS"))     IGR_SUB_ITERS     = std::stoi(kv["IGR_SUB_ITERS"]);
@@ -392,9 +397,15 @@ void Parameters::load_inputs(const std::string& filename) {
     // --- [ImmersedBoundary] ---
     if (ini.count("ImmersedBoundary")) {
         auto& kv = ini["ImmersedBoundary"];
-        if (kv.count("ENABLE_IB"))           ENABLE_IB           = (kv["ENABLE_IB"] == "true");
-        if (kv.count("ENABLE_IB_3C"))        ENABLE_IB_3C        = (kv["ENABLE_IB_3C"] == "true");
-        if (kv.count("ENABLE_SBM_DIAGNOSTICS")) ENABLE_SBM_DIAGNOSTICS = (kv["ENABLE_SBM_DIAGNOSTICS"] == "true" || kv["ENABLE_SBM_DIAGNOSTICS"] == "1");
+        auto parse_bool_local = [](const std::string& str) -> bool {
+            std::string s = str;
+            std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c){ return std::tolower(c); });
+            return (s == "true" || s == "1" || s == "yes" || s == "on");
+        };
+
+        if (kv.count("ENABLE_IB"))           ENABLE_IB           = parse_bool_local(kv["ENABLE_IB"]);
+        if (kv.count("ENABLE_IB_3C"))        ENABLE_IB_3C        = parse_bool_local(kv["ENABLE_IB_3C"]);
+        if (kv.count("ENABLE_SBM_DIAGNOSTICS")) ENABLE_SBM_DIAGNOSTICS = parse_bool_local(kv["ENABLE_SBM_DIAGNOSTICS"]);
         if (kv.count("IB_DL_SCALE"))         IB_DL_SCALE         = std::stod(kv["IB_DL_SCALE"]);
         if (kv.count("IB_L_SCALE"))          IB_L_SCALE          = std::stod(kv["IB_L_SCALE"]);
         if (kv.count("IB_METHOD"))           IB_METHOD           = kv["IB_METHOD"];
@@ -410,8 +421,47 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("IB_THERMAL_TYPE"))     IB_THERMAL_TYPE     = kv["IB_THERMAL_TYPE"];
         if (kv.count("IB_TEMPERATURE"))      IB_TEMPERATURE      = std::stod(kv["IB_TEMPERATURE"]);
         if (kv.count("IB_CHORD"))            IB_CHORD            = std::stod(kv["IB_CHORD"]);
-        if (kv.count("IB_SHARP"))            IB_SHARP            = (kv["IB_SHARP"] == "true" || kv["IB_SHARP"] == "1");
+        if (kv.count("IB_SHARP"))            IB_SHARP            = parse_bool_local(kv["IB_SHARP"]);
         if (kv.count("IB_SMOOTH_WIDTH"))     IB_SMOOTH_WIDTH     = std::stod(kv["IB_SMOOTH_WIDTH"]);
+
+        // --- GCM-FR IB & Wall-Function inputs ---
+        if (kv.count("IB_GCM_ORDER"))                 IB_GCM_ORDER                 = std::stoi(kv["IB_GCM_ORDER"]);
+        if (kv.count("IB_GCM_PROBE_DISTANCE_SCALE")) IB_GCM_PROBE_DISTANCE_SCALE = std::stod(kv["IB_GCM_PROBE_DISTANCE_SCALE"]);
+        if (kv.count("IB_GCM_INTERPOLATION_SCHEME")) IB_GCM_INTERPOLATION_SCHEME = kv["IB_GCM_INTERPOLATION_SCHEME"];
+        if (kv.count("IB_GCM_SHOCK_DAMPING"))         IB_GCM_SHOCK_DAMPING        = parse_bool_local(kv["IB_GCM_SHOCK_DAMPING"]);
+
+        if (kv.count("ENABLE_IB_WALL_FUNCTION"))     ENABLE_IB_WALL_FUNCTION     = parse_bool_local(kv["ENABLE_IB_WALL_FUNCTION"]);
+        if (kv.count("IB_WF_TYPE"))                  IB_WF_TYPE                  = kv["IB_WF_TYPE"];
+        if (kv.count("IB_WF_KAPPA"))                 IB_WF_KAPPA                 = std::stod(kv["IB_WF_KAPPA"]);
+        if (kv.count("IB_WF_B"))                     IB_WF_B                     = std::stod(kv["IB_WF_B"]);
+        if (kv.count("IB_WF_Y_PLUS_TARGET"))         IB_WF_Y_PLUS_TARGET         = std::stod(kv["IB_WF_Y_PLUS_TARGET"]);
+        if (kv.count("IB_WF_COUPLING"))              IB_WF_COUPLING              = kv["IB_WF_COUPLING"];
+        if (kv.count("IB_WF_MAX_ITER"))              IB_WF_MAX_ITER              = std::stoi(kv["IB_WF_MAX_ITER"]);
+        if (kv.count("IB_WF_TOL"))                   IB_WF_TOL                   = std::stod(kv["IB_WF_TOL"]);
+
+        if (kv.count("IB_CAD_FILE"))                 IB_CAD_FILE                 = kv["IB_CAD_FILE"];
+        if (kv.count("IB_CAD_SCALE"))                IB_CAD_SCALE                = std::stod(kv["IB_CAD_SCALE"]);
+        if (kv.count("IB_CAD_TRANSLATE_X"))          IB_CAD_TRANSLATE_X          = std::stod(kv["IB_CAD_TRANSLATE_X"]);
+        if (kv.count("IB_CAD_TRANSLATE_Y"))          IB_CAD_TRANSLATE_Y          = std::stod(kv["IB_CAD_TRANSLATE_Y"]);
+        if (kv.count("IB_CAD_TRANSLATE_Z"))          IB_CAD_TRANSLATE_Z          = std::stod(kv["IB_CAD_TRANSLATE_Z"]);
+        if (kv.count("IB_CAD_ROTATE_PITCH"))         IB_CAD_ROTATE_PITCH         = std::stod(kv["IB_CAD_ROTATE_PITCH"]);
+        if (kv.count("IB_CAD_ROTATE_YAW"))           IB_CAD_ROTATE_YAW           = std::stod(kv["IB_CAD_ROTATE_YAW"]);
+        if (kv.count("IB_CAD_ROTATE_ROLL"))          IB_CAD_ROTATE_ROLL          = std::stod(kv["IB_CAD_ROTATE_ROLL"]);
+        if (kv.count("IB_CAD_BVH_MAX_LEAF_TRIANGLES")) IB_CAD_BVH_MAX_LEAF_TRIANGLES = std::stoi(kv["IB_CAD_BVH_MAX_LEAF_TRIANGLES"]);
+
+        if (kv.count("ENABLE_IB_DYNAMIC_MOTION"))    ENABLE_IB_DYNAMIC_MOTION    = parse_bool_local(kv["ENABLE_IB_DYNAMIC_MOTION"]);
+        if (kv.count("IB_MOTION_TYPE"))              IB_MOTION_TYPE              = kv["IB_MOTION_TYPE"];
+        if (kv.count("IB_MOTION_AMPLITUDE_X"))       IB_MOTION_AMPLITUDE_X       = std::stod(kv["IB_MOTION_AMPLITUDE_X"]);
+        if (kv.count("IB_MOTION_AMPLITUDE_Y"))       IB_MOTION_AMPLITUDE_Y       = std::stod(kv["IB_MOTION_AMPLITUDE_Y"]);
+        if (kv.count("IB_MOTION_AMPLITUDE_Z"))       IB_MOTION_AMPLITUDE_Z       = std::stod(kv["IB_MOTION_AMPLITUDE_Z"]);
+        if (kv.count("IB_MOTION_FREQ_X"))            IB_MOTION_FREQ_X            = std::stod(kv["IB_MOTION_FREQ_X"]);
+        if (kv.count("IB_MOTION_FREQ_Y"))            IB_MOTION_FREQ_Y            = std::stod(kv["IB_MOTION_FREQ_Y"]);
+        if (kv.count("IB_MOTION_FREQ_Z"))            IB_MOTION_FREQ_Z            = std::stod(kv["IB_MOTION_FREQ_Z"]);
+        if (kv.count("IB_MOTION_PHASE_X"))           IB_MOTION_PHASE_X           = std::stod(kv["IB_MOTION_PHASE_X"]);
+        if (kv.count("IB_MOTION_PHASE_Y"))           IB_MOTION_PHASE_Y           = std::stod(kv["IB_MOTION_PHASE_Y"]);
+        if (kv.count("IB_MOTION_PHASE_Z"))           IB_MOTION_PHASE_Z           = std::stod(kv["IB_MOTION_PHASE_Z"]);
+        if (kv.count("ENABLE_IB_CLEARED_NODE_HANDLER")) ENABLE_IB_CLEARED_NODE_HANDLER = parse_bool_local(kv["ENABLE_IB_CLEARED_NODE_HANDLER"]);
+        if (kv.count("IB_CLEARED_NODE_INTERP"))      IB_CLEARED_NODE_INTERP      = kv["IB_CLEARED_NODE_INTERP"];
 
         // --- Custom parser for expanded dynamic/piecewise IB ---
         ib_quads.clear();

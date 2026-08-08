@@ -1,3 +1,4 @@
+#include <array>
 #include "../doctest.h"
 #include "../../src/apsr/apsr.hpp"
 #include "../../src/core/parameters.hpp"
@@ -34,11 +35,11 @@ TEST_CASE("APSR - Thermodynamics & Regularized Whitham Wave Speeds") {
     p.POS_LIMITER_EPS = 1e-12;
     p.PPR_CONSTANT_THETA = 1.0;
 
-    double U[4] = {1.0, 2.0, 0.0, 10.0}; // rho=1.0, u=2.0, v=0.0, E=10.0 -> P_phys = 3.2
+    std::array<double, 4> U = {1.0, 2.0, 0.0, 10.0}; // rho=1.0, u=2.0, v=0.0, E=10.0 -> P_phys = 3.2
     double S_val = 1.0; // P_phan = 1.0
 
     double P_phys, P_phan, P_reg, a_reg;
-    APSR::get_thermodynamics_apsr_2d(U, S_val, p, P_phys, P_phan, P_reg, a_reg);
+    APSR::get_thermodynamics_apsr_2d(U.data(), S_val, p, P_phys, P_phan, P_reg, a_reg);
 
     CHECK(P_phys == doctest::Approx(3.2));
     CHECK(P_phan == doctest::Approx(1.0));

@@ -92,20 +92,24 @@ $(function(){initNavTree('solver_8cpp.html','',''); });
 </div><!--header-->
 <div class="contents">
 
-<p><a class="el" href="classSolver.html" title="Central solver class governing numerical integration, multi-block communication, and limiters.">Solver</a> constructor and compute_rhs dispatcher.  
+<p><a class="el" href="classSolver.html" title="Forward declaration of the main Solver class to break dependency cycles.">Solver</a> constructor and compute_rhs dispatcher.  
 <a href="#details">More...</a></p>
 <div class="textblock"><code>#include &quot;<a class="el" href="solver_8hpp_source.html">solver.hpp</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="geometry_8hpp_source.html">geometry.hpp</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="sfc__partitioner_8hpp_source.html">sfc_partitioner.hpp</a>&quot;</code><br />
 <code>#include &lt;stdexcept&gt;</code><br />
 <code>#include &lt;unordered_set&gt;</code><br />
 <code>#include &lt;queue&gt;</code><br />
 <code>#include &lt;map&gt;</code><br />
 <code>#include &lt;algorithm&gt;</code><br />
 <code>#include &quot;<a class="el" href="sbm__geometry_8hpp_source.html">../ib/sbm_geometry.hpp</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="ducros__sensor_8hpp_source.html">../igr/ducros_sensor.hpp</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="ppr_8hpp_source.html">../ppr/ppr.hpp</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="apsr_8hpp_source.html">../apsr/apsr.hpp</a>&quot;</code><br />
 </div><a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
-<div class="textblock"><p><a class="el" href="classSolver.html" title="Central solver class governing numerical integration, multi-block communication, and limiters.">Solver</a> constructor and compute_rhs dispatcher. </p>
-<p>Implements the initialization logic for the high-order <span class="tt"><a class="el" href="classSolver.html" title="Central solver class governing numerical integration, multi-block communication, and limiters.">Solver</a></span> structure, including string parsing for boundary condition setups and the main RHS assembly pipeline (<span class="tt">compute_rhs</span>).</p>
-<dl class="section see"><dt>See also</dt><dd><a class="el" href="classSolver.html" title="Central solver class governing numerical integration, multi-block communication, and limiters.">Solver</a> </dd></dl>
+<div class="textblock"><p><a class="el" href="classSolver.html" title="Forward declaration of the main Solver class to break dependency cycles.">Solver</a> constructor and compute_rhs dispatcher. </p>
+<p>Implements the initialization logic for the high-order <span class="tt"><a class="el" href="classSolver.html" title="Forward declaration of the main Solver class to break dependency cycles.">Solver</a></span> structure, including string parsing for boundary condition setups and the main RHS assembly pipeline (<span class="tt">compute_rhs</span>).</p>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="classSolver.html" title="Forward declaration of the main Solver class to break dependency cycles.">Solver</a> </dd></dl>
 </div></div><!-- contents -->
 </div><!-- doc-content -->
 <div id="page-nav" class="page-nav-panel">

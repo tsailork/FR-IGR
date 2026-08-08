@@ -92,13 +92,17 @@ $(function(){initNavTree('gradient_8cpp.html','',''); });
 </div><!--header-->
 <div class="contents">
 
-<p>BR2 Phase 1 — compute gradients of conservative variables ∇U cell-locally.  
+<p>BR2 Phase 1 — compute gradients of conservative variables <picture><source srcset="form_59_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \nabla U $" src="form_59.png"/></picture> cell-locally.  
 <a href="#details">More...</a></p>
 <div class="textblock"><code>#include &quot;<a class="el" href="solver_8hpp_source.html">../core/solver.hpp</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="sbm__geometry_8hpp_source.html">../ib/sbm_geometry.hpp</a>&quot;</code><br />
 </div><a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>BR2 Phase 1 — compute gradients of conservative variables ∇U cell-locally. </p>
-</div></div><!-- contents -->
+<div class="textblock"><p>BR2 Phase 1 — compute gradients of conservative variables <picture><source srcset="form_59_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaInl" alt="$ \nabla U $" src="form_59.png"/></picture> cell-locally. </p>
+<p>Mathematical Formulation (Bassi-Rebay 2 / BR2 Scheme - Phase 1): Cell-local gradient reconstruction combining interior volume derivative and interface jump lifting terms:   </p><p class="formulaDsp">
+<picture><source srcset="form_60_dark.png" media="(prefers-color-scheme: dark)"/><img class="formulaDsp" alt="\&zwj;[\nabla U = \sum_j D_{ij} U_j + \frac{2}{\Delta x} \left[ \frac{1}{2}(U_{neigh} - U_{face}) g'_L(\xi) + \frac{1}{2}(U_{neigh} - U_{face}) g'_R(\xi) \right]
+\&zwj;]" src="form_60.png"/></picture>
+</p>
+ </div></div><!-- contents -->
 </div><!-- doc-content -->
 <div id="page-nav" class="page-nav-panel">
 <div id="page-nav-resize-handle"></div>
