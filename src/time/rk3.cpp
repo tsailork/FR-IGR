@@ -262,12 +262,27 @@ void Solver::step_rk3(double dt) {
         PPR::apply_phantom_pressure_limiter_2d(cells, basis, p);
     }
 
+    auto apply_ib_stage = [&](double dt_stage_ratio, double stage_time) {
+        if (!p.ENABLE_IB) return;
+        if (p.IB_METHOD == "GCM_FR" || p.IB_METHOD == "GCM") {
+            if (p.ENABLE_IB_DYNAMIC_MOTION || p.ib_is_dynamic) {
+                gcm_solver.update_geometry_and_masks(*this, stage_time);
+            }
+            gcm_solver.apply_ghost_nodal_states(*this, stage_time);
+            if (p.P_DEG >= 2 || p.IB_GCM_SHOCK_DAMPING) {
+                gcm_solver.apply_ib_interface_damping(*this);
+            }
+        } else if (p.IB_METHOD == "VPM_EXPLICIT") {
+            apply_ib_explicit();
+        } else {
+            apply_ib_analytical(dt_stage_ratio);
+        }
+    };
+
     if (is_parabolic)
         sub_iterate_sigma_all(0.0, 1.0);
 
-    if (p.ENABLE_IB && p.IB_METHOD == "VPM_ANALYTICAL") {
-        apply_ib_analytical(1.0);
-    }
+    apply_ib_stage(1.0, current_time);
 
     if (p.ENABLE_POS_LIMITER) {
         add_stats(Limiters::apply_positivity_limiter(cells, basis, p));
@@ -301,9 +316,7 @@ void Solver::step_rk3(double dt) {
     if (is_parabolic)
         sub_iterate_sigma_all(0.75, 0.25);
 
-    if (p.ENABLE_IB && p.IB_METHOD == "VPM_ANALYTICAL") {
-        apply_ib_analytical(0.25);
-    }
+    apply_ib_stage(0.25, current_time + dt);
 
     if (p.ENABLE_POS_LIMITER) {
         add_stats(Limiters::apply_positivity_limiter(cells, basis, p));
@@ -337,9 +350,7 @@ void Solver::step_rk3(double dt) {
     if (is_parabolic)
         sub_iterate_sigma_all(1.0 / 3.0, 2.0 / 3.0);
 
-    if (p.ENABLE_IB && p.IB_METHOD == "VPM_ANALYTICAL") {
-        apply_ib_analytical(2.0 / 3.0);
-    }
+    apply_ib_stage(2.0 / 3.0, current_time + 0.5 * dt);
 
     if (p.ENABLE_POS_LIMITER) {
         add_stats(Limiters::apply_positivity_limiter(cells, basis, p));

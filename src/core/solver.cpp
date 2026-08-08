@@ -191,6 +191,19 @@ SolverDim<2>::SolverDim(const Parameters& params)
     initialize_cells();
     setup_cell_connectivity();
 
+    // Initialize CAD engine first so wall refinement and mask queries find the CAD STL
+    if (p.ENABLE_IB && (p.IB_SHAPE == "CAD" || !p.IB_CAD_FILE.empty())) {
+        if (cad_engine.load_mesh(p.IB_CAD_FILE)) {
+            cad_engine.transform(p.IB_CAD_SCALE, p.IB_CAD_TRANSLATE_X, p.IB_CAD_TRANSLATE_Y, p.IB_CAD_TRANSLATE_Z,
+                                p.IB_CAD_ROTATE_PITCH, p.IB_CAD_ROTATE_YAW, p.IB_CAD_ROTATE_ROLL);
+            cad_engine.build_bvh(p.IB_CAD_BVH_MAX_LEAF_TRIANGLES);
+            std::cout << "[CAD] Loaded CAD mesh: '" << p.IB_CAD_FILE 
+                      << "' (" << cad_engine.get_triangle_count() << " triangles)\n";
+        } else {
+            std::cerr << "[CAD ERROR] Failed to load CAD file: '" << p.IB_CAD_FILE << "'!\n";
+        }
+    }
+
     // Apply initial refinement based on walls and manual zones
     flag_refinement_coarsening();
 
@@ -199,6 +212,9 @@ SolverDim<2>::SolverDim(const Parameters& params)
         update_ib_mask_field(current_time);
         if (p.IB_METHOD == "SBM") {
             ImmersedBoundary::initialize_sbm_geometry(*this);
+        } else if (p.IB_METHOD == "GCM_FR") {
+            gcm_solver.update_geometry_and_masks(*this, current_time);
+            gcm_solver.apply_ghost_nodal_states(*this, current_time);
         }
     }
 }
@@ -1425,6 +1441,8 @@ void Solver::flag_refinement_coarsening() {
         }
     }
 
+    std::unordered_set<Cell*> wall_layer_cells;
+
     if (p.WALL_REFINEMENT_LEVEL > 0 && p.WALL_REFINEMENT_CELLS > 0) {
         std::vector<Cell*> wall_cells;
         for (Cell* c : cells) {
@@ -1438,17 +1456,8 @@ void Solver::flag_refinement_coarsening() {
                     }
                 }
             }
-            if (!touches_wall && p.ENABLE_IB) {
-                double half_diag = 0.5 * std::sqrt(c->dx * c->dx + c->dy * c->dy);
-                double sdf_c = get_ib_sdf_at_time(c->x_center, c->y_center, current_time);
-                if (std::abs(sdf_c) <= half_diag) {
-                    touches_wall = true;
-                } else {
-                    double mask = get_ib_mask_at_time(c->x_center, c->y_center, current_time, c->dx, c->dy);
-                    if (mask > 1e-4 && mask < 1.0 - 1e-4) {
-                        touches_wall = true;
-                    }
-                }
+            if (!touches_wall && p.ENABLE_IB && c->is_ib_cut_cell) {
+                touches_wall = true;
             }
             if (touches_wall) {
                 wall_cells.push_back(c);
@@ -1479,6 +1488,7 @@ void Solver::flag_refinement_coarsening() {
         for (size_t i = 0; i < cells.size(); ++i) {
             if (dist.find(cells[i]) != dist.end()) {
                 target_levels[i] = std::max(target_levels[i], p.WALL_REFINEMENT_LEVEL);
+                wall_layer_cells.insert(cells[i]);
             }
         }
     }
@@ -1534,6 +1544,9 @@ void Solver::flag_refinement_coarsening() {
         #pragma omp parallel for schedule(static)
         for (size_t i = 0; i < cells.size(); ++i) {
             Cell* c = cells[i];
+            // Preserve near-wall AMR target levels (do not coarsen wall-layer cells)
+            if (wall_layer_cells.find(c) != wall_layer_cells.end()) continue;
+
             for (int L = 0; L <= c->level; ++L) {
                 int diff = c->level - L;
                 double dx_L = c->dx * (1 << diff);
@@ -1543,9 +1556,9 @@ void Solver::flag_refinement_coarsening() {
                 double xc_L = xmin_L + 0.5 * dx_L;
                 double yc_L = ymin_L + 0.5 * dy_L;
                 double half_diag = 0.5 * std::sqrt(dx_L * dx_L + dy_L * dy_L);
-                
+
                 double sdf = get_ib_sdf_at_time(xc_L, yc_L, current_time);
-                if (sdf < -half_diag) {
+                if (sdf < -2.0 * half_diag) {
                     target_levels[i] = L;
                     break; // Found the coarsest level
                 }

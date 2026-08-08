@@ -223,6 +223,50 @@ struct Parameters {
     bool ib_is_dynamic = false; ///< True if any geometry is moving / dynamic.
     double evaluate_ib_q(double t) const; ///< Evaluates dynamic time parameter q(t) by interpolating time map.
 
+    // -------------------------------------------------------------------------
+    // High-Mach High-Order Immersed Boundary (GCM-FR) & Wall-Function Inputs
+    // -------------------------------------------------------------------------
+    int         IB_GCM_ORDER                = -1;             ///< Polynomial order of probe extension (-1 = auto-match P_DEG, 1 = linear, 2 = quadratic, 3 = cubic).
+    double      IB_GCM_PROBE_DISTANCE_SCALE = 1.0;            ///< Scaling factor C_probe for normal probe distance (h_probe = 2|phi| + C_probe * h).
+    std::string IB_GCM_INTERPOLATION_SCHEME = "LAGRANGE_TENSOR"; ///< Interpolation scheme: "LAGRANGE_TENSOR", "HERMITE", "INVERSE_DISTANCE_WEIGHTED".
+    bool        IB_GCM_SHOCK_DAMPING        = true;           ///< Enable adaptive shock sensor damping on ghost states near strong shocks.
+
+    // Compressible Off-Body Law-of-the-Wall Model
+    bool        ENABLE_IB_WALL_FUNCTION     = false;          ///< Toggle off-body compressible law-of-the-wall model at IB boundaries.
+    std::string IB_WF_TYPE                  = "VAN_DRIEST";   ///< Wall function model: "VAN_DRIEST", "MUSKER", "REICHARDT", "LOG_LAW".
+    double      IB_WF_KAPPA                 = 0.41;           ///< Von Kármán constant kappa.
+    double      IB_WF_B                     = 5.2;            ///< Log-law intercept constant B.
+    double      IB_WF_Y_PLUS_TARGET         = 50.0;           ///< Target non-dimensional height y+ for wall-function sampling probe.
+    std::string IB_WF_COUPLING              = "EFFECTIVE_SLIP_VELOCITY"; ///< Coupling method: "EFFECTIVE_SLIP_VELOCITY", "ROBIN_DERIVATIVE", "DIRECT_SHEAR_FORCE".
+    int         IB_WF_MAX_ITER              = 50;             ///< Max Newton-Raphson iterations for u_tau solver.
+    double      IB_WF_TOL                   = 1e-6;           ///< Newton-Raphson convergence tolerance for u_tau solver.
+
+    // CAD SDF Level-Set Engine
+    std::string IB_CAD_FILE                 = "";             ///< Path to 3D CAD surface mesh file (.stl, .obj).
+    double      IB_CAD_SCALE                = 1.0;            ///< Uniform scale factor for imported CAD geometry.
+    double      IB_CAD_TRANSLATE_X          = 0.0;            ///< CAD translation X offset.
+    double      IB_CAD_TRANSLATE_Y          = 0.0;            ///< CAD translation Y offset.
+    double      IB_CAD_TRANSLATE_Z          = 0.0;            ///< CAD translation Z offset.
+    double      IB_CAD_ROTATE_PITCH         = 0.0;            ///< CAD rotation Pitch angle (degrees).
+    double      IB_CAD_ROTATE_YAW           = 0.0;            ///< CAD rotation Yaw angle (degrees).
+    double      IB_CAD_ROTATE_ROLL          = 0.0;            ///< CAD rotation Roll angle (degrees).
+    int         IB_CAD_BVH_MAX_LEAF_TRIANGLES = 8;            ///< Max triangles per BVH leaf node.
+
+    // Dynamic Body Motion & Stationary Grid Mechanics
+    bool        ENABLE_IB_DYNAMIC_MOTION    = false;          ///< Toggle dynamic body motion on stationary grid.
+    std::string IB_MOTION_TYPE              = "SINUSOIDAL";   ///< Motion type: "TRANSLATIONAL", "ROTATIONAL", "SINUSOIDAL", "PIECEWISE_MAP".
+    double      IB_MOTION_AMPLITUDE_X       = 0.0;            ///< Motion oscillation amplitude X.
+    double      IB_MOTION_AMPLITUDE_Y       = 0.1;            ///< Motion oscillation amplitude Y.
+    double      IB_MOTION_AMPLITUDE_Z       = 0.0;            ///< Motion oscillation amplitude Z.
+    double      IB_MOTION_FREQ_X            = 0.0;            ///< Motion frequency X (Hz).
+    double      IB_MOTION_FREQ_Y            = 1.0;            ///< Motion frequency Y (Hz).
+    double      IB_MOTION_FREQ_Z            = 0.0;            ///< Motion frequency Z (Hz).
+    double      IB_MOTION_PHASE_X           = 0.0;            ///< Motion phase X (rad).
+    double      IB_MOTION_PHASE_Y           = 0.0;            ///< Motion phase Y (rad).
+    double      IB_MOTION_PHASE_Z           = 0.0;            ///< Motion phase Z (rad).
+    bool        ENABLE_IB_CLEARED_NODE_HANDLER = true;        ///< Toggle freshly cleared fluid node re-initialization prior to state advancement.
+    std::string IB_CLEARED_NODE_INTERP      = "NORMAL_PROBE"; ///< Cleared node extrapolation: "NORMAL_PROBE", "NEAREST_FLUID_AVERAGE".
+
 
     // -------------------------------------------------------------------------
     // Tree Decomposition (AMR)

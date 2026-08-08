@@ -26,7 +26,7 @@ BND_SRC  = src/boundary/boundary_wall.cpp src/boundary/boundary_characteristic.c
 LIM_SRC  = src/limiters/positivity.cpp src/limiters/entropy.cpp
 TIME_SRC = src/time/stability.cpp src/time/rk3.cpp
 IO_SRC   = src/io/vtk_writer.cpp src/io/restart.cpp src/io/initial_conditions.cpp src/io/diagnostics.cpp
-IB_SRC   = src/ib/ib_common.cpp src/ib/ib_vpm.cpp src/ib/sbm_geometry.cpp
+IB_SRC   = src/ib/ib_common.cpp src/ib/ib_vpm.cpp src/ib/sbm_geometry.cpp src/ib/ib_gcm.cpp src/ib/ib_wall_function.cpp src/ib/ib_motion.cpp
 
 # Combine into objects
 OBJ_SRCS = $(CORE_SRC) $(FLUX_SRC) $(IGR_SRC) $(PPR_SRC) $(BND_SRC) $(LIM_SRC) $(TIME_SRC) $(IO_SRC) $(IB_SRC)

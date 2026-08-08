@@ -345,8 +345,108 @@ IB_L_SCALE = 1.0
 # ENABLE_IB_3C: Toggle Colombo Constraint 3.c. Set to false for solid airfoils to prevent boundary loss.
 ENABLE_IB_3C = false
 
-# IB_METHOD: Immersed Boundary method ("SBM", "VPM_ANALYTICAL", "VPM_EXPLICIT")
-IB_METHOD = SBM
+# IB_METHOD: Immersed Boundary method selection.
+# Options:
+#   - GCM_FR (Recommended for High-Mach & High-Order FR):
+#       High-Order Ghost-Cell Method for Flux Reconstruction. Populates ghost solution nodes (phi <= 0)
+#       using normal probe polynomials (P-order matching solver P_DEG) into the fluid domain.
+#   - SBM: Shifted Boundary Method (Taylor/Lagrange surrogate face extrapolation).
+#   - VPM_ANALYTICAL: Volume Penalization Method with analytical target state integration.
+#   - VPM_EXPLICIT: Volume Penalization Method with explicit source term addition.
+IB_METHOD = GCM_FR
+
+# --- High-Order Ghost Nodal Reconstruction (GCM_FR) Parameters ---
+# IB_GCM_ORDER: Polynomial degree of normal probe extension.
+# Set to -1 to automatically match the FR solution polynomial degree (P_DEG).
+# Set to 1 (linear), 2 (quadratic), 3 (cubic) to manually control extrapolation order.
+IB_GCM_ORDER = -1
+
+# IB_GCM_PROBE_DISTANCE_SCALE: Scaling factor C_probe for normal probe sampling distance.
+# Normal probe distance into fluid domain: h_probe = 2 * |phi| + C_probe * h_cell.
+IB_GCM_PROBE_DISTANCE_SCALE = 1.0
+
+# IB_GCM_INTERPOLATION_SCHEME: High-order fluid sampling interpolation scheme.
+# Options: "LAGRANGE_TENSOR" (exact host element polynomial), "HERMITE", "INVERSE_DISTANCE_WEIGHTED".
+IB_GCM_INTERPOLATION_SCHEME = LAGRANGE_TENSOR
+
+# IB_GCM_SHOCK_DAMPING: Enable adaptive shock sensor damping on ghost states near strong shocks.
+IB_GCM_SHOCK_DAMPING = true
+
+# --- Off-Body Compressible Law-of-the-Wall Model Parameters ---
+# ENABLE_IB_WALL_FUNCTION: Enable off-body compressible law-of-the-wall model at IB boundaries.
+ENABLE_IB_WALL_FUNCTION = false
+
+# IB_WF_TYPE: Wall-function model type.
+# Options: "VAN_DRIEST" (Compressible Van Driest transformation), "MUSKER", "REICHARDT", "LOG_LAW".
+IB_WF_TYPE = VAN_DRIEST
+
+# IB_WF_KAPPA: Von Kármán turbulence constant kappa.
+IB_WF_KAPPA = 0.41
+
+# IB_WF_B: Log-law intercept constant B.
+IB_WF_B = 5.2
+
+# IB_WF_Y_PLUS_TARGET: Target non-dimensional sampling height y+ for wall-function probe (logarithmic layer [30, 300]).
+IB_WF_Y_PLUS_TARGET = 50.0
+
+# IB_WF_COUPLING: Wall-function boundary condition coupling method.
+# Options: "EFFECTIVE_SLIP_VELOCITY" (Dirichlet effective slip), "ROBIN_DERIVATIVE" (Neumann/Robin shear stress constraint).
+IB_WF_COUPLING = EFFECTIVE_SLIP_VELOCITY
+
+# IB_WF_MAX_ITER: Maximum Newton-Raphson iterations for friction velocity u_tau solver.
+IB_WF_MAX_ITER = 50
+
+# IB_WF_TOL: Newton-Raphson convergence tolerance for u_tau solver.
+IB_WF_TOL = 1e-6
+
+# --- CAD SDF Level-Set Engine Parameters ---
+# IB_CAD_FILE: Path to 3D CAD surface mesh file (.stl or .obj). Leave empty for primitive shapes (CIRCLE, NACA).
+IB_CAD_FILE = 
+
+# IB_CAD_SCALE: Uniform scaling factor for imported CAD geometry.
+IB_CAD_SCALE = 1.0
+
+# IB_CAD_TRANSLATE_X, IB_CAD_TRANSLATE_Y, IB_CAD_TRANSLATE_Z: CAD geometry translation offsets.
+IB_CAD_TRANSLATE_X = 0.0
+IB_CAD_TRANSLATE_Y = 0.0
+IB_CAD_TRANSLATE_Z = 0.0
+
+# IB_CAD_ROTATE_PITCH, IB_CAD_ROTATE_YAW, IB_CAD_ROTATE_ROLL: CAD geometry Euler rotation angles (degrees).
+IB_CAD_ROTATE_PITCH = 0.0
+IB_CAD_ROTATE_YAW = 0.0
+IB_CAD_ROTATE_ROLL = 0.0
+
+# IB_CAD_BVH_MAX_LEAF_TRIANGLES: Max triangles per leaf node in BVH tree.
+IB_CAD_BVH_MAX_LEAF_TRIANGLES = 8
+
+# --- Dynamic Body Motion & Stationary Grid Mechanics Parameters ---
+# ENABLE_IB_DYNAMIC_MOTION: Enable dynamic body motion on the strictly stationary Cartesian grid.
+ENABLE_IB_DYNAMIC_MOTION = false
+
+# IB_MOTION_TYPE: Type of body motion.
+# Options: "TRANSLATIONAL", "ROTATIONAL", "SINUSOIDAL", "PIECEWISE_MAP".
+IB_MOTION_TYPE = SINUSOIDAL
+
+# IB_MOTION_AMPLITUDE_X, IB_MOTION_AMPLITUDE_Y, IB_MOTION_AMPLITUDE_Z: Oscillation amplitudes (A_x, A_y, A_z).
+IB_MOTION_AMPLITUDE_X = 0.0
+IB_MOTION_AMPLITUDE_Y = 0.1
+IB_MOTION_AMPLITUDE_Z = 0.0
+
+# IB_MOTION_FREQ_X, IB_MOTION_FREQ_Y, IB_MOTION_FREQ_Z: Oscillation frequencies (f_x, f_y, f_z) in Hz.
+IB_MOTION_FREQ_X = 0.0
+IB_MOTION_FREQ_Y = 1.0
+IB_MOTION_FREQ_Z = 0.0
+
+# IB_MOTION_PHASE_X, IB_MOTION_PHASE_Y, IB_MOTION_PHASE_Z: Oscillation phase offsets (radians).
+IB_MOTION_PHASE_X = 0.0
+IB_MOTION_PHASE_Y = 0.0
+IB_MOTION_PHASE_Z = 0.0
+
+# ENABLE_IB_CLEARED_NODE_HANDLER: Toggle freshly cleared fluid node re-initialization prior to RK advancement.
+ENABLE_IB_CLEARED_NODE_HANDLER = true
+
+# IB_CLEARED_NODE_INTERP: Cleared fluid node extrapolation method ("NORMAL_PROBE", "NEAREST_FLUID_AVERAGE").
+IB_CLEARED_NODE_INTERP = NORMAL_PROBE
 
 # IB_SHAPE: Geometry definition. Supported: "CIRCLE", "NACA", "MULTI"
 #   - CIRCLE: Uses standard single cylinder geometry.

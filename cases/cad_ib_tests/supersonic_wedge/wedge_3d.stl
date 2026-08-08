@@ -1,0 +1,58 @@
+solid wedge_3d
+facet normal -0.258819 0.965926 0
+  outer loop
+    vertex 0.5 0.0 -1.0
+    vertex 0.5 0.0 1.0
+    vertex 2.0 0.40192378864668404 1.0
+  endloop
+endfacet
+facet normal -0.258819 0.965926 0
+  outer loop
+    vertex 0.5 0.0 -1.0
+    vertex 2.0 0.40192378864668404 1.0
+    vertex 2.0 0.40192378864668404 -1.0
+  endloop
+endfacet
+facet normal 0 -1 0
+  outer loop
+    vertex 0.5 0.0 -1.0
+    vertex 2.0 0.0 -1.0
+    vertex 2.0 0.0 1.0
+  endloop
+endfacet
+facet normal 0 -1 0
+  outer loop
+    vertex 0.5 0.0 -1.0
+    vertex 2.0 0.0 1.0
+    vertex 0.5 0.0 1.0
+  endloop
+endfacet
+facet normal 1 0 0
+  outer loop
+    vertex 2.0 0.0 -1.0
+    vertex 2.0 0.40192378864668404 -1.0
+    vertex 2.0 0.40192378864668404 1.0
+  endloop
+endfacet
+facet normal 1 0 0
+  outer loop
+    vertex 2.0 0.0 -1.0
+    vertex 2.0 0.40192378864668404 1.0
+    vertex 2.0 0.0 1.0
+  endloop
+endfacet
+facet normal 0 0 -1
+  outer loop
+    vertex 0.5 0.0 -1.0
+    vertex 2.0 0.40192378864668404 -1.0
+    vertex 2.0 0.0 -1.0
+  endloop
+endfacet
+facet normal 0 0 1
+  outer loop
+    vertex 0.5 0.0 1.0
+    vertex 2.0 0.0 1.0
+    vertex 2.0 0.40192378864668404 1.0
+  endloop
+endfacet
+endsolid wedge_3d

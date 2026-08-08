@@ -25,8 +25,8 @@ void IC::apply(Solver& solver) {
     const Basis& basis = solver.basis;
 
     for (Cell* c : solver.cells) {
-        // Do not overwrite elements that are fully inside the IB
-        if (p.ENABLE_IB && c->solid_mask) continue;
+        // Do not overwrite elements that are fully inside SBM IB
+        if (p.ENABLE_IB && p.IB_METHOD == "SBM" && c->solid_mask) continue;
 
         double delta = 0.5 * std::min(c->dx, c->dy);
 
@@ -322,7 +322,7 @@ void IC::apply(SolverDim<3>& solver) {
     const Basis& basis = solver.basis;
 
     for (Cell3D* c : solver.cells) {
-        if (p.ENABLE_IB && c->solid_mask) continue;
+        if (p.ENABLE_IB && p.IB_METHOD == "SBM" && c->solid_mask) continue;
 
         int npts = p.N_PTS;
         int npts3 = npts * npts * npts;

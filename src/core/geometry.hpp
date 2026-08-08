@@ -174,3 +174,128 @@ struct Naca {
 };
 
 } // namespace Geometry
+
+namespace fr::geometry {
+
+/**
+ * @struct Triangle
+ * @brief Representation of a 3D surface triangle for CAD geometry.
+ */
+struct Triangle {
+    double v0[3];       ///< Coordinates of vertex 0 (x, y, z)
+    double v1[3];       ///< Coordinates of vertex 1 (x, y, z)
+    double v2[3];       ///< Coordinates of vertex 2 (x, y, z)
+    double normal[3];   ///< Unit face normal vector (nx, ny, nz)
+    double bbox_min[3]; ///< Axis-aligned bounding box min (x, y, z)
+    double bbox_max[3]; ///< Axis-aligned bounding box max (x, y, z)
+
+    /**
+     * @brief Computes minimum squared distance from query point p to triangle.
+     * Implements Christer Ericson 3D distance formulation checking 7 geometric regions.
+     * @param p Query point coordinates [x, y, z]
+     * @param closest_pt Output closest point on triangle surface [x, y, z]
+     * @return Minimum squared distance
+     */
+    double sq_distance_to_point(const double p[3], double closest_pt[3]) const;
+
+    /**
+     * @brief Recalculate bounding box and face normal vector.
+     */
+    void update_bounds_and_normal();
+};
+
+/**
+ * @struct BvhNode
+ * @brief Node structure for SAH Bounding Volume Hierarchy (BVH) tree acceleration.
+ */
+struct BvhNode {
+    double bbox_min[3];
+    double bbox_max[3];
+    int left_child = -1;
+    int right_child = -1;
+    int triangle_start = -1;
+    int triangle_count = 0;
+
+    bool is_leaf() const { return triangle_count > 0; }
+};
+
+/**
+ * @class CadSdfEngine
+ * @brief High-performance, zero-dependency 3D CAD mesh parser and SAH BVH Level-Set engine.
+ */
+class CadSdfEngine {
+public:
+    CadSdfEngine() = default;
+
+    /**
+     * @brief Load 3D CAD surface mesh from file (.stl or .obj). Automatically detects ASCII vs Binary STL.
+     * @param filepath Path to CAD surface mesh file
+     * @return True if loaded successfully, false otherwise
+     */
+    bool load_mesh(const std::string& filepath);
+
+    /**
+     * @brief Load ASCII or Binary STL file.
+     */
+    bool load_stl(const std::string& filepath);
+
+    /**
+     * @brief Load Wavefront OBJ file.
+     */
+    bool load_obj(const std::string& filepath);
+
+    /**
+     * @brief Load 2D boundary polygon CSV file (x, y or x, y, z).
+     */
+    bool load_csv(const std::string& filepath);
+
+    /**
+     * @brief Apply geometric transformations (scale, translation, Euler rotations in degrees).
+     */
+    void transform(double scale, double translate_x, double translate_y, double translate_z,
+                   double pitch_deg, double yaw_deg, double roll_deg);
+
+    /**
+     * @brief Build SAH (Surface Area Heuristic) Bounding Volume Hierarchy (BVH) tree acceleration.
+     * @param max_leaf_triangles Target maximum number of triangles per leaf node (default 8)
+     */
+    void build_bvh(int max_leaf_triangles = 8);
+
+    /**
+     * @brief Query Signed Distance Function phi(p) and unit surface normal n at query point p.
+     * Thread-safe for OpenMP multi-threading.
+     * @param p Query point coordinates [x, y, z]
+     * @param normal Optional output array to receive unit surface normal vector [nx, ny, nz]
+     * @return Signed distance value (negative inside solid body, positive outside in fluid)
+     */
+    double query_sdf(const double p[3], double normal[3] = nullptr) const;
+
+    /**
+     * @brief Get total triangle facet count.
+     */
+    size_t get_triangle_count() const { return triangles_.size(); }
+
+    /**
+     * @brief Clear all mesh data and BVH tree.
+     */
+    void clear();
+
+private:
+    std::vector<Triangle> triangles_;
+    std::vector<BvhNode>  bvh_nodes_;
+    int root_idx_ = 0;
+
+    void build_bvh_recursive(int node_idx, std::vector<int>& tri_indices, int max_leaf_triangles, int depth, std::vector<Triangle>& reordered_triangles);
+
+    void query_bvh_recursive(int node_idx, const double p[3],
+                             double& min_sq_dist, double closest_pt[3],
+                             int& closest_tri_idx) const;
+
+    bool ray_triangle_intersection(const double orig[3], const double dir[3],
+                                   const Triangle& tri, double& t) const;
+
+    int compute_ray_intersections(const double p[3], const double dir[3]) const;
+};
+
+} // namespace fr::geometry
+

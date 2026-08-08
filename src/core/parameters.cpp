@@ -397,9 +397,15 @@ void Parameters::load_inputs(const std::string& filename) {
     // --- [ImmersedBoundary] ---
     if (ini.count("ImmersedBoundary")) {
         auto& kv = ini["ImmersedBoundary"];
-        if (kv.count("ENABLE_IB"))           ENABLE_IB           = (kv["ENABLE_IB"] == "true");
-        if (kv.count("ENABLE_IB_3C"))        ENABLE_IB_3C        = (kv["ENABLE_IB_3C"] == "true");
-        if (kv.count("ENABLE_SBM_DIAGNOSTICS")) ENABLE_SBM_DIAGNOSTICS = (kv["ENABLE_SBM_DIAGNOSTICS"] == "true" || kv["ENABLE_SBM_DIAGNOSTICS"] == "1");
+        auto parse_bool_local = [](const std::string& str) -> bool {
+            std::string s = str;
+            std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c){ return std::tolower(c); });
+            return (s == "true" || s == "1" || s == "yes" || s == "on");
+        };
+
+        if (kv.count("ENABLE_IB"))           ENABLE_IB           = parse_bool_local(kv["ENABLE_IB"]);
+        if (kv.count("ENABLE_IB_3C"))        ENABLE_IB_3C        = parse_bool_local(kv["ENABLE_IB_3C"]);
+        if (kv.count("ENABLE_SBM_DIAGNOSTICS")) ENABLE_SBM_DIAGNOSTICS = parse_bool_local(kv["ENABLE_SBM_DIAGNOSTICS"]);
         if (kv.count("IB_DL_SCALE"))         IB_DL_SCALE         = std::stod(kv["IB_DL_SCALE"]);
         if (kv.count("IB_L_SCALE"))          IB_L_SCALE          = std::stod(kv["IB_L_SCALE"]);
         if (kv.count("IB_METHOD"))           IB_METHOD           = kv["IB_METHOD"];
@@ -415,8 +421,47 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("IB_THERMAL_TYPE"))     IB_THERMAL_TYPE     = kv["IB_THERMAL_TYPE"];
         if (kv.count("IB_TEMPERATURE"))      IB_TEMPERATURE      = std::stod(kv["IB_TEMPERATURE"]);
         if (kv.count("IB_CHORD"))            IB_CHORD            = std::stod(kv["IB_CHORD"]);
-        if (kv.count("IB_SHARP"))            IB_SHARP            = (kv["IB_SHARP"] == "true" || kv["IB_SHARP"] == "1");
+        if (kv.count("IB_SHARP"))            IB_SHARP            = parse_bool_local(kv["IB_SHARP"]);
         if (kv.count("IB_SMOOTH_WIDTH"))     IB_SMOOTH_WIDTH     = std::stod(kv["IB_SMOOTH_WIDTH"]);
+
+        // --- GCM-FR IB & Wall-Function inputs ---
+        if (kv.count("IB_GCM_ORDER"))                 IB_GCM_ORDER                 = std::stoi(kv["IB_GCM_ORDER"]);
+        if (kv.count("IB_GCM_PROBE_DISTANCE_SCALE")) IB_GCM_PROBE_DISTANCE_SCALE = std::stod(kv["IB_GCM_PROBE_DISTANCE_SCALE"]);
+        if (kv.count("IB_GCM_INTERPOLATION_SCHEME")) IB_GCM_INTERPOLATION_SCHEME = kv["IB_GCM_INTERPOLATION_SCHEME"];
+        if (kv.count("IB_GCM_SHOCK_DAMPING"))         IB_GCM_SHOCK_DAMPING        = parse_bool_local(kv["IB_GCM_SHOCK_DAMPING"]);
+
+        if (kv.count("ENABLE_IB_WALL_FUNCTION"))     ENABLE_IB_WALL_FUNCTION     = parse_bool_local(kv["ENABLE_IB_WALL_FUNCTION"]);
+        if (kv.count("IB_WF_TYPE"))                  IB_WF_TYPE                  = kv["IB_WF_TYPE"];
+        if (kv.count("IB_WF_KAPPA"))                 IB_WF_KAPPA                 = std::stod(kv["IB_WF_KAPPA"]);
+        if (kv.count("IB_WF_B"))                     IB_WF_B                     = std::stod(kv["IB_WF_B"]);
+        if (kv.count("IB_WF_Y_PLUS_TARGET"))         IB_WF_Y_PLUS_TARGET         = std::stod(kv["IB_WF_Y_PLUS_TARGET"]);
+        if (kv.count("IB_WF_COUPLING"))              IB_WF_COUPLING              = kv["IB_WF_COUPLING"];
+        if (kv.count("IB_WF_MAX_ITER"))              IB_WF_MAX_ITER              = std::stoi(kv["IB_WF_MAX_ITER"]);
+        if (kv.count("IB_WF_TOL"))                   IB_WF_TOL                   = std::stod(kv["IB_WF_TOL"]);
+
+        if (kv.count("IB_CAD_FILE"))                 IB_CAD_FILE                 = kv["IB_CAD_FILE"];
+        if (kv.count("IB_CAD_SCALE"))                IB_CAD_SCALE                = std::stod(kv["IB_CAD_SCALE"]);
+        if (kv.count("IB_CAD_TRANSLATE_X"))          IB_CAD_TRANSLATE_X          = std::stod(kv["IB_CAD_TRANSLATE_X"]);
+        if (kv.count("IB_CAD_TRANSLATE_Y"))          IB_CAD_TRANSLATE_Y          = std::stod(kv["IB_CAD_TRANSLATE_Y"]);
+        if (kv.count("IB_CAD_TRANSLATE_Z"))          IB_CAD_TRANSLATE_Z          = std::stod(kv["IB_CAD_TRANSLATE_Z"]);
+        if (kv.count("IB_CAD_ROTATE_PITCH"))         IB_CAD_ROTATE_PITCH         = std::stod(kv["IB_CAD_ROTATE_PITCH"]);
+        if (kv.count("IB_CAD_ROTATE_YAW"))           IB_CAD_ROTATE_YAW           = std::stod(kv["IB_CAD_ROTATE_YAW"]);
+        if (kv.count("IB_CAD_ROTATE_ROLL"))          IB_CAD_ROTATE_ROLL          = std::stod(kv["IB_CAD_ROTATE_ROLL"]);
+        if (kv.count("IB_CAD_BVH_MAX_LEAF_TRIANGLES")) IB_CAD_BVH_MAX_LEAF_TRIANGLES = std::stoi(kv["IB_CAD_BVH_MAX_LEAF_TRIANGLES"]);
+
+        if (kv.count("ENABLE_IB_DYNAMIC_MOTION"))    ENABLE_IB_DYNAMIC_MOTION    = parse_bool_local(kv["ENABLE_IB_DYNAMIC_MOTION"]);
+        if (kv.count("IB_MOTION_TYPE"))              IB_MOTION_TYPE              = kv["IB_MOTION_TYPE"];
+        if (kv.count("IB_MOTION_AMPLITUDE_X"))       IB_MOTION_AMPLITUDE_X       = std::stod(kv["IB_MOTION_AMPLITUDE_X"]);
+        if (kv.count("IB_MOTION_AMPLITUDE_Y"))       IB_MOTION_AMPLITUDE_Y       = std::stod(kv["IB_MOTION_AMPLITUDE_Y"]);
+        if (kv.count("IB_MOTION_AMPLITUDE_Z"))       IB_MOTION_AMPLITUDE_Z       = std::stod(kv["IB_MOTION_AMPLITUDE_Z"]);
+        if (kv.count("IB_MOTION_FREQ_X"))            IB_MOTION_FREQ_X            = std::stod(kv["IB_MOTION_FREQ_X"]);
+        if (kv.count("IB_MOTION_FREQ_Y"))            IB_MOTION_FREQ_Y            = std::stod(kv["IB_MOTION_FREQ_Y"]);
+        if (kv.count("IB_MOTION_FREQ_Z"))            IB_MOTION_FREQ_Z            = std::stod(kv["IB_MOTION_FREQ_Z"]);
+        if (kv.count("IB_MOTION_PHASE_X"))           IB_MOTION_PHASE_X           = std::stod(kv["IB_MOTION_PHASE_X"]);
+        if (kv.count("IB_MOTION_PHASE_Y"))           IB_MOTION_PHASE_Y           = std::stod(kv["IB_MOTION_PHASE_Y"]);
+        if (kv.count("IB_MOTION_PHASE_Z"))           IB_MOTION_PHASE_Z           = std::stod(kv["IB_MOTION_PHASE_Z"]);
+        if (kv.count("ENABLE_IB_CLEARED_NODE_HANDLER")) ENABLE_IB_CLEARED_NODE_HANDLER = parse_bool_local(kv["ENABLE_IB_CLEARED_NODE_HANDLER"]);
+        if (kv.count("IB_CLEARED_NODE_INTERP"))      IB_CLEARED_NODE_INTERP      = kv["IB_CLEARED_NODE_INTERP"];
 
         // --- Custom parser for expanded dynamic/piecewise IB ---
         ib_quads.clear();

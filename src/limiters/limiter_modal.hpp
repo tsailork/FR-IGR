@@ -47,6 +47,7 @@ inline bool apply_modal_positivity(Cell& c, const Basis& basis, const Parameters
     bool positivity_violated = false;
     for (int iy = 0; iy < npts; ++iy) {
         for (int ix = 0; ix < npts; ++ix) {
+            if (p.ENABLE_IB && !c.ib_mask.empty() && c.ib_mask[iy * npts + ix] >= 0.5) continue;
             double r  = c.get_U(0, iy, ix, npts);
             double ru = c.get_U(1, iy, ix, npts);
             double rv = c.get_U(2, iy, ix, npts);
@@ -109,6 +110,22 @@ inline bool apply_modal_positivity(Cell& c, const Basis& basis, const Parameters
     }
 
     const int P = npts - 1;
+
+    // Ensure cell average itself is strictly positive
+    double r_avg = U_modal[0][0][0];
+    double ru_avg = U_modal[1][0][0];
+    double rv_avg = U_modal[2][0][0];
+    double E_avg = U_modal[3][0][0];
+    if (r_avg < eps) {
+        r_avg = eps;
+        U_modal[0][0][0] = r_avg;
+    }
+    double ke_avg = 0.5 * (ru_avg * ru_avg + rv_avg * rv_avg) / r_avg;
+    double p_avg = (p.GAMMA - 1.0) * (E_avg - ke_avg);
+    if (p_avg < eps) {
+        E_avg = eps / (p.GAMMA - 1.0) + ke_avg;
+        U_modal[3][0][0] = E_avg;
+    }
 
     // Reconstruct nodal solution with scale-aware modal damping factor theta in [0, 1]
     auto reconstruct_with_theta = [&](double theta, double U_out[5][MAX_LIM_PTS][MAX_LIM_PTS]) {
@@ -198,8 +215,8 @@ inline bool apply_modal_positivity(Cell& c, const Basis& basis, const Parameters
     reconstruct_with_theta(lo, U_candidate);
 
     // Apply exact L2 cell average conservation projection to eliminate floating-point drift
-    double r_avg, ru_avg, rv_avg, E_avg;
-    Limiters::compute_cell_average(c, basis, r_avg, ru_avg, rv_avg, E_avg, npts);
+    double orig_r_avg, orig_ru_avg, orig_rv_avg, orig_E_avg;
+    Limiters::compute_cell_average(c, basis, orig_r_avg, orig_ru_avg, orig_rv_avg, orig_E_avg, npts);
     double S_avg = 0.0;
     if (p.ENABLE_PPR) {
         for (int iy = 0; iy < npts; ++iy) {
@@ -399,6 +416,83 @@ inline bool apply_modal_entropy(Cell& c, double s_floor, const Basis& basis, con
         for (int iy = 0; iy < npts; ++iy) {
             for (int ix = 0; ix < npts; ++ix) {
                 c.get_U(v, iy, ix, npts) = U_candidate[v][iy][ix] - delta / sum_w;
+            }
+        }
+    }
+
+    return true;
+}
+
+/**
+ * @brief Apply direct Legendre modal damping to cell conservative variables for IB boundary stabilization.
+ * Preserves exact cell averages (zero-order modes) while damping high-order aliasing modes.
+ */
+inline bool apply_ib_modal_filter(Cell& c, const Basis& basis, const Parameters& p, double damping_factor = 0.5) {
+    const int npts = p.N_PTS;
+    if (npts > MAX_LIM_PTS || npts <= 1) return false;
+
+    double T_modal[MAX_LIM_PTS][MAX_LIM_PTS], T_nodal[MAX_LIM_PTS][MAX_LIM_PTS];
+    for (int k = 0; k < npts; ++k) {
+        double norm = (2.0 * k + 1.0) / 2.0;
+        for (int i = 0; i < npts; ++i) {
+            T_modal[k][i] = norm * basis.w[i] * legendre_P(k, basis.z[i]);
+            T_nodal[i][k] = legendre_P(k, basis.z[i]);
+        }
+    }
+
+    double U_modal[4][MAX_LIM_PTS][MAX_LIM_PTS];
+    for (int v = 0; v < 4; ++v) {
+        double tmp[MAX_LIM_PTS][MAX_LIM_PTS];
+        for (int iy = 0; iy < npts; ++iy) {
+            for (int kx = 0; kx < npts; ++kx) {
+                tmp[iy][kx] = 0.0;
+                for (int ix = 0; ix < npts; ++ix) {
+                    tmp[iy][kx] += T_modal[kx][ix] * c.get_U(v, iy, ix, npts);
+                }
+            }
+        }
+        for (int ky = 0; ky < npts; ++ky) {
+            for (int kx = 0; kx < npts; ++kx) {
+                U_modal[v][ky][kx] = 0.0;
+                for (int iy = 0; iy < npts; ++iy) {
+                    U_modal[v][ky][kx] += T_modal[ky][iy] * tmp[iy][kx];
+                }
+            }
+        }
+    }
+
+    const int P = npts - 1;
+    for (int v = 0; v < 4; ++v) {
+        double U_filt_modal[MAX_LIM_PTS][MAX_LIM_PTS];
+        for (int ky = 0; ky < npts; ++ky) {
+            for (int kx = 0; kx < npts; ++kx) {
+                if (kx == 0 && ky == 0) {
+                    U_filt_modal[ky][kx] = U_modal[v][ky][kx];
+                } else {
+                    double eta_x = (P > 0) ? (double)kx / P : 0.0;
+                    double eta_y = (P > 0) ? (double)ky / P : 0.0;
+                    double power = std::pow(eta_x, 2.0) + std::pow(eta_y, 2.0);
+                    double sigma = std::pow(damping_factor, power);
+                    U_filt_modal[ky][kx] = sigma * U_modal[v][ky][kx];
+                }
+            }
+        }
+        double tmp[MAX_LIM_PTS][MAX_LIM_PTS];
+        for (int iy = 0; iy < npts; ++iy) {
+            for (int kx = 0; kx < npts; ++kx) {
+                tmp[iy][kx] = 0.0;
+                for (int ky = 0; ky < npts; ++ky) {
+                    tmp[iy][kx] += T_nodal[iy][ky] * U_filt_modal[ky][kx];
+                }
+            }
+        }
+        for (int iy = 0; iy < npts; ++iy) {
+            for (int ix = 0; ix < npts; ++ix) {
+                double val = 0.0;
+                for (int kx = 0; kx < npts; ++kx) {
+                    val += T_nodal[ix][kx] * tmp[iy][kx];
+                }
+                c.get_U(v, iy, ix, npts) = val;
             }
         }
     }

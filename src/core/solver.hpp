@@ -16,7 +16,9 @@
 #include "parameters.hpp"
 #include "state.hpp"
 #include "cell.hpp"
+#include "geometry.hpp"
 #include "../ib/ib.hpp"
+#include "../ib/ib_gcm.hpp"
 #include "../boundary/boundary.hpp"
 #include <atomic>
 #include <algorithm>
@@ -183,6 +185,12 @@ public:
     // Global contiguous gradient buffers (allocated only when ENABLE_NS is true)
     std::vector<double> global_grad_Ux;
     std::vector<double> global_grad_Uy;
+
+    // CAD SDF Engine instance for 2D/3D CAD surface level-set queries
+    mutable fr::geometry::CadSdfEngine cad_engine;
+
+    // High-Order Ghost Nodal IB Solver (GCM-FR)
+    mutable fr::ib::GhostNodeIbSolver gcm_solver;
 
     /**
      * @brief Construct the solver engine and initialize block layouts.

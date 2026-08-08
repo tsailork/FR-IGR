@@ -117,6 +117,7 @@ struct CellDim<2> {
     // Local Immersed Boundary fields
     std::vector<double> ib_mask;      ///< Cached solid volume fraction mask (chi), size: npts * npts.
     bool solid_mask = false;          ///< True if this element is fully inside the solid.
+    bool is_ib_cut_cell = false;      ///< True if this element contains solution points on both sides of IB.
 
     // Conforming neighbors: 0=Left, 1=Right, 2=Bottom, 3=Top
     CellDim<2>* neighbors[4] = {nullptr, nullptr, nullptr, nullptr};
