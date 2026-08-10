@@ -30,7 +30,7 @@ TEST_CASE("BlockILUPreconditioner2D - Build and Apply Test") {
         }
     }
 
-    Implicit::BlockILUPreconditioner2D ilu;
+    fr::implicit::BlockILUPreconditioner2D ilu;
     ilu.build(cells, basis, 1.4, 0.01, 0.4358665);
 
     CHECK(ilu.n_cells == 4);

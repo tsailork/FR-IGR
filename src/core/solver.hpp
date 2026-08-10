@@ -26,9 +26,10 @@
 #include <vector>
 #include <memory>
 #include "../limiters/limiter_common.hpp"
-#include "../time/implicit_precond.hpp"
-#include "../time/implicit_ilu.hpp"
-#include "../time/esdirk34.hpp"
+
+namespace fr::implicit {
+    class ImplicitIntegrator2D;
+}
 
 /**
  * @brief Maximum polynomial degree supported by static buffers (P = 3 -> 4 solution points).
@@ -386,10 +387,7 @@ public:
      */
     void compute_spatial_residual_2d(const std::vector<CellDim<2>*>& input_cells, std::vector<double>& R_out);
 
-    Implicit::BlockJacobiPreconditioner2D precond_2d;
-    Implicit::BlockILUPreconditioner2D ilu_precond_2d;
-    int implicit_step_counter = 0;
-    Implicit::ImplicitStats last_implicit_stats;
+    std::unique_ptr<fr::implicit::ImplicitIntegrator2D> implicit_engine_2d;
 
     /**
      * @brief Computes local stable timesteps for each individual element.

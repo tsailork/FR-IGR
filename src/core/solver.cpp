@@ -20,6 +20,7 @@
 #include "../igr/ducros_sensor.hpp"
 #include "../ppr/ppr.hpp"
 #include "../apsr/apsr.hpp"
+#include "../time/implicit_integrator.hpp"
 
 /**
  * @brief Parse a boundary condition string from domain.grid into a NeighborInfo metadata struct.
@@ -2328,9 +2329,13 @@ void Solver2D::compute_spatial_residual_2d(const std::vector<CellDim<2>*>& input
 }
 
 void Solver2D::step_esdirk34(double dt) {
+    if (!implicit_engine_2d) {
+        implicit_engine_2d = std::make_unique<fr::implicit::ImplicitIntegrator2D>();
+        implicit_engine_2d->initialize(p);
+    }
     auto compute_R = [this](const std::vector<CellDim<2>*>& c_list, std::vector<double>& R_out) {
         this->compute_spatial_residual_2d(c_list, R_out);
     };
 
-    Implicit::step_esdirk34_2d(cells, basis, p, dt, compute_R, precond_2d, ilu_precond_2d, implicit_step_counter, last_implicit_stats);
+    implicit_engine_2d->step(cells, basis, p, dt, compute_R);
 }

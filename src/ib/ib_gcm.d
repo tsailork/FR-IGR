@@ -6,10 +6,6 @@ src/ib/ib_gcm.o: src/ib/ib_gcm.cpp src/ib/ib_gcm.hpp \
  src/ib/../core/geometry.hpp src/ib/../core/../boundary/boundary.hpp \
  src/ib/../core/../limiters/limiter_common.hpp \
  src/ib/../core/../limiters/limiter_smooth.hpp \
- src/ib/../core/../time/implicit_precond.hpp \
- src/ib/../core/../time/implicit_ilu.hpp \
- src/ib/../core/../time/esdirk34.hpp \
- src/ib/../core/../time/implicit_ilu.hpp \
  src/ib/../limiters/limiter_modal.hpp
 src/ib/ib_gcm.hpp:
 src/ib/ib_wall_function.hpp:
@@ -24,8 +20,4 @@ src/ib/../core/geometry.hpp:
 src/ib/../core/../boundary/boundary.hpp:
 src/ib/../core/../limiters/limiter_common.hpp:
 src/ib/../core/../limiters/limiter_smooth.hpp:
-src/ib/../core/../time/implicit_precond.hpp:
-src/ib/../core/../time/implicit_ilu.hpp:
-src/ib/../core/../time/esdirk34.hpp:
-src/ib/../core/../time/implicit_ilu.hpp:
 src/ib/../limiters/limiter_modal.hpp:

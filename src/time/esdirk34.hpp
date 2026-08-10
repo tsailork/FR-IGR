@@ -8,13 +8,14 @@
 #include "../core/basis.hpp"
 #include "../core/cell.hpp"
 #include "../core/parameters.hpp"
+#include "implicit_constants.hpp"
 #include "implicit_precond.hpp"
 #include "implicit_ilu.hpp"
 #include <vector>
 #include <functional>
 #include <cmath>
 
-namespace Implicit {
+namespace fr::implicit {
 
 /**
  * @struct ESDIRK34Tableau
@@ -48,6 +49,16 @@ struct ImplicitStats {
 };
 
 /**
+ * @brief Evaluates physical admissibility (density and pressure positivity) on solution nodes and face extrapolations.
+ */
+[[nodiscard]] bool check_realizability_2d(
+    const std::vector<CellDim<2>*>& cells,
+    const Basis& basis,
+    double gamma_fluid,
+    double pos_eps = REALIZABILITY_EPS
+);
+
+/**
  * @brief Preconditioned GMRES linear system solver: J * delta_u = -G.
  * Solves A * x = b with preconditioner M_op^{-1}.
  */
@@ -57,19 +68,17 @@ bool gmres_solve(
     const std::vector<double>& b,
     std::vector<double>& x,
     const PrecondType& M_op,
-    double rtol = 1.0e-4,
-    double atol = 1.0e-6,
-    int max_iters = 50,
-    int restart = 30,
+    double rtol = DEFAULT_GMRES_TOL,
+    double atol = REALIZABILITY_EPS,
+    int max_iters = DEFAULT_GMRES_MAX_ITERS,
+    int restart = DEFAULT_GMRES_RESTART,
     int* gmres_iters_out = nullptr
 );
 
 /**
  * @brief Direct Block-Jacobi Newton Stage Solver for G_i(U) = U - H_i - gamma*dt*R(U) = 0.
- * Solves Newton step directly using pre-computed analytical local block inverses delta_u = - M_e^{-1} * G_e.
- * Completely eliminates matrix-free Krylov GMRES iterations and finite-differencing sweeps.
  */
-bool solve_direct_block_jacobi_stage_2d(
+[[nodiscard]] bool solve_direct_block_jacobi_stage_2d(
     std::vector<CellDim<2>*>& cells,
     const Basis& basis,
     const Parameters& params,
@@ -84,23 +93,21 @@ bool solve_direct_block_jacobi_stage_2d(
  * @brief Non-linear stage solver for a single ESDIRK stage using JFNK (GMRES + Preconditioner).
  */
 template<typename PrecondType>
-bool solve_jfnk_stage_2d(
+[[nodiscard]] bool solve_jfnk_stage_2d(
     std::vector<CellDim<2>*>& cells,
     const Basis& basis,
     const Parameters& params,
     const std::vector<double>& H_i,
     double gamma_dt,
     const std::function<void(const std::vector<CellDim<2>*>&, std::vector<double>&)>& compute_R_effective,
-    const BlockJacobiPreconditioner2D& M_op,
+    const PrecondType& M_op,
     ImplicitStats& stats
 );
 
 /**
  * @brief Direct Block-ILU(0) Newton Stage Solver for G_i(U) = U - H_i - gamma*dt*R(U) = 0.
- * Solves Newton step directly using pre-computed Block-ILU(0) factorization delta_u = - (L*U)^{-1} * G_e.
- * Captures inter-element face coupling across element boundaries in single wavefront triangular sweeps.
  */
-bool solve_direct_ilu_stage_2d(
+[[nodiscard]] bool solve_direct_ilu_stage_2d(
     std::vector<CellDim<2>*>& cells,
     const Basis& basis,
     const Parameters& params,
@@ -114,7 +121,7 @@ bool solve_direct_ilu_stage_2d(
 /**
  * @brief Full ESDIRK34 implicit time step execution on 2D mesh.
  */
-void step_esdirk34_2d(
+bool step_esdirk34_2d(
     std::vector<CellDim<2>*>& cells,
     const Basis& basis,
     const Parameters& params,
@@ -126,4 +133,4 @@ void step_esdirk34_2d(
     ImplicitStats& stats_out
 );
 
-} // namespace Implicit
+} // namespace fr::implicit

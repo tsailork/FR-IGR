@@ -14,7 +14,7 @@
 #include <omp.h>
 #endif
 
-namespace Implicit {
+namespace fr::implicit {
 
 constexpr double ESDIRK34Tableau::gamma;
 constexpr double ESDIRK34Tableau::c[4];
@@ -98,122 +98,168 @@ bool gmres_solve(
     std::vector<double> sn(m, 0.0);
     std::vector<double> e1(m + 1, 0.0);
 
-    for (size_t i = 0; i < n; ++i) V[0][i] = r[i] / r_norm;
-    e1[0] = r_norm;
+    M_op.apply(r, V[0]);
+    double beta = vec_norm(V[0]);
+    if (beta == 0.0) return true;
 
-    std::vector<double> w_prec(n, 0.0);
-    std::vector<double> w_matvec(n, 0.0);
+    #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < n; ++i) V[0][i] /= beta;
 
-    int iter = 0;
-    for (; iter < m; ++iter) {
-        // Right preconditioning: w = J * (M_op^{-1} * V[iter])
-        M_op.apply(V[iter], w_prec);
-        matvec(w_prec, w_matvec);
+    e1[0] = beta;
+    int total_its = 0;
 
-        // Gram-Schmidt orthogonalization
-        for (int i = 0; i <= iter; ++i) {
-            H[i][iter] = vec_dot(w_matvec, V[i]);
+    for (int j = 0; j < m; ++j) {
+        total_its++;
+
+        std::vector<double> w(n, 0.0);
+        std::vector<double> z(n, 0.0);
+        matvec(V[j], z);
+        M_op.apply(z, w);
+
+        for (int i = 0; i <= j; ++i) {
+            H[i][j] = vec_dot(w, V[i]);
             #pragma omp parallel for schedule(static)
             for (size_t k = 0; k < n; ++k) {
-                w_matvec[k] -= H[i][iter] * V[i][k];
+                w[k] -= H[i][j] * V[i][k];
             }
         }
 
-        H[iter + 1][iter] = vec_norm(w_matvec);
+        H[j + 1][j] = vec_norm(w);
 
-        if (H[iter + 1][iter] > 1e-14) {
-            double inv_h = 1.0 / H[iter + 1][iter];
+        if (H[j + 1][j] != 0.0) {
             #pragma omp parallel for schedule(static)
             for (size_t k = 0; k < n; ++k) {
-                V[iter + 1][k] = w_matvec[k] * inv_h;
+                V[j + 1][k] = w[k] / H[j + 1][j];
             }
         }
 
-        // Apply previous Givens rotations to new column of H
-        for (int i = 0; i < iter; ++i) {
-            apply_givens(H[i][iter], H[i + 1][iter], cs[i], sn[i]);
+        for (int i = 0; i < j; ++i) {
+            apply_givens(H[i][j], H[i + 1][j], cs[i], sn[i]);
         }
 
-        // Generate and apply new Givens rotation
-        generate_givens(H[iter][iter], H[iter + 1][iter], cs[iter], sn[iter]);
-        apply_givens(H[iter][iter], H[iter + 1][iter], cs[iter], sn[iter]);
-        apply_givens(e1[iter], e1[iter + 1], cs[iter], sn[iter]);
+        generate_givens(H[j][j], H[j + 1][j], cs[j], sn[j]);
+        apply_givens(H[j][j], H[j + 1][j], cs[j], sn[j]);
+        apply_givens(e1[j], e1[j + 1], cs[j], sn[j]);
 
-        if (std::abs(e1[iter + 1]) < tol) {
-            iter++;
-            break;
+        double res = std::abs(e1[j + 1]);
+        if (res < tol) {
+            std::vector<double> y(j + 1, 0.0);
+            for (int i = j; i >= 0; --i) {
+                y[i] = e1[i];
+                for (int k = i + 1; k <= j; ++k) {
+                    y[i] -= H[i][k] * y[k];
+                }
+                y[i] /= H[i][i];
+            }
+            for (int i = 0; i <= j; ++i) {
+                #pragma omp parallel for schedule(static)
+                for (size_t k = 0; k < n; ++k) {
+                    x[k] += y[i] * V[i][k];
+                }
+            }
+            if (gmres_iters_out) *gmres_iters_out = total_its;
+            return true;
         }
     }
 
-    if (gmres_iters_out) *gmres_iters_out += iter;
-
-    int k = iter;
-    if (k > m) k = m;
-
-    // Upper triangular solve H * y = e1
-    std::vector<double> y(k, 0.0);
-    for (int i = k - 1; i >= 0; --i) {
+    std::vector<double> y(m, 0.0);
+    for (int i = m - 1; i >= 0; --i) {
         y[i] = e1[i];
-        for (int j = i + 1; j < k; ++j) {
-            y[i] -= H[i][j] * y[j];
+        for (int k = i + 1; k < m; ++k) {
+            y[i] -= H[i][k] * y[k];
         }
         if (H[i][i] != 0.0) y[i] /= H[i][i];
     }
-
-    // Compute y_flat = sum_i y[i] * V[i]
-    std::vector<double> y_flat(n, 0.0);
-    for (int i = 0; i < k; ++i) {
+    for (int i = 0; i < m; ++i) {
         #pragma omp parallel for schedule(static)
-        for (size_t j = 0; j < n; ++j) {
-            y_flat[j] += y[i] * V[i][j];
+        for (size_t k = 0; k < n; ++k) {
+            x[k] += y[i] * V[i][k];
         }
     }
 
-    // Un-precondition: x = M_op^{-1} * y_flat
-    M_op.apply(y_flat, x);
+    if (gmres_iters_out) *gmres_iters_out = total_its;
     return true;
 }
 
-// Check realizability: rho > 0 and P > 0 across all interior nodes and boundary face extrapolations
-static bool check_realizability_2d(const std::vector<CellDim<2>*>& cells, const Basis& basis, double gamma) {
-    bool valid = true;
+static void state_to_flat(const std::vector<CellDim<2>*>& cells, std::vector<double>& u_flat) {
+    if (cells.empty()) return;
+    int npts = static_cast<int>(std::round(std::sqrt(static_cast<double>(cells[0]->U.size() / 4))));
+    int block_size = npts * npts * 4;
+    u_flat.resize(cells.size() * block_size);
 
-    #pragma omp parallel for reduction(&&:valid) schedule(static)
+    #pragma omp parallel for schedule(static)
+    for (size_t c_idx = 0; c_idx < cells.size(); ++c_idx) {
+        const CellDim<2>* c = cells[c_idx];
+        int offset = c_idx * block_size;
+        for (int v = 0; v < 4; ++v) {
+            for (int node = 0; node < npts * npts; ++node) {
+                u_flat[offset + v * npts * npts + node] = c->U[v * npts * npts + node];
+            }
+        }
+    }
+}
+
+static void flat_to_state(const std::vector<double>& u_flat, std::vector<CellDim<2>*>& cells) {
+    if (cells.empty()) return;
+    int npts = static_cast<int>(std::round(std::sqrt(static_cast<double>(cells[0]->U.size() / 4))));
+    int block_size = npts * npts * 4;
+
+    #pragma omp parallel for schedule(static)
+    for (size_t c_idx = 0; c_idx < cells.size(); ++c_idx) {
+        CellDim<2>* c = cells[c_idx];
+        int offset = c_idx * block_size;
+        for (int v = 0; v < 4; ++v) {
+            for (int node = 0; node < npts * npts; ++node) {
+                c->U[v * npts * npts + node] = u_flat[offset + v * npts * npts + node];
+            }
+        }
+    }
+}
+
+bool check_realizability_2d(
+    const std::vector<CellDim<2>*>& cells,
+    const Basis& basis,
+    double gamma_fluid,
+    double pos_eps
+) {
+    bool valid = true;
+    int npts = basis.z.size();
+
+    #pragma omp parallel for schedule(static) reduction(&&:valid)
     for (size_t c_idx = 0; c_idx < cells.size(); ++c_idx) {
         if (!valid) continue;
         const CellDim<2>* c = cells[c_idx];
-        int dofs = c->U.size() / 4;
-        for (int idx = 0; idx < dofs; ++idx) {
-            double rho = c->U[0 * dofs + idx];
-            double rhou = c->U[1 * dofs + idx];
-            double rhov = c->U[2 * dofs + idx];
-            double E = c->U[3 * dofs + idx];
 
-            if (rho <= 0.0) {
+        // 1. Check interior solution nodes
+        for (int node = 0; node < npts * npts; ++node) {
+            double rho = c->U[0 * npts * npts + node];
+            double rhou = c->U[1 * npts * npts + node];
+            double rhov = c->U[2 * npts * npts + node];
+            double E    = c->U[3 * npts * npts + node];
+
+            if (rho <= pos_eps || std::isnan(rho) || std::isinf(rho)) {
                 valid = false;
                 break;
             }
 
-            double u = rhou / rho;
-            double v = rhov / rho;
-            double P = (gamma - 1.0) * (E - 0.5 * rho * (u * u + v * v));
-            if (P <= 0.0) {
+            double p = (gamma_fluid - 1.0) * (E - 0.5 * (rhou * rhou + rhov * rhov) / rho);
+            if (p <= pos_eps || std::isnan(p) || std::isinf(p)) {
                 valid = false;
                 break;
             }
         }
-
         if (!valid) continue;
 
-        int npts = static_cast<int>(basis.l_L.size());
-        // Check Left and Right face extrapolations
+        // 2. Check interface face extrapolations (r = +-1)
         for (int iy = 0; iy < npts; ++iy) {
             double rho_L = 0.0, rhou_L = 0.0, rhov_L = 0.0, E_L = 0.0;
             double rho_R = 0.0, rhou_R = 0.0, rhov_R = 0.0, E_R = 0.0;
+
             for (int ix = 0; ix < npts; ++ix) {
                 int node = iy * npts + ix;
                 double lL = basis.l_L[ix];
                 double lR = basis.l_R[ix];
+
                 rho_L  += c->U[0 * npts * npts + node] * lL;
                 rhou_L += c->U[1 * npts * npts + node] * lL;
                 rhov_L += c->U[2 * npts * npts + node] * lL;
@@ -224,184 +270,14 @@ static bool check_realizability_2d(const std::vector<CellDim<2>*>& cells, const 
                 rhov_R += c->U[2 * npts * npts + node] * lR;
                 E_R    += c->U[3 * npts * npts + node] * lR;
             }
-            if (rho_L <= 0.0 || rho_R <= 0.0) { valid = false; break; }
-            double P_L = (gamma - 1.0) * (E_L - 0.5 * (rhou_L * rhou_L + rhov_L * rhov_L) / rho_L);
-            double P_R = (gamma - 1.0) * (E_R - 0.5 * (rhou_R * rhou_R + rhov_R * rhov_R) / rho_R);
-            if (P_L <= 0.0 || P_R <= 0.0) { valid = false; break; }
-        }
 
-        if (!valid) continue;
-
-        // Check Bottom and Top face extrapolations
-        for (int ix = 0; ix < npts; ++ix) {
-            double rho_B = 0.0, rhou_B = 0.0, rhov_B = 0.0, E_B = 0.0;
-            double rho_T = 0.0, rhou_T = 0.0, rhov_T = 0.0, E_T = 0.0;
-            for (int iy = 0; iy < npts; ++iy) {
-                int node = iy * npts + ix;
-                double lL = basis.l_L[iy];
-                double lR = basis.l_R[iy];
-                rho_B  += c->U[0 * npts * npts + node] * lL;
-                rhou_B += c->U[1 * npts * npts + node] * lL;
-                rhov_B += c->U[2 * npts * npts + node] * lL;
-                E_B    += c->U[3 * npts * npts + node] * lL;
-
-                rho_T  += c->U[0 * npts * npts + node] * lR;
-                rhou_T += c->U[1 * npts * npts + node] * lR;
-                rhov_T += c->U[2 * npts * npts + node] * lR;
-                E_T    += c->U[3 * npts * npts + node] * lR;
-            }
-            if (rho_B <= 0.0 || rho_T <= 0.0) { valid = false; break; }
-            double P_B = (gamma - 1.0) * (E_B - 0.5 * (rhou_B * rhou_B + rhov_B * rhov_B) / rho_B);
-            double P_T = (gamma - 1.0) * (E_T - 0.5 * (rhou_T * rhou_T + rhov_T * rhov_T) / rho_T);
-            if (P_B <= 0.0 || P_T <= 0.0) { valid = false; break; }
+            if (rho_L <= pos_eps || rho_R <= pos_eps) { valid = false; continue; }
+            double p_L = (gamma_fluid - 1.0) * (E_L - 0.5 * (rhou_L * rhou_L + rhov_L * rhov_L) / rho_L);
+            double p_R = (gamma_fluid - 1.0) * (E_R - 0.5 * (rhou_R * rhou_R + rhov_R * rhov_R) / rho_R);
+            if (p_L <= pos_eps || p_R <= pos_eps) { valid = false; continue; }
         }
     }
     return valid;
-}
-
-// Copy state vectors between cells and flat vector
-static void state_to_flat(const std::vector<CellDim<2>*>& cells, std::vector<double>& u_flat) {
-    size_t total_dofs = 0;
-    for (const auto* c : cells) total_dofs += c->U.size();
-    u_flat.resize(total_dofs);
-
-    size_t offset = 0;
-    for (const auto* c : cells) {
-        std::copy(c->U.begin(), c->U.end(), u_flat.begin() + offset);
-        offset += c->U.size();
-    }
-}
-
-static void flat_to_state(const std::vector<double>& u_flat, std::vector<CellDim<2>*>& cells) {
-    size_t offset = 0;
-    for (auto* c : cells) {
-        std::copy(u_flat.begin() + offset, u_flat.begin() + offset + c->U.size(), c->U.begin());
-        offset += c->U.size();
-    }
-}
-
-template<typename PrecondType>
-bool solve_jfnk_stage_2d(
-    std::vector<CellDim<2>*>& cells,
-    const Basis& basis,
-    const Parameters& params,
-    const std::vector<double>& H_i,
-    double gamma_dt,
-    const std::function<void(const std::vector<CellDim<2>*>&, std::vector<double>&)>& compute_R_effective,
-    const PrecondType& M_op,
-    ImplicitStats& stats
-) {
-    (void)basis;
-    std::vector<double> u_curr;
-    state_to_flat(cells, u_curr);
-    size_t n_dofs = u_curr.size();
-
-    // Ensure initial predictor state is physically realizable; fallback to H_i if unphysical
-    flat_to_state(u_curr, cells);
-    if (!check_realizability_2d(cells, basis, params.GAMMA)) {
-        u_curr = H_i;
-        flat_to_state(u_curr, cells);
-    }
-
-    std::vector<double> R_eff(n_dofs, 0.0);
-    std::vector<double> G_val(n_dofs, 0.0);
-    std::vector<double> G_pert(n_dofs, 0.0);
-    std::vector<double> u_pert(n_dofs, 0.0);
-
-    auto compute_stage_G = [&](const std::vector<double>& u_input, std::vector<double>& G_out) {
-        flat_to_state(u_input, cells);
-        compute_R_effective(cells, R_eff);
-        stats.total_res_evals++;
-
-        #pragma omp parallel for schedule(static)
-        for (size_t i = 0; i < n_dofs; ++i) {
-            G_out[i] = u_input[i] - H_i[i] - gamma_dt * R_eff[i];
-        }
-    };
-
-    double newton_tol = params.IMPLICIT_NEWTON_TOL;
-    int max_newton = params.IMPLICIT_MAX_NEWTON_ITERS;
-    double prev_res_norm = 0.0;
-
-    for (int iter = 0; iter < max_newton; ++iter) {
-        stats.total_newton_iters++;
-        compute_stage_G(u_curr, G_val);
-        double res_norm = vec_rms_norm(G_val);
-        stats.final_stage_res = res_norm;
-
-        if (res_norm < newton_tol) {
-            flat_to_state(u_curr, cells);
-            return true;
-        }
-
-        double eta_k = 0.1;
-        if (iter > 0 && prev_res_norm > 0.0) {
-            double ratio = res_norm / prev_res_norm;
-            eta_k = std::min(0.1, std::max(params.IMPLICIT_GMRES_TOL, 0.5 * ratio * ratio));
-        } else {
-            eta_k = std::min(0.1, std::max(params.IMPLICIT_GMRES_TOL, 0.1));
-        }
-        prev_res_norm = res_norm;
-
-        // Matrix-free directional derivative J * v with state scaling
-        auto jacvec = [&](const std::vector<double>& v, std::vector<double>& Jv_out) {
-            double v_norm = vec_norm(v);
-            if (v_norm == 0.0) {
-                Jv_out.assign(n_dofs, 0.0);
-                return;
-            }
-            double u_norm = vec_norm(u_curr);
-            double eps = 1.0e-7 * (1.0 + u_norm) / (v_norm + 1.0e-12);
-            #pragma omp parallel for schedule(static)
-            for (size_t i = 0; i < n_dofs; ++i) {
-                u_pert[i] = u_curr[i] + eps * v[i];
-            }
-            compute_stage_G(u_pert, G_pert);
-
-            double inv_eps = 1.0 / eps;
-            #pragma omp parallel for schedule(static)
-            for (size_t i = 0; i < n_dofs; ++i) {
-                Jv_out[i] = (G_pert[i] - G_val[i]) * inv_eps;
-            }
-        };
-
-        // RHS for GMRES: -G
-        std::vector<double> neg_G(n_dofs);
-        #pragma omp parallel for schedule(static)
-        for (size_t i = 0; i < n_dofs; ++i) neg_G[i] = -G_val[i];
-
-        std::vector<double> delta_u(n_dofs, 0.0);
-        gmres_solve(jacvec, neg_G, delta_u, M_op, eta_k, 1.0e-6, 25, 25, &stats.total_gmres_iters);
-
-        // Realizability backtracking line search
-        double alpha = 1.0;
-        std::vector<double> u_trial(n_dofs);
-        bool step_accepted = false;
-
-        while (alpha > 1.0e-4) {
-            #pragma omp parallel for schedule(static)
-            for (size_t i = 0; i < n_dofs; ++i) {
-                u_trial[i] = u_curr[i] + alpha * delta_u[i];
-            }
-            flat_to_state(u_trial, cells);
-
-            if (check_realizability_2d(cells, basis, params.GAMMA)) {
-                u_curr = u_trial;
-                step_accepted = true;
-                break;
-            }
-            alpha *= 0.5;
-        }
-
-        if (!step_accepted) {
-            // Restore current state if line search failed
-            flat_to_state(u_curr, cells);
-            break;
-        }
-    }
-
-    flat_to_state(u_curr, cells);
-    return true;
 }
 
 bool solve_direct_block_jacobi_stage_2d(
@@ -414,88 +290,6 @@ bool solve_direct_block_jacobi_stage_2d(
     const BlockJacobiPreconditioner2D& M_op,
     ImplicitStats& stats
 ) {
-    (void)basis;
-    std::vector<double> u_curr;
-    state_to_flat(cells, u_curr);
-    size_t n_dofs = u_curr.size();
-
-    std::vector<double> R_eff(n_dofs, 0.0);
-    std::vector<double> G_val(n_dofs, 0.0);
-    std::vector<double> neg_G(n_dofs, 0.0);
-    std::vector<double> delta_u(n_dofs, 0.0);
-
-    auto compute_stage_G = [&](const std::vector<double>& u_input, std::vector<double>& G_out) {
-        flat_to_state(u_input, cells);
-        compute_R_effective(cells, R_eff);
-        stats.total_res_evals++;
-
-        #pragma omp parallel for schedule(static)
-        for (size_t i = 0; i < n_dofs; ++i) {
-            G_out[i] = u_input[i] - H_i[i] - gamma_dt * R_eff[i];
-        }
-    };
-
-    double newton_tol = params.IMPLICIT_NEWTON_TOL;
-    int max_newton = params.IMPLICIT_MAX_NEWTON_ITERS;
-
-    for (int iter = 0; iter < max_newton; ++iter) {
-        stats.total_newton_iters++;
-        compute_stage_G(u_curr, G_val);
-        double res_norm = vec_rms_norm(G_val);
-        stats.final_stage_res = res_norm;
-
-        if (res_norm < newton_tol) {
-            flat_to_state(u_curr, cells);
-            return true;
-        }
-
-        // Direct analytical block-Jacobi update: delta_u = - M_op^{-1} * G
-        #pragma omp parallel for schedule(static)
-        for (size_t i = 0; i < n_dofs; ++i) neg_G[i] = -G_val[i];
-
-        M_op.apply(neg_G, delta_u);
-
-        // Realizability positivity backtracking line search (0 extra residual evaluations!)
-        double alpha = 1.0;
-        std::vector<double> u_trial(n_dofs);
-        bool step_accepted = false;
-
-        while (alpha > 1.0e-4) {
-            #pragma omp parallel for schedule(static)
-            for (size_t i = 0; i < n_dofs; ++i) {
-                u_trial[i] = u_curr[i] + alpha * delta_u[i];
-            }
-            flat_to_state(u_trial, cells);
-
-            if (check_realizability_2d(cells, basis, params.GAMMA)) {
-                u_curr = u_trial;
-                step_accepted = true;
-                break;
-            }
-            alpha *= 0.5;
-        }
-
-        if (!step_accepted) {
-            flat_to_state(u_curr, cells);
-            break;
-        }
-    }
-
-    flat_to_state(u_curr, cells);
-    return true;
-}
-
-bool solve_direct_ilu_stage_2d(
-    std::vector<CellDim<2>*>& cells,
-    const Basis& basis,
-    const Parameters& params,
-    const std::vector<double>& H_i,
-    double gamma_dt,
-    const std::function<void(const std::vector<CellDim<2>*>&, std::vector<double>&)>& compute_R_effective,
-    const BlockILUPreconditioner2D& M_op,
-    ImplicitStats& stats
-) {
-    (void)basis;
     std::vector<double> u_curr;
     state_to_flat(cells, u_curr);
     size_t n_dofs = u_curr.size();
@@ -537,7 +331,7 @@ bool solve_direct_ilu_stage_2d(
             return true;
         }
 
-        // Direct analytical Block-ILU(0) update: delta_u = - (L*U)^{-1} * G
+        // Direct analytical Block-Jacobi update: delta_u = - M_e^{-1} * G
         #pragma omp parallel for schedule(static)
         for (size_t i = 0; i < n_dofs; ++i) neg_G[i] = -G_val[i];
 
@@ -548,7 +342,7 @@ bool solve_direct_ilu_stage_2d(
         std::vector<double> u_trial(n_dofs);
         bool step_accepted = false;
 
-        while (alpha > 1.0e-12) {
+        while (alpha > MIN_LINE_SEARCH_ALPHA) {
             #pragma omp parallel for schedule(static)
             for (size_t i = 0; i < n_dofs; ++i) {
                 u_trial[i] = u_curr[i] + alpha * delta_u[i];
@@ -573,7 +367,233 @@ bool solve_direct_ilu_stage_2d(
     return true;
 }
 
-void step_esdirk34_2d(
+template<typename PrecondType>
+bool solve_jfnk_stage_2d(
+    std::vector<CellDim<2>*>& cells,
+    const Basis& basis,
+    const Parameters& params,
+    const std::vector<double>& H_i,
+    double gamma_dt,
+    const std::function<void(const std::vector<CellDim<2>*>&, std::vector<double>&)>& compute_R_effective,
+    const PrecondType& M_op,
+    ImplicitStats& stats
+) {
+    std::vector<double> u_curr;
+    state_to_flat(cells, u_curr);
+    size_t n_dofs = u_curr.size();
+
+    flat_to_state(u_curr, cells);
+    if (!check_realizability_2d(cells, basis, params.GAMMA)) {
+        u_curr = H_i;
+        flat_to_state(u_curr, cells);
+    }
+
+    std::vector<double> R_eff(n_dofs, 0.0);
+    std::vector<double> G_curr(n_dofs, 0.0);
+    std::vector<double> G_pert(n_dofs, 0.0);
+    std::vector<double> neg_G(n_dofs, 0.0);
+    std::vector<double> u_pert(n_dofs, 0.0);
+
+    auto compute_stage_G = [&](const std::vector<double>& u_input, std::vector<double>& G_out) {
+        flat_to_state(u_input, cells);
+        compute_R_effective(cells, R_eff);
+        stats.total_res_evals++;
+
+        #pragma omp parallel for schedule(static)
+        for (size_t i = 0; i < n_dofs; ++i) {
+            G_out[i] = u_input[i] - H_i[i] - gamma_dt * R_eff[i];
+        }
+    };
+
+    double newton_tol = params.IMPLICIT_NEWTON_TOL;
+    int max_newton = params.IMPLICIT_MAX_NEWTON_ITERS;
+    double prev_res_norm = 1.0;
+
+    for (int iter = 0; iter < max_newton; ++iter) {
+        stats.total_newton_iters++;
+        compute_stage_G(u_curr, G_curr);
+        double res_norm = vec_rms_norm(G_curr);
+        stats.final_stage_res = res_norm;
+
+        if (res_norm < newton_tol) {
+            flat_to_state(u_curr, cells);
+            return true;
+        }
+
+        double eta_k = params.IMPLICIT_GMRES_TOL;
+        if (iter > 0 && prev_res_norm > 0.0) {
+            double ratio = res_norm / prev_res_norm;
+            eta_k = std::min(0.1, std::max(params.IMPLICIT_GMRES_TOL, 0.5 * ratio * ratio));
+        }
+        prev_res_norm = res_norm;
+
+        #pragma omp parallel for schedule(static)
+        for (size_t i = 0; i < n_dofs; ++i) neg_G[i] = -G_curr[i];
+
+        auto jacvec = [&](const std::vector<double>& v, std::vector<double>& Jv) {
+            double v_norm = vec_norm(v);
+            if (v_norm == 0.0) {
+                Jv.assign(n_dofs, 0.0);
+                return;
+            }
+
+            double u_norm = vec_norm(u_curr);
+            double eps = DEFAULT_EPS_FACTOR * (1.0 + u_norm) / (v_norm + REALIZABILITY_EPS);
+
+            #pragma omp parallel for schedule(static)
+            for (size_t i = 0; i < n_dofs; ++i) {
+                u_pert[i] = u_curr[i] + eps * v[i];
+            }
+
+            compute_stage_G(u_pert, G_pert);
+
+            #pragma omp parallel for schedule(static)
+            for (size_t i = 0; i < n_dofs; ++i) {
+                Jv[i] = (G_pert[i] - G_curr[i]) / eps;
+            }
+        };
+
+        std::vector<double> delta_u(n_dofs, 0.0);
+        int gmres_its = 0;
+        bool gmres_ok = gmres_solve(
+            jacvec, neg_G, delta_u, M_op,
+            eta_k, REALIZABILITY_EPS, DEFAULT_GMRES_MAX_ITERS, DEFAULT_GMRES_RESTART,
+            &gmres_its
+        );
+        stats.total_gmres_iters += gmres_its;
+
+        if (!gmres_ok) {
+            flat_to_state(u_curr, cells);
+            return false;
+        }
+
+        double alpha = 1.0;
+        std::vector<double> u_trial(n_dofs);
+        bool step_accepted = false;
+
+        while (alpha > MIN_LINE_SEARCH_ALPHA) {
+            #pragma omp parallel for schedule(static)
+            for (size_t i = 0; i < n_dofs; ++i) {
+                u_trial[i] = u_curr[i] + alpha * delta_u[i];
+            }
+            flat_to_state(u_trial, cells);
+
+            if (check_realizability_2d(cells, basis, params.GAMMA)) {
+                u_curr = u_trial;
+                step_accepted = true;
+                break;
+            }
+            alpha *= 0.5;
+        }
+
+        if (!step_accepted) {
+            flat_to_state(u_curr, cells);
+            return false;
+        }
+    }
+
+    flat_to_state(u_curr, cells);
+    return true;
+}
+
+// Explicit template instantiations for JFNK stage solver
+template bool solve_jfnk_stage_2d<BlockJacobiPreconditioner2D>(
+    std::vector<CellDim<2>*>&, const Basis&, const Parameters&, const std::vector<double>&,
+    double, const std::function<void(const std::vector<CellDim<2>*>&, std::vector<double>&)>&,
+    const BlockJacobiPreconditioner2D&, ImplicitStats&
+);
+
+template bool solve_jfnk_stage_2d<BlockILUPreconditioner2D>(
+    std::vector<CellDim<2>*>&, const Basis&, const Parameters&, const std::vector<double>&,
+    double, const std::function<void(const std::vector<CellDim<2>*>&, std::vector<double>&)>&,
+    const BlockILUPreconditioner2D&, ImplicitStats&
+);
+
+bool solve_direct_ilu_stage_2d(
+    std::vector<CellDim<2>*>& cells,
+    const Basis& basis,
+    const Parameters& params,
+    const std::vector<double>& H_i,
+    double gamma_dt,
+    const std::function<void(const std::vector<CellDim<2>*>&, std::vector<double>&)>& compute_R_effective,
+    const BlockILUPreconditioner2D& M_op,
+    ImplicitStats& stats
+) {
+    std::vector<double> u_curr;
+    state_to_flat(cells, u_curr);
+    size_t n_dofs = u_curr.size();
+
+    flat_to_state(u_curr, cells);
+    if (!check_realizability_2d(cells, basis, params.GAMMA)) {
+        u_curr = H_i;
+        flat_to_state(u_curr, cells);
+    }
+
+    std::vector<double> R_eff(n_dofs, 0.0);
+    std::vector<double> G_val(n_dofs, 0.0);
+    std::vector<double> neg_G(n_dofs, 0.0);
+    std::vector<double> delta_u(n_dofs, 0.0);
+
+    auto compute_stage_G = [&](const std::vector<double>& u_input, std::vector<double>& G_out) {
+        flat_to_state(u_input, cells);
+        compute_R_effective(cells, R_eff);
+        stats.total_res_evals++;
+
+        #pragma omp parallel for schedule(static)
+        for (size_t i = 0; i < n_dofs; ++i) {
+            G_out[i] = u_input[i] - H_i[i] - gamma_dt * R_eff[i];
+        }
+    };
+
+    double newton_tol = params.IMPLICIT_NEWTON_TOL;
+    int max_newton = params.IMPLICIT_MAX_NEWTON_ITERS;
+
+    for (int iter = 0; iter < max_newton; ++iter) {
+        stats.total_newton_iters++;
+        compute_stage_G(u_curr, G_val);
+        double res_norm = vec_rms_norm(G_val);
+        stats.final_stage_res = res_norm;
+
+        if (res_norm < newton_tol) {
+            flat_to_state(u_curr, cells);
+            return true;
+        }
+
+        #pragma omp parallel for schedule(static)
+        for (size_t i = 0; i < n_dofs; ++i) neg_G[i] = -G_val[i];
+
+        M_op.apply(neg_G, delta_u);
+
+        double alpha = 1.0;
+        std::vector<double> u_trial(n_dofs);
+        bool step_accepted = false;
+
+        while (alpha > MIN_LINE_SEARCH_ALPHA) {
+            #pragma omp parallel for schedule(static)
+            for (size_t i = 0; i < n_dofs; ++i) {
+                u_trial[i] = u_curr[i] + alpha * delta_u[i];
+            }
+            flat_to_state(u_trial, cells);
+
+            if (check_realizability_2d(cells, basis, params.GAMMA)) {
+                u_curr = u_trial;
+                step_accepted = true;
+                break;
+            }
+            alpha *= 0.5;
+        }
+
+        if (!step_accepted) {
+            flat_to_state(u_curr, cells);
+            return false;
+        }
+    }
+
+    flat_to_state(u_curr, cells);
+    return true;
+}
+
+bool step_esdirk34_2d(
     std::vector<CellDim<2>*>& cells,
     const Basis& basis,
     const Parameters& params,
@@ -591,11 +611,11 @@ void step_esdirk34_2d(
 
     // Build / freeze preconditioner based on IMPLICIT_SOLVER selection
     if (params.IMPLICIT_SOLVER == "ILU0" || params.IMPLICIT_SOLVER == "JFNK_ILU") {
-        if (ilu_precond.inv_U_diag.empty() || (step_counter % params.IMPLICIT_PRECOND_FREEZE_STEPS == 0)) {
+        if (ilu_precond.inv_u_diag.empty() || (step_counter % params.IMPLICIT_PRECOND_FREEZE_STEPS == 0)) {
             ilu_precond.build(cells, basis, params.GAMMA, dt, ESDIRK34Tableau::gamma);
         }
     } else {
-        if (precond.inv_M_blocks.empty() || (step_counter % params.IMPLICIT_PRECOND_FREEZE_STEPS == 0)) {
+        if (precond.inv_m_blocks.empty() || (step_counter % params.IMPLICIT_PRECOND_FREEZE_STEPS == 0)) {
             precond.build(cells, basis, params.GAMMA, dt, ESDIRK34Tableau::gamma);
         }
     }
@@ -660,14 +680,20 @@ void step_esdirk34_2d(
 
         double gamma_dt = dt * gamma_stage;
         flat_to_state(U_pred, cells);
+        bool stage_ok = false;
         if (params.IMPLICIT_SOLVER == "ILU0") {
-            solve_direct_ilu_stage_2d(cells, basis, params, H_i, gamma_dt, compute_R_effective, ilu_precond, stats_out);
+            stage_ok = solve_direct_ilu_stage_2d(cells, basis, params, H_i, gamma_dt, compute_R_effective, ilu_precond, stats_out);
         } else if (params.IMPLICIT_SOLVER == "JFNK_ILU") {
-            solve_jfnk_stage_2d(cells, basis, params, H_i, gamma_dt, compute_R_effective, ilu_precond, stats_out);
+            stage_ok = solve_jfnk_stage_2d(cells, basis, params, H_i, gamma_dt, compute_R_effective, ilu_precond, stats_out);
         } else if (params.IMPLICIT_SOLVER == "JFNK") {
-            solve_jfnk_stage_2d(cells, basis, params, H_i, gamma_dt, compute_R_effective, precond, stats_out);
+            stage_ok = solve_jfnk_stage_2d(cells, basis, params, H_i, gamma_dt, compute_R_effective, precond, stats_out);
         } else {
-            solve_direct_block_jacobi_stage_2d(cells, basis, params, H_i, gamma_dt, compute_R_effective, precond, stats_out);
+            stage_ok = solve_direct_block_jacobi_stage_2d(cells, basis, params, H_i, gamma_dt, compute_R_effective, precond, stats_out);
+        }
+
+        if (!stage_ok) {
+            flat_to_state(U_n, cells); // Restore initial state U_n on failure
+            return false;
         }
 
         // Store stage solution
@@ -691,6 +717,7 @@ void step_esdirk34_2d(
 
     auto t_end = std::chrono::high_resolution_clock::now();
     stats_out.step_wall_time_ms = std::chrono::duration<double, std::milli>(t_end - t_start).count();
+    return true;
 }
 
-} // namespace Implicit
+} // namespace fr::implicit

@@ -6,10 +6,6 @@ src/time/rk3.o: src/time/rk3.cpp src/time/../core/solver.hpp \
  src/time/../core/../boundary/boundary.hpp \
  src/time/../core/../limiters/limiter_common.hpp \
  src/time/../core/../limiters/limiter_smooth.hpp \
- src/time/../core/../time/implicit_precond.hpp \
- src/time/../core/../time/implicit_ilu.hpp \
- src/time/../core/../time/esdirk34.hpp \
- src/time/../core/../time/implicit_ilu.hpp \
  src/time/../limiters/entropy.hpp src/time/../limiters/positivity.hpp \
  src/time/../ppr/ppr.hpp src/time/../ppr/../apsr/apsr.hpp \
  src/time/../igr/pcg_solver.hpp src/time/../igr/../core/constants.hpp
@@ -24,10 +20,6 @@ src/time/../core/../ib/ib_gcm.hpp:
 src/time/../core/../boundary/boundary.hpp:
 src/time/../core/../limiters/limiter_common.hpp:
 src/time/../core/../limiters/limiter_smooth.hpp:
-src/time/../core/../time/implicit_precond.hpp:
-src/time/../core/../time/implicit_ilu.hpp:
-src/time/../core/../time/esdirk34.hpp:
-src/time/../core/../time/implicit_ilu.hpp:
 src/time/../limiters/entropy.hpp:
 src/time/../limiters/positivity.hpp:
 src/time/../ppr/ppr.hpp:

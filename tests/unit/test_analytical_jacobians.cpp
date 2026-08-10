@@ -15,8 +15,8 @@ TEST_CASE("Analytical Euler Flux Jacobians vs Finite Differences") {
 
     // Compute Analytical Jacobians
     double A_ana[16], B_ana[16];
-    Implicit::compute_euler_jacobian_x_2d(U, gamma, A_ana);
-    Implicit::compute_euler_jacobian_y_2d(U, gamma, B_ana);
+    fr::implicit::compute_euler_jacobian_x_2d(U, gamma, A_ana);
+    fr::implicit::compute_euler_jacobian_y_2d(U, gamma, B_ana);
 
     // Compute Fluxes helper
     auto euler_flux_x = [gamma](const double u_vec[4], double F[4]) {

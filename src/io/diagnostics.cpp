@@ -5,6 +5,7 @@
 
 #include "diagnostics.hpp"
 #include "../core/solver.hpp"
+#include "../time/implicit_integrator.hpp"
 #include <iomanip>
 #include <iostream>
 #include <filesystem>
@@ -291,8 +292,8 @@ void Diagnostics::update(const Solver& solver, double t, int step) {
                       << " (avg_th: " << std::fixed << std::setprecision(4) << avg_theta << ")";
         }
 
-        if (params.TIME_INTEGRATOR == "ESDIRK34") {
-            const auto& st = solver.last_implicit_stats;
+        if (params.TIME_INTEGRATOR == "ESDIRK34" && solver.implicit_engine_2d) {
+            const auto& st = solver.implicit_engine_2d->last_stats;
             std::cout << " | CFL: " << std::fixed << std::setprecision(1) << st.current_cfl
                       << " | Nwt: " << st.total_newton_iters
                       << " | GMR: " << st.total_gmres_iters

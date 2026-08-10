@@ -6,10 +6,6 @@ src/io/vtk_writer.o: src/io/vtk_writer.cpp src/io/vtk_writer.hpp \
  src/io/../core/../boundary/boundary.hpp \
  src/io/../core/../limiters/limiter_common.hpp \
  src/io/../core/../limiters/limiter_smooth.hpp \
- src/io/../core/../time/implicit_precond.hpp \
- src/io/../core/../time/implicit_ilu.hpp \
- src/io/../core/../time/esdirk34.hpp \
- src/io/../core/../time/implicit_ilu.hpp \
  src/io/../limiters/limiter_bbch_plot.hpp \
  src/io/../limiters/limiter_bbch.hpp
 src/io/vtk_writer.hpp:
@@ -24,9 +20,5 @@ src/io/../core/../ib/ib_gcm.hpp:
 src/io/../core/../boundary/boundary.hpp:
 src/io/../core/../limiters/limiter_common.hpp:
 src/io/../core/../limiters/limiter_smooth.hpp:
-src/io/../core/../time/implicit_precond.hpp:
-src/io/../core/../time/implicit_ilu.hpp:
-src/io/../core/../time/esdirk34.hpp:
-src/io/../core/../time/implicit_ilu.hpp:
 src/io/../limiters/limiter_bbch_plot.hpp:
 src/io/../limiters/limiter_bbch.hpp:

@@ -8,24 +8,24 @@
 #include "../core/basis.hpp"
 #include "../core/cell.hpp"
 #include "../core/parameters.hpp"
+#include "implicit_constants.hpp"
 #include <vector>
 #include <cmath>
 #include <algorithm>
-#include <memory>
 
-namespace Implicit {
+namespace fr::implicit {
 
 /**
  * @brief Computes exact 2D Euler physical flux Jacobian A(U) = dF/dU.
- * A is 4x4 matrix returned in row-major array.
+ * A is 4x4 matrix returned in row-major 16-element array.
  */
-void compute_euler_jacobian_x_2d(const double U[4], double gamma, double A[16]);
+void compute_euler_jacobian_x_2d(const double U[4], double gamma, double jacobian_a[16]) noexcept;
 
 /**
  * @brief Computes exact 2D Euler physical flux Jacobian B(U) = dG/dU.
- * B is 4x4 matrix returned in row-major array.
+ * B is 4x4 matrix returned in row-major 16-element array.
  */
-void compute_euler_jacobian_y_2d(const double U[4], double gamma, double B[16]);
+void compute_euler_jacobian_y_2d(const double U[4], double gamma, double jacobian_b[16]) noexcept;
 
 /**
  * @class BlockJacobiPreconditioner2D
@@ -36,7 +36,7 @@ public:
     int n_cells = 0;
     int npts = 0;
     int block_size = 0; // N_d = npts * npts * 4
-    std::vector<std::vector<double>> inv_M_blocks; // Local M_e^{-1} per cell
+    std::vector<std::vector<double>> inv_m_blocks; // Local M_e^{-1} per cell
 
     BlockJacobiPreconditioner2D() = default;
 
@@ -52,4 +52,4 @@ public:
     void apply(const std::vector<double>& v_in, std::vector<double>& w_out) const;
 };
 
-} // namespace Implicit
+} // namespace fr::implicit
