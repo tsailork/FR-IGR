@@ -86,6 +86,11 @@ void inviscid_sweep_2d(Solver& solver) {
     const Basis&  basis  = solver.basis;
     const int N = p.N_PTS;
     constexpr int NV = 4; // 2D Euler variables
+    const double* D_ptr = basis.D.data_ptr();
+    const double* lL    = basis.l_L.data();
+    const double* lR    = basis.l_R.data();
+    const double* dgl   = basis.dgl.data();
+    const double* dgr   = basis.dgr.data();
 
     // =========================================================================
     // Pass 1: Local & Conforming Sweep
@@ -135,19 +140,19 @@ void inviscid_sweep_2d(Solver& solver) {
                 int flat = flat2d(iy, ix, N);
 
                 double s = c->sigma_field[flat];
-                sig_lo += s * basis.l_L[sw];
-                sig_hi += s * basis.l_R[sw];
+                sig_lo += s * lL[sw];
+                sig_hi += s * lR[sw];
                 if (p.ENABLE_PPR) {
-                    S_lo += c->S_field[flat] * basis.l_L[sw];
-                    S_hi += c->S_field[flat] * basis.l_R[sw];
+                    S_lo += c->S_field[flat] * lL[sw];
+                    S_hi += c->S_field[flat] * lR[sw];
                 }
             }
             for (int v = 0; v < NV; ++v) {
                 for (int sw = 0; sw < N; ++sw) {
                     int iy, ix;
                     dir_to_ij<Dir>(line, sw, iy, ix);
-                    U_lo[v] += c->get_U(v, iy, ix, N) * basis.l_L[sw];
-                    U_hi[v] += c->get_U(v, iy, ix, N) * basis.l_R[sw];
+                    U_lo[v] += c->get_U(v, iy, ix, N) * lL[sw];
+                    U_hi[v] += c->get_U(v, iy, ix, N) * lR[sw];
                 }
             }
 
@@ -170,7 +175,7 @@ void inviscid_sweep_2d(Solver& solver) {
             } else if (c->neighbors[FACE_LO<Dir>] && c->neighbors[FACE_LO<Dir>]->level == c->level) {
                 Cell2D* nc = c->neighbors[FACE_LO<Dir>];
                 char nface = c->neighbor_faces[FACE_LO<Dir>];
-                const double* weights = (nface == NFACE_LO<Dir>) ? basis.l_L.data() : basis.l_R.data();
+                const double* weights = (nface == NFACE_LO<Dir>) ? lL : lR;
                 sig_neigh = 0.0;
                 double S_neigh = 0.0;
                 for (int v = 0; v < NV; ++v) U_neigh[v] = 0.0;
@@ -205,7 +210,7 @@ void inviscid_sweep_2d(Solver& solver) {
             } else if (c->neighbors[FACE_HI<Dir>] && c->neighbors[FACE_HI<Dir>]->level == c->level) {
                 Cell2D* nc = c->neighbors[FACE_HI<Dir>];
                 char nface = c->neighbor_faces[FACE_HI<Dir>];
-                const double* weights = (nface == NFACE_LO<Dir>) ? basis.l_L.data() : basis.l_R.data();
+                const double* weights = (nface == NFACE_LO<Dir>) ? lL : lR;
                 sig_neigh = 0.0;
                 double S_neigh = 0.0;
                 for (int v = 0; v < NV; ++v) U_neigh[v] = 0.0;
@@ -232,14 +237,14 @@ void inviscid_sweep_2d(Solver& solver) {
             double F_S_lo_int = 0.0, F_S_hi_int = 0.0;
             for (int v = 0; v < NV; ++v) {
                 for (int sw = 0; sw < N; ++sw) {
-                    F_lo_int[v] += Flux_sol[sw][v] * basis.l_L[sw];
-                    F_hi_int[v] += Flux_sol[sw][v] * basis.l_R[sw];
+                    F_lo_int[v] += Flux_sol[sw][v] * lL[sw];
+                    F_hi_int[v] += Flux_sol[sw][v] * lR[sw];
                 }
             }
             if (p.ENABLE_PPR) {
                 for (int sw = 0; sw < N; ++sw) {
-                    F_S_lo_int += Flux_sol_S[sw] * basis.l_L[sw];
-                    F_S_hi_int += Flux_sol_S[sw] * basis.l_R[sw];
+                    F_S_lo_int += Flux_sol_S[sw] * lL[sw];
+                    F_S_hi_int += Flux_sol_S[sw] * lR[sw];
                 }
             }
 
@@ -248,14 +253,14 @@ void inviscid_sweep_2d(Solver& solver) {
                 for (int sw = 0; sw < N; ++sw) {
                     double df = 0.0;
                     for (int k = 0; k < N; ++k)
-                        df += basis.D[sw][k] * Flux_sol[k][v];
+                        df += D_ptr[sw * N + k] * Flux_sol[k][v];
 
                     int iy, ix;
                     dir_to_ij<Dir>(line, sw, iy, ix);
                     c->get_RHS(v, iy, ix, N) -=
                         (df
-                         + (Flux_lo[v] - F_lo_int[v]) * basis.dgl[sw]
-                         + (Flux_hi[v] - F_hi_int[v]) * basis.dgr[sw])
+                         + (Flux_lo[v] - F_lo_int[v]) * dgl[sw]
+                         + (Flux_hi[v] - F_hi_int[v]) * dgr[sw])
                         * inv_h2;
                 }
             }
@@ -263,7 +268,7 @@ void inviscid_sweep_2d(Solver& solver) {
                 for (int sw = 0; sw < N; ++sw) {
                     double df_S = 0.0;
                     for (int k = 0; k < N; ++k)
-                        df_S += basis.D[sw][k] * Flux_sol_S[k];
+                        df_S += D_ptr[sw * N + k] * Flux_sol_S[k];
 
                     int iy, ix;
                     dir_to_ij<Dir>(line, sw, iy, ix);

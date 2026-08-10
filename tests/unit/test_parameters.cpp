@@ -78,6 +78,25 @@ TEST_CASE("Parameters - Load inputs.dat") {
     std::remove("test_inputs.dat");
 }
 
+TEST_CASE("Parameters - Load implicit CFL ramping options") {
+    std::ofstream out("test_cfl_inputs.dat");
+    out << "[Implicit]\nTIME_INTEGRATOR = ESDIRK34\nIMPLICIT_SOLVER = BLOCK_JACOBI\nIMPLICIT_CFL_MODE = RAMP\nIMPLICIT_CFL_MIN = 2.0\nIMPLICIT_CFL_MAX = 40.0\nIMPLICIT_CFL_RAMP_STEPS = 100\nIMPLICIT_CFL_TARGET_NEWTON_ITERS = 20\n";
+    out.close();
+
+    Parameters p;
+    p.load_inputs("test_cfl_inputs.dat");
+
+    CHECK(p.TIME_INTEGRATOR == "ESDIRK34");
+    CHECK(p.IMPLICIT_SOLVER == "BLOCK_JACOBI");
+    CHECK(p.IMPLICIT_CFL_MODE == "RAMP");
+    CHECK(p.IMPLICIT_CFL_MIN == doctest::Approx(2.0));
+    CHECK(p.IMPLICIT_CFL_MAX == doctest::Approx(40.0));
+    CHECK(p.IMPLICIT_CFL_RAMP_STEPS == 100);
+    CHECK(p.IMPLICIT_CFL_TARGET_NEWTON_ITERS == 20);
+
+    std::remove("test_cfl_inputs.dat");
+}
+
 TEST_CASE("Parameters - WALL_SLIP alias test") {
     std::ofstream out("test_domain_wall_slip.grid");
     out << "[Block0]\n";

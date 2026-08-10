@@ -5,7 +5,12 @@ src/ppr/ppr.o: src/ppr/ppr.cpp src/ppr/ppr.hpp \
  src/ppr/../core/solver.hpp src/ppr/../core/geometry.hpp \
  src/ppr/../core/../ib/ib_gcm.hpp \
  src/ppr/../core/../boundary/boundary.hpp \
- src/ppr/../core/../limiters/limiter_common.hpp
+ src/ppr/../core/../limiters/limiter_common.hpp \
+ src/ppr/../core/../limiters/limiter_smooth.hpp \
+ src/ppr/../core/../time/implicit_precond.hpp \
+ src/ppr/../core/../time/implicit_ilu.hpp \
+ src/ppr/../core/../time/esdirk34.hpp \
+ src/ppr/../core/../time/implicit_ilu.hpp
 src/ppr/ppr.hpp:
 src/ppr/../core/parameters.hpp:
 src/ppr/../core/../ib/ib.hpp:
@@ -18,3 +23,8 @@ src/ppr/../core/geometry.hpp:
 src/ppr/../core/../ib/ib_gcm.hpp:
 src/ppr/../core/../boundary/boundary.hpp:
 src/ppr/../core/../limiters/limiter_common.hpp:
+src/ppr/../core/../limiters/limiter_smooth.hpp:
+src/ppr/../core/../time/implicit_precond.hpp:
+src/ppr/../core/../time/implicit_ilu.hpp:
+src/ppr/../core/../time/esdirk34.hpp:
+src/ppr/../core/../time/implicit_ilu.hpp:

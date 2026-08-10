@@ -148,6 +148,8 @@ struct Basis {
     std::vector<double> l_L;   ///< Lagrange basis evaluated at the left interface (\f$ x = -1 \f$).
     std::vector<double> l_R;   ///< Lagrange basis evaluated at the right interface (\f$ x = +1 \f$).
     FlatMatrix D;              ///< Nodal derivative matrix \f$ D_{ij} \f$.
+    FlatMatrix V;              ///< Legendre Vandermonde matrix \f$ V_{i,m} = P_m(z_i) \f$.
+    FlatMatrix V_inv;          ///< Inverse Legendre Vandermonde matrix \f$ V^{-1} \f$.
     std::vector<double> dgl;   ///< Left Radau correction derivative \f$ g'_L \f$.
     std::vector<double> dgr;   ///< Right Radau correction derivative \f$ g'_R \f$.
 

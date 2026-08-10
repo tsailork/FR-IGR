@@ -5,6 +5,11 @@ src/flux/gradient.o: src/flux/gradient.cpp src/flux/../core/solver.hpp \
  src/flux/../core/../ib/ib_gcm.hpp \
  src/flux/../core/../boundary/boundary.hpp \
  src/flux/../core/../limiters/limiter_common.hpp \
+ src/flux/../core/../limiters/limiter_smooth.hpp \
+ src/flux/../core/../time/implicit_precond.hpp \
+ src/flux/../core/../time/implicit_ilu.hpp \
+ src/flux/../core/../time/esdirk34.hpp \
+ src/flux/../core/../time/implicit_ilu.hpp \
  src/flux/../ib/sbm_geometry.hpp
 src/flux/../core/solver.hpp:
 src/flux/../core/basis.hpp:
@@ -16,4 +21,9 @@ src/flux/../core/geometry.hpp:
 src/flux/../core/../ib/ib_gcm.hpp:
 src/flux/../core/../boundary/boundary.hpp:
 src/flux/../core/../limiters/limiter_common.hpp:
+src/flux/../core/../limiters/limiter_smooth.hpp:
+src/flux/../core/../time/implicit_precond.hpp:
+src/flux/../core/../time/implicit_ilu.hpp:
+src/flux/../core/../time/esdirk34.hpp:
+src/flux/../core/../time/implicit_ilu.hpp:
 src/flux/../ib/sbm_geometry.hpp:

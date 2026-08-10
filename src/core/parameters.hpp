@@ -82,6 +82,26 @@ struct Parameters {
     std::string IC_TYPE = "RIEMANN_2D_C3"; ///< Target physical initial condition profile name.
     std::string RIEMANN_SOLVER = "HLLC";   ///< Unified Riemann numerical flux solver ("HLLC" or "RUSANOV").
 
+    // -------------------------------------------------------------------------
+    // Implicit Time Stepping (ESDIRK34)
+    // -------------------------------------------------------------------------
+    std::string TIME_INTEGRATOR = "SSP_RK3";      ///< Time stepping scheme ("SSP_RK3" or "ESDIRK34").
+    std::string IMPLICIT_SOLVER  = "BLOCK_JACOBI"; ///< Implicit stage solver ("BLOCK_JACOBI" or "JFNK").
+    double IMPLICIT_CFL          = 10.0;           ///< Target implicit CFL multiplier.
+    double IMPLICIT_NEWTON_TOL   = 1e-4;           ///< Non-linear Newton convergence tolerance.
+    double IMPLICIT_GMRES_TOL    = 1e-1;           ///< Linear GMRES relative tolerance.
+    int    IMPLICIT_MAX_NEWTON_ITERS = 50;         ///< Maximum Newton iterations per stage.
+    int    IMPLICIT_PRECOND_FREEZE_STEPS = 1;      ///< Preconditioner freeze interval in steps.
+
+    // Implicit CFL Management / Control Protocol
+    std::string IMPLICIT_CFL_MODE                = "CONSTANT";  ///< CFL control mode ("CONSTANT", "RAMP", "ADAPTIVE").
+    double      IMPLICIT_CFL_MIN                 = 1.0;         ///< Minimum implicit CFL limit.
+    double      IMPLICIT_CFL_MAX                 = 50.0;        ///< Maximum implicit CFL limit.
+    int         IMPLICIT_CFL_RAMP_STEPS          = 50;          ///< Number of steps to ramp from MIN to MAX.
+    int         IMPLICIT_CFL_TARGET_NEWTON_ITERS = 15;          ///< Target Newton iterations per step for ADAPTIVE mode.
+    double      IMPLICIT_CFL_GROWTH_FACTOR       = 1.2;         ///< Multiplier when step converges within target.
+    double      IMPLICIT_CFL_REDUCTION_FACTOR    = 0.7;         ///< Multiplier when step exceeds target iterations.
+
     // Freestream (for IC_TYPE = FREESTREAM)
     double RHO_INF = 1.0;             ///< Reference freestream density.
     double U_INF   = 0.0;             ///< Reference freestream X-velocity.

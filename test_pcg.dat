@@ -1,0 +1,4 @@
+[Solver]
+P_DEG = 1
+[Regularization]
+ENABLE_IGR = true

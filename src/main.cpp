@@ -88,6 +88,13 @@ int run_simulation(Parameters& params) {
         diag = std::make_unique<Diagnostics>(params, solver, t);
     }
 
+    double current_implicit_cfl = params.IMPLICIT_CFL;
+    if (params.TIME_INTEGRATOR == "ESDIRK34") {
+        if (params.IMPLICIT_CFL_MODE == "RAMP" || params.IMPLICIT_CFL_MODE == "ADAPTIVE") {
+            current_implicit_cfl = params.IMPLICIT_CFL_MIN;
+        }
+    }
+
     while (t < params.T_FINAL) {
         if (std::filesystem::exists("STOP")) {
             std::cout << "\n[STOP] STOP file detected. Shutting down solver cleanly...\n";
@@ -96,13 +103,43 @@ int run_simulation(Parameters& params) {
             break;
         }
 
-        double dt = solver.compute_dt();
+        if (params.TIME_INTEGRATOR == "ESDIRK34") {
+            if (params.IMPLICIT_CFL_MODE == "RAMP") {
+                if (step < params.IMPLICIT_CFL_RAMP_STEPS && params.IMPLICIT_CFL_RAMP_STEPS > 0) {
+                    double frac = static_cast<double>(step) / static_cast<double>(params.IMPLICIT_CFL_RAMP_STEPS);
+                    current_implicit_cfl = params.IMPLICIT_CFL_MIN + frac * (params.IMPLICIT_CFL_MAX - params.IMPLICIT_CFL_MIN);
+                } else {
+                    current_implicit_cfl = params.IMPLICIT_CFL_MAX;
+                }
+            }
+        }
+
+        double dt_exp = solver.compute_dt();
+        double dt = (params.TIME_INTEGRATOR == "ESDIRK34") ? (current_implicit_cfl * dt_exp) : dt_exp;
 
         if (t + dt > next_checkpoint) dt = next_checkpoint - t;
         if (t + dt > next_plot)       dt = next_plot - t;
         if (t + dt > params.T_FINAL)  dt = params.T_FINAL - t;
 
-        solver.step_rk3(dt);
+        if (params.TIME_INTEGRATOR == "ESDIRK34") {
+            if constexpr (Dim == 2) {
+                solver.step_esdirk34(dt);
+                solver.last_implicit_stats.current_cfl = current_implicit_cfl;
+
+                if (params.IMPLICIT_CFL_MODE == "ADAPTIVE") {
+                    int total_nwt = solver.last_implicit_stats.total_newton_iters;
+                    if (total_nwt <= params.IMPLICIT_CFL_TARGET_NEWTON_ITERS) {
+                        current_implicit_cfl = std::min(params.IMPLICIT_CFL_MAX, current_implicit_cfl * params.IMPLICIT_CFL_GROWTH_FACTOR);
+                    } else {
+                        current_implicit_cfl = std::max(params.IMPLICIT_CFL_MIN, current_implicit_cfl * params.IMPLICIT_CFL_REDUCTION_FACTOR);
+                    }
+                }
+            } else {
+                solver.step_rk3(dt);
+            }
+        } else {
+            solver.step_rk3(dt);
+        }
         t += dt;
         step++;
 

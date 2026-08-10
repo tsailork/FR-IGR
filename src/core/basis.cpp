@@ -45,6 +45,51 @@ static double lagrange_poly(int j, double x,
     return term_j / sum_all;
 }
 
+static bool invert_matrix_dense(int n, const double* A, double* A_inv) {
+    std::vector<double> mat(n * n * 2, 0.0);
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < n; ++j) {
+            mat[i * (2 * n) + j] = A[i * n + j];
+        }
+        mat[i * (2 * n) + n + i] = 1.0;
+    }
+    for (int i = 0; i < n; ++i) {
+        int pivot = i;
+        double max_val = std::abs(mat[i * (2 * n) + i]);
+        for (int k = i + 1; k < n; ++k) {
+            double val = std::abs(mat[k * (2 * n) + i]);
+            if (val > max_val) {
+                max_val = val;
+                pivot = k;
+            }
+        }
+        if (max_val < 1e-14) return false;
+        if (pivot != i) {
+            for (int j = 0; j < 2 * n; ++j) {
+                std::swap(mat[i * (2 * n) + j], mat[pivot * (2 * n) + j]);
+            }
+        }
+        double diag = mat[i * (2 * n) + i];
+        for (int j = 0; j < 2 * n; ++j) {
+            mat[i * (2 * n) + j] /= diag;
+        }
+        for (int k = 0; k < n; ++k) {
+            if (k != i) {
+                double factor = mat[k * (2 * n) + i];
+                for (int j = 0; j < 2 * n; ++j) {
+                    mat[k * (2 * n) + j] -= factor * mat[i * (2 * n) + j];
+                }
+            }
+        }
+    }
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < n; ++j) {
+            A_inv[i * n + j] = mat[i * (2 * n) + n + j];
+        }
+    }
+    return true;
+}
+
 // ---------------------------------------------------------------------------
 #include "basis.hpp"
 #include "exceptions.hpp"
@@ -109,6 +154,22 @@ Basis::Basis(int P_DEG) {
         double sign    = (P_DEG % 2 == 0) ? 1.0 : -1.0;
         dgl[i] = (sign * 0.5) * (dL_P - dL_Pp1);
         dgr[i] = 0.5  * (dL_P + dL_Pp1);
+    }
+
+    // Vandermonde V and V_inv
+    V.resize(N, N);
+    V_inv.resize(N, N);
+    for (int i = 0; i < N; ++i) {
+        for (int m = 0; m < N; ++m) {
+            V(i, m) = legendre(m, z[i]);
+        }
+    }
+    std::vector<double> temp_V_inv(N * N, 0.0);
+    invert_matrix_dense(N, V.data_ptr(), temp_V_inv.data());
+    for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < N; ++j) {
+            V_inv(i, j) = temp_V_inv[i * N + j];
+        }
     }
 
     // 4. Precompute prolongation and restriction matrices

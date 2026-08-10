@@ -257,6 +257,39 @@ void Parameters::load_inputs(const std::string& filename) {
         if (kv.count("ENABLE_MULTIRATE")) ENABLE_MULTIRATE = (kv["ENABLE_MULTIRATE"] == "true" || kv["ENABLE_MULTIRATE"] == "1");
         if (kv.count("MAX_MULTIRATE_LEVEL")) MAX_MULTIRATE_LEVEL = std::stoi(kv["MAX_MULTIRATE_LEVEL"]);
         if (kv.count("RIEMANN_SOLVER")) RIEMANN_SOLVER = kv["RIEMANN_SOLVER"];
+        if (kv.count("TIME_INTEGRATOR")) TIME_INTEGRATOR = kv["TIME_INTEGRATOR"];
+        if (kv.count("IMPLICIT_SOLVER")) IMPLICIT_SOLVER = kv["IMPLICIT_SOLVER"];
+        if (kv.count("IMPLICIT_CFL")) IMPLICIT_CFL = std::stod(kv["IMPLICIT_CFL"]);
+        if (kv.count("IMPLICIT_CFL_MODE")) IMPLICIT_CFL_MODE = kv["IMPLICIT_CFL_MODE"];
+        if (kv.count("IMPLICIT_CFL_MIN")) IMPLICIT_CFL_MIN = std::stod(kv["IMPLICIT_CFL_MIN"]);
+        if (kv.count("IMPLICIT_CFL_MAX")) IMPLICIT_CFL_MAX = std::stod(kv["IMPLICIT_CFL_MAX"]);
+        if (kv.count("IMPLICIT_CFL_RAMP_STEPS")) IMPLICIT_CFL_RAMP_STEPS = std::stoi(kv["IMPLICIT_CFL_RAMP_STEPS"]);
+        if (kv.count("IMPLICIT_CFL_TARGET_NEWTON_ITERS")) IMPLICIT_CFL_TARGET_NEWTON_ITERS = std::stoi(kv["IMPLICIT_CFL_TARGET_NEWTON_ITERS"]);
+        if (kv.count("IMPLICIT_CFL_GROWTH_FACTOR")) IMPLICIT_CFL_GROWTH_FACTOR = std::stod(kv["IMPLICIT_CFL_GROWTH_FACTOR"]);
+        if (kv.count("IMPLICIT_CFL_REDUCTION_FACTOR")) IMPLICIT_CFL_REDUCTION_FACTOR = std::stod(kv["IMPLICIT_CFL_REDUCTION_FACTOR"]);
+        if (kv.count("IMPLICIT_NEWTON_TOL")) IMPLICIT_NEWTON_TOL = std::stod(kv["IMPLICIT_NEWTON_TOL"]);
+        if (kv.count("IMPLICIT_GMRES_TOL")) IMPLICIT_GMRES_TOL = std::stod(kv["IMPLICIT_GMRES_TOL"]);
+        if (kv.count("IMPLICIT_MAX_NEWTON_ITERS")) IMPLICIT_MAX_NEWTON_ITERS = std::stoi(kv["IMPLICIT_MAX_NEWTON_ITERS"]);
+        if (kv.count("IMPLICIT_PRECOND_FREEZE_STEPS")) IMPLICIT_PRECOND_FREEZE_STEPS = std::stoi(kv["IMPLICIT_PRECOND_FREEZE_STEPS"]);
+    }
+
+    // --- [Implicit] ---
+    if (ini.count("Implicit")) {
+        auto& kv = ini["Implicit"];
+        if (kv.count("TIME_INTEGRATOR")) TIME_INTEGRATOR = kv["TIME_INTEGRATOR"];
+        if (kv.count("IMPLICIT_SOLVER")) IMPLICIT_SOLVER = kv["IMPLICIT_SOLVER"];
+        if (kv.count("IMPLICIT_CFL")) IMPLICIT_CFL = std::stod(kv["IMPLICIT_CFL"]);
+        if (kv.count("IMPLICIT_CFL_MODE")) IMPLICIT_CFL_MODE = kv["IMPLICIT_CFL_MODE"];
+        if (kv.count("IMPLICIT_CFL_MIN")) IMPLICIT_CFL_MIN = std::stod(kv["IMPLICIT_CFL_MIN"]);
+        if (kv.count("IMPLICIT_CFL_MAX")) IMPLICIT_CFL_MAX = std::stod(kv["IMPLICIT_CFL_MAX"]);
+        if (kv.count("IMPLICIT_CFL_RAMP_STEPS")) IMPLICIT_CFL_RAMP_STEPS = std::stoi(kv["IMPLICIT_CFL_RAMP_STEPS"]);
+        if (kv.count("IMPLICIT_CFL_TARGET_NEWTON_ITERS")) IMPLICIT_CFL_TARGET_NEWTON_ITERS = std::stoi(kv["IMPLICIT_CFL_TARGET_NEWTON_ITERS"]);
+        if (kv.count("IMPLICIT_CFL_GROWTH_FACTOR")) IMPLICIT_CFL_GROWTH_FACTOR = std::stod(kv["IMPLICIT_CFL_GROWTH_FACTOR"]);
+        if (kv.count("IMPLICIT_CFL_REDUCTION_FACTOR")) IMPLICIT_CFL_REDUCTION_FACTOR = std::stod(kv["IMPLICIT_CFL_REDUCTION_FACTOR"]);
+        if (kv.count("IMPLICIT_NEWTON_TOL")) IMPLICIT_NEWTON_TOL = std::stod(kv["IMPLICIT_NEWTON_TOL"]);
+        if (kv.count("IMPLICIT_GMRES_TOL")) IMPLICIT_GMRES_TOL = std::stod(kv["IMPLICIT_GMRES_TOL"]);
+        if (kv.count("IMPLICIT_MAX_NEWTON_ITERS")) IMPLICIT_MAX_NEWTON_ITERS = std::stoi(kv["IMPLICIT_MAX_NEWTON_ITERS"]);
+        if (kv.count("IMPLICIT_PRECOND_FREEZE_STEPS")) IMPLICIT_PRECOND_FREEZE_STEPS = std::stoi(kv["IMPLICIT_PRECOND_FREEZE_STEPS"]);
     }
 
     // --- [Regularization] ---

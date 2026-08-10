@@ -7,6 +7,7 @@
 #include "../core/cell.hpp"
 #include "../core/basis.hpp"
 #include "../core/parameters.hpp"
+#include "limiter_smooth.hpp"
 #include <algorithm>
 #include <cmath>
 
