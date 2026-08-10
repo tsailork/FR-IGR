@@ -20,6 +20,7 @@
 #include "../igr/ducros_sensor.hpp"
 #include "../ppr/ppr.hpp"
 #include "../apsr/apsr.hpp"
+#include "../time/implicit_integrator.hpp"
 
 /**
  * @brief Parse a boundary condition string from domain.grid into a NeighborInfo metadata struct.
@@ -2290,4 +2291,51 @@ void SolverDim<3>::get_neigh_state_cell(const Cell3D& c, int node_idx, bool is_r
             *S_neigh = Solver::compute_wall_phantom_pressure(face_state, neigh_state, S_face, p.PPR_WALL_BC, 3, p.POS_LIMITER_EPS, p.GAMMA);
         }
     }
+}
+
+void Solver2D::compute_spatial_residual_2d(const std::vector<CellDim<2>*>& input_cells, std::vector<double>& R_out) {
+    if (p.ENABLE_POS_LIMITER) {
+        #pragma omp parallel for schedule(static)
+        for (size_t i = 0; i < input_cells.size(); ++i) {
+            Limiters::apply_full_limiter_2d(*input_cells[i], basis, p.GAMMA, p.POS_LIMITER_EPS);
+            std::fill(input_cells[i]->RHS.begin(), input_cells[i]->RHS.end(), 0.0);
+        }
+    } else {
+        #pragma omp parallel for schedule(static)
+        for (size_t i = 0; i < input_cells.size(); ++i) {
+            std::fill(input_cells[i]->RHS.begin(), input_cells[i]->RHS.end(), 0.0);
+        }
+    }
+
+    // 2. Perform 2D Flux Reconstruction spatial sweeps
+    sweep_x();
+    sweep_y();
+    if (p.ENABLE_NS) {
+        compute_gradients();
+        viscous_sweep_x();
+        viscous_sweep_y();
+    }
+
+    // 3. Collect RHS accumulators into R_out
+    size_t total_dofs = 0;
+    for (const auto* c : input_cells) total_dofs += c->RHS.size();
+    R_out.resize(total_dofs);
+
+    size_t offset = 0;
+    for (const auto* c : input_cells) {
+        std::copy(c->RHS.begin(), c->RHS.end(), R_out.begin() + offset);
+        offset += c->RHS.size();
+    }
+}
+
+void Solver2D::step_esdirk34(double dt) {
+    if (!implicit_engine_2d) {
+        implicit_engine_2d = std::make_unique<fr::implicit::ImplicitIntegrator2D>();
+        implicit_engine_2d->initialize(p);
+    }
+    auto compute_R = [this](const std::vector<CellDim<2>*>& c_list, std::vector<double>& R_out) {
+        this->compute_spatial_residual_2d(c_list, R_out);
+    };
+
+    implicit_engine_2d->step(cells, basis, p, dt, compute_R);
 }

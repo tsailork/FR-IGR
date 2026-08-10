@@ -23,8 +23,8 @@ FLUX_SRC = src/flux/euler_flux.cpp src/flux/sweeps.cpp src/flux/gradient.cpp
 IGR_SRC  = src/igr/sensor.cpp src/igr/adi_solver.cpp src/igr/parabolic.cpp src/igr/entropic_pressure.cpp src/igr/ducros_sensor.cpp src/igr/pcg_solver.cpp
 PPR_SRC  = src/ppr/ppr.cpp src/apsr/apsr.cpp
 BND_SRC  = src/boundary/boundary_wall.cpp src/boundary/boundary_characteristic.cpp src/boundary/boundary_x.cpp src/boundary/boundary_y.cpp src/boundary/boundary_backpressure.cpp
-LIM_SRC  = src/limiters/positivity.cpp src/limiters/entropy.cpp
-TIME_SRC = src/time/stability.cpp src/time/rk3.cpp
+LIM_SRC  = src/limiters/positivity.cpp src/limiters/entropy.cpp src/limiters/limiter_smooth.cpp
+TIME_SRC = src/time/stability.cpp src/time/rk3.cpp src/time/implicit_precond.cpp src/time/implicit_ilu.cpp src/time/esdirk34.cpp src/time/implicit_integrator.cpp
 IO_SRC   = src/io/vtk_writer.cpp src/io/restart.cpp src/io/initial_conditions.cpp src/io/diagnostics.cpp
 IB_SRC   = src/ib/ib_common.cpp src/ib/ib_vpm.cpp src/ib/sbm_geometry.cpp src/ib/ib_gcm.cpp src/ib/ib_wall_function.cpp src/ib/ib_motion.cpp
 

@@ -27,6 +27,10 @@
 #include <memory>
 #include "../limiters/limiter_common.hpp"
 
+namespace fr::implicit {
+    class ImplicitIntegrator2D;
+}
+
 /**
  * @brief Maximum polynomial degree supported by static buffers (P = 3 -> 4 solution points).
  */
@@ -372,6 +376,18 @@ public:
      * @brief Perform one full SSP-RK3 integration step.
      */
     void step_rk3(double dt);
+
+    /**
+     * @brief Perform one full implicit ESDIRK34 integration step.
+     */
+    void step_esdirk34(double dt);
+
+    /**
+     * @brief Compute full effective spatial residual operator R_effective(U).
+     */
+    void compute_spatial_residual_2d(const std::vector<CellDim<2>*>& input_cells, std::vector<double>& R_out);
+
+    std::unique_ptr<fr::implicit::ImplicitIntegrator2D> implicit_engine_2d;
 
     /**
      * @brief Computes local stable timesteps for each individual element.

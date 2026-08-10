@@ -19,6 +19,7 @@
 #include "io/vtk_writer.hpp"
 #include "io/diagnostics.hpp"
 #include "ib/sbm_geometry.hpp"
+#include "time/implicit_integrator.hpp"
 #include <cmath>
 #include <iostream>
 #include <fstream>
@@ -96,13 +97,27 @@ int run_simulation(Parameters& params) {
             break;
         }
 
-        double dt = solver.compute_dt();
+        double dt_exp = solver.compute_dt();
+        double dt = dt_exp;
+        if constexpr (Dim == 2) {
+            if (params.TIME_INTEGRATOR == "ESDIRK34" && solver.implicit_engine_2d) {
+                dt = solver.implicit_engine_2d->get_current_cfl() * dt_exp;
+            }
+        }
 
         if (t + dt > next_checkpoint) dt = next_checkpoint - t;
         if (t + dt > next_plot)       dt = next_plot - t;
         if (t + dt > params.T_FINAL)  dt = params.T_FINAL - t;
 
-        solver.step_rk3(dt);
+        if (params.TIME_INTEGRATOR == "ESDIRK34") {
+            if constexpr (Dim == 2) {
+                solver.step_esdirk34(dt);
+            } else {
+                solver.step_rk3(dt);
+            }
+        } else {
+            solver.step_rk3(dt);
+        }
         t += dt;
         step++;
 

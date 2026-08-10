@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Implicit ESDIRK34 Framework with Smooth Limiting for High-Order DG/FR Solvers</title>
+    
+    <!-- MathJax Configuration & CDN for Rendering LaTeX -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true,
+                processEnvironments: true
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async 
+            src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+    </script>
+
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --accent-blue: #38bdf8;
+            --accent-green: #4ade80;
+            --accent-amber: #fbbf24;
+            --accent-red: #f87171;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border-color: #475569;
+            --code-bg: #090d16;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h1 {
+            font-size: 2rem;
+            color: var(--accent-blue);
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            gap: 4px;
+            background-color: var(--bg-secondary);
+            padding: 6px;
+            border-radius: 8px 8px 0 0;
+            border: 1px solid var(--border-color);
+            border-bottom: none;
+            overflow-x: auto;
+        }
+
+        .tab-button {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 12px 20px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .tab-button:hover {
+            color: var(--text-primary);
+            background-color: var(--bg-tertiary);
+        }
+
+        .tab-button.active {
+            color: var(--bg-primary);
+            background-color: var(--accent-blue);
+        }
+
+        /* Tab Content */
+        .tab-content-container {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 0 0 8px 8px;
+            padding: 30px;
+            min-height: 600px;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        /* Typography & Layout inside tabs */
+        h2 {
+            font-size: 1.5rem;
+            color: var(--accent-blue);
+            margin-top: 20px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        h3 {
+            font-size: 1.2rem;
+            color: var(--accent-green);
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        h4 {
+            font-size: 1rem;
+            color: var(--accent-amber);
+            margin-top: 15px;
+            margin-bottom: 8px;
+        }
+
+        p {
+            margin-bottom: 15px;
+            color: var(--text-primary);
+        }
+
+        ul, ol {
+            margin-bottom: 20px;
+            padding-left: 25px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .card {
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-weight: bold;
+            color: var(--accent-blue);
+            margin-bottom: 10px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Code Blocks */
+        pre {
+            background-color: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 16px;
+            overflow-x: auto;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.88rem;
+            color: #e2e8f0;
+            margin-bottom: 20px;
+            line-height: 1.45;
+        }
+
+        code {
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            background-color: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: var(--accent-blue);
+        }
+
+        /* Formula Display Cards */
+        .math-block {
+            background-color: #111827;
+            border-left: 4px solid var(--accent-blue);
+            padding: 15px 20px;
+            margin: 15px 0;
+            border-radius: 0 6px 6px 0;
+            font-size: 1.05rem;
+            overflow-x: auto;
+        }
+
+        .callout-warning {
+            background-color: rgba(251, 191, 36, 0.1);
+            border-left: 4px solid var(--accent-amber);
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 6px 6px 0;
+        }
+
+        .callout-danger {
+            background-color: rgba(248, 113, 113, 0.1);
+            border-left: 4px solid var(--accent-red);
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 6px 6px 0;
+        }
+
+        .callout-info {
+            background-color: rgba(56, 189, 248, 0.1);
+            border-left: 4px solid var(--accent-blue);
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 6px 6px 0;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 0.92rem;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 10px 14px;
+            text-align: left;
+        }
+
+        th {
+            background-color: var(--bg-tertiary);
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        /* Checklist styling */
+        .checklist-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 12px;
+            background-color: var(--bg-primary);
+            padding: 12px 16px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .checklist-item input[type="checkbox"] {
+            margin-top: 4px;
+            accent-color: var(--accent-blue);
+            width: 18px;
+            height: 18px;
+        }
+
+        .checklist-content {
+            flex: 1;
+        }
+
+        .checklist-title {
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+
+        .checklist-desc {
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>High-Order DG/FR Implicit Solver Architecture</h1>
+        <div class="subtitle">Master Technical Reference: ESDIRK34 Time Integration, $C^1$-Smooth LMEP Filtering, Zhang-Shu Positivity, & Frozen Analytical Block-Jacobi Preconditioning</div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="tab-nav">
+        <button class="tab-button active" onclick="switchTab(event, 'tab-overview')">1. High-Level Overview</button>
+        <button class="tab-button" onclick="switchTab(event, 'tab-math')">2. Mathematical Methods</button>
+        <button class="tab-button" onclick="switchTab(event, 'tab-code')">3. Code Implementation</button>
+        <button class="tab-button" onclick="switchTab(event, 'tab-checklist')">4. Integration Checklist</button>
+        <button class="tab-button" onclick="switchTab(event, 'tab-pitfalls')">5. Pitfalls & Gotchas</button>
+    </nav>
+
+    <div class="tab-content-container">
+
+        <!-- TAB 1: HIGH-LEVEL OVERVIEW -->
+        <div id="tab-overview" class="tab-panel active">
+            <h2>Executive Architecture Summary</h2>
+            <p>
+                High-order Discontinuous Galerkin (DG) and Flux Reconstruction (FR) methods deliver high spectral accuracy per node, making them well-suited for turbulent flows and wave propagation. However, explicit temporal schemes suffer from a restrictive time step constraint scaling as $\Delta t_{\text{exp}} \propto \frac{h}{(2p+1)|u+a|}$.
+            </p>
+            <p>
+                Transitioning an existing explicit FR/DG solver to an implicit solver introduces three major technical challenges:
+            </p>
+
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-title">1. High-Frequency Temporal Damping</div>
+                    <p>
+                        High-order spatial discretizations generate undamped high-frequency modes near cell interfaces and steep gradients. Non-L-stable implicit methods (e.g., standard Crank-Nicolson) suffer from persistent trapezoidal ringing that prevents non-linear convergence.
+                    </p>
+                </div>
+                <div class="card">
+                    <div class="card-title">2. Solver-Limiter Differentiability</div>
+                    <p>
+                        Traditional shock limiters (minmod, TVD, WENO) rely on sharp $C^0$ conditional branching. When evaluated inside a Jacobian-Free Newton-Krylov (JFNK) solver, derivative kinks cause GMRES to stall. Applying limiters as post-projections creates a state mismatch ("tug-of-war") that generates numerical oscillations.
+                    </p>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-title">3. Jacobian Matrix Construction Overhead</div>
+                    <p>
+                        Forming element Jacobians via finite differences requires $N_d = (p+1) \times N_{\text{vars}}$ residual evaluations per element (18 evaluations per element at $p=5$ in 1D, and hundreds in 3D). Re-assembling this preconditioner at every Krylov iteration or Newton step negates any speedup from larger time steps.
+                    </p>
+                </div>
+                <div class="card" style="border-color: var(--accent-blue);">
+                    <div class="card-title" style="color: var(--accent-green);">The Unified Solution Framework</div>
+                    <p>
+                        This framework solves these bottlenecks by combining a <strong>4-stage, 3rd-order, L-stable ESDIRK34 scheme</strong>, a <strong>$C^1$-smooth Local Minimum Entropy Preserving (LMEP) modal filter</strong>, a <strong>Zhang-Shu positivity limiter</strong> embedded directly inside the residual operator $R(U)$, and an <strong>analytically assembled, frozen element-block Jacobi preconditioner</strong>.
+                    </p>
+                </div>
+            </div>
+
+            <h2>Core System Data Flow</h2>
+            <p>
+                The diagram below illustrates how solution states, temporal stage history, limiting operators, and matrix-free Krylov solvers interact during a single implicit time step $\Delta t$:
+            </p>
+
+            <div class="card" style="background-color: var(--code-bg); font-family: monospace; white-space: pre; overflow-x: auto; color: var(--accent-blue);">
+[Start Time Step t^n] ---> State U^n
+       |
+       +---> Compute Analytical Spatial Jacobians dR_e/dU_e (No Finite Differences)
+       |     Assemble Block Jacobi Matrices: M_e = I - gamma * dt * (dR_e/dU_e)
+       |     Invert Local Blocks M_e^{-1} & FREEZE Preconditioner M_op across step
+       |
+       +---> ESDIRK34 Stage Loop (Stage i = 2, 3, 4)
+             |
+             |---> Form Explicit Stage History: H_i = U^n + dt * sum_{j=1}^{i-1} A_{ij} * R(U^{(j)})
+             |
+             |---> JFNK Non-Linear Newton Solve for G_i(U^{(i)}) = 0
+             |     |
+             |     |---> Evaluates Effective Spatial Residual R_effective(U):
+             |     |     U ---> C^1 Smooth LMEP Filter ---> Zhang-Shu Limiter ---> Spatial Fluxes
+             |     |
+             |     |---> Matrix-Free GMRES System: J * delta_U = -G_i
+             |     |     Applies Frozen Preconditioner: w_e = M_e^{-1} * v_e
+             |     |
+             |     +---> Realizability Backtracking Line Search (Guarantees rho > 0, P > 0)
+             |
+             +---> Stage i Complete: Store R(U^{(i)})
+       |
+[End Time Step t^{n+1}] <--- U^{n+1} = U^{(4)} (Stiffly Accurate Property)
+            </div>
+
+            <h2>Summary Comparison of Solver Performance</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Algorithmic Dimension</th>
+                        <th>Standard Explicit (SSP-RK3)</th>
+                        <th>Standard Implicit (Crank-Nicolson)</th>
+                        <th>Optimized ESDIRK34 + $C^1$ LMEP Pipeline</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Maximum Safe CFL</strong></td>
+                        <td>$\text{CFL} \le 0.2 - 0.4$</td>
+                        <td>Unstable / Ringing at $\text{CFL} > 1.0$</td>
+                        <td>$\text{CFL} = 5.0 - 50.0+$</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Temporal Damping</strong></td>
+                        <td>Low (Explicitly bounded)</td>
+                        <td>None ($R(\infty) = -1$, high ringing)</td>
+                        <td>Optimal L-Stability ($R(\infty) = 0$)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Limiter Differentiability</strong></td>
+                        <td>$C^0$ Kinks (Acceptable for explicit)</td>
+                        <td>$C^0$ Kinks (Stalls GMRES solver)</td>
+                        <td>$C^1$ Smooth Soft-Min / SoftPlus</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Preconditioner Cost</strong></td>
+                        <td>N/A</td>
+                        <td>Finite Difference FD ($N_d$ perturbations)</td>
+                        <td>Exact Analytical ($0$ perturbations, frozen)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- TAB 2: MATHEMATICAL METHODS -->
+        <div id="tab-math" class="tab-panel">
+            <h2>Mathematical Formulation</h2>
+
+            <h3>1. Governing Equations & Nodal Discretization</h3>
+            <p>
+                We consider the 1D system of compressible Euler conservation laws:
+            </p>
+            <div class="math-block">
+                $$\frac{\partial U}{\partial t} + \frac{\partial F(U)}{\partial x} = 0, \quad U = \begin{bmatrix} \rho \\ \rho u \\ E \end{bmatrix}, \quad F(U) = \begin{bmatrix} \rho u \\ \rho u^2 + P \\ (E + P) u \end{bmatrix}$$
+            </div>
+            <p>
+                Pressure $P$ is determined via the ideal gas equation of state $P = (\gamma - 1)\left(E - \frac{1}{2}\rho u^2\right)$ with $\gamma = 1.4$.
+                In a high-order FR/DG element $K_e$, conservative variables $U(x)$ are expanded over $N_p = p+1$ Gauss-Legendre solution nodes $r_i \in [-1, 1]$:
+            </p>
+            <div class="math-block">
+                $$U_e(r) = \sum_{j=1}^{N_p} U_{e, j} \, \ell_j(r)$$
+            </div>
+            <p>
+                where $\ell_j(r)$ are Lagrange interpolating polynomials. The spatial derivative matrix is $D_{ij} = \ell_j'(r_i)$.
+            </p>
+
+            <h3>2. $C^1$-Smooth Local Minimum Entropy Preserving (LMEP) Filter</h3>
+            <p>
+                Specific thermodynamic entropy is defined as $s(U) = \ln(P) - \gamma \ln(\rho)$. To make entropy violation detection differentiable for Newton solvers, sharp minimum functions are replaced with $C^1$-smooth soft-min functions.
+            </p>
+
+            <h4>A. Soft-Min across Quadrature Nodes</h4>
+            <p>
+                For an element $e$ with node entropy values $s_{e, k}$ and normalized weights $w_k$, the smooth node minimum is:
+            </p>
+            <div class="math-block">
+                $$s_{\text{min, elem}} = \min_{k}(s_{e,k}) - \frac{1}{\beta} \ln \left( \sum_{k=1}^{N_p} w_k \, e^{-\beta \left(s_{e,k} - \min_k(s_{e,k})\right)} \right)$$
+            </div>
+            <p>
+                where $\beta = 15.0$ controls approximation sharpness.
+            </p>
+
+            <h4>B. Soft-Min over Element Stencil</h4>
+            <p>
+                Considering the immediate 3-element stencil $S(e) = \{e-1, e, e+1\}$, the smooth local minimum entropy $s_{\text{min, stencil}}$ is computed by applying the Soft-Min operator over $\{s_{\text{min, elem}}^{e-1}, s_{\text{min, elem}}^e, s_{\text{min, elem}}^{e+1}\}$.
+            </p>
+
+            <h4>C. Entropy Violation Metric & Sigmoid Activation</h4>
+            <p>
+                Local entropy violation is evaluated using a $C^1$-smooth SoftPlus function ($\eta = 20.0$):
+            </p>
+            <div class="math-block">
+                $$\text{SoftPlus}_\eta(x) = \frac{1}{\eta} \ln\left(1 + e^{-\eta |x|}\right) + \max(x, 0)$$
+            </div>
+            <div class="math-block">
+                $$E_e = \frac{1}{N_p} \sum_{k=1}^{N_p} \left[ \text{SoftPlus}_\eta \left( s_{\text{min, stencil}} - s_{e, k} \right) \right]^2$$
+            </div>
+            <p>
+                The modal filter attenuation strength $\sigma_e \in [0, 1]$ is obtained via a smooth sigmoid function ($k_s = 30.0$):
+            </p>
+            <div class="math-block">
+                $$\sigma_e = 1 - e^{-k_s E_e}$$
+            </div>
+
+            <h4>D. Legendre Modal Attenuation & Conservation Restoration</h4>
+            <p>
+                Nodal values $U_e$ are transformed to Legendre modal space $\hat{U}_e = V^{-1} U_e$, where $V_{i,m} = P_m(r_i)$. High-order modes $m \ge 1$ are attenuated using decay function $\Phi(m; \sigma_e)$:
+            </p>
+            <div class="math-block">
+                $$\Phi(m; \sigma_e) = 1 - \sigma_e \left( \frac{m}{p} \right)^{2 s_{\text{power}}} \quad (s_{\text{power}} = 2)$$
+            </div>
+            <p>
+                Modal coefficients are updated as $\hat{U}_{e, m}^{\text{filtered}} = \Phi(m; \sigma_e) \, \hat{U}_{e, m}$ and mapped back to nodal space $U_e^{\text{filtered}} = V \hat{U}_e^{\text{filtered}}$. Since $\Phi(0; \sigma_e) = 1$, the mean mode is unmodified. Conservation is restored via element mean matching:
+            </p>
+            <div class="math-block">
+                $$U_e^{\text{final}} = U_e^{\text{filtered}} + \left( \bar{U}_e^{\text{orig}} - \bar{U}_e^{\text{filtered}} \right)$$
+            </div>
+
+            <h3>3. Zhang-Shu Positivity-Preserving Scaling Limiter</h3>
+            <p>
+                To guarantee $\rho > 0$ and $P > 0$, high-order fluctuations around the cell mean $\bar{U}_e$ are scaled:
+            </p>
+            <div class="math-block">
+                $$\tilde{U}_e(x) = \bar{U}_e + \theta_e \left( U_e(x) - \bar{U}_e \right), \quad \theta_e \in [0, 1]$$
+            </div>
+            <p>
+                The minimum density and pressure are checked across both <strong>internal solution nodes AND element boundary interface points</strong> ($r = \pm 1$).
+            </p>
+            <div class="math-block">
+                $$\theta_1 = \min \left( 1, \frac{\bar{\rho}_e - \epsilon}{\bar{\rho}_e - \rho_{\min}} \right), \quad \theta_2 = \min \left( 1, \frac{\bar{P}_e - \epsilon}{\bar{P}_e - P_{\min}} \right) \quad (\epsilon = 10^{-12})$$
+            </div>
+
+            <h3>4. ESDIRK34 Temporal Discretization & Stage Reselling</h3>
+            <p>
+                The 4-stage, 3rd-order ESDIRK34 scheme is governed by the Butcher Tableau with diagonal coefficient $\gamma = 0.4358665215084590$:
+            </p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>$c_i$</th>
+                        <th colspan="4">Stage Coefficients $A_{ij}$</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>$0.0$</td>
+                        <td>$0.0$</td>
+                        <td>$0.0$</td>
+                        <td>$0.0$</td>
+                        <td>$0.0$</td>
+                    </tr>
+                    <tr>
+                        <td>$2\gamma$</td>
+                        <td>$\gamma$</td>
+                        <td>$\gamma$</td>
+                        <td>$0.0$</td>
+                        <td>$0.0$</td>
+                    </tr>
+                    <tr>
+                        <td>$0.5$</td>
+                        <td>$0.5 - 0.25\gamma$</td>
+                        <td>$-0.25\gamma$</td>
+                        <td>$\gamma$</td>
+                        <td>$0.0$</td>
+                    </tr>
+                    <tr>
+                        <td>$1.0$</td>
+                        <td>$0.125$</td>
+                        <td>$0.125$</td>
+                        <td>$0.75 - \gamma$</td>
+                        <td>$\gamma$</td>
+                    </tr>
+                    <tr>
+                        <td><strong>$b_j$</strong></td>
+                        <td><strong>$0.125$</strong></td>
+                        <td><strong>$0.125$</strong></td>
+                        <td><strong>$0.75 - \gamma$</strong></td>
+                        <td><strong>$\gamma$</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+            <p>
+                For any implicit stage $i \in \{2, 3, 4\}$, the stage residual equation is:
+            </p>
+            <div class="math-block">
+                $$G_i(U^{(i)}) = U^{(i)} - H_i - \gamma \Delta t \, R_{\text{effective}}\left( U^{(i)} \right) = 0$$
+            </div>
+            <p>
+                where $H_i = U^n + \Delta t \sum_{j=1}^{i-1} A_{ij} R_{\text{effective}}\left( U^{(j)} \right)$ is the known explicit stage history.
+            </p>
+
+            <h3>5. Analytical Physical Flux Jacobians & Block-Jacobi Matrices</h3>
+            <p>
+                The exact 1D physical Euler flux Jacobian $A(U) = \frac{\partial F}{\partial U}$ is:
+            </p>
+            <div class="math-block">
+                $$A(U) = \begin{bmatrix} 
+                0 & 1 & 0 \\
+                \frac{\gamma-3}{2}u^2 & (3-\gamma)u & \gamma-1 \\
+                u\left(\frac{\gamma-1}{2}u^2 - H\right) & H - (\gamma-1)u^2 & \gamma u
+                \end{bmatrix}, \quad H = \frac{E+P}{\rho}$$
+            </div>
+            <p>
+                Under a Rusanov numerical interface flux, the exact spatial derivative block $\frac{\partial R_e}{\partial U_e} \in \mathbb{R}^{N_d \times N_d}$ (where $N_d = N_p \times 3$) is constructed as:
+            </p>
+            <div class="math-block">
+                $$\left(\frac{\partial R_e}{\partial U_e}\right)_{k, m} = -\frac{2}{\Delta x_e} \left[ D_{k,m} A(U_{e,m}) + \frac{L_{R,k} L_{R,m}}{2 w_k} \left( \lambda_R I - A(U_{e,R}) \right) + \frac{L_{L,k} L_{L,m}}{2 w_k} \left( \lambda_L I + A(U_{e,L}) \right) \right]$$
+            </div>
+            <p>
+                The local block Jacobi matrix $M_e = I_{N_d} - \gamma \Delta t \left(\frac{\partial R_e}{\partial U_e}\right)$ is inverted per element to form $M_e^{-1}$.
+            </p>
+        </div>
+
+        <!-- TAB 3: CODE IMPLEMENTATION -->
+        <div id="tab-code" class="tab-panel">
+            <h2>Complete Reference Implementation</h2>
+            <p>
+                Below is the complete, self-contained Python script implementing the high-order DG ($p=5$) solver with the $C^1$-smooth LMEP modal filter, Zhang-Shu limiter, ESDIRK34 time stepper, and analytical frozen block-Jacobi preconditioner.
+            </p>
+
+            <pre><code>import time
+import numpy as np
+import scipy.linalg as sla
+import matplotlib.pyplot as plt
+from scipy.sparse.linalg import LinearOperator, gmres
+
+# =============================================================================
+# 1. DISCRETIZATION & POLYNOMIAL OPERATORS
+# =============================================================================
+
+def get_gauss_legendre(p):
+    """Returns Gauss-Legendre quadrature nodes and weights for polynomial degree p."""
+    nodes, weights = np.polynomial.legendre.leggauss(p + 1)
+    return nodes, weights
+
+def lagrange_basis(nodes, x):
+    """Evaluates Lagrange basis polynomials l_j(x) at points x."""
+    p = len(nodes)
+    x = np.atleast_1d(x)
+    L = np.ones((len(x), p))
+    for j in range(p):
+        for m in range(p):
+            if m != j:
+                L[:, j] *= (x - nodes[m]) / (nodes[j] - nodes[m])
+    return L
+
+def lagrange_derivatives(nodes):
+    """Computes spatial derivative matrix D_ij = l_j'(r_i) at solution nodes."""
+    p = len(nodes)
+    D = np.zeros((p, p))
+    for i in range(p):
+        for j in range(p):
+            if i != j:
+                term = 1.0 / (nodes[j] - nodes[i])
+                for m in range(p):
+                    if m != i and m != j:
+                        term *= (nodes[i] - nodes[m]) / (nodes[j] - nodes[m])
+                D[i, j] = term
+            else:
+                sum_term = 0.0
+                for m in range(p):
+                    if m != i:
+                        sum_term += 1.0 / (nodes[i] - nodes[m])
+                D[i, j] = sum_term
+    return D
+
+def legendre_vandermonde(nodes, p):
+    """Computes Vandermonde matrix V_im = P_m(r_i) for Legendre polynomials."""
+    V = np.zeros((len(nodes), p + 1))
+    for m in range(p + 1):
+        coeffs = np.zeros(p + 1)
+        coeffs[m] = 1.0
+        V[:, m] = np.polynomial.legendre.legval(nodes, coeffs)
+    return V, np.linalg.inv(V)
+
+# =============================================================================
+# 2. EULER PHYSICS & C1-SMOOTH LMEP MODAL FILTERING
+# =============================================================================
+
+GAMMA = 1.4
+
+def euler_flux(U):
+    """Computes physical Euler flux vector F(U) with safe floors."""
+    rho = np.maximum(U[..., 0], 1e-12)
+    rhou = U[..., 1]
+    E = U[..., 2]
+    u = rhou / rho
+    
+    internal_energy = E - 0.5 * rho * u**2
+    P = np.maximum((GAMMA - 1.0) * internal_energy, 1e-12)
+    
+    F = np.zeros_like(U)
+    F[..., 0] = rhou
+    F[..., 1] = rhou * u + P
+    F[..., 2] = (E + P) * u
+    return F
+
+def analytical_euler_flux_jacobian(U):
+    """Computes exact physical Euler flux Jacobian A(U) = dF/dU."""
+    rho = np.maximum(U[..., 0], 1e-12)
+    u = U[..., 1] / rho
+    E = U[..., 2]
+    P = np.maximum((GAMMA - 1.0) * (E - 0.5 * rho * u**2), 1e-12)
+    H = (E + P) / rho
+
+    u2 = u**2
+    g1 = GAMMA - 1.0
+
+    A = np.zeros(U.shape[:-1] + (3, 3))
+
+    A[..., 0, 0] = 0.0
+    A[..., 0, 1] = 1.0
+    A[..., 0, 2] = 0.0
+
+    A[..., 1, 0] = 0.5 * (GAMMA - 3.0) * u2
+    A[..., 1, 1] = (3.0 - GAMMA) * u
+    A[..., 1, 2] = g1
+
+    A[..., 2, 0] = u * (0.5 * g1 * u2 - H)
+    A[..., 2, 1] = H - g1 * u2
+    A[..., 2, 2] = GAMMA * u
+
+    return A
+
+def compute_specific_entropy(U):
+    """Computes local specific thermodynamic entropy s = ln(P) - gamma * ln(rho)."""
+    rho = np.maximum(U[..., 0], 1e-12)
+    rhou = U[..., 1]
+    E = U[..., 2]
+    u = rhou / rho
+    internal_energy = E - 0.5 * rho * u**2
+    P = np.maximum((GAMMA - 1.0) * internal_energy, 1e-12)
+    return np.log(P) - GAMMA * np.log(rho)
+
+def softplus(x, eta=30.0):
+    """C1-smooth ramp function approximating max(0, x)."""
+    return np.log1p(np.exp(-np.abs(eta * x))) / eta + np.maximum(x, 0)
+
+def apply_smooth_lmep_filter(U, dg_ops, ks=30.0, eta=20.0, beta=15.0, s_power=2):
+    """C1-Continuous Smoothed LMEP Modal Filter."""
+    Ne, Np, Nc = U.shape
+    p = Np - 1
+    weights = dg_ops['weights']
+    V_inv = dg_ops['V_inv']
+    V = dg_ops['V']
+    w_sum = np.sum(weights)
+
+    s_nodes = compute_specific_entropy(U)
+
+    # Soft-min over nodes
+    s_shift = s_nodes - np.min(s_nodes, axis=1, keepdims=True)
+    w_norm = weights / w_sum
+    s_min_elem = np.min(s_nodes, axis=1, keepdims=True) - (1.0 / beta) * np.log(
+        np.sum(w_norm * np.exp(-beta * s_shift), axis=1, keepdims=True)
+    )
+
+    # Soft-min over 3-element stencil
+    s_L = np.roll(s_min_elem, 1, axis=0)
+    s_L[0] = s_min_elem[0]
+    s_R = np.roll(s_min_elem, -1, axis=0)
+    s_R[-1] = s_min_elem[-1]
+    
+    S_mat = np.hstack([s_L, s_min_elem, s_R])
+    S_min = np.min(S_mat, axis=1, keepdims=True)
+    s_min_stencil = S_min - (1.0 / beta) * np.log(
+        np.mean(np.exp(-beta * (S_mat - S_min)), axis=1, keepdims=True)
+    )
+
+    entropy_violation = softplus(s_min_stencil - s_nodes, eta=eta)
+    E_elem = np.mean(entropy_violation**2, axis=1)
+    sigma_elem = 1.0 - np.exp(-ks * E_elem)
+
+    m_arr = np.arange(Np)
+    filter_decay = (m_arr / max(p, 1))**(2 * s_power)
+    Phi = 1.0 - sigma_elem[:, np.newaxis] * filter_decay[np.newaxis, :]
+
+    U_hat = np.einsum('mn, enc -> emc', V_inv, U)
+    U_hat_filtered = U_hat * Phi[:, :, np.newaxis]
+    U_filtered = np.einsum('im, emc -> eic', V, U_hat_filtered)
+
+    U_avg_orig = np.sum(U * weights[:, np.newaxis], axis=1, keepdims=True) / w_sum
+    U_avg_filt = np.sum(U_filtered * weights[:, np.newaxis], axis=1, keepdims=True) / w_sum
+    U_filtered += (U_avg_orig - U_avg_filt)
+
+    return U_filtered
+
+def apply_zhang_shu_limiter(U, dg_ops, eps=1e-12):
+    """Rigorous Zhang-Shu Positivity-Preserving Limiter."""
+    Ne, Np, _ = U.shape
+    weights = dg_ops['weights']
+    L_left = dg_ops['L_left']
+    L_right = dg_ops['L_right']
+    w_sum = np.sum(weights)
+    
+    U_avg = np.sum(U * weights[:, np.newaxis], axis=1, keepdims=True) / w_sum
+    
+    def get_check_states(U_state):
+        U_L = np.einsum('j,ejc->ec', L_left, U_state)[:, np.newaxis, :]
+        U_R = np.einsum('j,ejc->ec', L_right, U_state)[:, np.newaxis, :]
+        return np.concatenate([U_state, U_L, U_R], axis=1)
+
+    U_check = get_check_states(U)
+    rho_check = U_check[..., 0]
+    rho_min = np.min(rho_check, axis=1, keepdims=True) 
+    rho_avg = U_avg[..., 0]
+    
+    theta_1 = np.ones((Ne, 1))
+    for i in range(Ne):
+        if rho_min[i, 0] < eps:
+            denom = rho_avg[i, 0] - rho_min[i, 0]
+            theta_1[i, 0] = (rho_avg[i, 0] - eps) / denom if denom > 1e-14 else 0.0
+            
+    U_lim1 = U_avg + theta_1[:, :, np.newaxis] * (U - U_avg)
+    
+    U_check2 = get_check_states(U_lim1)
+    rho2 = U_check2[..., 0]
+    u2 = U_check2[..., 1] / rho2
+    P_check = (GAMMA - 1.0) * (U_check2[..., 2] - 0.5 * rho2 * u2**2)
+    
+    P_min = np.min(P_check, axis=1, keepdims=True)
+    rho_avg_val = U_avg[..., 0]
+    u_avg_val = U_avg[..., 1] / rho_avg_val
+    P_avg = (GAMMA - 1.0) * (U_avg[..., 2] - 0.5 * rho_avg_val * u_avg_val**2)
+    
+    theta_2 = np.ones((Ne, 1))
+    for i in range(Ne):
+        if P_min[i, 0] < eps:
+            denom = P_avg[i, 0] - P_min[i, 0]
+            theta_2[i, 0] = (P_avg[i, 0] - eps) / denom if denom > 1e-14 else 0.0
+            
+    U_lim_final = U_avg + theta_2[:, :, np.newaxis] * (U_lim1 - U_avg)
+    return U_lim_final
+
+def apply_full_limiter(U, dg_ops):
+    """Full limiting pipeline: Smooth LMEP filter followed by Zhang-Shu positivity."""
+    return apply_zhang_shu_limiter(apply_smooth_lmep_filter(U, dg_ops), dg_ops)
+
+# =============================================================================
+# 3. SPATIAL RESIDUAL & OPTIMIZED ANALYTICAL PRECONDITIONER
+# =============================================================================
+
+def compute_spatial_residual(U, mesh_params, dg_ops):
+    """Evaluates spatial residual R(U) = -dF/dx with embedded limiter."""
+    U_filtered = apply_full_limiter(U, dg_ops)
+    
+    Ne, dx = mesh_params['Ne'], mesh_params['dx']
+    nodes, weights, D, L_left, L_right = (dg_ops['nodes'], dg_ops['weights'], 
+                                          dg_ops['D'], dg_ops['L_left'], dg_ops['L_right'])
+    
+    U_L_int = np.einsum('j,ejc->ec', L_left, U_filtered)
+    U_R_int = np.einsum('j,ejc->ec', L_right, U_filtered)
+    
+    U_L_interface = np.copy(U_R_int)                     
+    U_R_interface = np.roll(U_L_int, -1, axis=0)         
+    U_R_interface[-1] = U_R_int[-1]
+    
+    F_L = euler_flux(U_L_interface)
+    F_R = euler_flux(U_R_interface)
+    
+    rho_L = np.maximum(U_L_interface[:, 0], 1e-12)
+    u_L = U_L_interface[:, 1] / rho_L
+    P_L = np.maximum((GAMMA - 1.0) * (U_L_interface[:, 2] - 0.5 * rho_L * u_L**2), 1e-12)
+    a_L = np.sqrt(GAMMA * P_L / rho_L)
+    
+    rho_R = np.maximum(U_R_interface[:, 0], 1e-12)
+    u_R = U_R_interface[:, 1] / rho_R
+    P_R = np.maximum((GAMMA - 1.0) * (U_R_interface[:, 2] - 0.5 * rho_R * u_R**2), 1e-12)
+    a_R = np.sqrt(GAMMA * P_R / rho_R)
+    
+    wave_speed = np.maximum(np.abs(u_L) + a_L, np.abs(u_R) + a_R)[:, np.newaxis]
+    F_num_right = 0.5 * (F_L + F_R) - 0.5 * wave_speed * (U_R_interface - U_L_interface)
+    
+    F_num_left = np.roll(F_num_right, 1, axis=0)
+    F_num_left[0] = euler_flux(U_L_int[0])
+    
+    F_vol = euler_flux(U_filtered)
+    dF_dx_vol = np.einsum('ij,ejc->eic', D, F_vol)
+    
+    R = np.zeros_like(U)
+    for k in range(len(nodes)):
+        flux_diff_R = F_num_right - euler_flux(U_R_int)
+        flux_diff_L = F_num_left - euler_flux(U_L_int)
+        boundary_correction = (flux_diff_R * L_right[k] - flux_diff_L * L_left[k]) / weights[k]
+        R[:, k, :] = -(2.0 / dx) * (dF_dx_vol[:, k, :] + boundary_correction)
+        
+    return R
+
+def compute_analytical_element_jacobians(U, mesh_params, dg_ops):
+    """Computes exact element spatial residual Jacobians dR_e / dU_e analytically."""
+    Ne, Np, Nc = U.shape
+    dx = mesh_params['dx']
+    weights = dg_ops['weights']
+    D = dg_ops['D']
+    L_left = dg_ops['L_left']
+    L_right = dg_ops['L_right']
+
+    U_L_int = np.einsum('j,ejc->ec', L_left, U)
+    U_R_int = np.einsum('j,ejc->ec', L_right, U)
+
+    U_L_interface = np.copy(U_R_int)                     
+    U_R_interface = np.roll(U_L_int, -1, axis=0)         
+    U_R_interface[-1] = U_R_int[-1]
+
+    rho_L = np.maximum(U_L_interface[:, 0], 1e-12)
+    u_L = U_L_interface[:, 1] / rho_L
+    P_L = np.maximum((GAMMA - 1.0) * (U_L_interface[:, 2] - 0.5 * rho_L * u_L**2), 1e-12)
+    a_L = np.sqrt(GAMMA * P_L / rho_L)
+    
+    rho_R = np.maximum(U_R_interface[:, 0], 1e-12)
+    u_R = U_R_interface[:, 1] / rho_R
+    P_R = np.maximum((GAMMA - 1.0) * (U_R_interface[:, 2] - 0.5 * rho_R * u_R**2), 1e-12)
+    a_R = np.sqrt(GAMMA * P_R / rho_R)
+
+    wave_speed_R = np.maximum(np.abs(u_L) + a_L, np.abs(u_R) + a_R)
+    wave_speed_L = np.roll(wave_speed_R, 1)
+
+    A_nodes = analytical_euler_flux_jacobian(U)
+    A_L_int = analytical_euler_flux_jacobian(U_L_int)
+    A_R_int = analytical_euler_flux_jacobian(U_R_int)
+
+    Nd = Np * Nc
+    dR_dU_blocks = np.zeros((Ne, Nd, Nd))
+    I3 = np.eye(3)
+
+    for e in range(Ne):
+        lam_R = wave_speed_R[e]
+        lam_L = wave_speed_L[e]
+        A_R = A_R_int[e]
+        A_L = A_L_int[e]
+
+        for k in range(Np):
+            for m in range(Np):
+                vol_part = D[k, m] * A_nodes[e, m]
+                right_bound = (L_right[k] * L_right[m] / weights[k]) * 0.5 * (lam_R * I3 - A_R)
+                left_bound  = (L_left[k] * L_left[m] / weights[k]) * 0.5 * (lam_L * I3 + A_L)
+
+                block_3x3 = -(2.0 / dx) * (vol_part + right_bound + left_bound)
+
+                row_idx = k * Nc
+                col_idx = m * Nc
+                dR_dU_blocks[e, row_idx:row_idx+3, col_idx:col_idx+3] = block_3x3
+
+    return dR_dU_blocks
+
+def build_analytical_block_jacobi_operator(U_curr, dt, c_coeff, dg_ops, mesh_params):
+    """Constructs LinearOperator for Block Jacobi preconditioner: M_e = I - c_coeff*dt*(dR_e/dU_e)."""
+    Ne, Np, Nc = U_curr.shape
+    Nd = Np * Nc
+    
+    dR_dU = compute_analytical_element_jacobians(U_curr, mesh_params, dg_ops)
+    I_Nd = np.eye(Nd)[np.newaxis, :, :]
+    M_blocks = I_Nd - (c_coeff * dt) * dR_dU
+    inv_M_blocks = np.linalg.inv(M_blocks)
+    
+    def matvec(v_flat):
+        v = v_flat.reshape(Ne, Nd)
+        w = np.einsum('eij, ej -> ei', inv_M_blocks, v)
+        return w.ravel()
+        
+    return LinearOperator((Ne * Nd, Ne * Nd), matvec=matvec)
+
+# =============================================================================
+# 4. SOLVER & GENERAL ESDIRK STEPPER DRIVER
+# =============================================================================
+
+# ESDIRK34 Butcher Tableau Definition
+gamma_es = 0.4358665215084590
+ESDIRK34_TABLEAU = {
+    'name': 'ESDIRK34',
+    's': 4,
+    'gamma': gamma_es,
+    'stiffly_accurate': True,
+    'c': np.array([0.0, 2.0 * gamma_es, 0.5, 1.0]),
+    'A': np.array([
+        [0.0,                  0.0,                  0.0,                  0.0],
+        [gamma_es,             gamma_es,             0.0,                  0.0],
+        [0.5 - 0.25*gamma_es,  -0.25*gamma_es,       gamma_es,             0.0],
+        [0.125,                0.125,                0.75 - gamma_es,      gamma_es]
+    ]),
+    'b': np.array([0.125, 0.125, 0.75 - gamma_es, gamma_es])
+}
+
+def solve_jfnk_stage(U_guess, stage_residual_func, shape, M_op=None, tol=1e-5, max_iter=10):
+    """JFNK Solver using frozen analytical Block Jacobi preconditioning."""
+    U_curr = np.copy(U_guess)
+    
+    for iteration in range(max_iter):
+        G_val = stage_residual_func(U_curr)
+        res_norm = np.linalg.norm(G_val)
+        
+        if res_norm < tol:
+            break
+            
+        def jacvec(v_flat):
+            v = v_flat.reshape(shape)
+            v_norm = np.linalg.norm(v)
+            if v_norm == 0:
+                return np.zeros_like(v_flat)
+            eps = 1e-7 / (v_norm + 1e-12)
+            G_pert = stage_residual_func(U_curr + eps * v)
+            return ((G_pert - G_val) / eps).ravel()
+
+        J_op = LinearOperator((G_val.size, G_val.size), matvec=jacvec)
+        delta_u_flat, _ = gmres(J_op, -G_val.ravel(), M=M_op, rtol=1e-3, atol=1e-5, maxiter=25, callback_type='legacy')
+        delta_u = delta_u_flat.reshape(shape)
+        
+        # Realizability backtracking line search
+        alpha = 1.0
+        while alpha > 1e-4:
+            U_trial = U_curr + alpha * delta_u
+            rho_check = U_trial[..., 0]
+            u_check = U_trial[..., 1] / np.maximum(rho_check, 1e-12)
+            p_check = (GAMMA - 1.0) * (U_trial[..., 2] - 0.5 * rho_check * u_check**2)
+            
+            if np.all(rho_check > 0) and np.all(p_check > 0):
+                U_curr = U_trial
+                break
+            alpha *= 0.5
+            
+    return U_curr
+
+def step_general_esdirk(U, dt, mesh_params, dg_ops, tableau, M_op=None):
+    """Generalized ESDIRK Multi-Stage Time Integration Driver."""
+    s = tableau['s']
+    A = tableau['A']
+    b = tableau['b']
+    stiffly_accurate = tableau['stiffly_accurate']
+    
+    Ne, Np, Nc = U.shape
+    U_stages = np.zeros((s, Ne, Np, Nc))
+    R_stages = np.zeros((s, Ne, Np, Nc))
+    
+    # Stage 1: Explicit First Stage
+    U_stages[0] = np.copy(U)
+    R_stages[0] = compute_spatial_residual(U_stages[0], mesh_params, dg_ops)
+    
+    # Stages 2 to s: Implicit Solves
+    for i in range(1, s):
+        gamma_i = A[i, i]
+        
+        history = np.copy(U)
+        for j in range(i):
+            if A[i, j] != 0.0:
+                history += dt * A[i, j] * R_stages[j]
+                
+        def stage_residual(Ui):
+            Ri = compute_spatial_residual(Ui, mesh_params, dg_ops)
+            return Ui - history - (dt * gamma_i) * Ri
+        
+        U_stages[i] = solve_jfnk_stage(U_stages[i-1], stage_residual, U.shape, M_op=M_op)
+        R_stages[i] = compute_spatial_residual(U_stages[i], mesh_params, dg_ops)
+        
+    if stiffly_accurate:
+        U_next = U_stages[-1]
+    else:
+        U_next = np.copy(U)
+        for j in range(s):
+            if b[j] != 0.0:
+                U_next += dt * b[j] * R_stages[j]
+                
+    return apply_full_limiter(U_next, dg_ops)
+	# =============================================================================
+# 5. BENCHMARK SUITE: HIGH-ORDER (P=5) SOD SHOCK TUBE
+# =============================================================================
+
+def run_benchmark():
+    p = 11                     # High-order polynomial (p=5 -> 18 DOFs per element)
+    Ne = 30                  # Grid resolution
+    L = 1.0                   # Domain length
+    dx = L / Ne
+    x_nodes, weights = get_gauss_legendre(p)
+    D = lagrange_derivatives(x_nodes)
+    V, V_inv = legendre_vandermonde(x_nodes, p)
+
+    L_left = lagrange_basis(x_nodes, -1.0).ravel()
+    L_right = lagrange_basis(x_nodes, 1.0).ravel()
+
+    mesh_params = {'Ne': Ne, 'dx': dx}
+    dg_ops = {'nodes': x_nodes, 'weights': weights, 'D': D,
+              'V': V, 'V_inv': V_inv, 'L_left': L_left, 'L_right': L_right}
+
+    x_elem = np.linspace(0, L - dx, Ne)
+    x_quad = np.zeros((Ne, p + 1))
+    for e in range(Ne):
+        x_quad[e, :] = x_elem[e] + 0.5 * dx * (x_nodes + 1.0)
+
+    def get_initial_conditions():
+        width = 0.015 # Smooth transition layer
+        smooth_factor = 0.5 * (1.0 - np.tanh((x_quad - 0.5) / width))
+
+        U = np.zeros((Ne, p + 1, 3))
+        rho = 0.125 + (1.0 - 0.125) * smooth_factor
+        u = 0.0
+        P = 0.1 + (1.0 - 0.1) * smooth_factor
+
+        U[..., 0] = rho
+        U[..., 1] = rho * u
+        U[..., 2] = P / (GAMMA - 1.0) + 0.5 * rho * u**2
+
+        return apply_full_limiter(U, dg_ops)
+
+    T_final = 0.15
+
+    # --- Explicit Execution ---
+    U_exp = get_initial_conditions()
+    max_speed = np.max(np.abs(U_exp[..., 1]/U_exp[..., 0]) + np.sqrt(GAMMA * 1.0 / U_exp[..., 0]))
+    dt_exp = 0.25 * dx / ((2 * p + 1) * max_speed)
+    steps_exp = int(np.ceil(T_final / dt_exp))
+    dt_exp = T_final / steps_exp
+
+    t0 = time.perf_counter()
+    for _ in range(steps_exp):
+        U_exp = step_explicit_rk3(U_exp, dt_exp, mesh_params, dg_ops)
+    t_exp = time.perf_counter() - t0
+
+    # --- Implicit Execution (Analytical + Preconditioner Freezing) ---
+    # Select temporal scheme to evaluate
+    chosen_tableau = ESDIRK34_TABLEAU  # Options: CN_TABLEAU, TR_BDF2_TABLEAU, ESDIRK34_TABLEAU
+    U_imp = get_initial_conditions()
+    cfl_imp = 20.0 # Large CFL for high-order DG
+    dt_imp = cfl_imp * dx / ((2 * p + 1) * max_speed)
+    steps_imp = int(np.ceil(T_final / dt_imp))
+    dt_imp = T_final / steps_imp
+
+    freeze_interval = 2
+    M_op = None
+
+    t0 = time.perf_counter()
+    for step in range(steps_imp):
+        # Recompute preconditioner using the scheme's stage diagonal 'gamma'
+        if step % freeze_interval == 0 or M_op is None:
+            M_op = build_analytical_block_jacobi_operator(
+        U_imp, dt_imp, chosen_tableau['gamma'], dg_ops, mesh_params
+              )
+
+        U_imp = step_general_esdirk(
+           U_imp, dt_imp, mesh_params, dg_ops, chosen_tableau, M_op=M_op
+        )
+    t_imp = time.perf_counter() - t0
+
+    speedup = t_exp / t_imp
+
+    print("=" * 72)
+    print(" HIGH-ORDER DG (P=5) BENCHMARK: ANALYTICAL FROZEN PRECONDITIONER ")
+    print("=" * 72)
+    print(f" Polynomial Degree (p): {p} (18 DOFs per element)")
+    print(f" Grid Resolution      : {Ne} elements ({Ne*(p+1)} total DOFs)")
+    print(f" Preconditioner       : Analytical Block Jacobi (Frozen every {freeze_interval} steps)")
+    print(f" Initial Condition    : Smoothed Tanh Transition (delta = 0.015)")
+    print(f" Target Time          : T = {T_final}\n")
+    print(f"{'Metric':<25} | {'Explicit (SSP-RK3)':<20} | {'Implicit (TR-BDF2)':<20}")
+    print("-" * 72)
+    print(f"{'Time Step (dt)':<25} | {dt_exp:<20.6f} | {dt_imp:<20.6f}")
+    print(f"{'Total Time Steps':<25} | {steps_exp:<20d} | {steps_imp:<20d}")
+    print(f"{'CPU Wall Time (s)':<25} | {t_exp:<20.4f} | {t_imp:<20.4f}")
+    print("-" * 72)
+    print(f" IMPLICIT SPEEDUP FACTOR : {speedup:.2f}x Faster")
+    print("=" * 72)
+
+    plt.figure(figsize=(10, 5), dpi=120)
+    x_flat = x_quad.ravel()
+    plt.plot(x_flat, U_exp[..., 0].ravel(), 'ro', label=f'Explicit RK3 ({steps_exp} steps)', markersize=3, alpha=0.6)
+    plt.plot(x_flat, U_imp[..., 0].ravel(), 'b-', label=f'Implicit TR-BDF2 + Analytical Prec ({steps_imp} steps)', linewidth=1.5)
+    plt.title(f"Sod Shock Tube Density Field at T={T_final} (High-Order DG $p=5$)")
+    plt.xlabel("x")
+    plt.ylabel("Density")
+    plt.grid(True, linestyle=":", alpha=0.6)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+if __name__ == "__main__":
+    run_benchmark()
+	
+</code></pre>
+        </div>
+
+        <!-- TAB 4: INTEGRATION CHECKLIST -->
+        <div id="tab-checklist" class="tab-panel">
+            <h2>Step-by-Step Integration Checklist</h2>
+            <p>
+                Follow this checklist to equip an existing explicit FR/DG code with this implicit ESDIRK34 and $C^1$-smooth limiting capability:
+            </p>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="c1">
+                <div class="checklist-content">
+                    <div class="checklist-title">Phase 1: Pre-compute Nodal/Modal Operators</div>
+                    <div class="checklist-desc">Construct the Legendre Vandermonde matrix $V_{i,m} = P_m(r_i)$ and its inverse $V^{-1}$ during solver initialization. Verify that $V^{-1} V = I$.</div>
+                </div>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="c2">
+                <div class="checklist-content">
+                    <div class="checklist-title">Phase 2: Implement C1-Smooth Functions</div>
+                    <div class="checklist-desc">Implement `softplus(x, eta)` and the soft-min node and stencil functions. Ensure no sharp `np.min` or conditional `if` branching exists inside entropy detection.</div>
+                </div>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="c3">
+                <div class="checklist-content">
+                    <div class="checklist-title">Phase 3: Update Zhang-Shu Interface Check Set</div>
+                    <div class="checklist-desc">Ensure the Zhang-Shu positivity limiter checks density and pressure at both interior quadrature nodes AND boundary interface locations ($r = \pm 1$).</div>
+                </div>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="c4">
+                <div class="checklist-content">
+                    <div class="checklist-title">Phase 4: Embed Limiter Inside Spatial Residual Operator</div>
+                    <div class="checklist-desc">Modify `compute_spatial_residual(U)` to call `apply_full_limiter(U)` as its first line. Physical fluxes and surface corrections must evaluate on filtered states.</div>
+                </div>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="c5">
+                <div class="checklist-content">
+                    <div class="checklist-title">Phase 5: Implement Analytical Flux Jacobian Generator</div>
+                    <div class="checklist-desc">Code `analytical_euler_flux_jacobian(U)` for exact $A(U) = \frac{\partial F}{\partial U}$. Verify that $\max |A_{\text{analytical}} - A_{\text{finite\_difference}}| &lt; 10^{-6}$.</div>
+                </div>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="c6">
+                <div class="checklist-content">
+                    <div class="checklist-title">Phase 6: Assemble Analytical Element-Block Jacobi Matrix</div>
+                    <div class="checklist-desc">Write `compute_analytical_element_jacobians` using nodal derivative matrix $D_{ij}$ and Rusanov interface terms. Invert local blocks to obtain $M_e^{-1}$.</div>
+                </div>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="c7">
+                <div class="checklist-content">
+                    <div class="checklist-title">Phase 7: Wrap Matrix-Free Preconditioner</div>
+                    <div class="checklist-desc">Construct SciPy `LinearOperator` applying $w_e = M_e^{-1} v_e$ via `einsum`. Pass this $M_{\text{op}}$ operator into GMRES.</div>
+                </div>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="c8">
+                <div class="checklist-content">
+                    <div class="checklist-title">Phase 8: Add Realizability Backtracking Line Search</div>
+                    <div class="checklist-desc">Inside `solve_jfnk_stage`, implement a line search loop halving $\alpha \leftarrow 0.5\alpha$ if a trial Newton state produces non-positive density or pressure.</div>
+                </div>
+            </div>
+
+            <div class="checklist-item">
+                <input type="checkbox" id="c9">
+                <div class="checklist-content">
+                    <div class="checklist-title">Phase 9: Integrate Generalized ESDIRK Driver</div>
+                    <div class="checklist-desc">Hook up `step_general_esdirk` using `ESDIRK34_TABLEAU`. Implement preconditioner freezing logic (rebuilding $M_{\text{op}}$ once every 5-10 time steps).</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 5: PITFALLS & GOTCHAS -->
+        <div id="tab-pitfalls" class="tab-panel">
+            <h2>Critical Pitfalls, Considerations & Gotchas</h2>
+
+            <div class="callout-danger">
+                <h4>1. The "Tug-of-War" Mismatch (Limiting Outside the Residual)</h4>
+                <p>
+                    <strong>Pitfall:</strong> Applying modal filtering or Zhang-Shu limiting as a post-processing step *after* completing an implicit step ($U^{n+1} \leftarrow P(U^{n+1})$).<br>
+                    <strong>Consequence:</strong> The non-linear solver converges $U$ to satisfy $G(U) = 0$ for an un-limited flux state. Post-projecting $U$ breaks the residual balance, driving density dips and high-frequency ripples.<br>
+                    <strong>Fix:</strong> Embed the limiter pipeline directly at the start of `compute_spatial_residual(U)` so $R(U) \equiv R(\text{limiter}(U))$.
+                </p>
+            </div>
+
+            <div class="callout-warning">
+                <h4>2. Derivative Kinks in JFNK from Sharp Minimums</h4>
+                <p>
+                    <strong>Pitfall:</strong> Using standard `np.min` or discrete conditional statements (`if/else`) inside entropy violation indicators or modal decay triggers.<br>
+                    <strong>Consequence:</strong> Finite-difference directional derivatives in JFNK ($Jv \approx \frac{G(U+\epsilon v) - G(U)}{\epsilon}$) cross non-differentiable $C^0$ kinks, generating erratic Krylov search directions and causing GMRES to stall.<br>
+                    <strong>Fix:</strong> Use $C^1$-smooth soft-min and softplus operators ($\beta \approx 15-30, \eta \approx 20-30$).
+                </p>
+            </div>
+
+            <div class="callout-warning">
+                <h4>3. Forgetting Interface Check Points in Positivity Limiting</h4>
+                <p>
+                    <strong>Pitfall:</strong> Checking positivity ($\rho > 0, P > 0$) strictly at interior solution nodes $r_i$.<br>
+                    <strong>Consequence:</strong> Polynomial extrapolations at element boundaries $r = \pm 1$ can yield negative density or pressure during Riemann flux evaluations, causing numerical crashes.<br>
+                    <strong>Fix:</strong> Extrapolate conservative states to element faces using Lagrange boundary vectors $L_L, L_R$ and include these boundary states in Zhang-Shu $\theta_1, \theta_2$ calculations.
+                </p>
+            </div>
+
+            <div class="callout-info">
+                <h4>4. Preconditioner Freezing Staleness & Time Step Selection</h4>
+                <p>
+                    <strong>Pitfall:</strong> Freezing the preconditioner $M_e^{-1}$ for too many time steps when transient shocks move rapidly across elements.<br>
+                    <strong>Consequence:</strong> If local fluid states shift significantly, $M_e^{-1}$ degrades as a preconditioner, increasing GMRES iteration counts per stage from 3-5 up to 20+.<br>
+                    <strong>Fix:</strong> Monitor GMRES iteration counts dynamically. If GMRES requires $> 10$ iterations to converge, trigger a preconditioner rebuild immediately.
+                </p>
+            </div>
+
+            <div class="callout-info">
+                <h4>5. Boundary Condition Jacobians (Physical vs Ghost Elements)</h4>
+                <p>
+                    <strong>Pitfall:</strong> Neglecting boundary condition derivatives when computing local block Jacobians $dR_e/dU_e$ on domain boundary elements.<br>
+                    <strong>Consequence:</strong> Preconditioning matrices $M_e$ at domain boundaries become inaccurate, slowing Krylov convergence for boundary-adjacent elements.<br>
+                    <strong>Fix:</strong> Ensure `compute_analytical_element_jacobians` accounts for boundary flux linearization (e.g., supersonic outflow or wall reflection Jacobians).
+                </p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    function switchTab(event, tabId) {
+        // Hide all tab panels
+        const panels = document.querySelectorAll('.tab-panel');
+        panels.forEach(panel => panel.classList.remove('active'));
+
+        // Deactivate all tab buttons
+        const buttons = document.querySelectorAll('.tab-button');
+        buttons.forEach(button => button.classList.remove('active'));
+
+        // Activate selected tab panel and button
+        document.getElementById(tabId).classList.add('active');
+        event.currentTarget.classList.add('active');
+
+        // Reparse MathJax formulas inside the newly opened tab if needed
+        if (window.MathJax && MathJax.typesetPromise) {
+            MathJax.typesetPromise();
+        }
+    }
+</script>
+
+</body>
+</html>

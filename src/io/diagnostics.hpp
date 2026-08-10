@@ -54,6 +54,7 @@ private:
     std::ofstream res_file;
     std::ofstream probe_file;
     std::ofstream force_file;
+    std::ofstream implicit_file;
 
     // Pre-computed spatial locators for probes
     struct ProbeLocator {

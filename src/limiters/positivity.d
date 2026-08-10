@@ -2,8 +2,9 @@ src/limiters/positivity.o: src/limiters/positivity.cpp \
  src/limiters/positivity.hpp src/limiters/../core/cell.hpp \
  src/limiters/../core/state.hpp src/limiters/../core/parameters.hpp \
  src/limiters/../core/../ib/ib.hpp src/limiters/../core/basis.hpp \
- src/limiters/limiter_common.hpp src/limiters/limiter_modal.hpp \
- src/limiters/limiter_bbch.hpp src/limiters/limiter_hermite.hpp
+ src/limiters/limiter_common.hpp src/limiters/limiter_smooth.hpp \
+ src/limiters/limiter_modal.hpp src/limiters/limiter_bbch.hpp \
+ src/limiters/limiter_hermite.hpp
 src/limiters/positivity.hpp:
 src/limiters/../core/cell.hpp:
 src/limiters/../core/state.hpp:
@@ -11,6 +12,7 @@ src/limiters/../core/parameters.hpp:
 src/limiters/../core/../ib/ib.hpp:
 src/limiters/../core/basis.hpp:
 src/limiters/limiter_common.hpp:
+src/limiters/limiter_smooth.hpp:
 src/limiters/limiter_modal.hpp:
 src/limiters/limiter_bbch.hpp:
 src/limiters/limiter_hermite.hpp:

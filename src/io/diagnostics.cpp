@@ -5,6 +5,7 @@
 
 #include "diagnostics.hpp"
 #include "../core/solver.hpp"
+#include "../time/implicit_integrator.hpp"
 #include <iomanip>
 #include <iostream>
 #include <filesystem>
@@ -51,6 +52,18 @@ Diagnostics::Diagnostics(const Parameters& p, const Solver& solver, double start
         }
     }
 
+    // Initialize Implicit Diagnostics File (Append if restarting)
+    if (params.TIME_INTEGRATOR == "ESDIRK34") {
+        if (startTime > 0) {
+            implicit_file.open("csv_outputs/implicit_diagnostics.csv", std::ios::app);
+        } else {
+            implicit_file.open("csv_outputs/implicit_diagnostics.csv");
+            if (implicit_file.is_open()) {
+                implicit_file << "# FR-IGR ESDIRK34 Implicit Solver Diagnostics\n";
+                implicit_file << "Time, Step, CFL, Newton_Iters, GMRES_Iters, Res_Evals, Final_Residual, WallTime_ms\n";
+            }
+        }
+    }
     // Initialize Probes File (Append if restarting)
     if (!p.probes.empty()) {
         if (startTime > 0) {
@@ -112,6 +125,7 @@ Diagnostics::~Diagnostics() {
     if (res_file.is_open()) res_file.close();
     if (probe_file.is_open()) probe_file.close();
     if (force_file.is_open()) force_file.close();
+    if (implicit_file.is_open()) implicit_file.close();
 }
 
 double Diagnostics::evaluate_probe(const Solver& solver, const ProbeLocator& loc) const {
@@ -277,7 +291,27 @@ void Diagnostics::update(const Solver& solver, double t, int step) {
             std::cout << " | Lim: " << solver.current_limiter_stats.num_limited 
                       << " (avg_th: " << std::fixed << std::setprecision(4) << avg_theta << ")";
         }
-        std::cout << "\n";
+
+        if (params.TIME_INTEGRATOR == "ESDIRK34" && solver.implicit_engine_2d) {
+            const auto& st = solver.implicit_engine_2d->last_stats;
+            std::cout << " | CFL: " << std::fixed << std::setprecision(1) << st.current_cfl
+                      << " | Nwt: " << st.total_newton_iters
+                      << " | GMR: " << st.total_gmres_iters
+                      << " | ResEv: " << st.total_res_evals
+                      << " | " << std::fixed << std::setprecision(1) << st.step_wall_time_ms << "ms";
+            if (implicit_file.is_open()) {
+                implicit_file << std::scientific << std::setprecision(6) << t << ", "
+                              << step << ", "
+                              << std::fixed << std::setprecision(2) << st.current_cfl << ", "
+                              << st.total_newton_iters << ", "
+                              << st.total_gmres_iters << ", "
+                              << st.total_res_evals << ", "
+                              << std::scientific << st.final_stage_res << ", "
+                              << std::fixed << std::setprecision(2) << st.step_wall_time_ms << "\n";
+                implicit_file.flush();
+            }
+        }
+        std::cout << std::endl;
         next_print_output += params.PRINT_INTERVAL;
     }
 

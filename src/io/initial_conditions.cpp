@@ -56,6 +56,15 @@ void IC::apply(Solver& solver) {
                     press = (1 - wy) * ((1 - wx) * pBL + wx * pBR) +
                             wy * ((1 - wx) * pTL + wx * pTR);
 
+                } else if (p.IC_TYPE == "SOD_SHOCK_TUBE" || p.IC_TYPE == "SOD") {
+                    double x0 = 0.5;
+                    double width = 0.015;
+                    double w = sigmoid(x, x0, width);
+                    rho = (1.0 - w) * 1.0 + w * 0.125;
+                    u = 0.0;
+                    v = 0.0;
+                    press = (1.0 - w) * 1.0 + w * 0.1;
+
                 } else if (p.IC_TYPE == "BLAST") {
                     double r0 = std::sqrt(x * x + y * y);
                     rho = 1.0;

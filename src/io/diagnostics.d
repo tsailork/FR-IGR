@@ -4,7 +4,12 @@ src/io/diagnostics.o: src/io/diagnostics.cpp src/io/diagnostics.hpp \
  src/io/../core/solver.hpp src/io/../core/basis.hpp \
  src/io/../core/geometry.hpp src/io/../core/../ib/ib_gcm.hpp \
  src/io/../core/../boundary/boundary.hpp \
- src/io/../core/../limiters/limiter_common.hpp
+ src/io/../core/../limiters/limiter_common.hpp \
+ src/io/../core/../limiters/limiter_smooth.hpp \
+ src/io/../time/implicit_integrator.hpp \
+ src/io/../time/implicit_constants.hpp \
+ src/io/../time/implicit_precond.hpp src/io/../time/implicit_ilu.hpp \
+ src/io/../time/esdirk34.hpp
 src/io/diagnostics.hpp:
 src/io/../core/parameters.hpp:
 src/io/../core/../ib/ib.hpp:
@@ -16,3 +21,9 @@ src/io/../core/geometry.hpp:
 src/io/../core/../ib/ib_gcm.hpp:
 src/io/../core/../boundary/boundary.hpp:
 src/io/../core/../limiters/limiter_common.hpp:
+src/io/../core/../limiters/limiter_smooth.hpp:
+src/io/../time/implicit_integrator.hpp:
+src/io/../time/implicit_constants.hpp:
+src/io/../time/implicit_precond.hpp:
+src/io/../time/implicit_ilu.hpp:
+src/io/../time/esdirk34.hpp:
